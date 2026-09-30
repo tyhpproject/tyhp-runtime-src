@@ -7,7 +7,9 @@
 # does not exist yet, that package is skipped with a warning unless
 # --create-github-repos is passed, in which case an empty public repo is
 # created (same gh repo create as ensure-existing-github-repos.sh: no README,
-# license, or .gitignore; no local remote add). Not a submodule workflow.
+# license, or .gitignore; no local remote add). After the first create, each
+# later create waits 30 seconds. If GitHub rejects a create for going too
+# quickly, the script waits and retries that repo. Not a submodule workflow.
 #
 # Pass --package NAME to publish one package (and leave the other GitHub repos
 # untouched). NAME is a path relative to packages (php, php-ext-bz2,
@@ -63,6 +65,12 @@ SKIPPED_PACKAGES=()
 GITHUB_CREATED_REPOS=()
 GITHUB_WOULD_CREATE_REPOS=()
 GITHUB_CREATE_FAILED_REPOS=()
+# 1 after the first gh repo create in this run, so later creates wait.
+GITHUB_CREATE_STARTED=0
+readonly GITHUB_CREATE_INTER_DELAY=60
+readonly GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS=10
+readonly GITHUB_CREATE_RATE_LIMIT_INITIAL_SLEEP=60
+readonly GITHUB_CREATE_RATE_LIMIT_MAX_SLEEP=1800
 PACKAGIST_CREATED_NAMES=()
 PACKAGIST_EXISTED_NAMES=()
 PACKAGIST_WOULD_CREATE_NAMES=()
@@ -482,27 +490,50 @@ print(desc)
 PY
 }
 
+github_repo_create_rate_limited() {
+  local output="$1"
+  [[ "$output" == *"too many repositories, too quickly"* || "$output" == *"secondary rate limit"* ]]
+}
+
 # Create an empty remote-only public repo. Run from a non-git directory so gh
-# does not offer to add a remote on this compiler checkout.
+# does not offer to add a remote on this compiler checkout. GitHub's
+# createRepository limit ("too many repositories, too quickly") is retried
+# with a growing wait. gh does not print response headers, so Retry-After is
+# not available here.
 create_empty_github_repo() {
   local repo="$1"
   local desc="$2"
   local output
   local rc=0
+  local attempt=1
+  local sleep_secs="$GITHUB_CREATE_RATE_LIMIT_INITIAL_SLEEP"
 
-  output="$(
-    cd "${TMPDIR:-/tmp}"
-    GH_PROMPT_DISABLED=1 gh repo create "${GITHUB_ORG}/${repo}" --public --description "$desc" 2>&1
-  )" || rc=$?
-  if [[ "$rc" -eq 0 ]]; then
-    return 0
-  fi
-  if [[ "$output" == *"already exists"* || "$output" == *"Name already exists"* ]]; then
-    echo "GitHub: ${GITHUB_ORG}/${repo} already exists (skip create)"
-    return 0
-  fi
-  echo "$output" >&2
-  return 1
+  while true; do
+    rc=0
+    output="$(
+      cd "${TMPDIR:-/tmp}"
+      GH_PROMPT_DISABLED=1 gh repo create "${GITHUB_ORG}/${repo}" --public --description "$desc" 2>&1
+    )" || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+      return 0
+    fi
+    if [[ "$output" == *"already exists"* || "$output" == *"Name already exists"* ]]; then
+      echo "GitHub: ${GITHUB_ORG}/${repo} already exists (skip create)"
+      return 0
+    fi
+    if github_repo_create_rate_limited "$output" && [[ "$attempt" -lt "$GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS" ]]; then
+      echo "GitHub: rate limited creating ${GITHUB_ORG}/${repo}; waiting ${sleep_secs}s then retrying (attempt ${attempt}/$((GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS - 1)))" >&2
+      sleep "$sleep_secs"
+      attempt=$((attempt + 1))
+      sleep_secs=$((sleep_secs * 2))
+      if [[ "$sleep_secs" -gt "$GITHUB_CREATE_RATE_LIMIT_MAX_SLEEP" ]]; then
+        sleep_secs="$GITHUB_CREATE_RATE_LIMIT_MAX_SLEEP"
+      fi
+      continue
+    fi
+    echo "$output" >&2
+    return 1
+  done
 }
 
 # 0 = exists, was created, or --list would create. 1 = missing and not creating
@@ -538,6 +569,11 @@ ensure_github_repo() {
   fi
 
   desc="$(github_repo_description "$pkg")"
+  if [[ "$GITHUB_CREATE_STARTED" -eq 1 ]]; then
+    echo "GitHub: waiting ${GITHUB_CREATE_INTER_DELAY}s before creating ${GITHUB_ORG}/${repo}"
+    sleep "$GITHUB_CREATE_INTER_DELAY"
+  fi
+  GITHUB_CREATE_STARTED=1
   echo "GitHub: creating ${GITHUB_ORG}/${repo}"
   if ! create_empty_github_repo "$repo" "$desc"; then
     echo "error: gh repo create failed for ${GITHUB_ORG}/${repo}" >&2
