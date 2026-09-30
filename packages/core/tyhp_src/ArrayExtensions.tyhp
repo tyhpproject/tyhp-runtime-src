@@ -1,0 +1,322 @@
+<?tyhp
+
+namespace Tyhp;
+
+global use extension \Tyhp\ArrayExtensions;
+global use extension \Tyhp\ArrayExtensionsVersioned;
+
+extension ArrayExtensions {
+    extends<TKey extends int|string, TValue> array<TKey, TValue> {
+        #[\Tyhp\Optimize\Pure]
+        function sorted(int $flags = \SORT_REGULAR): array<int, TValue> {
+            array<int, TValue> $copy = \array_values($this);
+            \sort($copy, $flags);
+            return $copy;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function reverseSorted(int $flags = \SORT_REGULAR): array<int, TValue> {
+            array<int, TValue> $copy = \array_values($this);
+            \rsort($copy, $flags);
+            return $copy;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function sortedByKey(int $flags = \SORT_REGULAR): array<TKey, TValue> {
+            array<TKey, TValue> $copy = $this;
+            \ksort($copy, $flags);
+            return $copy;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function reverseSortedByKey(int $flags = \SORT_REGULAR): array<TKey, TValue> {
+            array<TKey, TValue> $copy = $this;
+            \krsort($copy, $flags);
+            return $copy;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function sortedBy(callable(TValue, TValue): int $callback): array<int, TValue> {
+            array<int, TValue> $copy = \array_values($this);
+            \usort($copy, $callback);
+            return $copy;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function sortedByKeyWith(callable(TKey, TKey): int $callback): array<TKey, TValue> {
+            array<TKey, TValue> $copy = $this;
+            \uksort($copy, $callback);
+            return $copy;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function flatten(): array {
+            array<int, mixed> $result = [];
+            array<TKey, TValue> $input = $this;
+            \array_walk_recursive($input, function (mixed $value) use (&$result): void {
+                $result[] = $value;
+            });
+            return $result;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        fn count(): int => \count($this);
+
+        #[\Tyhp\Optimize\Pure]
+        fn isEmpty(): bool => \count($this) === 0;
+
+        #[\Tyhp\Optimize\Pure]
+        fn isNotEmpty(): bool => \count($this) > 0;
+
+        #[\Tyhp\Optimize\Pure]
+        fn keys(): array<int, TKey> => \array_keys($this);
+
+        #[\Tyhp\Optimize\Pure]
+        fn values(): array<int, TValue> => \array_values($this);
+
+        #[\Tyhp\Optimize\Pure]
+        fn keyExists(TKey $key): bool => \array_key_exists($key, $this);
+
+        #[\Tyhp\Optimize\Pure]
+        fn contains(TValue $value, bool $strict = false): bool => \in_array($value, $this, $strict);
+
+        #[\Tyhp\Optimize\Pure]
+        fn search(TValue $value, bool $strict = false): TKey|false => \array_search($value, $this, $strict);
+
+        #[\Tyhp\Optimize\Pure]
+        fn reversed(bool $preserveKeys = false): array<TKey, TValue> => \array_reverse($this, $preserveKeys);
+
+        #[\Tyhp\Optimize\Pure]
+        fn unique(int $flags = \SORT_STRING): array<TKey, TValue> => \array_unique($this, $flags);
+
+        #[\Tyhp\Optimize\Pure]
+        fn filtered(?callable $callback = null, int $mode = 0): array<TKey, TValue> => \array_filter($this, $callback, $mode);
+
+        #[\Tyhp\Optimize\Pure]
+        fn mapped<TResult>(callable(TValue): TResult $callback): array<TKey, TResult> => \array_map($callback, $this);
+
+        #[\Tyhp\Optimize\Pure]
+        fn merged(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_merge($this, ...$arrays);
+
+        #[\Tyhp\Optimize\Pure]
+        fn sliced(int $offset, ?int $length = null, bool $preserveKeys = false): array<TKey, TValue> => \array_slice($this, $offset, $length, $preserveKeys);
+
+        #[\Tyhp\Optimize\Pure]
+        fn chunked(int $length, bool $preserveKeys = false): array<int, array<TKey, TValue>> => \array_chunk($this, $length, $preserveKeys);
+
+        #[\Tyhp\Optimize\Pure]
+        fn padded(int $length, TValue $value): array<TKey, TValue> => \array_pad($this, $length, $value);
+
+        #[\Tyhp\Optimize\Pure]
+        fn diffed(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_diff($this, ...$arrays);
+
+        #[\Tyhp\Optimize\Pure]
+        fn diffedByKey(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_diff_key($this, ...$arrays);
+
+        #[\Tyhp\Optimize\Pure]
+        fn intersected(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_intersect($this, ...$arrays);
+
+        #[\Tyhp\Optimize\Pure]
+        fn intersectedByKey(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_intersect_key($this, ...$arrays);
+
+        fn sort(&$this, int $flags = \SORT_REGULAR): bool => \sort($this, $flags);
+
+        fn reverseSort(&$this, int $flags = \SORT_REGULAR): bool => \rsort($this, $flags);
+
+        fn sortByKey(&$this, int $flags = \SORT_REGULAR): bool => \ksort($this, $flags);
+
+        fn reverseSortByKey(&$this, int $flags = \SORT_REGULAR): bool => \krsort($this, $flags);
+
+        fn sortBy(&$this, callable(TValue, TValue): int $callback): bool => \usort($this, $callback);
+
+        fn sortByKeyWith(&$this, callable(TKey, TKey): int $callback): bool => \uksort($this, $callback);
+
+        fn shuffle(&$this): bool => \shuffle($this);
+
+        fn push(&$this, TValue ...$values): int => \array_push($this, ...$values);
+
+        fn pop(&$this): ?TValue => \array_pop($this);
+
+        fn shift(&$this): ?TValue => \array_shift($this);
+
+        fn unshift(&$this, TValue ...$values): int => \array_unshift($this, ...$values);
+
+        fn splice(&$this, int $offset, ?int $length = null, array $replacement = []): array<TKey, TValue> => \array_splice($this, $offset, $length, $replacement);
+
+        #[\Tyhp\Optimize\Pure]
+        fn reduce<TResult>(callable(TResult, TValue): TResult $callback, TResult $initial): TResult => \array_reduce($this, $callback, $initial);
+
+        #[\Tyhp\Optimize\Pure]
+        fn join(string $separator = ''): string => \implode($separator, $this);
+
+        fn walk(&$this, callable(TValue, TKey): void $callback): bool => \array_walk($this, $callback);
+    }
+
+    extends array {
+
+        // TODO: fix this to not use bare arrays
+        #[\Tyhp\Optimize\Pure]
+        fn column(string|int|null $columnKey, string|int|null $indexKey = null): array => \array_column($this, $columnKey, $indexKey);
+
+        // TODO: fix this to not use bare array
+        #[\Tyhp\Optimize\Pure]
+        fn combined(array $values): array => \array_combine($this, $values);
+
+        // TODO: fix this to not use bare array
+        #[\Tyhp\Optimize\Pure]
+        fn zipped(array ...$arrays): array => \array_map(null, $this, ...$arrays);
+
+        #[\Tyhp\Optimize\Pure]
+        fn toJson(int $flags = 0, int $depth = 512): string|false => \json_encode($this, $flags, $depth);
+    }
+
+    extends<TKey, TValue extends int|string> array<TKey, TValue> {
+
+        #[\Tyhp\Optimize\Pure]
+        fn flipped(): array<TValue, TKey> => \array_flip($this);
+    }
+
+    extends<TValue extends int|float> array<TValue> {
+
+        #[\Tyhp\Optimize\Pure]
+        fn sum(): int|float => \array_sum($this);
+
+        #[\Tyhp\Optimize\Pure]
+        fn product(): int|float => \array_product($this);
+    }
+
+    extends<TKey extends int|string, TValue extends int|string> array<TKey, TValue> {
+
+        #[\Tyhp\Optimize\Pure]
+        fn countValues(): array<TValue, int> => \array_count_values($this);
+    }
+}
+
+declare(php="<8.4") {
+    extension ArrayExtensionsVersioned<TKey extends int|string, TValue> extends array<TKey, TValue> {
+        #[\Tyhp\Optimize\Pure]
+        function first(): ?TValue {
+            ?TKey $key = \array_key_first($this);
+            if ($key === null) {
+                return null;
+            }
+            return $this[$key];
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function last(): ?TValue {
+            ?TKey $key = \array_key_last($this);
+            if ($key === null) {
+                return null;
+            }
+            return $this[$key];
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function find(callable(TValue, TKey): bool $callback): ?TValue {
+            foreach ($this as $key => $value) {
+                if ($callback($value, $key)) {
+                    return $value;
+                }
+            }
+            return null;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function findKey(callable(TValue, TKey): bool $callback): ?TKey {
+            foreach ($this as $key => $value) {
+                if ($callback($value, $key)) {
+                    return $key;
+                }
+            }
+            return null;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function any(callable(TValue, TKey): bool $callback): bool {
+            foreach ($this as $key => $value) {
+                if ($callback($value, $key)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function all(callable(TValue, TKey): bool $callback): bool {
+            foreach ($this as $key => $value) {
+                if (!$callback($value, $key)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+}
+
+declare(php=">=8.4 <8.5") {
+    extension ArrayExtensionsVersioned<TKey extends int|string, TValue> extends array<TKey, TValue> {
+        #[\Tyhp\Optimize\Pure]
+        function first(): ?TValue {
+            ?TKey $key = \array_key_first($this);
+            if ($key === null) {
+                return null;
+            }
+            return $this[$key];
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        function last(): ?TValue {
+            ?TKey $key = \array_key_last($this);
+            if ($key === null) {
+                return null;
+            }
+            return $this[$key];
+        }
+
+        #[\Tyhp\Optimize\Pure]
+        fn find(callable(TValue, TKey): bool $callback): ?TValue
+            => \array_find($this, $callback);
+
+        #[\Tyhp\Optimize\Pure]
+        fn findKey(callable(TValue, TKey): bool $callback): ?TKey
+            => \array_find_key($this, $callback);
+
+        #[\Tyhp\Optimize\Pure]
+        fn any(callable(TValue, TKey): bool $callback): bool
+            => \array_any($this, $callback);
+
+        #[\Tyhp\Optimize\Pure]
+        fn all(callable(TValue, TKey): bool $callback): bool
+            => \array_all($this, $callback);
+    }
+}
+
+declare(php=">=8.5") {
+    extension ArrayExtensionsVersioned<TKey extends int|string, TValue> extends array<TKey, TValue> {
+        #[\Tyhp\Optimize\Pure]
+        fn first(): ?TValue
+            => \array_first($this);
+
+        #[\Tyhp\Optimize\Pure]
+        fn last(): ?TValue
+            => \array_last($this);
+
+
+        #[\Tyhp\Optimize\Pure]
+        fn find(callable(TValue, TKey): bool $callback): ?TValue
+            => \array_find($this, $callback);
+
+        #[\Tyhp\Optimize\Pure]
+        fn findKey(callable(TValue, TKey): bool $callback): ?TKey
+            => \array_find_key($this, $callback);
+
+        #[\Tyhp\Optimize\Pure]
+        fn any(callable(TValue, TKey): bool $callback): bool
+            => \array_any($this, $callback);
+
+        #[\Tyhp\Optimize\Pure]
+        fn all(callable(TValue, TKey): bool $callback): bool
+            => \array_all($this, $callback);
+    }
+}

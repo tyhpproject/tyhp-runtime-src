@@ -1,0 +1,40 @@
+<?tyhp
+
+function test_psr_cache_get_item(\Psr\Cache\CacheItemPoolInterface $pool, string $key): \Psr\Cache\CacheItemInterface
+{
+    return $pool->getItem($key);
+}
+
+function test_psr_cache_get_items_are_keyed(\Psr\Cache\CacheItemPoolInterface $pool): iterable<string, \Psr\Cache\CacheItemInterface>
+{
+    return $pool->getItems(['a', 'b']);
+}
+
+function test_psr_cache_item_roundtrip(\Psr\Cache\CacheItemInterface<string> $item, string $value): string|null
+{
+    $item->set($value);
+    if ($item->isHit()) {
+        return $item->get();
+    }
+    return null;
+}
+
+function test_psr_cache_save(\Psr\Cache\CacheItemPoolInterface $pool, \Psr\Cache\CacheItemInterface $item): bool
+{
+    return $pool->save($item) && $pool->saveDeferred($item) && $pool->commit();
+}
+
+function test_psr_cache_delete_and_clear(\Psr\Cache\CacheItemPoolInterface $pool, string $key): bool
+{
+    return $pool->hasItem($key) && $pool->deleteItem($key) && $pool->deleteItems([$key]) && $pool->clear();
+}
+
+function test_psr_cache_item_expiry(\Psr\Cache\CacheItemInterface $item, \DateTimeImmutable $at, \DateInterval $ttl): \Psr\Cache\CacheItemInterface
+{
+    return $item->expiresAt($at)->expiresAfter($ttl)->expiresAfter(60)->expiresAfter(null);
+}
+
+function test_psr_cache_invalid_argument_is_cache_exception(\Psr\Cache\InvalidArgumentException $e): \Psr\Cache\CacheException
+{
+    return $e;
+}

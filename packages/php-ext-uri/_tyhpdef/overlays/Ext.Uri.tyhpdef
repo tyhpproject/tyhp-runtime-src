@@ -1,0 +1,83 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * Follows TYHPDEF_ORDERING.md.
+ * WHATWG parse/construct error lists. Do not invent additional 8.5 APIs.
+ * `#[\Tyhp\Php]` is illegal on `struct`; the whole file is gated instead.
+ */
+declare(php=">=8.5") {
+    namespace Uri\Rfc3986 {
+        /**
+         * Overlay: `Uri\Rfc3986\Uri::__serialize()` / `__debugInfo()` components.
+         */
+        type Rfc3986UriParts = struct {
+            ?string $fragment;
+            ?string $host;
+            ?string $password;
+            string $path;
+            ?int $port;
+            ?string $query;
+            ?string $scheme;
+            ?string $user;
+        };
+
+        // @overlay-against: class Uri
+        partial class Uri {
+            // @overlay-against: function __debugInfo(): array
+            public function __debugInfo(): Rfc3986UriParts;
+
+            // @overlay-against: function __serialize(): array
+            public function __serialize(): Rfc3986UriParts;
+
+            // @overlay-against: function __unserialize(array $data): void
+            public function __unserialize(Rfc3986UriParts $data): void;
+        }
+    }
+
+    namespace Uri\WhatWg {
+        /**
+         * Overlay: `Uri\WhatWg\Url::__serialize()` / `__debugInfo()` components.
+         */
+        type WhatWgUrlParts = struct {
+            ?string $fragment;
+            ?string $host;
+            ?string $password;
+            string $path;
+            ?int $port;
+            ?string $query;
+            string $scheme;
+            ?string $username;
+        };
+
+        // @overlay-against: class InvalidUrlException extends \Uri\InvalidUriException
+        partial class InvalidUrlException {
+            // @overlay-against: array $errors
+            public readonly array<int, UrlValidationError> $errors;
+
+            // @overlay-against: function __construct(string $message, array $errors, int $code, ?\Throwable $previous)
+            public function __construct(string $message = "", array<int, UrlValidationError> $errors = [], int $code = 0, ?\Throwable $previous = null);
+        }
+
+        // @overlay-against: class Url
+        partial class Url {
+            // @overlay-against: function parse(string $uri, ?\Uri\WhatWg\Url $baseUrl, ?array $errors): ?\Uri\WhatWg\Url
+            public static function parse(string $uri, ?\Uri\WhatWg\Url $baseUrl = null, ?array<int, UrlValidationError> &$errors = null): ?\Uri\WhatWg\Url;
+
+            // @overlay-against: function __construct(string $uri, ?\Uri\WhatWg\Url $baseUrl, ?array $softErrors)
+            public function __construct(string $uri, ?\Uri\WhatWg\Url $baseUrl = null, ?array<int, UrlValidationError> &$softErrors = null);
+
+            // @overlay-against: function __debugInfo(): array
+            public function __debugInfo(): WhatWgUrlParts;
+
+            // @overlay-against: function __serialize(): array
+            public function __serialize(): WhatWgUrlParts;
+
+            // @overlay-against: function __unserialize(array $data): void
+            public function __unserialize(WhatWgUrlParts $data): void;
+
+            // @overlay-against: function resolve(string $uri, ?array $softErrors): \Uri\WhatWg\Url
+            public function resolve(string $uri, ?array<int, UrlValidationError> &$softErrors = null): \Uri\WhatWg\Url;
+        }
+    }
+}

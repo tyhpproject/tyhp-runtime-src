@@ -1,0 +1,488 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * LDAP search/result types, control and modify-batch arrays, `ldap_get_option` /
+ * `ldap_set_option` literal overloads, and `ldap_set_rebind_proc` callable shape.
+ * `ldap_get_entries` stays `array<int|string, mixed>` — the nested entry shape is
+ * not a single fixed struct. Layer 1 already uses `\LDAP\Connection` / `\LDAP\Result`.
+ *
+ * Option overloads use integer literals (`const int NAME ?? N` is literal `N` at
+ * the call site). Other `LDAP_OPT_*` values use the `int $option, mixed $value`
+ * catch-all.
+ */
+
+/**
+ * Overlay: `ldap_modify_batch()` one modification (attrib / modtype / values).
+ */
+type LdapBatchModification = struct {
+    string $attrib;
+    int $modtype;
+    ?array<int, string> $values;
+};
+
+/**
+ * Overlay: LDAP control array passed to search / bind / modify (`oid`, optional
+ * `value`, `iscritical`).
+ */
+type LdapControl = struct {
+    ?bool $iscritical;
+    string $oid;
+    ?string $value;
+};
+
+/**
+ * Overlay: `$controls` is a list of LDAP controls.
+ */
+// @overlay-against: function ldap_add(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): bool
+function ldap_add(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): bool;
+
+/**
+ * Overlay: extended add returns a result handle.
+ */
+// @overlay-against: function ldap_add_ext(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): mixed
+function ldap_add_ext(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): \LDAP\Result|false;
+
+/**
+ * Overlay: extended bind returns a result handle.
+ */
+// @overlay-against: function ldap_bind_ext(\LDAP\Connection $ldap, ?string $dn, ?string $password, mixed $controls): mixed
+function ldap_bind_ext(\LDAP\Connection $ldap, ?string $dn = null, ?string $password = null, ?array<int, LdapControl> $controls = null): \LDAP\Result|false;
+
+// @overlay-against: function ldap_compare(\LDAP\Connection $ldap, string $dn, string $attribute, string $value, mixed $controls): int|bool
+function ldap_compare(\LDAP\Connection $ldap, string $dn, string $attribute, string $value, ?array<int, LdapControl> $controls = null): int|bool;
+
+/**
+ * Overlay: entry count.
+ */
+// @overlay-against: function ldap_count_entries(\LDAP\Connection $ldap, \LDAP\Result $result): mixed
+function ldap_count_entries(\LDAP\Connection $ldap, \LDAP\Result $result): int|false;
+
+/**
+ * Overlay: `$controls` is a list of LDAP controls.
+ */
+// @overlay-against: function ldap_delete(\LDAP\Connection $ldap, string $dn, mixed $controls): bool
+function ldap_delete(\LDAP\Connection $ldap, string $dn, ?array<int, LdapControl> $controls = null): bool;
+
+/**
+ * Overlay: extended delete returns a result handle.
+ */
+// @overlay-against: function ldap_delete_ext(\LDAP\Connection $ldap, string $dn, mixed $controls): mixed
+function ldap_delete_ext(\LDAP\Connection $ldap, string $dn, ?array<int, LdapControl> $controls = null): \LDAP\Result|false;
+
+// @overlay-against: function ldap_exop(\LDAP\Connection $ldap, string $request_oid, ?string $request_data, mixed $controls, mixed $response_data, mixed $response_oid): mixed
+function ldap_exop(\LDAP\Connection $ldap, string $request_oid, ?string $request_data = null, ?array<int, LdapControl> $controls = null, mixed &$response_data = null, mixed &$response_oid = null): mixed;
+
+// @overlay-against: function ldap_exop_passwd(\LDAP\Connection $ldap, string $user, string $old_password, string $new_password, mixed $controls): string|bool
+function ldap_exop_passwd(\LDAP\Connection $ldap, string $user = "", string $old_password = "", string $new_password = "", ?array<int, LdapControl> &$controls = null): string|bool;
+
+// @overlay-against: function ldap_exop_sync(\LDAP\Connection $ldap, string $request_oid, ?string $request_data, ?array $controls, mixed $response_data, mixed $response_oid): \LDAP\Result|bool
+function ldap_exop_sync(\LDAP\Connection $ldap, string $request_oid, ?string $request_data = null, ?array<int, LdapControl> $controls = null, mixed &$response_data = null, mixed &$response_oid = null): \LDAP\Result|bool;
+
+/**
+ * Overlay: DN components; includes a `count` key plus integer entries.
+ */
+// @overlay-against: function ldap_explode_dn(string $dn, int $with_attrib): array|false
+function ldap_explode_dn(string $dn, int $with_attrib): array<int|string, mixed>|false;
+
+/**
+ * Overlay: first entry in the result, or false when empty.
+ */
+// @overlay-against: function ldap_first_entry(\LDAP\Connection $ldap, \LDAP\Result $result): mixed
+function ldap_first_entry(\LDAP\Connection $ldap, \LDAP\Result $result): \LDAP\ResultEntry|false;
+
+/**
+ * Overlay: first continuation reference, or false.
+ */
+// @overlay-against: function ldap_first_reference(\LDAP\Connection $ldap, \LDAP\Result $result): mixed
+function ldap_first_reference(\LDAP\Connection $ldap, \LDAP\Result $result): \LDAP\ResultEntry|false;
+
+/**
+ * Overlay: PHP's `ldap_free_result()` takes only the result handle.
+ */
+// @overlay-against: function ldap_free_result(mixed $ldap, \LDAP\Result $result): mixed
+function ldap_free_result(\LDAP\Result $result): bool;
+
+/**
+ * Overlay: attribute map with a `count` key plus named attributes.
+ */
+// @overlay-against: function ldap_get_attributes(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry): array
+function ldap_get_attributes(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry): array<int|string, mixed>;
+
+/**
+ * Overlay: nested search entries (`count` plus integer records). Not a fixed struct.
+ */
+// @overlay-against: function ldap_get_entries(\LDAP\Connection $ldap, \LDAP\Result $result): array|false
+function ldap_get_entries(\LDAP\Connection $ldap, \LDAP\Result $result): array<int|string, mixed>|false;
+
+/**
+ * Overlay: `LDAP_OPT_DEREF` (`2`) — integer.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 2 $option, int &$value = 0): bool;
+
+/**
+ * Overlay: `LDAP_OPT_SIZELIMIT` (`3`) — integer.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 3 $option, int &$value = 0): bool;
+
+/**
+ * Overlay: `LDAP_OPT_TIMELIMIT` (`4`) — integer.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 4 $option, int &$value = 0): bool;
+
+/**
+ * Overlay: `LDAP_OPT_REFERRALS` (`8`) — boolean-ish int stored as bool at the call site.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 8 $option, bool &$value = false): bool;
+
+/**
+ * Overlay: `LDAP_OPT_PROTOCOL_VERSION` (`17`) — integer.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 17 $option, int &$value = 0): bool;
+
+/**
+ * Overlay: `LDAP_OPT_HOST_NAME` (`48`) — string.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 48 $option, string &$value = ''): bool;
+
+/**
+ * Overlay: `LDAP_OPT_ERROR_NUMBER` (`49`) — integer.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 49 $option, int &$value = 0): bool;
+
+/**
+ * Overlay: `LDAP_OPT_ERROR_STRING` / `LDAP_OPT_DIAGNOSTIC_MESSAGE` (`50`) — string.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 50 $option, string &$value = ''): bool;
+
+/**
+ * Overlay: `LDAP_OPT_MATCHED_DN` (`51`) — string.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 51 $option, string &$value = ''): bool;
+
+/**
+ * Overlay: `LDAP_OPT_TIMEOUT` (`20482`) — integer.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 20482 $option, int &$value = 0): bool;
+
+/**
+ * Overlay: `LDAP_OPT_NETWORK_TIMEOUT` (`20485`) — integer.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, 20485 $option, int &$value = 0): bool;
+
+/**
+ * Overlay: runtime `int $option` catch-all.
+ */
+// @overlay-against: function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_get_option(\LDAP\Connection|null $ldap, int $option, mixed &$value = null): bool;
+
+/**
+ * Overlay: values plus a `count` key.
+ */
+// @overlay-against: function ldap_get_values(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry, string $attribute): array|false
+function ldap_get_values(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry, string $attribute): array<int|string, mixed>|false;
+
+/**
+ * Overlay: binary values plus a `count` key.
+ */
+// @overlay-against: function ldap_get_values_len(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry, string $attribute): array|false
+function ldap_get_values_len(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry, string $attribute): array<int|string, mixed>|false;
+
+/**
+ * Overlay: string `$base` / `$filter` — one result handle.
+ */
+// @overlay-against: function ldap_list(\LDAP\Connection $ldap, array|string $base, array|string $filter, array $attributes, int $attributes_only, int $sizelimit, int $timelimit, int $deref, mixed $controls): mixed
+function ldap_list(
+    \LDAP\Connection $ldap,
+    string $base,
+    string $filter,
+    array<int, string> $attributes = [],
+    int $attributes_only = 0,
+    int $sizelimit = -1,
+    int $timelimit = -1,
+    int $deref = 0,
+    ?array<int, LdapControl> $controls = null
+): \LDAP\Result|false;
+
+/**
+ * Overlay: parallel list (array `$base`) — list of result handles.
+ */
+// @overlay-against: function ldap_list(\LDAP\Connection $ldap, array|string $base, array|string $filter, array $attributes, int $attributes_only, int $sizelimit, int $timelimit, int $deref, mixed $controls): mixed
+function ldap_list(
+    \LDAP\Connection $ldap,
+    array<int, string> $base,
+    array<int, string>|string $filter,
+    array<int, string> $attributes = [],
+    int $attributes_only = 0,
+    int $sizelimit = -1,
+    int $timelimit = -1,
+    int $deref = 0,
+    ?array<int, LdapControl> $controls = null
+): array<int, \LDAP\Result|false>|false;
+
+/**
+ * Overlay: `$entry` is attribute => value(s); `$controls` is a list of LDAP controls.
+ */
+// @overlay-against: function ldap_mod_add(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): bool
+function ldap_mod_add(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): bool;
+
+/**
+ * Overlay: extended mod_add returns a result handle.
+ */
+// @overlay-against: function ldap_mod_add_ext(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): mixed
+function ldap_mod_add_ext(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): \LDAP\Result|false;
+
+/**
+ * Overlay: `$entry` is attribute => value(s); `$controls` is a list of LDAP controls.
+ */
+// @overlay-against: function ldap_mod_del(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): bool
+function ldap_mod_del(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): bool;
+
+/**
+ * Overlay: extended mod_del returns a result handle.
+ */
+// @overlay-against: function ldap_mod_del_ext(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): mixed
+function ldap_mod_del_ext(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): \LDAP\Result|false;
+
+/**
+ * Overlay: `$entry` is attribute => value(s); `$controls` is a list of LDAP controls.
+ */
+// @overlay-against: function ldap_mod_replace(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): bool
+function ldap_mod_replace(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): bool;
+
+/**
+ * Overlay: extended mod_replace returns a result handle.
+ */
+// @overlay-against: function ldap_mod_replace_ext(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): mixed
+function ldap_mod_replace_ext(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): \LDAP\Result|false;
+
+/**
+ * Overlay: `$entry` is attribute => value(s); `$controls` is a list of LDAP controls.
+ */
+// @overlay-against: function ldap_modify(\LDAP\Connection $ldap, string $dn, array $entry, mixed $controls): bool
+function ldap_modify(\LDAP\Connection $ldap, string $dn, array<string, mixed> $entry, ?array<int, LdapControl> $controls = null): bool;
+
+/**
+ * Overlay: batch modifications plus optional controls.
+ */
+// @overlay-against: function ldap_modify_batch(\LDAP\Connection $ldap, string $dn, array $modifications_info, mixed $controls): bool
+function ldap_modify_batch(
+    \LDAP\Connection $ldap,
+    string $dn,
+    array<int, LdapBatchModification> $modifications_info,
+    ?array<int, LdapControl> $controls = null
+): bool;
+
+/**
+ * Overlay: next entry after `$entry`, or false at the end.
+ */
+// @overlay-against: function ldap_next_entry(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry): mixed
+function ldap_next_entry(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry): \LDAP\ResultEntry|false;
+
+/**
+ * Overlay: next continuation reference, or false.
+ */
+// @overlay-against: function ldap_next_reference(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry): mixed
+function ldap_next_reference(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry): \LDAP\ResultEntry|false;
+
+/**
+ * Overlay: `$referrals` is a list of URIs.
+ */
+// @overlay-against: function ldap_parse_reference(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry, mixed $referrals): bool
+function ldap_parse_reference(\LDAP\Connection $ldap, \LDAP\ResultEntry $entry, array<int, string> &$referrals): bool;
+
+/**
+ * Overlay: by-ref error fields and optional server controls.
+ */
+// @overlay-against: function ldap_parse_result(\LDAP\Connection $ldap, \LDAP\Result $result, mixed $error_code, mixed $matched_dn, mixed $error_message, mixed $referrals, mixed $controls): bool
+function ldap_parse_result(
+    \LDAP\Connection $ldap,
+    \LDAP\Result $result,
+    int &$error_code,
+    mixed &$matched_dn = null,
+    mixed &$error_message = null,
+    ?array<int, string> &$referrals = null,
+    ?array<int, LdapControl> &$controls = null
+): bool;
+
+/**
+ * Overlay: string `$base` / `$filter` — one result handle.
+ */
+// @overlay-against: function ldap_read(\LDAP\Connection $ldap, array|string $base, array|string $filter, array $attributes, int $attributes_only, int $sizelimit, int $timelimit, int $deref, mixed $controls): mixed
+function ldap_read(
+    \LDAP\Connection $ldap,
+    string $base,
+    string $filter,
+    array<int, string> $attributes = [],
+    int $attributes_only = 0,
+    int $sizelimit = -1,
+    int $timelimit = -1,
+    int $deref = 0,
+    ?array<int, LdapControl> $controls = null
+): \LDAP\Result|false;
+
+/**
+ * Overlay: parallel read (array `$base`) — list of result handles.
+ */
+// @overlay-against: function ldap_read(\LDAP\Connection $ldap, array|string $base, array|string $filter, array $attributes, int $attributes_only, int $sizelimit, int $timelimit, int $deref, mixed $controls): mixed
+function ldap_read(
+    \LDAP\Connection $ldap,
+    array<int, string> $base,
+    array<int, string>|string $filter,
+    array<int, string> $attributes = [],
+    int $attributes_only = 0,
+    int $sizelimit = -1,
+    int $timelimit = -1,
+    int $deref = 0,
+    ?array<int, LdapControl> $controls = null
+): array<int, \LDAP\Result|false>|false;
+
+/**
+ * Overlay: `$controls` is a list of LDAP controls.
+ */
+// @overlay-against: function ldap_rename(\LDAP\Connection $ldap, string $dn, string $new_rdn, string $new_parent, bool $delete_old_rdn, mixed $controls): bool
+function ldap_rename(
+    \LDAP\Connection $ldap,
+    string $dn,
+    string $new_rdn,
+    string $new_parent,
+    bool $delete_old_rdn,
+    ?array<int, LdapControl> $controls = null
+): bool;
+
+/**
+ * Overlay: extended rename returns a result handle.
+ */
+// @overlay-against: function ldap_rename_ext(\LDAP\Connection $ldap, string $dn, string $new_rdn, string $new_parent, bool $delete_old_rdn, mixed $controls): mixed
+function ldap_rename_ext(
+    \LDAP\Connection $ldap,
+    string $dn,
+    string $new_rdn,
+    string $new_parent,
+    bool $delete_old_rdn,
+    ?array<int, LdapControl> $controls = null
+): \LDAP\Result|false;
+
+/**
+ * Overlay: SASL bind parameters are strings (or null).
+ */
+// @overlay-against: function ldap_sasl_bind(\LDAP\Connection $ldap, mixed $binddn, mixed $password, mixed $sasl_mech, mixed $sasl_realm, mixed $sasl_authc_id, mixed $sasl_authz_id, mixed $props): bool
+function ldap_sasl_bind(
+    \LDAP\Connection $ldap,
+    ?string $binddn = null,
+    ?string $password = null,
+    ?string $sasl_mech = null,
+    ?string $sasl_realm = null,
+    ?string $sasl_authc_id = null,
+    ?string $sasl_authz_id = null,
+    ?string $props = null
+): bool;
+
+/**
+ * Overlay: string `$base` / `$filter` — one result handle.
+ */
+// @overlay-against: function ldap_search(\LDAP\Connection $ldap, array|string $base, array|string $filter, array $attributes, int $attributes_only, int $sizelimit, int $timelimit, int $deref, mixed $controls): mixed
+function ldap_search(
+    \LDAP\Connection $ldap,
+    string $base,
+    string $filter,
+    array<int, string> $attributes = [],
+    int $attributes_only = 0,
+    int $sizelimit = -1,
+    int $timelimit = -1,
+    int $deref = 0,
+    ?array<int, LdapControl> $controls = null
+): \LDAP\Result|false;
+
+/**
+ * Overlay: parallel search (array `$base`) — list of result handles.
+ */
+// @overlay-against: function ldap_search(\LDAP\Connection $ldap, array|string $base, array|string $filter, array $attributes, int $attributes_only, int $sizelimit, int $timelimit, int $deref, mixed $controls): mixed
+function ldap_search(
+    \LDAP\Connection $ldap,
+    array<int, string> $base,
+    array<int, string>|string $filter,
+    array<int, string> $attributes = [],
+    int $attributes_only = 0,
+    int $sizelimit = -1,
+    int $timelimit = -1,
+    int $deref = 0,
+    ?array<int, LdapControl> $controls = null
+): array<int, \LDAP\Result|false>|false;
+
+/**
+ * Overlay: `LDAP_OPT_DEREF` (`2`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 2 $option, int $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_SIZELIMIT` (`3`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 3 $option, int $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_TIMELIMIT` (`4`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 4 $option, int $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_REFERRALS` (`8`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 8 $option, bool $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_PROTOCOL_VERSION` (`17`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 17 $option, int $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_SERVER_CONTROLS` (`18`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 18 $option, array<int, LdapControl> $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_CLIENT_CONTROLS` (`19`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 19 $option, array<int, LdapControl> $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_TIMEOUT` (`20482`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 20482 $option, int $value): bool;
+
+/**
+ * Overlay: `LDAP_OPT_NETWORK_TIMEOUT` (`20485`).
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, 20485 $option, int $value): bool;
+
+/**
+ * Overlay: runtime `int $option` catch-all.
+ */
+// @overlay-against: function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool
+function ldap_set_option(\LDAP\Connection|null $ldap, int $option, mixed $value): bool;
+
+/**
+ * Overlay: rebind callback `(LDAP\Connection, referral URL) => bool`.
+ */
+// @overlay-against: function ldap_set_rebind_proc(\LDAP\Connection $ldap, ?callable $callback): bool
+function ldap_set_rebind_proc(\LDAP\Connection $ldap, ?callable(\LDAP\Connection, string): bool $callback): bool;

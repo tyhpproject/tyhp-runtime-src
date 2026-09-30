@@ -1,0 +1,1384 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Same-namespace names harvested as globals, and conditional VarDumper shims.
+ * Configuration and shell setters that return nothing are `void`. Mode strings
+ * are the closed sets `Configuration` actually accepts. Array shapes, token
+ * lists, and callbacks follow the PHP contract.
+ */
+
+namespace Psy {
+    type ColorMode = 'auto'|'forced'|'disabled';
+
+    /**
+     * `implicitUse` filters. Each namespace list may be omitted.
+     */
+    type ImplicitUseConfig = struct {
+        ?array<int, string> $includeNamespaces;
+        ?array<int, string> $excludeNamespaces;
+    };
+
+    type InteractiveMode = 'auto'|'forced'|'disabled';
+
+    /**
+     * `setLogging()` array form. `level` is one level for every event, or a per-event map.
+     */
+    type LoggingConfig = struct {
+        \Psr\Log\LoggerInterface|\Psy\Logger\CallbackLogger|(callable(string, string): void) $logger;
+        ?(string|\Psy\LogLevelMap) $level;
+    };
+
+    /**
+     * Per-event log level. `false` disables that event.
+     */
+    type LogLevelMap = struct {
+        string|false $input;
+        string|false $command;
+        string|false $execute;
+    };
+
+    /**
+     * One `token_get_all()` token. Single-character tokens remain `string`.
+     */
+    type PhpToken = struct {
+        int '0' as $id;
+        string '1' as $text;
+        int '2' as $line;
+    };
+
+    type ProjectTrustMode = 'prompt'|'always'|'never';
+
+    /**
+     * `setSemicolonsSuppressReturn()`: a bool, or `'double'` for the double-semicolon mode.
+     */
+    type SemicolonsSuppressReturn = bool|'double';
+
+    type UpdateInterval = 'always'|'daily'|'weekly'|'monthly'|'never';
+
+    type VerbosityLevel = 'quiet'|'normal'|'verbose'|'very_verbose'|'debug';
+
+    /**
+     * `setWarmAutoload()` array form. Every key is optional; an empty struct disables warming.
+     */
+    type WarmAutoloadConfig = struct {
+        ?bool $includeVendor;
+        ?bool $includeTests;
+        ?array<int, string> $includeNamespaces;
+        ?array<int, string> $excludeNamespaces;
+        ?array<int, string> $includeVendorNamespaces;
+        ?array<int, string> $excludeVendorNamespaces;
+        ?array<int, \Psy\TabCompletion\AutoloadWarmer\AutoloadWarmerInterface> $warmers;
+    };
+
+    /**
+     * Overlay: namespace parts and use-alias maps. `clean()` takes source lines.
+     */
+    // @overlay-against: class CodeCleaner
+    partial class CodeCleaner {
+        // @overlay-against: function __construct(?\PhpParser\Parser $parser, ?\PhpParser\PrettyPrinter\Standard $printer, ?\PhpParser\NodeTraverser $traverser, bool $yolo, bool $strictTypes, false|array $implicitUse): void
+        public function __construct(?\PhpParser\Parser $parser = null, ?\PhpParser\PrettyPrinter\Standard $printer = null, ?\PhpParser\NodeTraverser $traverser = null, bool $yolo = false, bool $strictTypes = false, false|\Psy\ImplicitUseConfig $implicitUse = false): void;
+
+        // @overlay-against: function clean(array $codeLines, bool $requireSemicolons): string|false
+        public function clean(array<int, string> $codeLines, bool $requireSemicolons = false): string|false;
+
+        // @overlay-against: function getAliasesByTypeForNamespace(\PhpParser\Node\Name|string|null $namespace): array
+        public function getAliasesByTypeForNamespace(\PhpParser\Node\Name|string|null $namespace): array<int, array<string, \PhpParser\Node\Name>>;
+
+        // @overlay-against: function getAliasesForNamespace(\PhpParser\Node\Name|string|null $namespace): array
+        public function getAliasesForNamespace(\PhpParser\Node\Name|string|null $namespace): array<string, \PhpParser\Node\Name>;
+
+        // @overlay-against: function getNamespace(): array|null
+        public function getNamespace(): array<int, string>|null;
+
+        // @overlay-against: function parse(string $code, bool $requireSemicolons): array|false
+        protected function parse(string $code, bool $requireSemicolons = false): array<int, \PhpParser\Node>|false;
+
+        // @overlay-against: function setAliasesByTypeForNamespace(?\PhpParser\Node\Name $namespace, array $aliasesByType): void
+        public function setAliasesByTypeForNamespace(?\PhpParser\Node\Name $namespace, array<int, array<string, \PhpParser\Node\Name>> $aliasesByType): void;
+
+        // @overlay-against: function setAliasesForNamespace(?\PhpParser\Node\Name $namespace, array $aliases): mixed
+        public function setAliasesForNamespace(?\PhpParser\Node\Name $namespace, array<string, \PhpParser\Node\Name> $aliases): void;
+
+        // @overlay-against: function setNamespace(\PhpParser\Node\Name|array|null $namespace): mixed
+        public function setNamespace(\PhpParser\Node\Name|array<int, string>|null $namespace = null): void;
+    }
+
+    /**
+     * Overlay: config setters return void. Color, trust, verbosity, and update intervals are closed strings.
+     */
+    // @overlay-against: class Configuration
+    partial class Configuration {
+        // @overlay-against: function __construct(array $config): void
+        public function __construct(array<string, mixed> $config = []): void;
+
+        // @overlay-against: function addCasters(array $casters): mixed
+        public function addCasters(array<string, callable(mixed): mixed> $casters): void;
+
+        // @overlay-against: function addCommands(array $commands): mixed
+        public function addCommands(array<int, \Psy\Command\Command> $commands): void;
+
+        // @overlay-against: function addMatchers(array $matchers): mixed
+        public function addMatchers(array<int, \Psy\TabCompletion\Matcher\AbstractMatcher> $matchers): void;
+
+        // @overlay-against: function addTabCompletionMatchers(array $matchers): mixed
+        deprecated public function addTabCompletionMatchers(array<int, \Psy\TabCompletion\Matcher\AbstractMatcher> $matchers): void;
+
+        // @overlay-against: function colorMode(): string
+        public function colorMode(): ColorMode;
+
+        // @overlay-against: function getImplicitUse(): bool|array
+        public function getImplicitUse(): false|\Psy\ImplicitUseConfig;
+
+        // @overlay-against: function getProjectTrustMode(): string
+        public function getProjectTrustMode(): ProjectTrustMode;
+
+        // @overlay-against: function init(): mixed
+        public function init(): void;
+
+        // @overlay-against: function interactiveMode(): string
+        public function interactiveMode(): InteractiveMode;
+
+        // @overlay-against: function loadConfig(array $options): mixed
+        public function loadConfig(array<string, mixed> $options): void;
+
+        // @overlay-against: function loadConfigFile(string $file): mixed
+        public function loadConfigFile(string $file): void;
+
+        // @overlay-against: function setAutoCompleter(\Psy\TabCompletion\AutoCompleter $autoCompleter): mixed
+        public function setAutoCompleter(\Psy\TabCompletion\AutoCompleter $autoCompleter): void;
+
+        // @overlay-against: function setChecker(\Psy\VersionUpdater\Checker $checker): mixed
+        public function setChecker(\Psy\VersionUpdater\Checker $checker): void;
+
+        // @overlay-against: function setClipboard(\Psy\Clipboard\ClipboardMethod $clipboard): mixed
+        public function setClipboard(\Psy\Clipboard\ClipboardMethod $clipboard): void;
+
+        // @overlay-against: function setClipboardCommand(?string $clipboardCommand): mixed
+        public function setClipboardCommand(?string $clipboardCommand): void;
+
+        // @overlay-against: function setCodeCleaner(\Psy\CodeCleaner $cleaner): mixed
+        public function setCodeCleaner(\Psy\CodeCleaner $cleaner): void;
+
+        // @overlay-against: function setColorMode(string $colorMode): mixed
+        public function setColorMode(ColorMode $colorMode): void;
+
+        // @overlay-against: function setConfigDir(string $dir): mixed
+        public function setConfigDir(string $dir): void;
+
+        // @overlay-against: function setDataDir(string $dir): mixed
+        public function setDataDir(string $dir): void;
+
+        // @overlay-against: function setDefaultIncludes(array $includes): mixed
+        public function setDefaultIncludes(array<int, string> $includes = []): void;
+
+        // @overlay-against: function setEraseDuplicates(bool $value): mixed
+        public function setEraseDuplicates(bool $value): void;
+
+        // @overlay-against: function setErrorLoggingLevel(int $errorLoggingLevel): mixed
+        public function setErrorLoggingLevel(int $errorLoggingLevel): void;
+
+        // @overlay-against: function setExceptionDetails(callable $exceptionDetails): void
+        public function setExceptionDetails(callable(\Throwable): mixed $exceptionDetails): void;
+
+        // @overlay-against: function setForceArrayIndexes(bool $forceArrayIndexes): mixed
+        public function setForceArrayIndexes(bool $forceArrayIndexes): void;
+
+        // @overlay-against: function setFormatterStyles(array $formatterStyles): mixed
+        deprecated public function setFormatterStyles(array<string, mixed> $formatterStyles): void;
+
+        // @overlay-against: function setHistoryFile(string $file): mixed
+        public function setHistoryFile(string $file): void;
+
+        // @overlay-against: function setHistorySize(int $value): mixed
+        public function setHistorySize(int $value): void;
+
+        // @overlay-against: function setImplicitUse(false|array $config): void
+        public function setImplicitUse(false|\Psy\ImplicitUseConfig $config): void;
+
+        // @overlay-against: function setInteractiveMode(string $interactiveMode): mixed
+        public function setInteractiveMode(InteractiveMode $interactiveMode): void;
+
+        // @overlay-against: function setLogging(\Psr\Log\LoggerInterface|callable|array $logging): void
+        public function setLogging((\Psr\Log\LoggerInterface|\Psy\Logger\CallbackLogger|(callable(string, string): void)|\Psy\LoggingConfig) $logging): void;
+
+        // @overlay-against: function setManualDbFile(string $filename): mixed
+        public function setManualDbFile(string $filename): void;
+
+        // @overlay-against: function setOutput(\Psy\Output\ShellOutput $output): mixed
+        public function setOutput(\Psy\Output\ShellOutput $output): void;
+
+        // @overlay-against: function setPager(string|\Psy\Output\OutputPager|bool|null $pager): mixed
+        public function setPager(string|\Psy\Output\OutputPager|bool|null $pager): void;
+
+        // @overlay-against: function setPrompt(string $prompt): mixed
+        deprecated public function setPrompt(string $prompt): void;
+
+        // @overlay-against: function setRawOutput(bool $rawOutput): mixed
+        public function setRawOutput(bool $rawOutput): void;
+
+        // @overlay-against: function setReadline(\Psy\Readline\Readline $readline): mixed
+        public function setReadline(\Psy\Readline\Readline $readline): void;
+
+        // @overlay-against: function setRequireSemicolons(bool $requireSemicolons): mixed
+        public function setRequireSemicolons(bool $requireSemicolons): void;
+
+        // @overlay-against: function setRuntimeDir(string $dir): mixed
+        public function setRuntimeDir(string $dir): void;
+
+        // @overlay-against: function setSemicolonsSuppressReturn(mixed $semicolonsSuppressReturn): mixed
+        public function setSemicolonsSuppressReturn(SemicolonsSuppressReturn $semicolonsSuppressReturn): void;
+
+        // @overlay-against: function setShell(\Psy\Shell $shell): mixed
+        public function setShell(\Psy\Shell $shell): void;
+
+        // @overlay-against: function setStartupMessage(string $message): mixed
+        public function setStartupMessage(string $message): void;
+
+        // @overlay-against: function setStrictTypes(mixed $strictTypes): mixed
+        public function setStrictTypes(bool $strictTypes): void;
+
+        // @overlay-against: function setTabCompletion(bool $useTabCompletion): mixed
+        deprecated public function setTabCompletion(bool $useTabCompletion): void;
+
+        // @overlay-against: function setTheme(\Psy\Output\Theme|string|array $theme): mixed
+        public function setTheme(\Psy\Output\Theme|string|array<string, mixed> $theme): void;
+
+        // @overlay-against: function setUpdateCheck(string $interval): mixed
+        public function setUpdateCheck(UpdateInterval $interval): void;
+
+        // @overlay-against: function setUpdateManualCheck(string $interval): mixed
+        public function setUpdateManualCheck(UpdateInterval $interval): void;
+
+        // @overlay-against: function setUseBracketedPaste(bool $useBracketedPaste): mixed
+        public function setUseBracketedPaste(bool $useBracketedPaste): void;
+
+        // @overlay-against: function setUseOsc52Clipboard(bool $useOsc52Clipboard): mixed
+        public function setUseOsc52Clipboard(bool $useOsc52Clipboard): void;
+
+        // @overlay-against: function setUsePcntl(bool $usePcntl): mixed
+        public function setUsePcntl(bool $usePcntl): void;
+
+        // @overlay-against: function setUseReadline(bool $useReadline): mixed
+        public function setUseReadline(bool $useReadline): void;
+
+        // @overlay-against: function setUseTabCompletion(bool $useTabCompletion): mixed
+        public function setUseTabCompletion(bool $useTabCompletion): void;
+
+        // @overlay-against: function setUseUnicode(bool $useUnicode): mixed
+        public function setUseUnicode(bool $useUnicode): void;
+
+        // @overlay-against: function setVerbosity(string $verbosity): mixed
+        public function setVerbosity(VerbosityLevel $verbosity): void;
+
+        // @overlay-against: function setWarmAutoload(bool|array $config): void
+        public function setWarmAutoload(bool|\Psy\WarmAutoloadConfig $config): void;
+
+        // @overlay-against: function setWarnOnMultipleConfigs(bool $warnOnMultipleConfigs): mixed
+        public function setWarnOnMultipleConfigs(bool $warnOnMultipleConfigs): void;
+
+        // @overlay-against: function setYolo(mixed $yolo): mixed
+        public function setYolo(bool $yolo): void;
+
+        // @overlay-against: function verbosity(): string
+        public function verbosity(): VerbosityLevel;
+    }
+
+    /**
+     * Overlay: scope maps are string-keyed. Writers return void. Variable values stay `mixed`.
+     */
+    // @overlay-against: class Context
+    partial class Context {
+        // @overlay-against: function getAll(): array
+        public function getAll(): array<string, mixed>;
+
+        // @overlay-against: function getCommandScopeVariables(): array
+        public function getCommandScopeVariables(): array<string, mixed>;
+
+        // @overlay-against: function getSpecialVariables(): array
+        public function getSpecialVariables(): array<string, mixed>;
+
+        // @overlay-against: function getUnusedCommandScopeVariableNames(): array
+        public function getUnusedCommandScopeVariableNames(): array<int, string>;
+
+        // @overlay-against: function setAll(array $vars): mixed
+        public function setAll(array<string, mixed> $vars): void;
+
+        // @overlay-against: function setBoundClass(string|null $boundClass): mixed
+        public function setBoundClass(string|null $boundClass): void;
+
+        // @overlay-against: function setBoundObject(object|null $boundObject): mixed
+        public function setBoundObject(object|null $boundObject): void;
+
+        // @overlay-against: function setCommandScopeVariables(array $commandScopeVariables): mixed
+        public function setCommandScopeVariables(array<string, mixed> $commandScopeVariables): void;
+
+        // @overlay-against: function setLastException(\Throwable $e): mixed
+        public function setLastException(\Throwable $e): void;
+
+        // @overlay-against: function setLastStdout(string $lastStdout): mixed
+        public function setLastStdout(string $lastStdout): void;
+
+        // @overlay-against: function setReturnValue(mixed $value): mixed
+        public function setReturnValue(mixed $value): void;
+    }
+
+    /**
+     * Harvest miss: unqualified `Context` is `\Psy\Context`.
+     */
+    // @overlay-against: interface ContextAware
+    partial interface ContextAware {
+        // @overlay-against: function setContext(\Context $context): mixed
+        public function setContext(\Psy\Context $context): void;
+    }
+
+    /**
+     * Overlay: scope variables are a string map. Buffer and output writers return void.
+     */
+    // @overlay-against: class Shell extends \Symfony\Component\Console\Application
+    partial class Shell {
+        // @overlay-against: function debug(array $vars, object|string $bindTo): array
+        deprecated public static function debug(array<string, mixed> $vars = [], object|string $bindTo = null): array<string, mixed>;
+
+        // @overlay-against: function addCode(string $code, bool $silent): mixed
+        public function addCode(string $code, bool $silent = false): void;
+
+        // @overlay-against: function addInput(string|array $input, bool $silent): mixed
+        public function addInput(string|array<int, string> $input, bool $silent = false): void;
+
+        // @overlay-against: function addMatchers(array $matchers): mixed
+        public function addMatchers(array<int, \Psy\TabCompletion\Matcher\AbstractMatcher> $matchers): void;
+
+        // @overlay-against: function addTabCompletionMatchers(array $matchers): mixed
+        deprecated public function addTabCompletionMatchers(array<int, \Psy\TabCompletion\Matcher\AbstractMatcher> $matchers): void;
+
+        // @overlay-against: function getDefaultCommands(): array
+        protected function getDefaultCommands(): array<int, \Psy\Command\Command>;
+
+        // @overlay-against: function getDefaultLoopListeners(): array
+        protected function getDefaultLoopListeners(): array<int, \Psy\ExecutionLoop\Listener>;
+
+        // @overlay-against: function getScopeVariableNames(): array
+        public function getScopeVariableNames(): array<int, string>;
+
+        // @overlay-against: function getScopeVariables(bool $includeBoundObject): array
+        public function getScopeVariables(bool $includeBoundObject = true): array<string, mixed>;
+
+        // @overlay-against: function getScopeVariablesDiff(array $currentVars): array
+        public function getScopeVariablesDiff(array<string, mixed> $currentVars): array<string, mixed>;
+
+        // @overlay-against: function getSpecialScopeVariables(bool $includeBoundObject): array
+        public function getSpecialScopeVariables(bool $includeBoundObject = true): array<string, mixed>;
+
+        // @overlay-against: function getUnusedCommandScopeVariableNames(): array
+        public function getUnusedCommandScopeVariableNames(): array<int, string>;
+
+        // @overlay-against: function setBoundClass(string|null $boundClass): mixed
+        public function setBoundClass(string|null $boundClass): void;
+
+        // @overlay-against: function setBoundObject(object|null $boundObject): mixed
+        public function setBoundObject(object|null $boundObject): void;
+
+        // @overlay-against: function setIncludes(array $includes): mixed
+        public function setIncludes(array<int, string> $includes = []): void;
+
+        // @overlay-against: function setScopeVariables(array $vars): mixed
+        public function setScopeVariables(array<string, mixed> $vars): void;
+
+        // @overlay-against: function writeException(\Throwable $e): mixed
+        public function writeException(\Throwable $e): void;
+
+        // @overlay-against: function writeReturnValue(mixed $ret, bool $rawOutput): mixed
+        public function writeReturnValue(mixed $ret, bool $rawOutput = false): void;
+    }
+
+    // @overlay-against: class ShellLogger
+    partial class ShellLogger {
+        // @overlay-against: function __construct(\Psr\Log\LoggerInterface|\Psy\Logger\CallbackLogger $logger, array $levels): void
+        public function __construct(\Psr\Log\LoggerInterface|\Psy\Logger\CallbackLogger $logger, \Psy\LogLevelMap $levels): void;
+    }
+}
+
+namespace Psy\CodeAnalysis {
+    /**
+     * Start and end code-point offsets for one token.
+     */
+    type TokenSpan = struct {
+        int $start;
+        int $end;
+    };
+
+    // @overlay-against: class BufferAnalysis
+    partial class BufferAnalysis {
+        // @overlay-against: function __construct(string $code, array $tokens, array $tokenPositions, array|null $ast, ?\PhpParser\Error $lastError): void
+        public function __construct(string $code, array<int, array|string> $tokens, array<int, \Psy\CodeAnalysis\TokenSpan> $tokenPositions, array<int, mixed>|null $ast, ?\PhpParser\Error $lastError): void;
+
+        // @overlay-against: function getTokenPositions(): array
+        public function getTokenPositions(): array<int, \Psy\CodeAnalysis\TokenSpan>;
+    }
+
+    // @overlay-against: class BufferAnalyzer
+    partial class BufferAnalyzer {
+        // @overlay-against: function createAnalysis(string $code, array $tokens, array $tokenPositions, array|null $ast, ?\PhpParser\Error $lastError): \Psy\CodeAnalysis\BufferAnalysis
+        protected function createAnalysis(string $code, array<int, array|string> $tokens, array<int, \Psy\CodeAnalysis\TokenSpan> $tokenPositions, array<int, mixed>|null $ast, ?\PhpParser\Error $lastError): \Psy\CodeAnalysis\BufferAnalysis;
+    }
+}
+
+namespace Psy\CodeCleaner {
+    // @overlay-against: class CalledClassPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class CalledClassPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class EmptyArrayDimFetchPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class EmptyArrayDimFetchPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class FinalClassPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class FinalClassPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class FunctionContextPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class FunctionContextPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class ImplicitReturnPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class ImplicitReturnPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>;
+    }
+
+    // @overlay-against: class ImplicitUsePass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class ImplicitUsePass {
+        // @overlay-against: function __construct(array $config, ?\Psy\CodeCleaner $cleaner): void
+        public function __construct(\Psy\ImplicitUseConfig $config = [], ?\Psy\CodeCleaner $cleaner = null): void;
+
+        // @overlay-against: function beforeTraverse(array $nodes): mixed
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): mixed;
+    }
+
+    // @overlay-against: class LabelContextPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class LabelContextPass {
+        // @overlay-against: function afterTraverse(array $nodes): array|null
+        public function afterTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class LoopContextPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class LoopContextPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class NamespaceAwarePass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class NamespaceAwarePass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class NamespacePass extends \Psy\CodeCleaner\NamespaceAwarePass
+    partial class NamespacePass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class StrictTypesPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class StrictTypesPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class UseStatementPass extends \Psy\CodeCleaner\NamespaceAwarePass
+    partial class UseStatementPass {
+        // @overlay-against: function afterTraverse(array $nodes): mixed
+        public function afterTraverse(array<int, \PhpParser\Node> $nodes): mixed;
+
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+
+    // @overlay-against: class ValidConstructorPass extends \Psy\CodeCleaner\CodeCleanerPass
+    partial class ValidConstructorPass {
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+}
+
+namespace Psy\Command {
+    /**
+     * `ReflectingCommand::getTarget()`: class or instance, optional member, mirror kind bits.
+     */
+    type ReflectionTarget = struct {
+        string|object '0' as $name;
+        string|null '1' as $member;
+        int '2' as $kind;
+    };
+
+    /**
+     * `ReflectingCommand::getTargetAndReflector()`: resolved value and its reflector.
+     */
+    type ReflectionTargetPair = struct {
+        string|object '0' as $value;
+        \Reflector '1' as $reflector;
+    };
+
+    /**
+     * Harvest miss: unqualified `Command` is `\Psy\Command\Command`.
+     */
+    // @overlay-against: class BufferCommand extends \Command implements \Psy\Readline\ReadlineAware
+    partial class BufferCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class BufferCommand extends \Command implements \Psy\Readline\ReadlineAware
+    partial class BufferCommand {
+        // @overlay-against: function formatLines(array $lines, string $type): array
+        protected function formatLines(array<int, string> $lines, string $type = 'return'): array<int, string>;
+    }
+
+    // @overlay-against: class ClearCommand extends \Command
+    partial class ClearCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class CodeArgumentParser
+    partial class CodeArgumentParser {
+        // @overlay-against: function parse(string $code): array
+        public function parse(string $code): array<int, \PhpParser\Node>;
+    }
+
+    // @overlay-against: class ConfigCommand extends \Psy\Command\Config\AbstractConfigCommand implements \Psy\CommandArgumentCompletionAware
+    partial class ConfigCommand {
+        // @overlay-against: function getArgumentCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getArgumentCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class DocCommand extends \Psy\Command\ReflectingCommand implements \Psy\CommandArgumentCompletionAware
+    partial class DocCommand {
+        // @overlay-against: function getArgumentCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getArgumentCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class EditCommand extends \Command implements \Psy\ContextAware
+    partial class EditCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class ExitCommand extends \Command
+    partial class ExitCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class HelpCommand extends \Command
+    partial class HelpCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class HelpCommand extends \Command
+    partial class HelpCommand {
+        // @overlay-against: function setCommand(\Command $command): mixed
+        public function setCommand(\Psy\Command\Command $command): mixed;
+    }
+
+    // @overlay-against: class HistoryCommand extends \Command implements \Psy\Readline\ReadlineAware
+    partial class HistoryCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class ListCommand extends \Psy\Command\ReflectingCommand implements \Psy\VarDumper\PresenterAware
+    partial class ListCommand {
+        // @overlay-against: function write(\Symfony\Component\Console\Output\OutputInterface $output, array $result): mixed
+        protected function write(\Symfony\Component\Console\Output\OutputInterface $output, array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>> $result): mixed;
+
+        // @overlay-against: function writeLong(\Symfony\Component\Console\Output\OutputInterface $output, array $result): mixed
+        protected function writeLong(\Symfony\Component\Console\Output\OutputInterface $output, array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>> $result): mixed;
+    }
+
+    // @overlay-against: class ParseCommand extends \Command implements \Psy\ContextAware, \Psy\VarDumper\PresenterAware
+    partial class ParseCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class PsyVersionCommand extends \Command
+    partial class PsyVersionCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class ReflectingCommand extends \Command implements \Psy\ContextAware, \Psy\CodeCleanerAware
+    partial class ReflectingCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class ReflectingCommand extends \Command implements \Psy\ContextAware, \Psy\CodeCleanerAware
+    partial class ReflectingCommand {
+        // @overlay-against: function getTarget(string $valueName): array
+        protected function getTarget(string $valueName): \Psy\Command\ReflectionTarget;
+
+        // @overlay-against: function getTargetAndReflector(string $valueName, ?\Symfony\Component\Console\Output\OutputInterface $output): array
+        protected function getTargetAndReflector(string $valueName, ?\Symfony\Component\Console\Output\OutputInterface $output = null): \Psy\Command\ReflectionTargetPair;
+    }
+
+    // @overlay-against: class SudoCommand extends \Command implements \Psy\Readline\ReadlineAware
+    partial class SudoCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class ThrowUpCommand extends \Command
+    partial class ThrowUpCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class TimeitCommand extends \Command
+    partial class TimeitCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class TraceCommand extends \Command
+    partial class TraceCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class TraceCommand extends \Command
+    partial class TraceCommand {
+        // @overlay-against: function getBacktrace(\Throwable $e, ?int $count, bool $includePsy): array
+        protected function getBacktrace(\Throwable $e, ?int $count = null, bool $includePsy = true): array<int, string>;
+    }
+
+    // @overlay-against: class WhereamiCommand extends \Command
+    partial class WhereamiCommand extends \Psy\Command\Command;
+
+    // @overlay-against: class YoloCommand extends \Command implements \Psy\Readline\ReadlineAware
+    partial class YoloCommand extends \Psy\Command\Command;
+}
+
+namespace Psy\Command\Config {
+    /**
+     * One runtime config option: accepted values, parser, getter, and setter.
+     */
+    type ConfigOptionDefinition = struct {
+        string $name;
+        array<int, string> $acceptedValues;
+        callable(string): mixed $parser;
+        callable(): mixed $getter;
+        callable(mixed): void $setter;
+        bool $refresh;
+    };
+
+    // @overlay-against: class AbstractConfigCommand extends \Psy\Command\Command
+    partial class AbstractConfigCommand {
+        // @overlay-against: function formatAcceptedValues(array $option): string
+        protected function formatAcceptedValues(\Psy\Command\Config\ConfigOptionDefinition $option): string;
+
+        // @overlay-against: function getOption(string $key): ?array
+        protected function getOption(string $key): ?\Psy\Command\Config\ConfigOptionDefinition;
+
+        // @overlay-against: function getOptions(): array
+        protected function getOptions(): array<string, \Psy\Command\Config\ConfigOptionDefinition>;
+    }
+}
+
+namespace Psy\Command\ListCommand {
+    /**
+     * One row in an `ls` enumeration group.
+     */
+    type EnumeratedMember = struct {
+        string $name;
+        string $style;
+        string $value;
+    };
+
+    // @overlay-against: class ClassConstantEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class ClassConstantEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class ClassEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class ClassEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class ConstantEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class ConstantEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class Enumerator
+    partial class Enumerator {
+        // @overlay-against: function enumerate(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        public function enumerate(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected abstract function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class FunctionEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class FunctionEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class GlobalVariableEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class GlobalVariableEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class MethodEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class MethodEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class PropertyEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class PropertyEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+
+    // @overlay-against: class VariableEnumerator extends \Psy\Command\ListCommand\Enumerator
+    partial class VariableEnumerator {
+        // @overlay-against: function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector, mixed $target): array
+        protected function listItems(\Symfony\Component\Console\Input\InputInterface $input, ?\Reflector $reflector = null, mixed $target = null): array<string, array<string, \Psy\Command\ListCommand\EnumeratedMember>>;
+    }
+}
+
+namespace Psy\Command\TimeitCommand {
+    // @overlay-against: class TimeitVisitor extends \PhpParser\NodeVisitorAbstract
+    partial class TimeitVisitor {
+        // @overlay-against: function afterTraverse(array $nodes): array|null
+        public function afterTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(array<int, \PhpParser\Node> $nodes): array<int, \PhpParser\Node>|null;
+    }
+}
+
+namespace Psy\Completion {
+    // @overlay-against: class AnalysisResult
+    partial class AnalysisResult {
+        // @overlay-against: array $tokens
+        public array<int, \Psy\PhpToken|string> $tokens;
+
+        // @overlay-against: function __construct(int $kinds, string $prefix, ?string $leftSide, string|array|null $leftSideTypes, mixed $leftSideValue, array $tokens, string $input, ?\PhpParser\Node $leftSideNode, array $readlineInfo, bool $parseSucceeded): void
+        public function __construct(int $kinds, string $prefix = '', ?string $leftSide = null, string|array<int, string>|null $leftSideTypes = [], mixed $leftSideValue = null, array<int, \Psy\PhpToken|string> $tokens = [], string $input = '', ?\PhpParser\Node $leftSideNode = null, array $readlineInfo = [], bool $parseSucceeded = false): void;
+    }
+
+    // @overlay-against: class CompletionKind
+    partial class CompletionKind {
+        // @overlay-against: const mixed NAMESPACE
+        public const mixed self::NAMESPACE as COMPLETION_NAMESPACE;
+    }
+}
+
+namespace Psy\Completion\Source {
+    // @overlay-against: class CatalogSource implements \Psy\Completion\Source\SourceInterface
+    partial class CatalogSource {
+        // @overlay-against: function __construct(int $kind, callable $catalogMethod, ?\Psy\Completion\SymbolCatalog $catalog): void
+        public function __construct(int $kind, callable(\Psy\Completion\SymbolCatalog): array<int, string> $catalogMethod, ?\Psy\Completion\SymbolCatalog $catalog = null): void;
+
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class ClassConstantSource implements \Psy\Completion\Source\SourceInterface
+    partial class ClassConstantSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class CommandArgumentSource implements \Psy\CommandAware, \Psy\Completion\Source\SourceInterface, \Psy\CommandMapTrait
+    partial class CommandArgumentSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class CommandOptionSource implements \Psy\CommandAware, \Psy\Completion\Source\SourceInterface, \Psy\CommandMapTrait
+    partial class CommandOptionSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class CommandSource implements \Psy\CommandAware, \Psy\Completion\Source\SourceInterface
+    partial class CommandSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class HistorySource implements \Psy\Completion\Source\SourceInterface
+    partial class HistorySource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class KeywordSource implements \Psy\Completion\Source\SourceInterface
+    partial class KeywordSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class MagicMethodSource implements \Psy\Completion\Source\SourceInterface
+    partial class MagicMethodSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class MagicPropertySource implements \Psy\Completion\Source\SourceInterface
+    partial class MagicPropertySource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class MatcherAdapterSource implements \Psy\Completion\Source\SourceInterface
+    partial class MatcherAdapterSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class MethodSource implements \Psy\Completion\Source\SourceInterface
+    partial class MethodSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class NamespaceSource implements \Psy\Completion\Source\SourceInterface
+    partial class NamespaceSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class ObjectMethodSource implements \Psy\Completion\Source\SourceInterface
+    partial class ObjectMethodSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class ObjectPropertySource implements \Psy\Completion\Source\SourceInterface
+    partial class ObjectPropertySource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class PropertySource implements \Psy\Completion\Source\SourceInterface
+    partial class PropertySource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class StaticMethodSource implements \Psy\Completion\Source\SourceInterface
+    partial class StaticMethodSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class StaticPropertySource implements \Psy\Completion\Source\SourceInterface
+    partial class StaticPropertySource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+
+    // @overlay-against: class VariableSource implements \Psy\Completion\Source\SourceInterface
+    partial class VariableSource {
+        // @overlay-against: function getCompletions(\Psy\Completion\AnalysisResult $analysis): array
+        public function getCompletions(\Psy\Completion\AnalysisResult $analysis): array<int, string>;
+    }
+}
+
+namespace Psy\ExecutionLoop {
+    /**
+     * Overlay: loop hooks that do not rewrite input or code return void.
+     */
+    // @overlay-against: interface Listener
+    partial interface Listener {
+        // @overlay-against: function afterLoop(\Psy\Shell $shell): mixed
+        public function afterLoop(\Psy\Shell $shell): void;
+
+        // @overlay-against: function afterRun(\Psy\Shell $shell, int $exitCode): mixed
+        public function afterRun(\Psy\Shell $shell, int $exitCode = 0): void;
+
+        // @overlay-against: function beforeLoop(\Psy\Shell $shell): mixed
+        public function beforeLoop(\Psy\Shell $shell): void;
+
+        // @overlay-against: function beforeRun(\Psy\Shell $shell): mixed
+        public function beforeRun(\Psy\Shell $shell): void;
+    }
+}
+
+namespace Psy\Formatter {
+    // @overlay-against: class LinkFormatter
+    partial class LinkFormatter {
+        // @overlay-against: function setStyles(array $styles): void
+        public static function setStyles(array<string, string> $styles): void;
+    }
+
+    // @overlay-against: class SignatureFormatter implements \Psy\Formatter\ReflectorFormatter
+    partial class SignatureFormatter {
+        // @overlay-against: function setStyles(array $styles): void
+        deprecated public static function setStyles(array<string, string> $styles): void;
+    }
+}
+
+namespace Psy\Logger {
+    // @overlay-against: class CallbackLogger
+    partial class CallbackLogger {
+        // @overlay-against: function __construct(callable $callback): void
+        public function __construct(callable(string, string): void $callback): void;
+    }
+}
+
+namespace Psy\ManualUpdater {
+    /**
+     * One checker/installer pair passed to `ManualUpdate`.
+     */
+    type ManualUpdateStep = struct {
+        \Psy\ManualUpdater\Checker $checker;
+        \Psy\ManualUpdater\Installer $installer;
+    };
+
+    // @overlay-against: class ManualUpdate
+    partial class ManualUpdate {
+        // @overlay-against: function __construct(array $updates): void
+        public function __construct(\Psy\ManualUpdater\ManualUpdateStep ...$updates): void;
+    }
+}
+
+namespace Psy\Output {
+    /**
+     * Foreground, background, and options for one formatter style. Any part may be omitted.
+     */
+    type FormatterStyleSpec = struct {
+        ?(string|null) '0' as $foreground;
+        ?(string|null) '1' as $background;
+        ?(array<int, string>|null) '2' as $options;
+    };
+
+    // @overlay-against: class ShellOutput extends \Symfony\Component\Console\Output\ConsoleOutput
+    partial class ShellOutput {
+        // @overlay-against: function page(string|array|\Closure $messages, int $type): mixed
+        public function page(string|array<int, string>|(callable(\Psy\Output\ShellOutput): void) $messages, int $type = 0): void;
+
+        // @overlay-against: function write(string|array $messages, bool $newline, int $type): void
+        public function write(string|array<int, string> $messages, bool $newline = false, int $type = 0): void;
+    }
+
+    // @overlay-against: class ShellOutputAdapter implements \Symfony\Component\Console\Output\OutputInterface
+    partial class ShellOutputAdapter {
+        // @overlay-against: function page(string|array|\Closure $messages, int $type): void
+        public function page(string|array<int, string>|(callable(\Psy\Output\ShellOutput|\Psy\Output\ShellOutputAdapter): void) $messages, int $type = 0): void;
+
+        // @overlay-against: function write(string|array $messages, mixed $newline, mixed $type): void
+        public function write(string|array<int, string> $messages, mixed $newline = false, mixed $type = 0): void;
+
+        // @overlay-against: function writeln(string|array $messages, mixed $type): void
+        public function writeln(string|array<int, string> $messages, mixed $type = 0): void;
+    }
+
+    // @overlay-against: class Theme
+    partial class Theme {
+        // @overlay-against: function getInlineStyles(bool $useGrayFallback): array
+        public function getInlineStyles(bool $useGrayFallback = false): array<string, string>;
+
+        // @overlay-against: function setStyles(array $styles): mixed
+        public function setStyles(array<string, \Psy\Output\FormatterStyleSpec> $styles): void;
+    }
+}
+
+namespace Psy\Readline {
+    // @overlay-against: class GNUReadline implements \Psy\Readline\Readline
+    partial class GNUReadline {
+        // @overlay-against: function listHistory(): array
+        public function listHistory(): array<int, string>;
+    }
+
+    // @overlay-against: class InteractiveReadline implements \Psy\Readline\InteractiveReadlineInterface, \Psy\ShellAware, \Psy\CommandAware
+    partial class InteractiveReadline {
+        // @overlay-against: function listHistory(): array
+        public function listHistory(): array<int, string>;
+
+        // @overlay-against: function listSessionHistory(): array
+        public function listSessionHistory(): array<int, string>;
+    }
+
+    // @overlay-against: class LegacyReadline implements \Psy\Readline\ShellReadlineInterface
+    partial class LegacyReadline {
+        // @overlay-against: function listHistory(): array
+        public function listHistory(): array<int, string>;
+    }
+
+    // @overlay-against: class Libedit extends \Psy\Readline\GNUReadline
+    partial class Libedit {
+        // @overlay-against: function listHistory(): array
+        public function listHistory(): array<int, string>;
+    }
+
+    // @overlay-against: class Transient implements \Psy\Readline\Readline
+    partial class Transient {
+        // @overlay-against: function listHistory(): array
+        public function listHistory(): array<int, string>;
+    }
+
+    // @overlay-against: class Userland implements \Psy\Readline\Readline
+    partial class Userland {
+        // @overlay-against: function listHistory(): array
+        public function listHistory(): array<int, string>;
+    }
+}
+
+namespace Psy\Readline\Hoa {
+    /**
+     * Harvest miss: unqualified `Stream` is `\Psy\Readline\Hoa\Stream`.
+     */
+    // @overlay-against: class ConsoleProcessus extends \Stream implements \Psy\Readline\Hoa\StreamIn, \Psy\Readline\Hoa\StreamOut, \Psy\Readline\Hoa\StreamPathable
+    partial class ConsoleProcessus extends \Psy\Readline\Hoa\Stream;
+
+    // @overlay-against: class FileGeneric extends \Stream implements \Psy\Readline\Hoa\StreamPathable, \Psy\Readline\Hoa\StreamStatable, \Psy\Readline\Hoa\StreamTouchable
+    partial class FileGeneric extends \Psy\Readline\Hoa\Stream;
+}
+
+namespace Psy\Readline\Interactive\Actions {
+    /**
+     * A history-expansion token found before the cursor.
+     */
+    type HistoryExpansionMatch = struct {
+        string $pattern;
+        int $start;
+        int $end;
+    };
+
+    // @overlay-against: class HistoryExpansionAction implements \Psy\Readline\Interactive\Actions\ActionInterface
+    partial class HistoryExpansionAction {
+        // @overlay-against: function detectExpansion(string $text, int $cursor): array|null
+        public function detectExpansion(string $text, int $cursor): \Psy\Readline\Interactive\Actions\HistoryExpansionMatch|null;
+    }
+}
+
+namespace Psy\Readline\Interactive\Helper {
+    // @overlay-against: class TokenHelper
+    partial class TokenHelper {
+        // @overlay-against: function hasTrailingOperator(array $tokens): bool
+        public static function hasTrailingOperator(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+}
+
+namespace Psy\Readline\Interactive\Input {
+    /**
+     * Harvest miss: unqualified `Key` is `\Psy\Readline\Interactive\Input\Key`.
+     */
+    // @overlay-against: class ClosureKeyBindings
+    partial class ClosureKeyBindings {
+        // @overlay-against: function bind(callable $action, string $patterns): void
+        public function bind(callable(\Psy\Readline\Interactive\Input\Key): void $action, string ...$patterns): void;
+
+        // @overlay-against: function get(\Key $key): ?callable
+        public function get(\Psy\Readline\Interactive\Input\Key $key): ?(callable(\Psy\Readline\Interactive\Input\Key): void);
+    }
+
+    // @overlay-against: class IndentationPolicy
+    partial class IndentationPolicy {
+        // @overlay-against: function calculateNextLineIndent(string $bufferText, array $tokens): string
+        public function calculateNextLineIndent(string $bufferText, array<int, \Psy\PhpToken|string> $tokens): string;
+    }
+
+    // @overlay-against: class InputQueue
+    partial class InputQueue {
+        // @overlay-against: function read(): \Key
+        public function read(): \Psy\Readline\Interactive\Input\Key;
+
+        // @overlay-against: function replay(\Key $key): void
+        public function replay(\Psy\Readline\Interactive\Input\Key $key): void;
+    }
+
+    // @overlay-against: class KeyBindings
+    partial class KeyBindings {
+        // @overlay-against: function get(\Key $key): ?\Psy\Readline\Interactive\Actions\ActionInterface
+        public function get(\Psy\Readline\Interactive\Input\Key $key): ?\Psy\Readline\Interactive\Actions\ActionInterface;
+    }
+
+    // @overlay-against: class StdinReader
+    partial class StdinReader {
+        // @overlay-against: function readBracketedPaste(): \Key
+        protected function readBracketedPaste(): \Psy\Readline\Interactive\Input\Key;
+
+        // @overlay-against: function readEscapeSequence(string $prefix): \Key
+        protected function readEscapeSequence(string $prefix): \Psy\Readline\Interactive\Input\Key;
+
+        // @overlay-against: function readKey(): \Key
+        public function readKey(): \Psy\Readline\Interactive\Input\Key;
+    }
+
+    // @overlay-against: class TokenNavigationPolicy
+    partial class TokenNavigationPolicy {
+        // @overlay-against: function findNextToken(array $tokens, array $tokenPositions, int $cursor, int $lineLength): int
+        public function findNextToken(array<int, \Psy\PhpToken|string> $tokens, array<int, \Psy\CodeAnalysis\TokenSpan> $tokenPositions, int $cursor, int $lineLength): int;
+
+        // @overlay-against: function findPreviousToken(array $tokens, array $tokenPositions, int $cursor): int
+        public function findPreviousToken(array<int, \Psy\PhpToken|string> $tokens, array<int, \Psy\CodeAnalysis\TokenSpan> $tokenPositions, int $cursor): int;
+    }
+}
+
+namespace Psy\Readline\Interactive\Renderer {
+    /**
+     * Row and column layout for the completion menu.
+     */
+    type CompletionMenuLayout = struct {
+        int $rows;
+        int $columns;
+        array<int, int> $columnWidths;
+    };
+
+    /**
+     * Harvest miss: unqualified `Frame` is `\Psy\Readline\Interactive\Renderer\Frame`.
+     */
+    // @overlay-against: class CompletionMenuWidget implements \Psy\Readline\Interactive\Renderer\WidgetInterface
+    partial class CompletionMenuWidget {
+        // @overlay-against: function calculateLayout(\Psy\Readline\Interactive\Terminal $terminal, array $items): array
+        public static function calculateLayout(\Psy\Readline\Interactive\Terminal $terminal, array<int, string> $items): \Psy\Readline\Interactive\Renderer\CompletionMenuLayout;
+
+        // @overlay-against: function render(\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int
+        public function render(\Psy\Readline\Interactive\Renderer\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int;
+    }
+
+    // @overlay-against: class HistorySearchOverlayWidget implements \Psy\Readline\Interactive\Renderer\WidgetInterface
+    partial class HistorySearchOverlayWidget {
+        // @overlay-against: function render(\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int
+        public function render(\Psy\Readline\Interactive\Renderer\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int;
+    }
+
+    // @overlay-against: class InputFrameWidget implements \Psy\Readline\Interactive\Renderer\WidgetInterface
+    partial class InputFrameWidget {
+        // @overlay-against: function render(\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int
+        public function render(\Psy\Readline\Interactive\Renderer\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int;
+    }
+
+    // @overlay-against: class LinesWidget implements \Psy\Readline\Interactive\Renderer\WidgetInterface
+    partial class LinesWidget {
+        // @overlay-against: function render(\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int
+        public function render(\Psy\Readline\Interactive\Renderer\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int;
+    }
+
+    // @overlay-against: class PagerWidget implements \Psy\Readline\Interactive\Renderer\WidgetInterface
+    partial class PagerWidget {
+        // @overlay-against: function render(\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int
+        public function render(\Psy\Readline\Interactive\Renderer\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int;
+    }
+
+    // @overlay-against: interface WidgetInterface
+    partial interface WidgetInterface {
+        // @overlay-against: function render(\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int
+        public function render(\Psy\Readline\Interactive\Renderer\Frame $frame, \Psy\Readline\Interactive\Renderer\Area $area): int;
+    }
+}
+
+namespace Psy\TabCompletion\Matcher {
+    // @overlay-against: class AbstractMatcher
+    partial class AbstractMatcher {
+        // @overlay-against: function hasSyntax(mixed $token, string $syntax): bool
+        public static function hasSyntax(\Psy\PhpToken|string $token, string $syntax = self::VAR_SYNTAX): bool;
+
+        // @overlay-against: function hasToken(array $coll, mixed $token): bool
+        public static function hasToken(array<int, string> $coll, \Psy\PhpToken|string $token): bool;
+
+        // @overlay-against: function isOperator(mixed $token): bool
+        public static function isOperator(\Psy\PhpToken|string $token): bool;
+
+        // @overlay-against: function needCompleteClass(mixed $token): bool
+        public static function needCompleteClass(\Psy\PhpToken $token): bool;
+
+        // @overlay-against: function tokenIs(mixed $token, string $which): bool
+        public static function tokenIs(\Psy\PhpToken|string $token, string $which): bool;
+
+        // @overlay-against: function getInput(array $tokens): string
+        protected function getInput(array<int, \Psy\PhpToken|string> $tokens): string;
+
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public abstract function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function getNamespaceAndClass(array $tokens): string
+        protected function getNamespaceAndClass(array<int, \Psy\PhpToken|string> $tokens): string;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ClassAttributesMatcher extends \Psy\TabCompletion\Matcher\AbstractMatcher
+    partial class ClassAttributesMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ClassMethodDefaultParametersMatcher extends \Psy\TabCompletion\Matcher\AbstractDefaultParametersMatcher
+    partial class ClassMethodDefaultParametersMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ClassMethodsMatcher extends \Psy\TabCompletion\Matcher\AbstractMatcher
+    partial class ClassMethodsMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ClassNamesMatcher extends \Psy\TabCompletion\Matcher\AbstractMatcher
+    partial class ClassNamesMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class CommandsMatcher extends \Psy\TabCompletion\Matcher\AbstractMatcher implements \Psy\CommandAware
+    partial class CommandsMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ConstantsMatcher extends \Psy\TabCompletion\Matcher\AbstractMatcher
+    partial class ConstantsMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class FunctionDefaultParametersMatcher extends \Psy\TabCompletion\Matcher\AbstractDefaultParametersMatcher
+    partial class FunctionDefaultParametersMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class FunctionsMatcher extends \Psy\TabCompletion\Matcher\AbstractMatcher
+    partial class FunctionsMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class KeywordsMatcher extends \Psy\TabCompletion\Matcher\AbstractMatcher
+    partial class KeywordsMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class MagicMethodsMatcher extends \Psy\TabCompletion\Matcher\AbstractContextAwareMatcher
+    partial class MagicMethodsMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class MagicPropertiesMatcher extends \Psy\TabCompletion\Matcher\AbstractContextAwareMatcher
+    partial class MagicPropertiesMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class MongoClientMatcher extends \Psy\TabCompletion\Matcher\AbstractContextAwareMatcher
+    partial class MongoClientMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class MongoDatabaseMatcher extends \Psy\TabCompletion\Matcher\AbstractContextAwareMatcher
+    partial class MongoDatabaseMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ObjectAttributesMatcher extends \Psy\TabCompletion\Matcher\AbstractContextAwareMatcher
+    partial class ObjectAttributesMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ObjectMethodDefaultParametersMatcher extends \Psy\TabCompletion\Matcher\AbstractDefaultParametersMatcher
+    partial class ObjectMethodDefaultParametersMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class ObjectMethodsMatcher extends \Psy\TabCompletion\Matcher\AbstractContextAwareMatcher
+    partial class ObjectMethodsMatcher {
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+
+    // @overlay-against: class VariablesMatcher extends \Psy\TabCompletion\Matcher\AbstractContextAwareMatcher
+    partial class VariablesMatcher {
+        // @overlay-against: function getInput(array $tokens): string
+        protected function getInput(array<int, \Psy\PhpToken|string> $tokens): string;
+
+        // @overlay-against: function getMatches(array $tokens, array $info): array
+        public function getMatches(array<int, \Psy\PhpToken|string> $tokens, array $info = []): array<int, string>;
+
+        // @overlay-against: function hasMatched(array $tokens): bool
+        public function hasMatched(array<int, \Psy\PhpToken|string> $tokens): bool;
+    }
+}
+
+namespace Psy\Util {
+    /**
+     * Foreground and background colors queried from the terminal, each an RGB triple or null.
+     */
+    type TerminalColors = struct {
+        array<int, int>|null $bg;
+        array<int, int>|null $fg;
+    };
+
+    // @overlay-against: class TerminalColor
+    partial class TerminalColor {
+        // @overlay-against: function queryTerminalColors(): array
+        public static function queryTerminalColors(): \Psy\Util\TerminalColors;
+    }
+}
+
+namespace Psy\VarDumper {
+    /**
+     * Conditional traits in Dumper.php. Symfony VarDumper 7.4 takes the typed, return-typed branch.
+     */
+    trait DumperDumpKeyShim {
+        protected function dumpKey(\Symfony\Component\VarDumper\Cloner\Cursor $cursor): void;
+    }
+
+    trait DumperDumpLineShim {
+        protected function dumpLine(int $depth, bool $endOfValue = false): void;
+    }
+
+    trait DumperDumpStringShim {
+        public function dumpString(\Symfony\Component\VarDumper\Cloner\Cursor $cursor, string $str, bool $bin, int $cut): void;
+    }
+
+    trait DumperEnterHashShim {
+        public function enterHash(\Symfony\Component\VarDumper\Cloner\Cursor $cursor, int $type, mixed $class, bool $hasChild): void;
+    }
+
+    trait DumperStyleShim {
+        protected function style(string $style, string $value, array<string, mixed> $attr = []): string;
+    }
+}

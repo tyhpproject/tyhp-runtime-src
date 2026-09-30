@@ -1,0 +1,78 @@
+<?tyhp
+
+function test_psr_http_message_headers(\Psr\Http\Message\MessageInterface $message): \Psr\Http\Message\HeaderMap
+{
+    return $message->getHeaders();
+}
+
+function test_psr_http_message_header_line(\Psr\Http\Message\MessageInterface $message, string $name): string
+{
+    if ($message->hasHeader($name)) {
+        $values = $message->getHeader($name);
+        return $message->getHeaderLine($name) . \implode(',', $values);
+    }
+    return '';
+}
+
+function test_psr_http_message_with_header(\Psr\Http\Message\MessageInterface $message): \Psr\Http\Message\MessageInterface
+{
+    return $message->withHeader('X-Test', 'a')->withAddedHeader('X-Test', ['b', 'c'])->withoutHeader('X-Drop');
+}
+
+function test_psr_http_message_protocol_and_body(\Psr\Http\Message\MessageInterface $message, \Psr\Http\Message\StreamInterface $body): \Psr\Http\Message\StreamInterface
+{
+    $updated = $message->withProtocolVersion('1.1')->withBody($body);
+    return $updated->getBody();
+}
+
+function test_psr_http_message_request(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\UriInterface $uri): \Psr\Http\Message\HttpMethod
+{
+    $updated = $request->withMethod('POST')->withUri($uri, true)->withRequestTarget('/submit');
+    return $updated->getMethod();
+}
+
+function test_psr_http_message_response(\Psr\Http\Message\ResponseInterface $response): int
+{
+    return $response->withStatus(201, 'Created')->getStatusCode();
+}
+
+function test_psr_http_message_server_request(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\QueryParams
+{
+    $updated = $request
+        ->withCookieParams(['sid' => 'abc'])
+        ->withQueryParams(['q' => 'tyhp'])
+        ->withParsedBody(['name' => 'n'])
+        ->withAttribute('user', 1)
+        ->withoutAttribute('guest');
+    return $updated->getQueryParams();
+}
+
+function test_psr_http_message_attribute_default(\Psr\Http\Message\ServerRequestInterface $request): int
+{
+    return $request->getAttribute('missing', 0);
+}
+
+function test_psr_http_message_stream_seek_default(\Psr\Http\Message\StreamInterface $stream): void
+{
+    $stream->seek(0);
+}
+
+function test_psr_http_message_stream_metadata(\Psr\Http\Message\StreamInterface $stream): \StreamMetadata
+{
+    return $stream->getMetadata();
+}
+
+function test_psr_http_message_stream_metadata_key(\Psr\Http\Message\StreamInterface $stream): mixed
+{
+    return $stream->getMetadata('uri');
+}
+
+function test_psr_http_message_uri(\Psr\Http\Message\UriInterface $uri): string
+{
+    return $uri->withScheme('https')->withHost('example.com')->withPath('/a')->withQuery('b=1')->__toString();
+}
+
+function test_psr_http_message_uploaded_file(\Psr\Http\Message\UploadedFileInterface $file): int
+{
+    return $file->getError();
+}

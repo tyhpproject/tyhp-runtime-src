@@ -95,7 +95,7 @@ final class IntegerScaledBackend implements DecimalBackend
         }
 
         if ($negA) {
-            int $cmp = $this->unsignedCompare($a, $b);
+            (-1|0|1) $cmp = $this->unsignedCompare($a, $b);
             if ($cmp === 0) {
                 return '0';
             }
@@ -105,7 +105,7 @@ final class IntegerScaledBackend implements DecimalBackend
             return $this->unsignedSubtract($b, $a);
         }
 
-        int $cmp = $this->unsignedCompare($b, $a);
+        (-1|0|1) $cmp = $this->unsignedCompare($b, $a);
         if ($cmp === 0) {
             return '0';
         }
@@ -177,12 +177,12 @@ final class IntegerScaledBackend implements DecimalBackend
     }
 
     private function unsignedAdd(string $a, string $b): string {
-        int $maxLen = (int) \max(\strlen($a), \strlen($b));
+        int $maxLen = \max(\strlen($a), \strlen($b));
         $a = \str_pad($a, $maxLen, '0', \STR_PAD_LEFT);
         $b = \str_pad($b, $maxLen, '0', \STR_PAD_LEFT);
 
         int $carry = 0;
-        array $digits = [];
+        array<int, int> $digits = [];
 
         for (int $i = $maxLen - 1; $i >= 0; $i--) {
             int $sum = (int) $a[$i] + (int) $b[$i] + $carry;
@@ -198,12 +198,12 @@ final class IntegerScaledBackend implements DecimalBackend
     }
 
     private function unsignedSubtract(string $a, string $b): string {
-        int $maxLen = (int) \max(\strlen($a), \strlen($b));
+        int $maxLen = \max(\strlen($a), \strlen($b));
         $a = \str_pad($a, $maxLen, '0', \STR_PAD_LEFT);
         $b = \str_pad($b, $maxLen, '0', \STR_PAD_LEFT);
 
         int $borrow = 0;
-        array $digits = [];
+        array<int, int> $digits = [];
 
         for (int $i = $maxLen - 1; $i >= 0; $i--) {
             int $diff = (int) $a[$i] - (int) $b[$i] - $borrow;
@@ -221,7 +221,7 @@ final class IntegerScaledBackend implements DecimalBackend
         return \ltrim(\implode('', \array_reverse($digits)), '0') ?: '0';
     }
 
-    private function unsignedCompare(string $a, string $b): int {
+    private function unsignedCompare(string $a, string $b): -1|0|1 {
         $a = \ltrim($a, '0') ?: '0';
         $b = \ltrim($b, '0') ?: '0';
 
@@ -311,7 +311,7 @@ final class IntegerScaledBackend implements DecimalBackend
         }
 
         int $carry = 0;
-        array $digits = [];
+        array<int, int> $digits = [];
 
         for (int $i = \strlen($a) - 1; $i >= 0; $i--) {
             int $prod = (int) $a[$i] * $d + $carry;
@@ -441,7 +441,7 @@ final class IntegerScaledBackend implements DecimalBackend
         return $this->fromScaled($guess, $scale);
     }
 
-    public function compare(string $a, string $b, int $scale): int {
+    public function compare(string $a, string $b, int $scale): -1|0|1 {
         string $sa = $this->toScaled($a, $scale);
         string $sb = $this->toScaled($b, $scale);
 
@@ -457,7 +457,7 @@ final class IntegerScaledBackend implements DecimalBackend
         }
 
         if ($negA && $negB) {
-            int $cmp = $this->unsignedCompare(\substr($sa, 1), \substr($sb, 1));
+            (-1|0|1) $cmp = $this->unsignedCompare(\substr($sa, 1), \substr($sb, 1));
             return -$cmp;
         }
 

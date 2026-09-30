@@ -1,0 +1,768 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Composer\Semver {
+    class Comparator {
+        /**
+        * Evaluates the expression: $version1 > $version2.
+        *
+        * @param string $version1
+        * @param string $version2
+        * @return bool
+        * @generated
+        */
+        public static function greaterThan(string $version1, string $version2): bool;
+        /**
+        * Evaluates the expression: $version1 >= $version2.
+        *
+        * @param string $version1
+        * @param string $version2
+        * @return bool
+        * @generated
+        */
+        public static function greaterThanOrEqualTo(string $version1, string $version2): bool;
+        /**
+        * Evaluates the expression: $version1 < $version2.
+        *
+        * @param string $version1
+        * @param string $version2
+        * @return bool
+        * @generated
+        */
+        public static function lessThan(string $version1, string $version2): bool;
+        /**
+        * Evaluates the expression: $version1 <= $version2.
+        *
+        * @param string $version1
+        * @param string $version2
+        * @return bool
+        * @generated
+        */
+        public static function lessThanOrEqualTo(string $version1, string $version2): bool;
+        /**
+        * Evaluates the expression: $version1 == $version2.
+        *
+        * @param string $version1
+        * @param string $version2
+        * @return bool
+        * @generated
+        */
+        public static function equalTo(string $version1, string $version2): bool;
+        /**
+        * Evaluates the expression: $version1 != $version2.
+        *
+        * @param string $version1
+        * @param string $version2
+        * @return bool
+        * @generated
+        */
+        public static function notEqualTo(string $version1, string $version2): bool;
+        /**
+        * Evaluates the expression: $version1 $operator $version2.
+        *
+        * @param string $version1
+        * @param string $operator
+        * @param string $version2
+        * @return bool
+        * @generated
+        */
+        public static function compare(string $version1, string $operator, string $version2): bool;
+    }
+    /**
+    * Helper class to evaluate constraint by compiling and reusing the code to evaluate
+    *
+    * @generated
+    */
+    class CompilingMatcher {
+        /**
+        * Clears the memoization cache once you are done
+        *
+        * @return void
+        * @generated
+        */
+        public static function clear(): void;
+        /**
+        * Evaluates the expression: $constraint match $operator $version
+        *
+        * @param \Composer\Semver\Constraint\ConstraintInterface $constraint
+        * @param int $operator
+        * @param string $version
+        * @return bool
+        * @generated
+        */
+        public static function match(\Composer\Semver\Constraint\ConstraintInterface $constraint, int $operator, string $version): bool;
+    }
+    class Interval {
+        public function __construct(\Composer\Semver\Constraint\Constraint $start, \Composer\Semver\Constraint\Constraint $end): void;
+        /**
+        * @return \Composer\Semver\Constraint\Constraint
+        * @generated
+        */
+        public function getStart(): \Composer\Semver\Constraint\Constraint;
+        /**
+        * @return \Composer\Semver\Constraint\Constraint
+        * @generated
+        */
+        public function getEnd(): \Composer\Semver\Constraint\Constraint;
+        /**
+        * @return \Composer\Semver\Constraint\Constraint
+        * @generated
+        */
+        public static function fromZero(): \Composer\Semver\Constraint\Constraint;
+        /**
+        * @return \Composer\Semver\Constraint\Constraint
+        * @generated
+        */
+        public static function untilPositiveInfinity(): \Composer\Semver\Constraint\Constraint;
+        /**
+        * @return self
+        * @generated
+        */
+        public static function any(): self;
+        /**
+        * @return array
+        * @generated
+        */
+        public static function anyDev(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public static function noDev(): array;
+    }
+    /**
+    * Helper class generating intervals from constraints
+    *
+    * This contains utilities for:
+    * 
+    *  - compacting an existing constraint which can be used to combine several into one
+    * by creating a MultiConstraint out of the many constraints you have.
+    * 
+    *  - checking whether one subset is a subset of another.
+    * 
+    * Note: You should call clear to free memoization memory  usage when you are done using this class
+    *
+    * @generated
+    */
+    class Intervals {
+        /**
+        * Clears the memoization cache once you are done
+        *
+        * @return void
+        * @generated
+        */
+        public static function clear(): void;
+        /**
+        * Checks whether $candidate is a subset of $constraint
+        *
+        * @return bool
+        * @generated
+        */
+        public static function isSubsetOf(\Composer\Semver\Constraint\ConstraintInterface $candidate, \Composer\Semver\Constraint\ConstraintInterface $constraint): bool;
+        /**
+        * Checks whether $a and $b have any intersection, equivalent to $a->matches($b)
+        *
+        * @return bool
+        * @generated
+        */
+        public static function haveIntersections(\Composer\Semver\Constraint\ConstraintInterface $a, \Composer\Semver\Constraint\ConstraintInterface $b): bool;
+        /**
+        * Attempts to optimize a MultiConstraint
+        *
+        * When merging MultiConstraints together they can get very large, this will
+        * compact it by looking at the real intervals covered by all the constraints
+        * and then creates a new constraint containing only the smallest amount of rules
+        * to match the same intervals.
+        *
+        * @return \Composer\Semver\Constraint\ConstraintInterface
+        * @generated
+        */
+        public static function compactConstraint(\Composer\Semver\Constraint\ConstraintInterface $constraint): \Composer\Semver\Constraint\ConstraintInterface;
+        /**
+        * Creates an array of numeric intervals and branch constraints representing a given constraint
+        *
+        * if the returned numeric array is empty it means the constraint matches nothing in the numeric range (0 - +inf)
+        * if the returned branches array is empty it means no dev-* versions are matched
+        * if a constraint matches all possible dev-* versions, branches will contain Interval::anyDev()
+        *
+        * @return array
+        * @generated
+        */
+        public static function get(\Composer\Semver\Constraint\ConstraintInterface $constraint): array;
+    }
+    class Semver {
+        public const int SORT_ASC ?? 1;
+        public const int SORT_DESC ?? -1;
+        /**
+        * Determine if given version satisfies given constraints.
+        *
+        * @param string $version
+        * @param string $constraints
+        * @return bool
+        * @generated
+        */
+        public static function satisfies(string $version, string $constraints): bool;
+        /**
+        * Return all versions that satisfy given constraints.
+        *
+        * @param array<int, string> $versions
+        * @param string $constraints
+        * @return array<int, string>
+        * @generated
+        */
+        public static function satisfiedBy(array<int, string> $versions, string $constraints): array<int, string>;
+        /**
+        * Sort given array of versions.
+        *
+        * @param array<int, string> $versions
+        * @return array<int, string>
+        * @generated
+        */
+        public static function sort(array<int, string> $versions): array<int, string>;
+        /**
+        * Sort given array of versions in reverse.
+        *
+        * @param array<int, string> $versions
+        * @return array<int, string>
+        * @generated
+        */
+        public static function rsort(array<int, string> $versions): array<int, string>;
+    }
+    /**
+    * Version parser.
+    *
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @generated
+    */
+    class VersionParser {
+        /**
+        * Returns the stability of a version.
+        *
+        * @param string $version
+        * @return string
+        * @generated
+        */
+        public static function parseStability(string $version): string;
+        /**
+        * @param string $stability
+        * @return string
+        * @generated
+        */
+        public static function normalizeStability(string $stability): string;
+        /**
+        * Normalizes a version string to be able to perform comparisons on it.
+        *
+        * @param string $version
+        * @param ?string $fullVersion optional complete version string to give more context
+        * @throws \UnexpectedValueException
+        * @return string
+        * @generated
+        */
+        public function normalize(string $version, ?string $fullVersion = null): string;
+        /**
+        * Extract numeric prefix from alias, if it is in numeric format, suitable for version comparison.
+        *
+        * @param string $branch Branch name (e.g. 2.1.x-dev)
+        * @return string|false Numeric prefix if present (e.g. 2.1.) or false
+        * @generated
+        */
+        public function parseNumericAliasPrefix(string $branch): string|false;
+        /**
+        * Normalizes a branch name to be able to perform comparisons on it.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function normalizeBranch(string $name): string;
+        /**
+        * Normalizes a default branch name (i.e. master on git) to 9999999-dev.
+        *
+        * @param string $name
+        * @return string
+        * @deprecated No need to use this anymore in theory, Composer 2 does not normalize any branch names to 9999999-dev anymore
+        * @generated
+        */
+        deprecated public function normalizeDefaultBranch(string $name): string;
+        /**
+        * Parses a constraint string into MultiConstraint and/or Constraint objects.
+        *
+        * @param string $constraints
+        * @return \Composer\Semver\Constraint\ConstraintInterface
+        * @generated
+        */
+        public function parseConstraints(string $constraints): \Composer\Semver\Constraint\ConstraintInterface;
+    }
+}
+namespace Composer\Semver\Constraint {
+    class Bound {
+        /**
+        * @param string $version
+        * @param bool $isInclusive
+        * @generated
+        */
+        public function __construct(string $version, bool $isInclusive): void;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getVersion(): string;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function isInclusive(): bool;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function isZero(): bool;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function isPositiveInfinity(): bool;
+        /**
+        * Compares a bound to another with a given operator.
+        *
+        * @param \Composer\Semver\Constraint\Bound $other
+        * @param string $operator
+        * @return bool
+        * @generated
+        */
+        public function compareTo(\Composer\Semver\Constraint\Bound $other, string $operator): bool;
+        public function __toString(): mixed;
+        /**
+        * @return self
+        * @generated
+        */
+        public static function zero(): self;
+        /**
+        * @return self
+        * @generated
+        */
+        public static function positiveInfinity(): self;
+    }
+    /**
+    * Defines a constraint.
+    *
+    * @generated
+    */
+    class Constraint implements \Composer\Semver\Constraint\ConstraintInterface {
+        public const int OP_EQ ?? 0;
+        public const int OP_LT ?? 1;
+        public const int OP_LE ?? 2;
+        public const int OP_GT ?? 3;
+        public const int OP_GE ?? 4;
+        public const int OP_NE ?? 5;
+        public const string STR_OP_EQ ?? '==';
+        public const string STR_OP_EQ_ALT ?? '=';
+        public const string STR_OP_LT ?? '<';
+        public const string STR_OP_LE ?? '<=';
+        public const string STR_OP_GT ?? '>';
+        public const string STR_OP_GE ?? '>=';
+        public const string STR_OP_NE ?? '!=';
+        public const string STR_OP_NE_ALT ?? '<>';
+        /**
+        * @var mixed
+        * @generated
+        */
+        protected mixed $operator;
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $version;
+        /**
+        * @var string|null
+        * @generated
+        */
+        protected string|null $prettyString;
+        /**
+        * @var Bound
+        * @generated
+        */
+        protected \Composer\Semver\Constraint\Bound $lowerBound;
+        /**
+        * @var Bound
+        * @generated
+        */
+        protected \Composer\Semver\Constraint\Bound $upperBound;
+        /**
+        * Sets operator and version to compare with.
+        *
+        * @param string $operator
+        * @param string $version
+        * @throws \InvalidArgumentException if invalid operator is given.
+        * @generated
+        */
+        public function __construct(string $operator, string $version): void;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getVersion(): string;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getOperator(): mixed;
+        /**
+        * @param \Composer\Semver\Constraint\ConstraintInterface $provider
+        * @return bool
+        * @generated
+        */
+        public function matches(\Composer\Semver\Constraint\ConstraintInterface $provider): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function setPrettyString(mixed $prettyString): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPrettyString(): mixed;
+        /**
+        * Get all supported comparison operators.
+        *
+        * @return mixed
+        * @generated
+        */
+        public static function getSupportedOperators(): mixed;
+        /**
+        * @param string $operator
+        * @return mixed
+        * @generated
+        */
+        public static function getOperatorConstant(string $operator): mixed;
+        /**
+        * @param string $a
+        * @param string $b
+        * @param string $operator
+        * @param bool $compareBranches
+        * @throws \InvalidArgumentException if invalid operator is given.
+        * @return bool
+        * @generated
+        */
+        public function versionCompare(string $a, string $b, string $operator, bool $compareBranches = false): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function compile(mixed $otherOperator): mixed;
+        /**
+        * @param \Composer\Semver\Constraint\Constraint $provider
+        * @param bool $compareBranches
+        * @return bool
+        * @generated
+        */
+        public function matchSpecific(\Composer\Semver\Constraint\Constraint $provider, bool $compareBranches = false): bool;
+        /**
+        * @return string
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLowerBound(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUpperBound(): mixed;
+    }
+    /**
+    * DO NOT IMPLEMENT this interface. It is only meant for usage as a type hint
+    *
+    * in libraries relying on composer/semver but creating your own constraint class
+    * that implements this interface is not a supported use case and will cause the
+    * composer/semver components to return unexpected results.
+    *
+    * @generated
+    */
+    interface ConstraintInterface {
+        /**
+        * Checks whether the given constraint intersects in any way with this constraint
+        *
+        * @param \Composer\Semver\Constraint\ConstraintInterface $provider
+        * @return bool
+        * @generated
+        */
+        public function matches(\Composer\Semver\Constraint\ConstraintInterface $provider): bool;
+        /**
+        * Provides a compiled version of the constraint for the given operator
+        *
+        * The compiled version must be a PHP expression.
+        * Executor of compile version must provide 2 variables:
+        * - $v = the string version to compare with
+        * - $b = whether or not the version is a non-comparable branch (starts with "dev-")
+        *
+        * @see Constraint::OP_* for the list of available operators.
+        * @example return '!$b && version_compare($v, '1.0', '>')';
+        * @param int $otherOperator one Constraint::OP_*
+        * @return string
+        * @generated
+        */
+        public function compile(int $otherOperator): string;
+        /**
+        * @return Bound
+        * @generated
+        */
+        public function getUpperBound(): \Composer\Semver\Constraint\Bound;
+        /**
+        * @return Bound
+        * @generated
+        */
+        public function getLowerBound(): \Composer\Semver\Constraint\Bound;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getPrettyString(): string;
+        /**
+        * @param string|null $prettyString
+        * @return void
+        * @generated
+        */
+        public function setPrettyString(string|null $prettyString): void;
+        /**
+        * @return string
+        * @generated
+        */
+        public function __toString(): string;
+    }
+    /**
+    * Defines the absence of a constraint.
+    *
+    * This constraint matches everything.
+    *
+    * @generated
+    */
+    class MatchAllConstraint implements \Composer\Semver\Constraint\ConstraintInterface {
+        /**
+        * @var string|null
+        * @generated
+        */
+        protected string|null $prettyString;
+        /**
+        * @param \Composer\Semver\Constraint\ConstraintInterface $provider
+        * @return bool
+        * @generated
+        */
+        public function matches(\Composer\Semver\Constraint\ConstraintInterface $provider): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function compile(mixed $otherOperator): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function setPrettyString(mixed $prettyString): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPrettyString(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function __toString(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUpperBound(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLowerBound(): mixed;
+    }
+    /**
+    * Blackhole of constraints, nothing escapes it
+    *
+    * @generated
+    */
+    class MatchNoneConstraint implements \Composer\Semver\Constraint\ConstraintInterface {
+        /**
+        * @var string|null
+        * @generated
+        */
+        protected string|null $prettyString;
+        /**
+        * @param \Composer\Semver\Constraint\ConstraintInterface $provider
+        * @return bool
+        * @generated
+        */
+        public function matches(\Composer\Semver\Constraint\ConstraintInterface $provider): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function compile(mixed $otherOperator): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function setPrettyString(mixed $prettyString): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPrettyString(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function __toString(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUpperBound(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLowerBound(): mixed;
+    }
+    /**
+    * Defines a conjunctive or disjunctive set of constraints.
+    *
+    * @generated
+    */
+    class MultiConstraint implements \Composer\Semver\Constraint\ConstraintInterface {
+        /**
+        * @var mixed
+        * @generated
+        */
+        protected mixed $constraints;
+        /**
+        * @var string|null
+        * @generated
+        */
+        protected string|null $prettyString;
+        /**
+        * @var string|null
+        * @generated
+        */
+        protected string|null $string;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $conjunctive;
+        /**
+        * @var Bound|null
+        * @generated
+        */
+        protected \Composer\Semver\Constraint\Bound|null $lowerBound;
+        /**
+        * @var Bound|null
+        * @generated
+        */
+        protected \Composer\Semver\Constraint\Bound|null $upperBound;
+        /**
+        * @param array<int, ConstraintInterface> $constraints A set of constraints
+        * @param bool $conjunctive Whether the constraints should be treated as conjunctive or disjunctive
+        * @throws \InvalidArgumentException If less than 2 constraints are passed
+        * @generated
+        */
+        public function __construct(array<int, \Composer\Semver\Constraint\ConstraintInterface> $constraints, bool $conjunctive = true): void;
+        /**
+        * @return array<int, ConstraintInterface>
+        * @generated
+        */
+        public function getConstraints(): array<int, \Composer\Semver\Constraint\ConstraintInterface>;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function isConjunctive(): bool;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function isDisjunctive(): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function compile(mixed $otherOperator): mixed;
+        /**
+        * @param \Composer\Semver\Constraint\ConstraintInterface $provider
+        * @return bool
+        * @generated
+        */
+        public function matches(\Composer\Semver\Constraint\ConstraintInterface $provider): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function setPrettyString(mixed $prettyString): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPrettyString(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function __toString(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLowerBound(): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUpperBound(): mixed;
+        /**
+        * Tries to optimize the constraints as much as possible, meaning
+        *
+        * reducing/collapsing congruent constraints etc.
+        * Does not necessarily return a MultiConstraint instance if
+        * things can be reduced to a simple constraint
+        *
+        * @param array<int, ConstraintInterface> $constraints A set of constraints
+        * @param bool $conjunctive Whether the constraints should be treated as conjunctive or disjunctive
+        * @return ConstraintInterface
+        * @generated
+        */
+        public static function create(array<int, \Composer\Semver\Constraint\ConstraintInterface> $constraints, bool $conjunctive = true): \Composer\Semver\Constraint\ConstraintInterface;
+    }
+}

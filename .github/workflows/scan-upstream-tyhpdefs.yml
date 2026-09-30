@@ -1,0 +1,39 @@
+name: Scan upstream tyhpdef signals
+
+on:
+  schedule:
+    - cron: "17 11 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scan-upstream-tyhpdefs
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: none
+          tools: composer
+      - name: Scan Packagist extras
+        run: ./scan-upstream-tyhpdefs.sh --json report.json --markdown report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upstream-tyhpdef-report
+          path: |
+            report.json
+            report.md
+      - name: Update rolling report issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ vars.UPSTREAM_TYHPDEF_REPORT_ISSUE }}
+        run: |
+          gh issue edit "$ISSUE" --body-file report.md

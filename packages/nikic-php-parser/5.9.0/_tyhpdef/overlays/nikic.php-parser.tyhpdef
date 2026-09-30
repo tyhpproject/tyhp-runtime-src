@@ -1,0 +1,1137 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * `@internal` TokenPolyfill / TokenEmulator omitted from Layer 1; public Token
+ * and lexer emulators implement them. Layer 1 also emits unqualified
+ * `Node\…` / `Stmt\…` names from PHPDoc — overlay those to `PhpParser\…`.
+ */
+
+namespace PhpParser\Internal {
+    /**
+     * PHP 8+ token polyfill used by `PhpParser\Token`. Layer 1 omits `@internal`.
+     * Does not extend `\PhpToken` (that builtin is not in tyhpdef/php; extern cannot be extended).
+     */
+    class TokenPolyfill {
+        public int $id;
+        public string $text;
+        public int $line;
+        public int $pos;
+
+        public function __construct(int $id, string $text, int $line = -1, int $pos = -1): void;
+    }
+}
+
+namespace PhpParser\Lexer\TokenEmulator {
+    /**
+     * One `preprocessCode()` patch: `[offset, operation, replacement]`.
+     */
+    type CodePatch = struct {
+        int 0 as $offset;
+        string 1 as $kind;
+        string 2 as $text;
+    };
+
+    /**
+     * Internal emulator base. Layer 1 omits `@internal`.
+     */
+    abstract class TokenEmulator {
+        public abstract function getPhpVersion(): \PhpParser\PhpVersion;
+
+        public abstract function isEmulationNeeded(string $code): bool;
+
+        /**
+         * @param array<int, \PhpParser\Token> $tokens
+         * @return array<int, \PhpParser\Token>
+         */
+        public abstract function emulate(string $code, array<int, \PhpParser\Token> $tokens): array<int, \PhpParser\Token>;
+
+        /**
+         * @param array<int, \PhpParser\Token> $tokens
+         * @return array<int, \PhpParser\Token>
+         */
+        public abstract function reverseEmulate(string $code, array<int, \PhpParser\Token> $tokens): array<int, \PhpParser\Token>;
+
+        /**
+         * @param array<int, \PhpParser\Lexer\TokenEmulator\CodePatch> $patches
+         */
+        public function preprocessCode(string $code, array<int, \PhpParser\Lexer\TokenEmulator\CodePatch> &$patches): string;
+    }
+}
+
+namespace PhpParser {
+    /**
+     * Overlay: parse() returns `PhpParser\Node\Stmt` nodes (L1 used `\Node\Stmt`).
+     */
+    // @overlay-against: interface Parser
+    partial interface Parser {
+        /**
+         * @return array<int, \PhpParser\Node\Stmt>|null
+         */
+        // @overlay-against: function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler): array|null
+        public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): array<int, \PhpParser\Node\Stmt>|null;
+    }
+
+    /**
+     * Overlay: same parse() return as the interface.
+     */
+    // @overlay-against: class ParserAbstract implements \PhpParser\Parser
+    partial class ParserAbstract {
+        /**
+         * @return array<int, \PhpParser\Node\Stmt>|null
+         */
+        // @overlay-against: function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler): array|null
+        public function parse(string $code, ?\PhpParser\ErrorHandler $errorHandler = null): array<int, \PhpParser\Node\Stmt>|null;
+    }
+}
+
+namespace PhpParser\Builder {
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute` (L1 used `\Node\Attribute`).
+     */
+    // @overlay-against: class Class_ extends \PhpParser\Builder\Declaration
+    partial class Class_ {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class ClassConst implements \PhpParser\Builder
+    partial class ClassConst {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class Enum_ extends \PhpParser\Builder\Declaration
+    partial class Enum_ {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class EnumCase implements \PhpParser\Builder
+    partial class EnumCase {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class Function_ extends \PhpParser\Builder\FunctionLike
+    partial class Function_ {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class Interface_ extends \PhpParser\Builder\Declaration
+    partial class Interface_ {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class Method extends \PhpParser\Builder\FunctionLike
+    partial class Method {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class Param implements \PhpParser\Builder
+    partial class Param {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class Property implements \PhpParser\Builder
+    partial class Property {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: attribute groups are `PhpParser\Node\Attribute`.
+     */
+    // @overlay-against: class Trait_ extends \PhpParser\Builder\Declaration
+    partial class Trait_ {
+        // @overlay-against: function addAttribute(\Node\Attribute|\Node\AttributeGroup $attribute): static
+        public function addAttribute(\PhpParser\Node\Attribute|\PhpParser\Node\AttributeGroup $attribute): static;
+    }
+
+    /**
+     * Overlay: trait adaptations are `PhpParser\Node\Stmt\TraitUseAdaptation`.
+     */
+    // @overlay-against: class TraitUse implements \PhpParser\Builder
+    partial class TraitUse {
+        // @overlay-against: function with(\Stmt\TraitUseAdaptation|\Builder\TraitUseAdaptation $adaptation): static
+        public function with(\PhpParser\Node\Stmt\TraitUseAdaptation|\PhpParser\Builder\TraitUseAdaptation $adaptation): static;
+    }
+}
+
+namespace PhpParser\Node {
+    // @overlay-against: class Name extends \PhpParser\NodeAbstract
+    partial class Name {
+        // @overlay-against: function getParts(): array
+        public function getParts(): array<int, string>;
+
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+}
+
+// Node subclasses redeclare getSubNodeNames() as a bare array. The return is the subnode name list.
+namespace PhpParser\Node {
+    // @overlay-against: class Arg extends \PhpParser\NodeAbstract
+    partial class Arg {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ArgPlaceholder extends \PhpParser\NodeAbstract
+    partial class ArgPlaceholder {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ArrayItem extends \PhpParser\NodeAbstract
+    partial class ArrayItem {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Attribute extends \PhpParser\NodeAbstract
+    partial class Attribute {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class AttributeGroup extends \PhpParser\NodeAbstract
+    partial class AttributeGroup {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ClosureUse extends \PhpParser\NodeAbstract
+    partial class ClosureUse {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Const_ extends \PhpParser\NodeAbstract
+    partial class Const_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class DeclareItem extends \PhpParser\NodeAbstract
+    partial class DeclareItem {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Identifier extends \PhpParser\NodeAbstract
+    partial class Identifier {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class InterpolatedStringPart extends \PhpParser\NodeAbstract
+    partial class InterpolatedStringPart {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class IntersectionType extends \PhpParser\Node\ComplexType
+    partial class IntersectionType {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class MatchArm extends \PhpParser\NodeAbstract
+    partial class MatchArm {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class NullableType extends \PhpParser\Node\ComplexType
+    partial class NullableType {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Param extends \PhpParser\NodeAbstract
+    partial class Param {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class PropertyHook extends \PhpParser\NodeAbstract implements \PhpParser\Node\FunctionLike
+    partial class PropertyHook {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class PropertyItem extends \PhpParser\NodeAbstract
+    partial class PropertyItem {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class StaticVar extends \PhpParser\NodeAbstract
+    partial class StaticVar {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class UnionType extends \PhpParser\Node\ComplexType
+    partial class UnionType {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class UseItem extends \PhpParser\NodeAbstract
+    partial class UseItem {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class VariadicPlaceholder extends \PhpParser\NodeAbstract
+    partial class VariadicPlaceholder {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+}
+namespace PhpParser\Node\Expr {
+    // @overlay-against: class Array_ extends \PhpParser\Node\Expr
+    partial class Array_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ArrayDimFetch extends \PhpParser\Node\Expr
+    partial class ArrayDimFetch {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ArrowFunction extends \PhpParser\Node\Expr implements \PhpParser\Node\FunctionLike
+    partial class ArrowFunction {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Assign extends \PhpParser\Node\Expr
+    partial class Assign {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class AssignOp extends \PhpParser\Node\Expr
+    partial class AssignOp {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class AssignRef extends \PhpParser\Node\Expr
+    partial class AssignRef {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class BinaryOp extends \PhpParser\Node\Expr
+    partial class BinaryOp {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class BitwiseNot extends \PhpParser\Node\Expr
+    partial class BitwiseNot {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class BooleanNot extends \PhpParser\Node\Expr
+    partial class BooleanNot {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Cast extends \PhpParser\Node\Expr
+    partial class Cast {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ClassConstFetch extends \PhpParser\Node\Expr
+    partial class ClassConstFetch {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Clone_ extends \PhpParser\Node\Expr
+    partial class Clone_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Closure extends \PhpParser\Node\Expr implements \PhpParser\Node\FunctionLike
+    partial class Closure {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ConstFetch extends \PhpParser\Node\Expr
+    partial class ConstFetch {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Empty_ extends \PhpParser\Node\Expr
+    partial class Empty_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Error extends \PhpParser\Node\Expr
+    partial class Error {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ErrorSuppress extends \PhpParser\Node\Expr
+    partial class ErrorSuppress {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Eval_ extends \PhpParser\Node\Expr
+    partial class Eval_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Exit_ extends \PhpParser\Node\Expr
+    partial class Exit_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class FuncCall extends \PhpParser\Node\Expr\CallLike
+    partial class FuncCall {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Include_ extends \PhpParser\Node\Expr
+    partial class Include_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Instanceof_ extends \PhpParser\Node\Expr
+    partial class Instanceof_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Isset_ extends \PhpParser\Node\Expr
+    partial class Isset_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class List_ extends \PhpParser\Node\Expr
+    partial class List_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Match_ extends \PhpParser\Node\Expr
+    partial class Match_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class MethodCall extends \PhpParser\Node\Expr\CallLike
+    partial class MethodCall {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class New_ extends \PhpParser\Node\Expr\CallLike
+    partial class New_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class NullsafeMethodCall extends \PhpParser\Node\Expr\CallLike
+    partial class NullsafeMethodCall {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class NullsafePropertyFetch extends \PhpParser\Node\Expr
+    partial class NullsafePropertyFetch {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class PostDec extends \PhpParser\Node\Expr
+    partial class PostDec {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class PostInc extends \PhpParser\Node\Expr
+    partial class PostInc {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class PreDec extends \PhpParser\Node\Expr
+    partial class PreDec {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class PreInc extends \PhpParser\Node\Expr
+    partial class PreInc {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Print_ extends \PhpParser\Node\Expr
+    partial class Print_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class PropertyFetch extends \PhpParser\Node\Expr
+    partial class PropertyFetch {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ShellExec extends \PhpParser\Node\Expr
+    partial class ShellExec {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class StaticCall extends \PhpParser\Node\Expr\CallLike
+    partial class StaticCall {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class StaticPropertyFetch extends \PhpParser\Node\Expr
+    partial class StaticPropertyFetch {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Ternary extends \PhpParser\Node\Expr
+    partial class Ternary {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Throw_ extends \PhpParser\Node\Expr
+    partial class Throw_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class UnaryMinus extends \PhpParser\Node\Expr
+    partial class UnaryMinus {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class UnaryPlus extends \PhpParser\Node\Expr
+    partial class UnaryPlus {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Variable extends \PhpParser\Node\Expr
+    partial class Variable {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Yield_ extends \PhpParser\Node\Expr
+    partial class Yield_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class YieldFrom extends \PhpParser\Node\Expr
+    partial class YieldFrom {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+}
+namespace PhpParser\Node\Scalar {
+    // @overlay-against: class Float_ extends \PhpParser\Node\Scalar
+    partial class Float_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Int_ extends \PhpParser\Node\Scalar
+    partial class Int_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class InterpolatedString extends \PhpParser\Node\Scalar
+    partial class InterpolatedString {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class MagicConst extends \PhpParser\Node\Scalar
+    partial class MagicConst {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class String_ extends \PhpParser\Node\Scalar
+    partial class String_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Block extends \PhpParser\Node\Stmt
+    partial class Block {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Break_ extends \PhpParser\Node\Stmt
+    partial class Break_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Case_ extends \PhpParser\Node\Stmt
+    partial class Case_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Catch_ extends \PhpParser\Node\Stmt
+    partial class Catch_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Class_ extends \PhpParser\Node\Stmt\ClassLike
+    partial class Class_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ClassConst extends \PhpParser\Node\Stmt
+    partial class ClassConst {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ClassMethod extends \PhpParser\Node\Stmt implements \PhpParser\Node\FunctionLike
+    partial class ClassMethod {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Const_ extends \PhpParser\Node\Stmt
+    partial class Const_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Continue_ extends \PhpParser\Node\Stmt
+    partial class Continue_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Declare_ extends \PhpParser\Node\Stmt
+    partial class Declare_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Do_ extends \PhpParser\Node\Stmt
+    partial class Do_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Echo_ extends \PhpParser\Node\Stmt
+    partial class Echo_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Else_ extends \PhpParser\Node\Stmt
+    partial class Else_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class ElseIf_ extends \PhpParser\Node\Stmt
+    partial class ElseIf_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Enum_ extends \PhpParser\Node\Stmt\ClassLike
+    partial class Enum_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class EnumCase extends \PhpParser\Node\Stmt
+    partial class EnumCase {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Expression extends \PhpParser\Node\Stmt
+    partial class Expression {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Finally_ extends \PhpParser\Node\Stmt
+    partial class Finally_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class For_ extends \PhpParser\Node\Stmt
+    partial class For_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Foreach_ extends \PhpParser\Node\Stmt
+    partial class Foreach_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Function_ extends \PhpParser\Node\Stmt implements \PhpParser\Node\FunctionLike
+    partial class Function_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Global_ extends \PhpParser\Node\Stmt
+    partial class Global_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Goto_ extends \PhpParser\Node\Stmt
+    partial class Goto_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class GroupUse extends \PhpParser\Node\Stmt
+    partial class GroupUse {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class HaltCompiler extends \PhpParser\Node\Stmt
+    partial class HaltCompiler {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class If_ extends \PhpParser\Node\Stmt
+    partial class If_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class InlineHTML extends \PhpParser\Node\Stmt
+    partial class InlineHTML {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Interface_ extends \PhpParser\Node\Stmt\ClassLike
+    partial class Interface_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Label extends \PhpParser\Node\Stmt
+    partial class Label {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Namespace_ extends \PhpParser\Node\Stmt
+    partial class Namespace_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Nop extends \PhpParser\Node\Stmt
+    partial class Nop {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Property extends \PhpParser\Node\Stmt
+    partial class Property {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Return_ extends \PhpParser\Node\Stmt
+    partial class Return_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Static_ extends \PhpParser\Node\Stmt
+    partial class Static_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Switch_ extends \PhpParser\Node\Stmt
+    partial class Switch_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Trait_ extends \PhpParser\Node\Stmt\ClassLike
+    partial class Trait_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class TraitUse extends \PhpParser\Node\Stmt
+    partial class TraitUse {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class TryCatch extends \PhpParser\Node\Stmt
+    partial class TryCatch {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Unset_ extends \PhpParser\Node\Stmt
+    partial class Unset_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Use_ extends \PhpParser\Node\Stmt
+    partial class Use_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class While_ extends \PhpParser\Node\Stmt
+    partial class While_ {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+}
+namespace PhpParser\Node\Stmt\TraitUseAdaptation {
+    // @overlay-against: class Alias extends \PhpParser\Node\Stmt\TraitUseAdaptation
+    partial class Alias {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+    // @overlay-against: class Precedence extends \PhpParser\Node\Stmt\TraitUseAdaptation
+    partial class Precedence {
+        // @overlay-against: function getSubNodeNames(): array
+        public function getSubNodeNames(): array<int, string>;
+    }
+
+}
+
+// Child-node lists Layer 1 spelled as `\Node\…` are `\PhpParser\Node\…`.
+namespace PhpParser\Node\Expr {
+    // @overlay-against: class ArrowFunction extends \PhpParser\Node\Expr implements \PhpParser\Node\FunctionLike
+    partial class ArrowFunction {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $params
+        public array<int, \PhpParser\Node\Param> $params;
+    }
+}
+namespace PhpParser\Node\Expr {
+    // @overlay-against: class Closure extends \PhpParser\Node\Expr implements \PhpParser\Node\FunctionLike
+    partial class Closure {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $params
+        public array<int, \PhpParser\Node\Param> $params;
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Expr {
+    // @overlay-against: class FuncCall extends \PhpParser\Node\Expr\CallLike
+    partial class FuncCall {
+        // @overlay-against: array $args
+        public array<\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder> $args;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Case_ extends \PhpParser\Node\Stmt
+    partial class Case_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Catch_ extends \PhpParser\Node\Stmt
+    partial class Catch_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+        // @overlay-against: array $types
+        public array<int, \PhpParser\Node\Name> $types;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Class_ extends \PhpParser\Node\Stmt\ClassLike
+    partial class Class_ {
+        // @overlay-against: array $implements
+        public array<int, \PhpParser\Node\Name> $implements;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class ClassConst extends \PhpParser\Node\Stmt
+    partial class ClassConst {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $consts
+        public array<int, \PhpParser\Node\Const_> $consts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class ClassLike extends \PhpParser\Node\Stmt
+    partial class ClassLike {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class ClassMethod extends \PhpParser\Node\Stmt implements \PhpParser\Node\FunctionLike
+    partial class ClassMethod {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $params
+        public array<int, \PhpParser\Node\Param> $params;
+        // @overlay-against: array|null $stmts
+        public array<int, \PhpParser\Node\Stmt>|null $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Const_ extends \PhpParser\Node\Stmt
+    partial class Const_ {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $consts
+        public array<int, \PhpParser\Node\Const_> $consts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Declare_ extends \PhpParser\Node\Stmt
+    partial class Declare_ {
+        // @overlay-against: array|null $stmts
+        public array<int, \PhpParser\Node\Stmt>|null $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Do_ extends \PhpParser\Node\Stmt
+    partial class Do_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Echo_ extends \PhpParser\Node\Stmt
+    partial class Echo_ {
+        // @overlay-against: array $exprs
+        public array<int, \PhpParser\Node\Expr> $exprs;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Else_ extends \PhpParser\Node\Stmt
+    partial class Else_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class ElseIf_ extends \PhpParser\Node\Stmt
+    partial class ElseIf_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Enum_ extends \PhpParser\Node\Stmt\ClassLike
+    partial class Enum_ {
+        // @overlay-against: array $implements
+        public array<int, \PhpParser\Node\Name> $implements;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class EnumCase extends \PhpParser\Node\Stmt
+    partial class EnumCase {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Finally_ extends \PhpParser\Node\Stmt
+    partial class Finally_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class For_ extends \PhpParser\Node\Stmt
+    partial class For_ {
+        // @overlay-against: array $cond
+        public array<int, \PhpParser\Node\Expr> $cond;
+        // @overlay-against: array $init
+        public array<int, \PhpParser\Node\Expr> $init;
+        // @overlay-against: array $loop
+        public array<int, \PhpParser\Node\Expr> $loop;
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Foreach_ extends \PhpParser\Node\Stmt
+    partial class Foreach_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Function_ extends \PhpParser\Node\Stmt implements \PhpParser\Node\FunctionLike
+    partial class Function_ {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $params
+        public array<int, \PhpParser\Node\Param> $params;
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Global_ extends \PhpParser\Node\Stmt
+    partial class Global_ {
+        // @overlay-against: array $vars
+        public array<int, \PhpParser\Node\Expr> $vars;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class If_ extends \PhpParser\Node\Stmt
+    partial class If_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Interface_ extends \PhpParser\Node\Stmt\ClassLike
+    partial class Interface_ {
+        // @overlay-against: array $extends
+        public array<int, \PhpParser\Node\Name> $extends;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Namespace_ extends \PhpParser\Node\Stmt
+    partial class Namespace_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Property extends \PhpParser\Node\Stmt
+    partial class Property {
+        // @overlay-against: array $attrGroups
+        public array<int, \PhpParser\Node\AttributeGroup> $attrGroups;
+        // @overlay-against: array $hooks
+        public array<int, \PhpParser\Node\PropertyHook> $hooks;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class TraitUse extends \PhpParser\Node\Stmt
+    partial class TraitUse {
+        // @overlay-against: array $traits
+        public array<int, \PhpParser\Node\Name> $traits;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class TryCatch extends \PhpParser\Node\Stmt
+    partial class TryCatch {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class Unset_ extends \PhpParser\Node\Stmt
+    partial class Unset_ {
+        // @overlay-against: array $vars
+        public array<int, \PhpParser\Node\Expr> $vars;
+    }
+}
+namespace PhpParser\Node\Stmt {
+    // @overlay-against: class While_ extends \PhpParser\Node\Stmt
+    partial class While_ {
+        // @overlay-against: array $stmts
+        public array<int, \PhpParser\Node\Stmt> $stmts;
+    }
+}
+namespace PhpParser\Node\Stmt\TraitUseAdaptation {
+    // @overlay-against: class Precedence extends \PhpParser\Node\Stmt\TraitUseAdaptation
+    partial class Precedence {
+        // @overlay-against: array $insteadof
+        public array<int, \PhpParser\Node\Name> $insteadof;
+    }
+}

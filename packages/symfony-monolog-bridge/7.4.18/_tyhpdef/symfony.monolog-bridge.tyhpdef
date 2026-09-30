@@ -1,0 +1,325 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Bridge\Monolog\Command {
+}
+namespace Symfony\Bridge\Monolog\Formatter {
+    /**
+    * Formats incoming records for console output by coloring them depending on log level.
+    *
+    * @author Tobias Schultze <http://tobion.de>
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    final class ConsoleFormatter implements \Monolog\Formatter\FormatterInterface {
+        public const string SIMPLE_FORMAT ?? "%datetime% %start_tag%%level_name%%end_tag% <comment>[%channel%]</> %message%%context%%extra%\n";
+        public const string SIMPLE_DATE ?? 'H:i:s';
+        /**
+        * Available options:
+        *
+        *   * format: The format of the outputted log string. The following placeholders are supported: %datetime%, %start_tag%, %level_name%, %end_tag%, %channel%, %message%, %context%, %extra%;
+        *   * date_format: The format of the outputted date string;
+        *   * colors: If true, the log string contains ANSI code to add color;
+        *   * multiline: If false, "context" and "extra" are dumped on one line.
+        *
+        * @generated
+        */
+        public function __construct(array $options = []): void;
+        public function formatBatch(array $records): mixed;
+        public function format(\Monolog\LogRecord $record): mixed;
+    }
+    /**
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    final class VarDumperFormatter implements \Monolog\Formatter\FormatterInterface {
+        public function __construct(?\Symfony\Component\VarDumper\Cloner\VarCloner $cloner = null): void;
+        public function format(\Monolog\LogRecord $record): mixed;
+        public function formatBatch(array $records): mixed;
+    }
+}
+namespace Symfony\Bridge\Monolog\Handler {
+    /**
+    * ChromePhpHandler.
+    *
+    * @author Christophe Coevoet <stof@notk.org>
+    * @final
+    * @generated
+    */
+    class ChromePhpHandler extends \Monolog\Handler\ChromePHPHandler {
+        /**
+        * Adds the headers to the response once it's created.
+        *
+        * @generated
+        */
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        protected function sendHeader(mixed $header, mixed $content): void;
+        /**
+        * Override default behavior since we check it in onKernelResponse.
+        *
+        * @generated
+        */
+        protected function headersAccepted(): bool;
+    }
+    /**
+    * Writes logs to the console output depending on its verbosity setting.
+    *
+    * It is disabled by default and gets activated as soon as a command is executed.
+    * Instead of listening to the console events, the output can also be set manually.
+    * 
+    * The minimum logging level at which this handler will be triggered depends on the
+    * verbosity setting of the console output. The default mapping is:
+    * - OutputInterface::VERBOSITY_NORMAL will show all WARNING and higher logs
+    * - OutputInterface::VERBOSITY_VERBOSE (-v) will show all NOTICE and higher logs
+    * - OutputInterface::VERBOSITY_VERY_VERBOSE (-vv) will show all INFO and higher logs
+    * - OutputInterface::VERBOSITY_DEBUG (-vvv) will show all DEBUG and higher logs, i.e. all logs
+    * 
+    * This mapping can be customized with the $verbosityLevelMap constructor parameter.
+    *
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    final class ConsoleHandler extends \Monolog\Handler\AbstractProcessingHandler implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param ?\Symfony\Component\Console\Output\OutputInterface $output The console output to use (the handler remains disabled when passing null
+        *  *                                                    until the output is set, e.g. by using console events)
+        * @param bool $bubble Whether the messages that are handled can bubble up the stack
+        * @param array $verbosityLevelMap Array that maps the OutputInterface verbosity to a minimum logging
+        *  *                                                    level (leave empty to use the default mapping)
+        * @generated
+        */
+        public function __construct(?\Symfony\Component\Console\Output\OutputInterface $output = null, bool $bubble = true, array $verbosityLevelMap = [], array $consoleFormatterOptions = [], bool $interactiveOnly = false): void;
+        public function isHandling(\Monolog\LogRecord $record): bool;
+        public function getBubble(): bool;
+        public function handle(\Monolog\LogRecord $record): bool;
+        public function setInput(\Symfony\Component\Console\Input\InputInterface $input): void;
+        /**
+        * Sets the console output to use for printing logs.
+        *
+        * @generated
+        */
+        public function setOutput(\Symfony\Component\Console\Output\OutputInterface $output): void;
+        /**
+        * Disables the output.
+        *
+        * @generated
+        */
+        public function close(): void;
+        /**
+        * Before a command is executed, the handler gets activated and the console output
+        *
+        * is set in order to know where to write the logs.
+        *
+        * @generated
+        */
+        public function onCommand(\Symfony\Component\Console\Event\ConsoleCommandEvent $event): void;
+        /**
+        * After a command has been executed, it disables the output.
+        *
+        * @generated
+        */
+        public function onTerminate(\Symfony\Component\Console\Event\ConsoleTerminateEvent $event): void;
+        public static function getSubscribedEvents(): array;
+        protected function write(\Monolog\LogRecord $record): void;
+        protected function getDefaultFormatter(): \Monolog\Formatter\FormatterInterface;
+    }
+    /**
+    * Push logs directly to Elasticsearch and format them according to Logstash specification.
+    *
+    * This handler dials directly with the HTTP interface of Elasticsearch. This
+    * means it will slow down your application if Elasticsearch takes times to
+    * answer. Even if all HTTP calls are done asynchronously.
+    * 
+    * In a development environment, it's fine to keep the default configuration:
+    * for each log, an HTTP request will be made to push the log to Elasticsearch.
+    * 
+    * In a production environment, it's highly recommended to wrap this handler
+    * in a handler with buffering capabilities (like the FingersCrossedHandler, or
+    * BufferHandler) in order to call Elasticsearch only once with a bulk push. For
+    * even better performance and fault tolerance, a proper ELK (https://www.elastic.co/what-is/elk-stack)
+    * stack is recommended.
+    *
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    final class ElasticsearchLogstashHandler extends \Monolog\Handler\AbstractHandler {
+        use \Monolog\Handler\FormattableHandlerTrait, \Monolog\Handler\ProcessableHandlerTrait;
+        public function __construct(string $endpoint = 'http://127.0.0.1:9200', string $index = 'monolog', ?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null, string|int|\Monolog\Level $level = \Monolog\Level::Debug, bool $bubble = true, string $elasticsearchVersion = '1.0.0'): void;
+        public function handle(\Monolog\LogRecord $record): bool;
+        public function handleBatch(array $records): void;
+        protected function getDefaultFormatter(): \Monolog\Formatter\FormatterInterface;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        public function __destruct(): void;
+    }
+    /**
+    * FirePHPHandler.
+    *
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @final
+    * @generated
+    */
+    class FirePHPHandler extends \Monolog\Handler\FirePHPHandler {
+        /**
+        * Adds the headers to the response once it's created.
+        *
+        * @generated
+        */
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        protected function sendHeader(mixed $header, mixed $content): void;
+        /**
+        * Override default behavior since we check the user agent in onKernelResponse.
+        *
+        * @generated
+        */
+        protected function headersAccepted(): bool;
+    }
+    /**
+    * @author Alexander Borisov <boshurik@gmail.com>
+    * @generated
+    */
+    final class MailerHandler extends \Monolog\Handler\AbstractProcessingHandler {
+        public function __construct(\Symfony\Component\Mailer\MailerInterface $mailer, callable|\Symfony\Component\Mime\Email $messageTemplate, string|int|\Monolog\Level $level = \Monolog\Level::Debug, bool $bubble = true): void;
+        public function handleBatch(array $records): void;
+        protected function write(\Monolog\LogRecord $record): void;
+        /**
+        * Send a mail with the given content.
+        *
+        * @param string $content formatted email body to be sent
+        * @param array $records the array of log records that formed this content
+        * @generated
+        */
+        protected function send(string $content, array $records): void;
+        /**
+        * Gets the formatter for the Message subject.
+        *
+        * @param string $format The format of the subject
+        * @generated
+        */
+        protected function getSubjectFormatter(string $format): \Monolog\Formatter\FormatterInterface;
+        /**
+        * Creates instance of Message to be sent.
+        *
+        * @param string $content formatted email body to be sent
+        * @param array $records Log records that formed the content
+        * @generated
+        */
+        protected function buildMessage(string $content, array $records): \Symfony\Component\Mime\Email;
+        protected function getHighestRecord(array $records): \Monolog\LogRecord;
+    }
+    /**
+    * Uses Notifier as a log handler.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class NotifierHandler extends \Monolog\Handler\AbstractHandler {
+        public function __construct(\Symfony\Component\Notifier\NotifierInterface $notifier, string|int|\Monolog\Level $level = \Monolog\Level::Error, bool $bubble = true): void;
+        public function handle(\Monolog\LogRecord $record): bool;
+        public function handleBatch(array $records): void;
+    }
+}
+namespace Symfony\Bridge\Monolog\Handler\FingersCrossed {
+    /**
+    * Activation strategy that ignores certain HTTP codes.
+    *
+    * @author Shaun Simmons <shaun@envysphere.com>
+    * @author Pierrick Vignand <pierrick.vignand@gmail.com>
+    * @generated
+    */
+    final class HttpCodeActivationStrategy implements \Monolog\Handler\FingersCrossed\ActivationStrategyInterface {
+        /**
+        * @param array $exclusions each exclusion must have a "code" and "urls" keys
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, array $exclusions, \Monolog\Handler\FingersCrossed\ActivationStrategyInterface $inner): void;
+        public function isHandlerActivated(\Monolog\LogRecord $record): bool;
+    }
+    /**
+    * Activation strategy that ignores 404s for certain URLs.
+    *
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Pierrick Vignand <pierrick.vignand@gmail.com>
+    * @deprecated since Symfony 7.4, use {@see HttpCodeActivationStrategy} instead
+    * @generated
+    */
+    deprecated final class NotFoundActivationStrategy implements \Monolog\Handler\FingersCrossed\ActivationStrategyInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, array $excludedUrls, \Monolog\Handler\FingersCrossed\ActivationStrategyInterface $inner): void;
+        public function isHandlerActivated(\Monolog\LogRecord $record): bool;
+    }
+}
+namespace Symfony\Bridge\Monolog\Processor {
+    /**
+    * Adds the current console command information to the log entry.
+    *
+    * @author Piotr Stankowski <git@trakos.pl>
+    * @generated
+    */
+    final class ConsoleCommandProcessor implements \Symfony\Component\EventDispatcher\EventSubscriberInterface, \Symfony\Contracts\Service\ResetInterface, \Monolog\ResettableInterface {
+        public function __construct(bool $includeArguments = true, bool $includeOptions = false): void;
+        public function __invoke(\Monolog\LogRecord $record): \Monolog\LogRecord;
+        public function reset(): void;
+        public function addCommandData(\Symfony\Component\Console\Event\ConsoleEvent $event): void;
+        public function removeCommandData(): void;
+        public static function getSubscribedEvents(): array;
+    }
+    class DebugProcessor implements \Symfony\Component\HttpKernel\Log\DebugLoggerInterface, \Symfony\Contracts\Service\ResetInterface, \Monolog\ResettableInterface {
+        public function __construct(?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null): void;
+        public function __invoke(\Monolog\LogRecord $record): \Monolog\LogRecord;
+        public function getLogs(?\Symfony\Component\HttpFoundation\Request $request = null): array;
+        public function countErrors(?\Symfony\Component\HttpFoundation\Request $request = null): int;
+        public function clear(): void;
+        public function reset(): void;
+    }
+    /**
+    * Adds the current route information to the log entry.
+    *
+    * @author Piotr Stankowski <git@trakos.pl>
+    * @final
+    * @generated
+    */
+    class RouteProcessor implements \Symfony\Component\EventDispatcher\EventSubscriberInterface, \Symfony\Contracts\Service\ResetInterface, \Monolog\ResettableInterface {
+        public function __construct(bool $includeParams = true): void;
+        public function __invoke(\Monolog\LogRecord $record): \Monolog\LogRecord;
+        public function reset(): void;
+        public function addRouteData(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public function removeRouteData(\Symfony\Component\HttpKernel\Event\FinishRequestEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Adds the original security token to the log entry.
+    *
+    * @author Igor Timoshenko <igor.timoshenko@i.ua>
+    * @generated
+    */
+    final class SwitchUserTokenProcessor extends \Symfony\Bridge\Monolog\Processor\AbstractTokenProcessor {
+        protected function getKey(): string;
+        protected function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+    }
+    /**
+    * Adds the current security token to the log entry.
+    *
+    * @author Dany Maillard <danymaillard93b@gmail.com>
+    * @author Igor Timoshenko <igor.timoshenko@i.ua>
+    * @generated
+    */
+    final class TokenProcessor extends \Symfony\Bridge\Monolog\Processor\AbstractTokenProcessor {
+        protected function getKey(): string;
+        protected function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+    }
+    /**
+    * WebProcessor override to read from the HttpFoundation's Request.
+    *
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @final
+    * @generated
+    */
+    class WebProcessor extends \Monolog\Processor\WebProcessor implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(?array $extraFields = null): void;
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+}

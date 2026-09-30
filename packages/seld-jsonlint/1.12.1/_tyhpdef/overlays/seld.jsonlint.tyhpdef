@@ -1,0 +1,98 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Lint flags are ints. Parse failures carry the phpstan details shape.
+ */
+
+namespace Seld\JsonLint {
+    /**
+     * `ParsingException` details (`text`, `token`, `line`, `loc`, `expected`).
+     */
+    type ParseDetails = struct {
+        ?array<int|string, string> $expected;
+        ?int $line;
+        ?\Seld\JsonLint\ParseLocation $loc;
+        ?string $text;
+        ?\Seld\JsonLint\ParseToken $token;
+    };
+
+    /**
+     * Location of a parse error inside the input (`loc` on `ParseDetails`).
+     */
+    type ParseLocation = struct {
+        int $first_column;
+        int $first_line;
+        int $last_column;
+        int $last_line;
+    };
+
+    /**
+     * Lexer token recorded on a parse error: a name or a character code.
+     */
+    type ParseToken = string|int;
+
+    /**
+     * Overlay: duplicate-key failures use the parse-details shape.
+     */
+    // @overlay-against: class DuplicateKeyException extends \Seld\JsonLint\ParsingException
+    partial class DuplicateKeyException {
+        // @overlay-against: array $details
+        protected \Seld\JsonLint\ParseDetails $details;
+
+        // @overlay-against: function __construct(string $message, string $key, array $details): void
+        public function __construct(string $message, string $key, \Seld\JsonLint\ParseDetails|array<string, mixed> $details): void;
+
+        // @overlay-against: function getDetails(): array
+        public function getDetails(): \Seld\JsonLint\ParseDetails;
+    }
+
+    /**
+     * Overlay: encoding failures use the parse-details shape.
+     */
+    // @overlay-against: class InvalidEncodingException extends \Seld\JsonLint\ParsingException
+    partial class InvalidEncodingException {
+        // @overlay-against: array $details
+        protected \Seld\JsonLint\ParseDetails $details;
+
+        // @overlay-against: function __construct(string $message, string $key, array $details): void
+        public function __construct(string $message, string $key, \Seld\JsonLint\ParseDetails|array<string, mixed> $details): void;
+
+        // @overlay-against: function getDetails(): array
+        public function getDetails(): \Seld\JsonLint\ParseDetails;
+    }
+
+    /**
+     * Overlay: `lint()` / `parse()` flags are ints (Layer 1 used `mixed`).
+     * `parse()` still returns `mixed`: a JSON value can be any JSON type.
+     */
+    // @overlay-against: class JsonParser
+    partial class JsonParser {
+        /**
+         * @param int $flags
+         */
+        // @overlay-against: function lint(string $input, mixed $flags): null|\Seld\JsonLint\ParsingException
+        public function lint(string $input, int $flags = 0): null|\Seld\JsonLint\ParsingException;
+
+        /**
+         * @param int $flags
+         */
+        // @overlay-against: function parse(string $input, mixed $flags): mixed
+        public function parse(string $input, int $flags = 0): mixed;
+    }
+
+    /**
+     * Overlay: `getDetails()` is the fixed parse-error shape.
+     */
+    // @overlay-against: class ParsingException extends \Exception
+    partial class ParsingException {
+        // @overlay-against: array $details
+        protected \Seld\JsonLint\ParseDetails $details;
+
+        // @overlay-against: function __construct(string $message, array $details): void
+        public function __construct(string $message, \Seld\JsonLint\ParseDetails|array<string, mixed> $details = []): void;
+
+        // @overlay-against: function getDetails(): array
+        public function getDetails(): \Seld\JsonLint\ParseDetails;
+    }
+}

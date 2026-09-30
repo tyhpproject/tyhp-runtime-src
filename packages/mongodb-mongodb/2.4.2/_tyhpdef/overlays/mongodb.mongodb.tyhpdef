@@ -1,0 +1,193 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Client / Collection / Database option bags. Driver and BSON types come from tyhpdef/php-ext-mongodb.
+ */
+
+namespace MongoDB {
+    /**
+     * Options accepted by `Collection::__construct()`.
+     */
+    type CollectionOptions = struct {
+        ?bool $autoEncryptionEnabled;
+        ?\MongoDB\Codec\Encoder $builderEncoder;
+        ?\MongoDB\Codec\DocumentCodec $codec;
+        ?\MongoDB\Driver\ReadConcern $readConcern;
+        ?\MongoDB\Driver\ReadPreference $readPreference;
+        ?\MongoDB\TypeMap $typeMap;
+        ?\MongoDB\Driver\WriteConcern $writeConcern;
+    };
+
+    /**
+     * Options accepted by `Database::__construct()`.
+     */
+    type DatabaseOptions = struct {
+        ?bool $autoEncryptionEnabled;
+        ?\MongoDB\Codec\Encoder $builderEncoder;
+        ?\MongoDB\Driver\ReadConcern $readConcern;
+        ?\MongoDB\Driver\ReadPreference $readPreference;
+        ?\MongoDB\TypeMap $typeMap;
+        ?\MongoDB\Driver\WriteConcern $writeConcern;
+    };
+
+    /**
+     * Options for `Collection::find()` / `findOne()`.
+     */
+    type FindOptions = struct {
+        ?bool $allowDiskUse;
+        ?bool $allowPartialResults;
+        ?int $batchSize;
+        ?\MongoDB\Codec\DocumentCodec $codec;
+        array<string, mixed>|\stdClass|null $collation;
+        mixed|null $comment;
+        string|array<string, mixed>|\stdClass|null $hint;
+        ?int $limit;
+        ?int $maxAwaitTimeMS;
+        ?int $maxTimeMS;
+        array<string, mixed>|\stdClass|null $projection;
+        ?\MongoDB\Driver\ReadConcern $readConcern;
+        ?\MongoDB\Driver\ReadPreference $readPreference;
+        ?int $skip;
+        array<string, mixed>|\stdClass|null $sort;
+        ?\MongoDB\TypeMap $typeMap;
+    };
+
+    /**
+     * BSON type map (`root` / `document` / `array` class or `"array"`).
+     */
+    type TypeMap = struct {
+        ?string $root;
+        ?string $document;
+        ?string $array;
+    };
+
+    /**
+     * Overlay: inserted and upserted ids are index => id. Driver-generated ids are ObjectId; user ids stay as stored.
+     */
+    // @overlay-against: class BulkWriteResult
+    partial class BulkWriteResult {
+        // @overlay-against: function getInsertedIds(): array
+        public function getInsertedIds(): array<int, mixed>;
+
+        // @overlay-against: function getUpsertedIds(): array
+        public function getUpsertedIds(): array<int, mixed>;
+    }
+
+    /**
+     * Overlay: URI / driver option bags pass through to ext-mongodb.
+     */
+    // @overlay-against: class Client implements \Stringable
+    partial class Client {
+        // @overlay-against: function __construct(?string $uri, array $uriOptions, array $driverOptions): void
+        public function __construct(?string $uri = null, array<string, mixed> $uriOptions = [], array<string, mixed> $driverOptions = []);
+
+        // @overlay-against: function getTypeMap(): array
+        public function getTypeMap(): \MongoDB\TypeMap;
+    }
+
+    /**
+     * Overlay: collection options are a string-keyed bag (codec, typeMap, read/write concern).
+     */
+    // @overlay-against: class Collection implements \Stringable
+    partial class Collection {
+        // @overlay-against: function __construct(\MongoDB\Driver\Manager $manager, string $databaseName, string $collectionName, array $options): void
+        public function __construct(\MongoDB\Driver\Manager $manager, string $databaseName, string $collectionName, \MongoDB\CollectionOptions $options = []);
+
+        // @overlay-against: function getTypeMap(): array
+        public function getTypeMap(): \MongoDB\TypeMap;
+    }
+
+    /**
+     * Overlay: database options are a string-keyed bag (typeMap, read/write concern).
+     */
+    // @overlay-against: class Database implements \Stringable
+    partial class Database {
+        // @overlay-against: function __construct(\MongoDB\Driver\Manager $manager, string $databaseName, array $options): void
+        public function __construct(\MongoDB\Driver\Manager $manager, string $databaseName, \MongoDB\DatabaseOptions $options = []);
+
+        // @overlay-against: function getTypeMap(): array
+        public function getTypeMap(): \MongoDB\TypeMap;
+    }
+
+    // @overlay-against: class InsertManyResult
+    partial class InsertManyResult {
+        // @overlay-against: function __construct(\MongoDB\Driver\WriteResult $writeResult, array $insertedIds): void
+        public function __construct(\MongoDB\Driver\WriteResult $writeResult, array<int, mixed> $insertedIds): void;
+
+        // @overlay-against: function getInsertedIds(): array
+        public function getInsertedIds(): array<int, mixed>;
+    }
+}
+
+namespace MongoDB {
+    // @overlay-against: class Collection implements \Stringable
+    partial class Collection {
+        // @overlay-against: function createIndexes(array $indexes, array $options): array
+        public function createIndexes(array<int|string, array<string, mixed>> $indexes, array<string, mixed> $options = []): array<int, string>;
+        // @overlay-against: function find(array|object $filter, array $options): \MongoDB\Driver\CursorInterface
+        public function find(array<string, mixed>|object $filter = [], \MongoDB\FindOptions $options = []): \MongoDB\Driver\CursorInterface;
+        // @overlay-against: function findOne(array|object $filter, array $options): array|object|null
+        public function findOne(array<string, mixed>|object $filter = [], \MongoDB\FindOptions $options = []): array<string, mixed>|object|null;
+        // @overlay-against: function insertMany(array $documents, array $options): \MongoDB\InsertManyResult
+        public function insertMany(array<int|string, object|array<string, mixed>> $documents, array<string, mixed> $options = []): \MongoDB\InsertManyResult;
+    }
+}
+
+namespace MongoDB\Builder {
+    // @overlay-against: class Pipeline implements \IteratorAggregate
+    partial class Pipeline {
+        // @overlay-against: function __construct(\MongoDB\Builder\Type\StageInterface|\MongoDB\Builder\Pipeline|array|\stdClass $stagesOrPipelines): void
+        public function __construct(\MongoDB\Builder\stage|array<int|string, \MongoDB\Builder\stage> ...$stagesOrPipelines): void;
+    }
+
+    // @overlay-against: class UpdatePipeline implements \IteratorAggregate
+    partial class UpdatePipeline {
+        // @overlay-against: function __construct(\MongoDB\Builder\Type\UpdateStageInterface|\MongoDB\Builder\UpdatePipeline|array|\stdClass $stagesOrPipelines): void
+        public function __construct(\MongoDB\Builder\stage|array<int|string, \MongoDB\Builder\stage> ...$stagesOrPipelines): void;
+    }
+}
+
+namespace MongoDB\Builder\Stage {
+    // @overlay-against: trait FluentFactoryTrait
+    partial trait FluentFactoryTrait {
+        // @overlay-against: function match(\DateTimeInterface|\MongoDB\Builder\Type\QueryInterface|\MongoDB\Builder\Type\FieldQueryInterface|\MongoDB\BSON\Type|\stdClass|array|string|int|float|bool|null $queries): static
+        public function match(\DateTimeInterface|\MongoDB\Builder\Type\QueryInterface|\MongoDB\Builder\Type\FieldQueryInterface|\MongoDB\BSON\Type|\stdClass|array<int|string, mixed>|bool|float|int|string|null ...$queries): static;
+    }
+}
+
+namespace MongoDB\GridFS {
+    // @overlay-against: class Bucket
+    partial class Bucket {
+        // @overlay-against: function getTypeMap(): array
+        public function getTypeMap(): \MongoDB\TypeMap;
+    }
+}
+
+namespace MongoDB\Model {
+    // @overlay-against: class BSONDocument extends \ArrayObject implements \JsonSerializable, \MongoDB\BSON\Serializable, \MongoDB\BSON\Unserializable
+    partial class BSONDocument {
+        // @overlay-against: function __construct(array|\stdClass $input, int $flags, string $iteratorClass): void
+        public function __construct(array<string, mixed>|\stdClass $input = [], int $flags = \ArrayObject::ARRAY_AS_PROPS, string $iteratorClass = \ArrayIterator::class): void;
+    }
+}
+
+namespace MongoDB\Operation {
+    // @overlay-against: class CreateIndexes
+    partial class CreateIndexes {
+        // @overlay-against: function __construct(string $databaseName, string $collectionName, array $indexes, array $options): void
+        public function __construct(string $databaseName, string $collectionName, array<int|string, array> $indexes, array $options = []): void;
+    }
+
+    // @overlay-against: class CreateSearchIndexes
+    partial class CreateSearchIndexes {
+        // @overlay-against: function __construct(string $databaseName, string $collectionName, array $indexes, array $options): void
+        public function __construct(string $databaseName, string $collectionName, array<int|string, array> $indexes, array $options): void;
+    }
+
+    // @overlay-against: class InsertMany
+    partial class InsertMany {
+        // @overlay-against: function __construct(string $databaseName, string $collectionName, array $documents, array $options): void
+        public function __construct(string $databaseName, string $collectionName, array<int|string, object|array> $documents, array $options = []): void;
+    }
+}

@@ -1,0 +1,1910 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Security\Core {
+    final class AuthenticationEvents {
+        /**
+        * The AUTHENTICATION_SUCCESS event occurs after a user is authenticated
+        *
+        * by one provider.
+        *
+        * @event ("Symfony\Component\Security\Core\Event\AuthenticationSuccessEvent")
+        * @generated
+        */
+        public const string AUTHENTICATION_SUCCESS ?? 'security.authentication.success';
+        /**
+        * Event aliases.
+        *
+        * These aliases can be consumed by RegisterListenersPass.
+        *
+        * @generated
+        */
+        public const array ALIASES ?? [];
+    }
+}
+namespace Symfony\Component\Security\Core\Authentication {
+    /**
+    * The default implementation of the authentication trust resolver.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class AuthenticationTrustResolver implements \Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface {
+        public function isAuthenticated(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): bool;
+        public function isRememberMe(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): bool;
+        public function isFullFledged(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): bool;
+    }
+    /**
+    * Interface for resolving the authentication status of a given token.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface AuthenticationTrustResolverInterface {
+        /**
+        * Resolves whether the passed token implementation is authenticated.
+        *
+        * @generated
+        */
+        public function isAuthenticated(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): bool;
+        /**
+        * Resolves whether the passed token implementation is authenticated
+        *
+        * using remember-me capabilities.
+        *
+        * @generated
+        */
+        public function isRememberMe(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): bool;
+        /**
+        * Resolves whether the passed token implementation is fully authenticated.
+        *
+        * @generated
+        */
+        public function isFullFledged(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): bool;
+    }
+}
+namespace Symfony\Component\Security\Core\Authentication\RememberMe {
+    /**
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @generated
+    */
+    class CacheTokenVerifier implements \Symfony\Component\Security\Core\Authentication\RememberMe\TokenVerifierInterface {
+        /**
+        * @param int $outdatedTokenTtl How long the outdated token should still be considered valid. Defaults
+        *  *                                  to 60, which matches how often the PersistentRememberMeHandler will at
+        *  *                                  most refresh tokens. Increasing to more than that is not recommended,
+        *  *                                  but you may use a lower value.
+        * @generated
+        */
+        public function __construct(\Psr\Cache\CacheItemPoolInterface $cache, int $outdatedTokenTtl = 60, string $cacheKeyPrefix = 'rememberme-stale-'): void;
+        public function verifyToken(\Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface $token, string $tokenValue): bool;
+        public function updateExistingToken(\Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface $token, string $tokenValue, \DateTimeInterface $lastUsed): void;
+    }
+    /**
+    * This class is used for testing purposes, and is not really suited for production.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    final class InMemoryTokenProvider implements \Symfony\Component\Security\Core\Authentication\RememberMe\TokenProviderInterface {
+        public function loadTokenBySeries(string $series): \Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface;
+        public function updateToken(string $series, string $tokenValue, \DateTimeInterface $lastUsed): void;
+        public function deleteTokenBySeries(string $series): void;
+        public function createNewToken(\Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface $token): void;
+    }
+    /**
+    * Interface to be implemented by persistent token classes (such as
+    *
+    * Doctrine entities representing a remember-me token).
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface PersistentTokenInterface {
+        /**
+        * Returns the class of the user.
+        *
+        * @deprecated since Symfony 7.4, the user class will be removed from the remember-me cookie in 8.0
+        * @generated
+        */
+        deprecated public function getClass(): string;
+        /**
+        * Returns the series.
+        *
+        * @generated
+        */
+        public function getSeries(): string;
+        /**
+        * Returns the token value.
+        *
+        * @generated
+        */
+        public function getTokenValue(): string;
+        /**
+        * Returns the time the token was last used.
+        *
+        * Each call SHOULD return a new distinct DateTime instance.
+        *
+        * @generated
+        */
+        public function getLastUsed(): \DateTime;
+        /**
+        * Returns the identifier used to authenticate (e.g. their email address or username).
+        *
+        * @generated
+        */
+        public function getUserIdentifier(): string;
+    }
+    /**
+    * Interface for TokenProviders.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface TokenProviderInterface {
+        /**
+        * Loads the active token for the given series.
+        *
+        * @return PersistentTokenInterface
+        * @throws TokenNotFoundException if the token is not found
+        * @generated
+        */
+        public function loadTokenBySeries(string $series): \Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface;
+        /**
+        * Deletes all tokens belonging to series.
+        *
+        * @return void
+        * @generated
+        */
+        public function deleteTokenBySeries(string $series): void;
+        /**
+        * Updates the token according to this data.
+        *
+        * @return void
+        * @throws TokenNotFoundException if the token is not found
+        * @generated
+        */
+        public function updateToken(string $series, string $tokenValue, \DateTimeInterface $lastUsed): void;
+        /**
+        * Creates a new token.
+        *
+        * @return void
+        * @generated
+        */
+        public function createNewToken(\Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface $token): void;
+    }
+    /**
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @generated
+    */
+    interface TokenVerifierInterface {
+        /**
+        * Verifies that the given $token is valid.
+        *
+        * This lets you override the token check logic to for example accept slightly outdated tokens.
+        * 
+        * Do not forget to implement token comparisons using hash_equals for a secure implementation.
+        *
+        * @generated
+        */
+        public function verifyToken(\Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface $token, string $tokenValue): bool;
+        /**
+        * Updates an existing token with a new token value and lastUsed time.
+        *
+        * @generated
+        */
+        public function updateExistingToken(\Symfony\Component\Security\Core\Authentication\RememberMe\PersistentTokenInterface $token, string $tokenValue, \DateTimeInterface $lastUsed): void;
+    }
+}
+namespace Symfony\Component\Security\Core\Authentication\Token {
+    /**
+    * Base class for Token instances.
+    *
+    * Note that the token's role names are decoupled from the user's roles on purpose: token roles describe
+    * the authentication context, not the user's permanent role assignment. This is why `setUser()` only
+    * updates the user reference and leaves the role names untouched. `ContextListener` is the component
+    * responsible for comparing the stored role names against `$user->getRoles()` and deauthenticating
+    * when they diverge.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    abstract class AbstractToken implements \Symfony\Component\Security\Core\Authentication\Token\TokenInterface {
+        /**
+        * @param array<int, string> $roles An array of roles
+        * @generated
+        */
+        public function __construct(array<int, string> $roles = []): void;
+        public function getRoleNames(): array;
+        public function getUserIdentifier(): string;
+        public function getUser(): ?\Symfony\Component\Security\Core\User\UserInterface;
+        public function setUser(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        /**
+        * Removes sensitive information from the token.
+        *
+        * @deprecated since Symfony 7.3, erase credentials using the "__serialize()" method instead
+        * @generated
+        */
+        deprecated public function eraseCredentials(): void;
+        /**
+        * Returns all the necessary state of the object for serialization purposes.
+        *
+        * There is no need to serialize any entry, they should be returned as-is.
+        * If you extend this method, keep in mind you MUST guarantee parent data is present in the state.
+        * Here is an example of how to extend this method:
+        * <code>
+        *     public function __serialize(): array
+        *     {
+        *         return [$this->childAttribute, parent::__serialize()];
+        *     }
+        * </code>
+        *
+        * @see __unserialize()
+        * @generated
+        */
+        public function __serialize(): array;
+        /**
+        * Restores the object state from an array given by __serialize().
+        *
+        * There is no need to unserialize any entry in $data, they are already ready-to-use.
+        * If you extend this method, keep in mind you MUST pass the parent data to its respective class.
+        * Here is an example of how to extend this method:
+        * <code>
+        *     public function __unserialize(array $data): void
+        *     {
+        *         [$this->childAttribute, $parentData] = $data;
+        *         parent::__unserialize($parentData);
+        *     }
+        * </code>
+        *
+        * @see __serialize()
+        * @generated
+        */
+        public function __unserialize(array $data): void;
+        public function getAttributes(): array;
+        public function setAttributes(array $attributes): void;
+        public function hasAttribute(string $name): bool;
+        public function getAttribute(string $name): mixed;
+        public function setAttribute(string $name, mixed $value): void;
+        public function __toString(): string;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class NullToken implements \Symfony\Component\Security\Core\Authentication\Token\TokenInterface {
+        public function __toString(): string;
+        public function getRoleNames(): array;
+        public function getUser(): ?\Symfony\Component\Security\Core\User\UserInterface;
+        public function setUser(\Symfony\Component\Security\Core\User\UserInterface $user): never;
+        public function getUserIdentifier(): string;
+        /**
+        * @deprecated since Symfony 7.3
+        * @generated
+        */
+        deprecated public function eraseCredentials(): void;
+        public function getAttributes(): array;
+        public function setAttributes(array $attributes): never;
+        public function hasAttribute(string $name): bool;
+        public function getAttribute(string $name): mixed;
+        public function setAttribute(string $name, mixed $value): never;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * Interface used for marking tokens that do not represent the currently logged-in user.
+    *
+    * @author Nate Wiebe <nate@northern.co>
+    * @generated
+    */
+    interface OfflineTokenInterface extends \Symfony\Component\Security\Core\Authentication\Token\TokenInterface {
+    }
+    /**
+    * PreAuthenticatedToken implements a pre-authenticated token.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class PreAuthenticatedToken extends \Symfony\Component\Security\Core\Authentication\Token\AbstractToken {
+        /**
+        * @param array<int, string> $roles
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Core\User\UserInterface $user, string $firewallName, array<int, string> $roles = []): void;
+        public function getFirewallName(): string;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * Authentication Token for "Remember-Me".
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class RememberMeToken extends \Symfony\Component\Security\Core\Authentication\Token\AbstractToken {
+        /**
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Core\User\UserInterface $user, string $firewallName): void;
+        public function getFirewallName(): string;
+        /**
+        * @deprecated since Symfony 7.2
+        * @generated
+        */
+        deprecated public function getSecret(): string;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * Token representing a user who temporarily impersonates another one.
+    *
+    * @author Christian Flothmann <christian.flothmann@sensiolabs.de>
+    * @generated
+    */
+    class SwitchUserToken extends \Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken {
+        /**
+        * @param \Symfony\Component\Security\Core\User\UserInterface $user The username (like a nickname, email address, etc.), or a UserInterface instance or an object implementing a __toString method
+        * @param ?string $originatedFromUri The URI where was the user at the switch
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Core\User\UserInterface $user, string $firewallName, array $roles, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $originalToken, ?string $originatedFromUri = null): void;
+        public function getOriginalToken(): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function getOriginatedFromUri(): ?string;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * TokenInterface is the interface for the user authentication information.
+    *
+    * The __serialize/__unserialize() magic methods can be implemented on the token
+    * class to prevent sensitive credentials from being put in the session storage.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface TokenInterface extends \Stringable {
+        /**
+        * Returns a string representation of the Token.
+        *
+        * This is only to be used for debugging purposes.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Returns the user identifier used during authentication (e.g. a user's email address or username).
+        *
+        * @generated
+        */
+        public function getUserIdentifier(): string;
+        /**
+        * Returns the user roles.
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        public function getRoleNames(): array<int, string>;
+        /**
+        * Returns a user representation.
+        *
+        * @see AbstractToken::setUser()
+        * @generated
+        */
+        public function getUser(): ?\Symfony\Component\Security\Core\User\UserInterface;
+        /**
+        * Sets the authenticated user in the token.
+        *
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function setUser(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        /**
+        * Removes sensitive information from the token.
+        *
+        * @deprecated since Symfony 7.3; erase credentials using the "__serialize()" method instead
+        * @generated
+        */
+        deprecated public function eraseCredentials(): void;
+        public function getAttributes(): array;
+        /**
+        * @param array $attributes The token attributes
+        * @generated
+        */
+        public function setAttributes(array $attributes): void;
+        public function hasAttribute(string $name): bool;
+        /**
+        * @throws \InvalidArgumentException When attribute doesn't exist for this token
+        * @generated
+        */
+        public function getAttribute(string $name): mixed;
+        public function setAttribute(string $name, mixed $value): void;
+        /**
+        * Returns all the necessary state of the object for serialization purposes.
+        *
+        * @generated
+        */
+        public function __serialize(): array;
+        /**
+        * Restores the object state from an array given by __serialize().
+        *
+        * @generated
+        */
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * UsernamePasswordToken implements a username and password token.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class UsernamePasswordToken extends \Symfony\Component\Security\Core\Authentication\Token\AbstractToken {
+        public function __construct(\Symfony\Component\Security\Core\User\UserInterface $user, string $firewallName, array $roles = []): void;
+        public function getFirewallName(): string;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+}
+namespace Symfony\Component\Security\Core\Authentication\Token\Storage {
+    /**
+    * TokenStorage contains a TokenInterface.
+    *
+    * It gives access to the token representing the current user authentication.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class TokenStorage implements \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface, \Symfony\Contracts\Service\ResetInterface {
+        public function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function setToken(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+        public function setInitializer(?callable $initializer): void;
+        public function reset(): void;
+    }
+    /**
+    * The TokenStorageInterface.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface TokenStorageInterface {
+        /**
+        * Returns the current security token.
+        *
+        * @generated
+        */
+        public function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        /**
+        * Sets the authentication token.
+        *
+        * @param ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token A TokenInterface token, or null if no further authentication information should be stored
+        * @generated
+        */
+        public function setToken(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+    }
+    /**
+    * A token storage that increments the session usage index when the token is accessed.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class UsageTrackingTokenStorage implements \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface, \Symfony\Contracts\Service\ServiceSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $storage, \Psr\Container\ContainerInterface $container): void;
+        public function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function setToken(?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): void;
+        public function enableUsageTracking(): void;
+        public function disableUsageTracking(): void;
+        public static function getSubscribedServices(): array;
+    }
+}
+namespace Symfony\Component\Security\Core\Authorization {
+    /**
+    * Contains the access verdict and all the related votes.
+    *
+    * @author Dany Maillard <danymaillard93b@gmail.com>
+    * @author Roman JOLY <eltharin18@outlook.fr>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class AccessDecision {
+        /**
+        * @var ?string
+        * @generated
+        */
+        public ?string $strategy ?? null;
+        public bool $isGranted;
+        /**
+        * @var array<int, \Symfony\Component\Security\Core\Authorization\Voter\Vote>
+        * @generated
+        */
+        public array<int, \Symfony\Component\Security\Core\Authorization\Voter\Vote> $votes ?? [];
+        public function getMessage(): string;
+    }
+    /**
+    * AccessDecisionManager is the base class for all access decision managers
+    *
+    * that use decision voters.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class AccessDecisionManager implements \Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface {
+        /**
+        * @param iterable<mixed, \Symfony\Component\Security\Core\Authorization\Voter\VoterInterface> $voters An array or an iterator of VoterInterface instances
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\Security\Core\Authorization\Voter\VoterInterface> $voters = [], ?\Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionStrategyInterface $strategy = null): void;
+        /**
+        * @param bool $allowMultipleAttributes Whether to allow passing multiple values to the $attributes array
+        * @generated
+        */
+        public function decide(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, array $attributes, mixed $object = null, bool|\Symfony\Component\Security\Core\Authorization\AccessDecision|null $accessDecision = null, bool $allowMultipleAttributes = false): bool;
+    }
+    /**
+    * AccessDecisionManagerInterface makes authorization decisions.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface AccessDecisionManagerInterface {
+        /**
+        * Decides whether the access is possible or not.
+        *
+        * @param array $attributes An array of attributes associated with the method being invoked
+        * @param mixed $object The object to secure
+        * @param AccessDecision|null $accessDecision Should be used to explain the decision
+        * @generated
+        */
+        public function decide(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, array $attributes, mixed $object = null): bool;
+    }
+    /**
+    * AuthorizationChecker is the main authorization point of the Security component.
+    *
+    * It gives access to the token representing the current user authentication.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class AuthorizationChecker implements \Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface, \Symfony\Component\Security\Core\Authorization\UserAuthorizationCheckerInterface {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, \Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface $accessDecisionManager): void;
+        public final function isGranted(mixed $attribute, mixed $subject = null, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+        public final function isGrantedForUser(\Symfony\Component\Security\Core\User\UserInterface $user, mixed $attribute, mixed $subject = null, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+    }
+    /**
+    * The AuthorizationCheckerInterface.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface AuthorizationCheckerInterface {
+        /**
+        * Checks if the attribute is granted against the current authentication token and optionally supplied subject.
+        *
+        * @param mixed $attribute A single attribute to vote on (can be of any type; strings, Expression and Closure instances are supported by the core)
+        * @param AccessDecision|null $accessDecision Should be used to explain the decision
+        * @generated
+        */
+        public function isGranted(mixed $attribute, mixed $subject = null): bool;
+    }
+    /**
+    * Interface is used to check user authorization without a session.
+    *
+    * @author Nate Wiebe <nate@northern.co>
+    * @generated
+    */
+    interface UserAuthorizationCheckerInterface {
+        /**
+        * Checks if the attribute is granted against the user and optionally supplied subject.
+        *
+        * @param mixed $attribute A single attribute to vote on (can be of any type, string and instance of Expression are supported by the core)
+        * @param ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision Should be used to explain the decision
+        * @generated
+        */
+        public function isGrantedForUser(\Symfony\Component\Security\Core\User\UserInterface $user, mixed $attribute, mixed $subject = null, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+    }
+}
+namespace Symfony\Component\Security\Core\Authorization\Strategy {
+    /**
+    * A strategy for turning a stream of votes into a final decision.
+    *
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    interface AccessDecisionStrategyInterface {
+        /**
+        * @param \Traversable $results
+        * @param ?AccessDecision $accessDecision
+        * @generated
+        */
+        public function decide(\Traversable $results): bool;
+    }
+    /**
+    * Grants access if any voter returns an affirmative response.
+    *
+    * If all voters abstained from voting, the decision will be based on the
+    * allowIfAllAbstainDecisions property value (defaults to false).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    final class AffirmativeStrategy implements \Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionStrategyInterface, \Stringable {
+        public function __construct(bool $allowIfAllAbstainDecisions = false): void;
+        public function decide(\Traversable $results, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+        public function __toString(): string;
+    }
+    /**
+    * Grants access if there is consensus of granted against denied responses.
+    *
+    * Consensus means majority-rule (ignoring abstains) rather than unanimous
+    * agreement (ignoring abstains). If you require unanimity, see
+    * UnanimousBased.
+    * 
+    * If there were an equal number of grant and deny votes, the decision will
+    * be based on the allowIfEqualGrantedDeniedDecisions property value
+    * (defaults to true).
+    * 
+    * If all voters abstained from voting, the decision will be based on the
+    * allowIfAllAbstainDecisions property value (defaults to false).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    final class ConsensusStrategy implements \Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionStrategyInterface, \Stringable {
+        public function __construct(bool $allowIfAllAbstainDecisions = false, bool $allowIfEqualGrantedDeniedDecisions = true): void;
+        public function decide(\Traversable $results, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+        public function __toString(): string;
+    }
+    /**
+    * Grant or deny access depending on the first voter that does not abstain.
+    *
+    * The priority of voters can be used to overrule a decision.
+    * 
+    * If all voters abstained from voting, the decision will be based on the
+    * allowIfAllAbstainDecisions property value (defaults to false).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    final class PriorityStrategy implements \Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionStrategyInterface, \Stringable {
+        public function __construct(bool $allowIfAllAbstainDecisions = false): void;
+        public function decide(\Traversable $results, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+        public function __toString(): string;
+    }
+    /**
+    * Grants access if only grant (or abstain) votes were received.
+    *
+    * If all voters abstained from voting, the decision will be based on the
+    * allowIfAllAbstainDecisions property value (defaults to false).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    final class UnanimousStrategy implements \Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionStrategyInterface, \Stringable {
+        public function __construct(bool $allowIfAllAbstainDecisions = false): void;
+        public function decide(\Traversable $results, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+        public function __toString(): string;
+    }
+}
+namespace Symfony\Component\Security\Core\Authorization\Voter {
+    /**
+    * AuthenticatedVoter votes if an attribute like IS_AUTHENTICATED_FULLY,
+    *
+    * IS_AUTHENTICATED_REMEMBERED, IS_AUTHENTICATED is present.
+    * 
+    * This list is most restrictive to least restrictive checking.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class AuthenticatedVoter implements \Symfony\Component\Security\Core\Authorization\Voter\CacheableVoterInterface {
+        public const string IS_AUTHENTICATED_FULLY ?? 'IS_AUTHENTICATED_FULLY';
+        public const string IS_AUTHENTICATED_REMEMBERED ?? 'IS_AUTHENTICATED_REMEMBERED';
+        public const string IS_AUTHENTICATED ?? 'IS_AUTHENTICATED';
+        public const string IS_IMPERSONATOR ?? 'IS_IMPERSONATOR';
+        public const string IS_REMEMBERED ?? 'IS_REMEMBERED';
+        public const string PUBLIC_ACCESS ?? 'PUBLIC_ACCESS';
+        public function __construct(\Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface $authenticationTrustResolver): void;
+        /**
+        * @param Vote|null $vote Should be used to explain the vote
+        * @generated
+        */
+        public function vote(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, mixed $subject, array $attributes): int;
+        public function supportsAttribute(string $attribute): bool;
+        public function supportsType(string $subjectType): bool;
+    }
+    /**
+    * Let voters expose the attributes and types they care about.
+    *
+    * By returning false to either `supportsAttribute` or `supportsType`, the
+    * voter will never be called for the specified attribute or subject.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface CacheableVoterInterface extends \Symfony\Component\Security\Core\Authorization\Voter\VoterInterface {
+        public function supportsAttribute(string $attribute): bool;
+        /**
+        * @param string $subjectType The type of the subject inferred by `get_class` or `get_debug_type`
+        * @generated
+        */
+        public function supportsType(string $subjectType): bool;
+    }
+    /**
+    * This voter allows using a closure as the attribute being voted on.
+    *
+    * @see IsGranted doc for the complete closure signature.
+    * @author Alexandre Daubois <alex.daubois@gmail.com>
+    * @generated
+    */
+    final class ClosureVoter implements \Symfony\Component\Security\Core\Authorization\Voter\CacheableVoterInterface {
+        public function __construct(\Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface $authorizationChecker): void;
+        public function supportsAttribute(string $attribute): bool;
+        public function supportsType(string $subjectType): bool;
+        public function vote(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, mixed $subject, array $attributes, ?\Symfony\Component\Security\Core\Authorization\Voter\Vote $vote = null): int;
+    }
+    /**
+    * ExpressionVoter votes based on the evaluation of an expression.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ExpressionVoter implements \Symfony\Component\Security\Core\Authorization\Voter\CacheableVoterInterface {
+        public function __construct(\Symfony\Component\Security\Core\Authorization\ExpressionLanguage $expressionLanguage, ?\Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface $trustResolver, \Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface $authChecker, ?\Symfony\Component\Security\Core\Role\RoleHierarchyInterface $roleHierarchy = null): void;
+        public function supportsAttribute(string $attribute): bool;
+        public function supportsType(string $subjectType): bool;
+        /**
+        * @param Vote|null $vote Should be used to explain the vote
+        * @generated
+        */
+        public function vote(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, mixed $subject, array $attributes): int;
+    }
+    /**
+    * RoleHierarchyVoter uses a RoleHierarchy to determine the roles granted to
+    *
+    * the user before voting.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class RoleHierarchyVoter extends \Symfony\Component\Security\Core\Authorization\Voter\RoleVoter {
+        public function __construct(\Symfony\Component\Security\Core\Role\RoleHierarchyInterface $roleHierarchy, string $prefix = 'ROLE_'): void;
+        protected function extractRoles(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): array;
+    }
+    /**
+    * RoleVoter votes if any attribute starts with a given prefix.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class RoleVoter implements \Symfony\Component\Security\Core\Authorization\Voter\CacheableVoterInterface {
+        public function __construct(string $prefix = 'ROLE_'): void;
+        /**
+        * @param Vote|null $vote Should be used to explain the vote
+        * @generated
+        */
+        public function vote(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, mixed $subject, array $attributes): int;
+        public function supportsAttribute(string $attribute): bool;
+        public function supportsType(string $subjectType): bool;
+        protected function extractRoles(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): array;
+    }
+    class Vote {
+        /**
+        * @var string
+        * @generated
+        */
+        public string $voter;
+        /**
+        * @var int *
+        * @generated
+        */
+        public int $result;
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        public array<int, string> $reasons ?? [];
+        /**
+        * @var array<string, mixed>
+        * @generated
+        */
+        public array<string, mixed> $extraData ?? [];
+        public function addReason(string $reason): void;
+    }
+    /**
+    * Voter is an abstract default implementation of a voter.
+    *
+    * @author Roman Marintšenko <inoryy@gmail.com>
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @template TAttribute of string
+    * @template TSubject of mixed
+    * @generated
+    */
+    abstract class Voter<TAttribute extends string, TSubject extends mixed> implements \Symfony\Component\Security\Core\Authorization\Voter\VoterInterface, \Symfony\Component\Security\Core\Authorization\Voter\CacheableVoterInterface {
+        /**
+        * @param Vote|null $vote Should be used to explain the vote
+        * @generated
+        */
+        public function vote(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, mixed $subject, array $attributes): int;
+        /**
+        * Return false if your voter doesn't support the given attribute. Symfony will cache
+        *
+        * that decision and won't call your voter again for that attribute.
+        *
+        * @generated
+        */
+        public function supportsAttribute(string $attribute): bool;
+        /**
+        * Return false if your voter doesn't support the given subject type. Symfony will cache
+        *
+        * that decision and won't call your voter again for that subject type.
+        *
+        * @param string $subjectType The type of the subject inferred by `get_class()` or `get_debug_type()`
+        * @generated
+        */
+        public function supportsType(string $subjectType): bool;
+        /**
+        * Determines if the attribute and subject are supported by this voter.
+        *
+        * @param mixed $subject The subject to secure, e.g. an object the user wants to access or any other PHP type
+        * @psalm-assert-if-true TSubject $subject
+        * @psalm-assert-if-true TAttribute $attribute
+        * @generated
+        */
+        protected abstract function supports(string $attribute, mixed $subject): bool;
+        /**
+        * Perform a single access check operation on a given attribute, subject and token.
+        *
+        * It is safe to assume that $attribute and $subject already passed the "supports()" method check.
+        *
+        * @param string $attribute
+        * @param TSubject $subject
+        * @param Vote|null $vote Should be used to explain the vote
+        * @generated
+        */
+        protected abstract function voteOnAttribute(string $attribute, TSubject $subject, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): bool;
+    }
+    /**
+    * VoterInterface is the interface implemented by all voters.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface VoterInterface {
+        public const int ACCESS_GRANTED ?? 1;
+        public const int ACCESS_ABSTAIN ?? 0;
+        public const int ACCESS_DENIED ?? -1;
+        /**
+        * Returns the vote for the given parameters.
+        *
+        * This method must return one of the following constants:
+        * ACCESS_GRANTED, ACCESS_DENIED, or ACCESS_ABSTAIN.
+        *
+        * @param mixed $subject The subject to secure
+        * @param array $attributes An array of attributes associated with the method being invoked
+        * @param Vote|null $vote Should be used to explain the vote
+        * @return int *
+        * @generated
+        */
+        public function vote(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, mixed $subject, array $attributes): int;
+    }
+}
+namespace Symfony\Component\Security\Core\Dumper {
+    enum MermaidDirection: string {
+        case TOP_TO_BOTTOM = 'TB';
+        case TOP_DOWN = 'TD';
+        case BOTTOM_TO_TOP = 'BT';
+        case RIGHT_TO_LEFT = 'RL';
+        case LEFT_TO_RIGHT = 'LR';
+    }
+    /**
+    * MermaidDumper dumps a Mermaid flowchart describing role hierarchy.
+    *
+    * @author Damien Fernandes <damien.fernandes24@gmail.com>
+    * @generated
+    */
+    class MermaidDumper {
+        /**
+        * Dumps the role hierarchy as a Mermaid flowchart.
+        *
+        * @param \Symfony\Component\Security\Core\Role\RoleHierarchyInterface $roleHierarchy The role hierarchy to dump
+        * @param \Symfony\Component\Security\Core\Dumper\MermaidDirection $direction The direction of the flowchart
+        * @generated
+        */
+        public function dump(\Symfony\Component\Security\Core\Role\RoleHierarchyInterface $roleHierarchy, \Symfony\Component\Security\Core\Dumper\MermaidDirection $direction = \Symfony\Component\Security\Core\Dumper\MermaidDirection::TOP_TO_BOTTOM): string;
+    }
+}
+namespace Symfony\Component\Security\Core\Event {
+    /**
+    * This is a general purpose authentication event.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class AuthenticationEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+        public function getAuthenticationToken(): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+    }
+    final class AuthenticationSuccessEvent extends \Symfony\Component\Security\Core\Event\AuthenticationEvent {
+    }
+}
+namespace Symfony\Component\Security\Core\Exception {
+    /**
+    * AccessDeniedException is thrown when the account has not the required role.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class AccessDeniedException extends \Symfony\Component\Security\Core\Exception\RuntimeException {
+        public function __construct(string $message = 'Access Denied.', ?\Throwable $previous = null, int $code = 403): void;
+        public function getAttributes(): array;
+        public function setAttributes(array|string $attributes): void;
+        public function getSubject(): mixed;
+        public function setSubject(mixed $subject): void;
+        public function setAccessDecision(\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision): void;
+        public function getAccessDecision(): ?\Symfony\Component\Security\Core\Authorization\AccessDecision;
+    }
+    /**
+    * AccountExpiredException is thrown when the user account has expired.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class AccountExpiredException extends \Symfony\Component\Security\Core\Exception\AccountStatusException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * AccountStatusException is the base class for authentication exceptions
+    *
+    * caused by the user account status.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    abstract class AccountStatusException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        /**
+        * Get the user.
+        *
+        * @generated
+        */
+        public function getUser(): ?\Symfony\Component\Security\Core\User\UserInterface;
+        public function setUser(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * AuthenticationCredentialsNotFoundException is thrown when an authentication is rejected
+    *
+    * because no Token is available.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class AuthenticationCredentialsNotFoundException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * AuthenticationException is the base class for all authentication exceptions.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class AuthenticationException extends \Symfony\Component\Security\Core\Exception\RuntimeException {
+        public function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function setToken(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+        /**
+        * Returns all the necessary state of the object for serialization purposes.
+        *
+        * There is no need to serialize any entry, they should be returned as-is.
+        * If you extend this method, keep in mind you MUST guarantee parent data is present in the state.
+        * Here is an example of how to extend this method:
+        * <code>
+        *     public function __serialize(): array
+        *     {
+        *         return [$this->childAttribute, parent::__serialize()];
+        *     }
+        * </code>
+        *
+        * @see __unserialize()
+        * @generated
+        */
+        public function __serialize(): array;
+        /**
+        * Restores the object state from an array given by __serialize().
+        *
+        * There is no need to unserialize any entry in $data, they are already ready-to-use.
+        * If you extend this method, keep in mind you MUST pass the parent data to its respective class.
+        * Here is an example of how to extend this method:
+        * <code>
+        *     public function __unserialize(array $data): void
+        *     {
+        *         [$this->childAttribute, $parentData] = $data;
+        *         parent::__unserialize($parentData);
+        *     }
+        * </code>
+        *
+        * @see __serialize()
+        * @generated
+        */
+        public function __unserialize(array $data): void;
+        /**
+        * Message key to be used by the translation component.
+        *
+        * @generated
+        */
+        public function getMessageKey(): string;
+        /**
+        * Message data to be used by the translation component.
+        *
+        * @generated
+        */
+        public function getMessageData(): array;
+    }
+    /**
+    * AuthenticationExpiredException is thrown when an authentication token becomes un-authenticated between requests.
+    *
+    * In practice, this is due to the User changing between requests (e.g. password changes),
+    * causes the token to become un-authenticated.
+    *
+    * @author Ryan Weaver <ryan@knpuniversity.com>
+    * @generated
+    */
+    class AuthenticationExpiredException extends \Symfony\Component\Security\Core\Exception\AccountStatusException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * AuthenticationServiceException is thrown when an authentication request could not be processed due to a system problem.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class AuthenticationServiceException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * BadCredentialsException is thrown when the user credentials are invalid.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class BadCredentialsException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * This exception is thrown when the RememberMeServices implementation
+    *
+    * detects that a presented cookie has already been used by someone else.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class CookieTheftException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * CredentialsExpiredException is thrown when the user account credentials have expired.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class CredentialsExpiredException extends \Symfony\Component\Security\Core\Exception\AccountStatusException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * An authentication exception caused by the user account status
+    *
+    * where you can control the message shown to the user.
+    * 
+    * Be sure that the message passed to this exception is something that
+    * can be shown safely to your user. In other words, avoid catching
+    * other exceptions and passing their message directly to this class.
+    *
+    * @author Vincent Langlet <vincentlanglet@github.com>
+    * @generated
+    */
+    class CustomUserMessageAccountStatusException extends \Symfony\Component\Security\Core\Exception\AccountStatusException {
+        public function __construct(string $message = '', array $messageData = [], int $code = 0, ?\Throwable $previous = null): void;
+        /**
+        * Sets a message that will be shown to the user.
+        *
+        * @param string $messageKey The message or message key
+        * @param array $messageData Data to be passed into the translator
+        * @generated
+        */
+        public function setSafeMessage(string $messageKey, array $messageData = []): void;
+        public function getMessageKey(): string;
+        public function getMessageData(): array;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * An authentication exception where you can control the message shown to the user.
+    *
+    * Be sure that the message passed to this exception is something that
+    * can be shown safely to your user. In other words, avoid catching
+    * other exceptions and passing their message directly to this class.
+    *
+    * @author Ryan Weaver <ryan@knpuniversity.com>
+    * @generated
+    */
+    class CustomUserMessageAuthenticationException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function __construct(string $message = '', array $messageData = [], int $code = 0, ?\Throwable $previous = null): void;
+        /**
+        * Set a message that will be shown to the user.
+        *
+        * @param string $messageKey The message or message key
+        * @param array $messageData Data to be passed into the translator
+        * @generated
+        */
+        public function setSafeMessage(string $messageKey, array $messageData = []): void;
+        public function getMessageKey(): string;
+        public function getMessageData(): array;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * DisabledException is thrown when the user account is disabled.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class DisabledException extends \Symfony\Component\Security\Core\Exception\AccountStatusException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * Base ExceptionInterface for the Security component.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    interface ExceptionInterface extends \Throwable {
+    }
+    /**
+    * InsufficientAuthenticationException is thrown if the user credentials are not sufficiently trusted.
+    *
+    * This is the case when a user is anonymous and the resource to be displayed has an access role.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class InsufficientAuthenticationException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * Base InvalidArgumentException for the Security component.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class InvalidArgumentException extends \InvalidArgumentException implements \Symfony\Component\Security\Core\Exception\ExceptionInterface {
+    }
+    /**
+    * This exception is thrown when the csrf token is invalid.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class InvalidCsrfTokenException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * A signaling exception that wraps a lazily computed response.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class LazyResponseException extends \Exception implements \Symfony\Component\Security\Core\Exception\ExceptionInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\Response $response): void;
+        public function getResponse(): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * LockedException is thrown if the user account is locked.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class LockedException extends \Symfony\Component\Security\Core\Exception\AccountStatusException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * Base LogicException for the Security component.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    class LogicException extends \LogicException implements \Symfony\Component\Security\Core\Exception\ExceptionInterface {
+    }
+    /**
+    * LogoutException is thrown when the account cannot be logged out.
+    *
+    * @author Jeremy Mikola <jmikola@gmail.com>
+    * @generated
+    */
+    class LogoutException extends \Symfony\Component\Security\Core\Exception\RuntimeException {
+        public function __construct(string $message = 'Logout Exception', ?\Throwable $previous = null): void;
+    }
+    /**
+    * ProviderNotFoundException is thrown when no AuthenticationProviderInterface instance
+    *
+    * supports an authentication Token.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class ProviderNotFoundException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * Base RuntimeException for the Security component.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class RuntimeException extends \RuntimeException implements \Symfony\Component\Security\Core\Exception\ExceptionInterface {
+    }
+    /**
+    * This exception is thrown when no session is available.
+    *
+    * Possible reasons for this are:
+    * 
+    *     a) The session timed out because the user waited too long.
+    *     b) The user has disabled cookies, and a new session is started on each
+    *        request.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class SessionUnavailableException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * TokenNotFoundException is thrown if a Token cannot be found.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class TokenNotFoundException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * This exception is thrown if there where too many failed login attempts in
+    *
+    * this session.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class TooManyLoginAttemptsAuthenticationException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function __construct(?int $threshold = null): void;
+        public function getMessageData(): array;
+        public function getMessageKey(): string;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * This exception is thrown when an account is reloaded from a provider which
+    *
+    * doesn't support the passed implementation of UserInterface.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class UnsupportedUserException extends \Symfony\Component\Security\Core\Exception\AuthenticationServiceException {
+    }
+    /**
+    * UserNotFoundException is thrown if a User cannot be found for the given identifier.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class UserNotFoundException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+        /**
+        * Get the user identifier (e.g. username or email address).
+        *
+        * @generated
+        */
+        public function getUserIdentifier(): ?string;
+        /**
+        * Set the user identifier (e.g. username or email address).
+        *
+        * @generated
+        */
+        public function setUserIdentifier(string $identifier): void;
+        public function getMessageData(): array;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+}
+namespace Symfony\Component\Security\Core\Role {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class RoleHierarchy implements \Symfony\Component\Security\Core\Role\RoleHierarchyInterface {
+        /**
+        * @var array<string, array<int, string>>
+        * @generated
+        */
+        protected array<string, array<int, string>> $map;
+        /**
+        * @param array<string, array<int, string>> $hierarchy
+        * @generated
+        */
+        public function __construct(array<string, array<int, string>> $hierarchy): void;
+        public function getReachableRoleNames(array $roles): array;
+        protected function buildRoleMap(): void;
+    }
+    /**
+    * RoleHierarchyInterface is the interface for a role hierarchy.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface RoleHierarchyInterface {
+        /**
+        * @param array<int, string> $roles
+        * @return array<int, string>
+        * @generated
+        */
+        public function getReachableRoleNames(array<int, string> $roles): array<int, string>;
+    }
+}
+namespace Symfony\Component\Security\Core\Signature {
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    final class ExpiredSignatureStorage {
+        public function __construct(\Psr\Cache\CacheItemPoolInterface $cache, int $lifetime): void;
+        public function countUsages(string $hash): int;
+        /**
+        * @return int The number of usages once this one is accounted for
+        * @generated
+        */
+        public function incrementUsages(string $hash): int;
+    }
+    /**
+    * Creates and validates secure hashes used in login links and remember-me cookies.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class SignatureHasher {
+        /**
+        * @param array $signatureProperties Properties of the User; the hash is invalidated if these properties change
+        * @param ?\Symfony\Component\Security\Core\Signature\ExpiredSignatureStorage $expiredSignaturesStorage If provided, secures a sequence of hashes that are expired
+        * @param ?int $maxUses Used together with $expiredSignatureStorage to allow a maximum usage of a hash
+        * @generated
+        */
+        public function __construct(\Symfony\Component\PropertyAccess\PropertyAccessorInterface $propertyAccessor, array $signatureProperties, string $secret, ?\Symfony\Component\Security\Core\Signature\ExpiredSignatureStorage $expiredSignaturesStorage = null, ?int $maxUses = null): void;
+        /**
+        * Verifies the hash using the provided user identifier and expire time.
+        *
+        * This method must be called before the user object is loaded from a provider.
+        *
+        * @param int $expires The expiry time as a unix timestamp
+        * @param string $hash The plaintext hash provided by the request
+        * @throws InvalidSignatureException If the signature does not match the provided parameters
+        * @throws ExpiredSignatureException If the signature is no longer valid
+        * @generated
+        */
+        public function acceptSignatureHash(string $userIdentifier, int $expires, string $hash): void;
+        /**
+        * Verifies the hash using the provided user and expire time.
+        *
+        * @param int $expires The expiry time as a unix timestamp
+        * @param string $hash The plaintext hash provided by the request
+        * @throws InvalidSignatureException If the signature does not match the provided parameters
+        * @throws ExpiredSignatureException If the signature is no longer valid
+        * @generated
+        */
+        public function verifySignatureHash(\Symfony\Component\Security\Core\User\UserInterface $user, int $expires, string $hash): void;
+        /**
+        * Computes the secure hash for the provided user and expire time.
+        *
+        * @param int $expires The expiry time as a unix timestamp
+        * @generated
+        */
+        public function computeSignatureHash(\Symfony\Component\Security\Core\User\UserInterface $user, int $expires): string;
+    }
+}
+namespace Symfony\Component\Security\Core\Signature\Exception {
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class ExpiredSignatureException extends \Symfony\Component\Security\Core\Exception\RuntimeException {
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class InvalidSignatureException extends \Symfony\Component\Security\Core\Exception\RuntimeException {
+    }
+}
+namespace Symfony\Component\Security\Core\User {
+    /**
+    * Overrides UserProviderInterface to add an "attributes" argument on loadUserByIdentifier.
+    *
+    * This is particularly useful with self-contained access tokens.
+    *
+    * @template TUser of UserInterface
+    * @template-extends UserProviderInterface<TUser>
+    * @generated
+    */
+    interface AttributesBasedUserProviderInterface<TUser extends \Symfony\Component\Security\Core\User\UserInterface> extends \Symfony\Component\Security\Core\User\UserProviderInterface {
+        /**
+        * Loads the user for the given user identifier (e.g. username or email) and attributes.
+        *
+        * This method must throw UserNotFoundException if the user is not found.
+        *
+        * @return \Symfony\Component\Security\Core\User\UserInterface
+        * @throws UserNotFoundException
+        * @generated
+        */
+        public function loadUserByIdentifier(string $identifier, array $attributes = []): \Symfony\Component\Security\Core\User\UserInterface;
+    }
+    final class ChainUserChecker implements \Symfony\Component\Security\Core\User\UserCheckerInterface {
+        /**
+        * @param iterable<UserCheckerInterface> $checkers
+        * @generated
+        */
+        public function __construct(iterable<\Symfony\Component\Security\Core\User\UserCheckerInterface> $checkers): void;
+        public function checkPreAuth(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        /**
+        * @param ?TokenInterface $token
+        * @generated
+        */
+        public function checkPostAuth(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+    }
+    /**
+    * Chain User Provider.
+    *
+    * This provider calls several leaf providers in a chain until one is able to
+    * handle the request.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @template-implements UserProviderInterface<UserInterface>
+    * @generated
+    */
+    class ChainUserProvider implements \Symfony\Component\Security\Core\User\UserProviderInterface, \Symfony\Component\Security\Core\User\PasswordUpgraderInterface {
+        /**
+        * @param iterable<mixed, UserProviderInterface> $providers
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\Security\Core\User\UserProviderInterface> $providers): void;
+        /**
+        * @return array<int, UserProviderInterface>
+        * @generated
+        */
+        public function getProviders(): array<int, \Symfony\Component\Security\Core\User\UserProviderInterface>;
+        /**
+        * @param array $attributes
+        * @generated
+        */
+        public function loadUserByIdentifier(string $identifier): \Symfony\Component\Security\Core\User\UserInterface;
+        public function refreshUser(\Symfony\Component\Security\Core\User\UserInterface $user): \Symfony\Component\Security\Core\User\UserInterface;
+        public function supportsClass(string $class): bool;
+        public function upgradePassword(\Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void;
+    }
+    /**
+    * EquatableInterface used to test if two objects are equal in security
+    *
+    * and re-authentication context.
+    *
+    * @author Dariusz Górecki <darek.krk@gmail.com>
+    * @generated
+    */
+    interface EquatableInterface {
+        /**
+        * The equality comparison should neither be done by referential equality
+        *
+        * nor by comparing identities (i.e. getId() === getId()).
+        * 
+        * However, you do not need to compare every attribute, but only those that
+        * are relevant for assessing whether re-authentication is required.
+        *
+        * @generated
+        */
+        public function isEqualTo(\Symfony\Component\Security\Core\User\UserInterface $user): bool;
+    }
+    /**
+    * UserInterface implementation used by the in-memory user provider.
+    *
+    * This should not be used for anything else.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class InMemoryUser implements \Symfony\Component\Security\Core\User\UserInterface, \Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface, \Symfony\Component\Security\Core\User\EquatableInterface, \Stringable {
+        public function __construct(?string $username, ?string $password, array $roles = [], bool $enabled = true): void;
+        public function __toString(): string;
+        public function getRoles(): array;
+        public function getPassword(): ?string;
+        /**
+        * Returns the identifier for this user (e.g. its username or email address).
+        *
+        * @generated
+        */
+        public function getUserIdentifier(): string;
+        /**
+        * Checks whether the user is enabled.
+        *
+        * Internally, if this method returns false, the authentication system
+        * will throw a DisabledException and prevent login.
+        *
+        * @return bool true if the user is enabled, false otherwise
+        * @see DisabledException
+        * @generated
+        */
+        public function isEnabled(): bool;
+        /**
+        * @deprecated since Symfony 7.3
+        * @generated
+        */
+        deprecated public function eraseCredentials(): void;
+        public function isEqualTo(\Symfony\Component\Security\Core\User\UserInterface $user): bool;
+    }
+    /**
+    * Checks the state of the in-memory user account.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class InMemoryUserChecker implements \Symfony\Component\Security\Core\User\UserCheckerInterface {
+        public function checkPreAuth(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        /**
+        * @param ?TokenInterface $token
+        * @generated
+        */
+        public function checkPostAuth(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+    }
+    /**
+    * InMemoryUserProvider is a simple non persistent user provider.
+    *
+    * Useful for testing, demonstration, prototyping, and for simple needs
+    * (a backend with a unique admin for instance)
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @template-implements UserProviderInterface<InMemoryUser>
+    * @generated
+    */
+    class InMemoryUserProvider implements \Symfony\Component\Security\Core\User\UserProviderInterface {
+        /**
+        * The user array is a hash where the keys are usernames and the values are
+        *
+        * an array of attributes: 'password', 'enabled', and 'roles'.
+        *
+        * @param array<string, array> $users An array of users
+        * @generated
+        */
+        public function __construct(array<string, array> $users = []): void;
+        /**
+        * Adds a new User to the provider.
+        *
+        * @generated
+        */
+        public function createUser(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        public function loadUserByIdentifier(string $identifier): \Symfony\Component\Security\Core\User\UserInterface;
+        public function refreshUser(\Symfony\Component\Security\Core\User\UserInterface $user): \Symfony\Component\Security\Core\User\UserInterface;
+        public function supportsClass(string $class): bool;
+    }
+    /**
+    * For users that can be authenticated using a password/salt couple.
+    *
+    * Once all password hashes have been upgraded to a modern algorithm via password migrations,
+    * implement {@see PasswordAuthenticatedUserInterface} instead.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    interface LegacyPasswordAuthenticatedUserInterface extends \Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface {
+        /**
+        * Returns the salt that was originally used to hash the password.
+        *
+        * @generated
+        */
+        public function getSalt(): ?string;
+    }
+    /**
+    * UserInterface implementation used by the access-token security workflow with an OIDC server.
+    *
+    * @generated
+    */
+    class OAuth2User implements \Symfony\Component\Security\Core\User\UserInterface {
+        public readonly array $additionalClaims;
+        public readonly ?string $scope ?? null;
+        public readonly ?string $clientId ?? null;
+        public readonly ?string $username ?? null;
+        public readonly ?string $tokenType ?? null;
+        public readonly ?int $exp ?? null;
+        public readonly ?int $iat ?? null;
+        public readonly ?int $nbf ?? null;
+        public readonly ?string $sub ?? null;
+        public readonly ?string $aud ?? null;
+        public readonly ?string $iss ?? null;
+        public readonly ?string $jti ?? null;
+        public function __construct(array $roles = [], ?string $scope = null, ?string $clientId = null, ?string $username = null, ?string $tokenType = null, ?int $exp = null, ?int $iat = null, ?int $nbf = null, ?string $sub = null, ?string $aud = null, ?string $iss = null, ?string $jti = null, mixed ...$additionalClaims): void;
+        /**
+        * OIDC or OAuth specs don't have any "role" notion.
+        *
+        * If you want to implement "roles" from your OIDC server,
+        * send a "roles" constructor argument to this object
+        * (e.g.: using a custom UserProvider).
+        *
+        * @generated
+        */
+        public function getRoles(): array;
+        public function getUserIdentifier(): string;
+        public function eraseCredentials(): void;
+    }
+    /**
+    * UserInterface implementation used by the access-token security workflow with an OIDC server.
+    *
+    * @generated
+    */
+    class OidcUser implements \Symfony\Component\Security\Core\User\UserInterface {
+        public function __construct(?string $userIdentifier = null, array $roles = [], ?string $sub = null, ?string $name = null, ?string $givenName = null, ?string $familyName = null, ?string $middleName = null, ?string $nickname = null, ?string $preferredUsername = null, ?string $profile = null, ?string $picture = null, ?string $website = null, ?string $email = null, ?bool $emailVerified = null, ?string $gender = null, ?string $birthdate = null, ?string $zoneinfo = null, ?string $locale = null, ?string $phoneNumber = null, ?bool $phoneNumberVerified = null, ?array $address = null, ?\DateTimeInterface $updatedAt = null, mixed ...$additionalClaims): void;
+        /**
+        * OIDC or OAuth specs don't have any "role" notion.
+        *
+        * If you want to implement "roles" from your OIDC server,
+        * send a "roles" constructor argument to this object
+        * (e.g.: using a custom UserProvider).
+        *
+        * @generated
+        */
+        public function getRoles(): array;
+        public function getUserIdentifier(): string;
+        /**
+        * @deprecated since Symfony 7.3
+        * @generated
+        */
+        deprecated public function eraseCredentials(): void;
+        public function getSub(): ?string;
+        public function getName(): ?string;
+        public function getGivenName(): ?string;
+        public function getFamilyName(): ?string;
+        public function getMiddleName(): ?string;
+        public function getNickname(): ?string;
+        public function getPreferredUsername(): ?string;
+        public function getProfile(): ?string;
+        public function getPicture(): ?string;
+        public function getWebsite(): ?string;
+        public function getEmail(): ?string;
+        public function getEmailVerified(): ?bool;
+        public function getGender(): ?string;
+        public function getBirthdate(): ?string;
+        public function getZoneinfo(): ?string;
+        public function getLocale(): ?string;
+        public function getPhoneNumber(): ?string;
+        public function getphoneNumberVerified(): ?bool;
+        public function getAddress(): ?array;
+        public function getUpdatedAt(): ?\DateTimeInterface;
+        public function getAdditionalClaims(): array;
+    }
+    /**
+    * For users that can be authenticated using a password.
+    *
+    * The __serialize/__unserialize() magic methods can be implemented on the user
+    * class to prevent hashed passwords from being put in the session storage.
+    * If the password is not stored at all in the session, getPassword() should
+    * return null after unserialization, and then, changing the user's password
+    * won't invalidate its sessions.
+    * In order to invalidate the user sessions while not storing the password hash
+    * in the session, it's also possible to hash the password hash before
+    * serializing it; crc32c is the only algorithm supported.
+    * For example:
+    * 
+    *     public function __serialize(): array
+    *     {
+    *         $data = (array) $this;
+    *         $data["\0".self::class."\0password"] = hash('crc32c', $this->password);
+    * 
+    *         return $data;
+    *     }
+    * 
+    * Implement EquatableInterface if you need another logic.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface PasswordAuthenticatedUserInterface {
+        /**
+        * Returns the hashed password used to authenticate the user.
+        *
+        * Usually on authentication, a plain-text password will be compared to this value.
+        *
+        * @generated
+        */
+        public function getPassword(): ?string;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface PasswordUpgraderInterface {
+        /**
+        * Upgrades the hashed password of a user, typically for using a better hash algorithm.
+        *
+        * This method should persist the new password in the user storage and update the $user object accordingly.
+        * Because you don't want your users not being able to log in, this method should be opportunistic:
+        * it's fine if it does nothing or if it fails without throwing any exception.
+        *
+        * @throws UnsupportedUserException if the implementation does not support that user
+        * @generated
+        */
+        public function upgradePassword(\Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void;
+    }
+    /**
+    * Implement to throw AccountStatusException during the authentication process.
+    *
+    * Can be used when you want to check the account status, e.g when the account is
+    * disabled or blocked. This should not be used to make authentication decisions.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface UserCheckerInterface {
+        /**
+        * Checks the user account before authentication.
+        *
+        * @throws AccountStatusException
+        * @generated
+        */
+        public function checkPreAuth(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        /**
+        * Checks the user account after authentication.
+        *
+        * @param ?TokenInterface $token
+        * @throws AccountStatusException
+        * @generated
+        */
+        public function checkPostAuth(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+    }
+    /**
+    * Represents the interface that all user classes must implement.
+    *
+    * This interface is useful because the authentication layer can deal with
+    * the object through its lifecycle, assigning roles and so on.
+    * 
+    * Regardless of how your users are loaded or where they come from (a database,
+    * configuration, web service, etc.), you will have a class that implements
+    * this interface. Objects that implement this interface are created and
+    * loaded by different objects that implement UserProviderInterface.
+    * 
+    * The __serialize/__unserialize() magic methods can be implemented on the user
+    * class to prevent sensitive credentials from being put in the session storage.
+    *
+    * @see UserProviderInterface
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface UserInterface {
+        /**
+        * Returns the roles granted to the user.
+        *
+        *     public function getRoles()
+        *     {
+        *         return ['ROLE_USER'];
+        *     }
+        * 
+        * Alternatively, the roles might be stored in a ``roles`` property,
+        * and populated in any number of different ways when the user object
+        * is created.
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        public function getRoles(): array<int, string>;
+        /**
+        * Removes sensitive data from the user.
+        *
+        * This is important if, at any given point, sensitive information like
+        * the plain-text password is stored on this object.
+        *
+        * @deprecated since Symfony 7.3, erase credentials using the "__serialize()" method instead
+        * @generated
+        */
+        deprecated public function eraseCredentials(): void;
+        /**
+        * Returns the identifier for this user (e.g. username or email address).
+        *
+        * @return string
+        * @generated
+        */
+        public function getUserIdentifier(): string;
+    }
+    /**
+    * Represents a class that loads UserInterface objects from some source for the authentication system.
+    *
+    * In a typical authentication configuration, a user identifier (e.g. a
+    * username or email address) credential enters the system (via form login, or
+    * any method). The user provider that is configured with that authentication
+    * method is asked to load the UserInterface object for the given identifier (via
+    * loadUserByIdentifier) so that the rest of the process can continue.
+    * 
+    * Internally, a user provider can load users from any source (databases,
+    * configuration, web service). This is totally independent of how the authentication
+    * information is submitted or what the UserInterface object looks like.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @template TUser of UserInterface
+    * @generated
+    */
+    interface UserProviderInterface<TUser extends \Symfony\Component\Security\Core\User\UserInterface> {
+        /**
+        * Refreshes the user.
+        *
+        * It is up to the implementation to decide if the user data should be
+        * totally reloaded (e.g. from the database), or if the UserInterface
+        * object can just be merged into some internal array of users / identity
+        * map.
+        *
+        * @throws UnsupportedUserException if the user is not supported
+        * @throws UserNotFoundException    if the user is not found
+        * @generated
+        */
+        public function refreshUser(\Symfony\Component\Security\Core\User\UserInterface $user): \Symfony\Component\Security\Core\User\UserInterface;
+        /**
+        * Whether this provider supports the given user class.
+        *
+        * @generated
+        */
+        public function supportsClass(string $class): bool;
+        /**
+        * Loads the user for the given user identifier (e.g. username or email).
+        *
+        * This method must throw UserNotFoundException if the user is not found.
+        *
+        * @return \Symfony\Component\Security\Core\User\UserInterface
+        * @throws UserNotFoundException
+        * @generated
+        */
+        public function loadUserByIdentifier(string $identifier): \Symfony\Component\Security\Core\User\UserInterface;
+    }
+}
+namespace Symfony\Component\Security\Core\Validator\Constraints {
+    class UserPassword extends \Symfony\Component\Validator\Constraint {
+        public const string INVALID_PASSWORD_ERROR ?? '2d2a8bb4-ddc8-45e4-9b0f-8670d3a3e290';
+        protected const array ERROR_NAMES ?? [];
+        public string $message ?? 'This value should be the user\'s current password.';
+        public string $service ?? 'security.validator.user_password';
+        public function __construct(?array $options = null, ?string $message = null, ?string $service = null, ?array $groups = null, mixed $payload = null): void;
+        public function validatedBy(): string;
+    }
+    class UserPasswordValidator extends \Symfony\Component\Validator\ConstraintValidator {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, \Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface $hasherFactory): void;
+        public function validate(mixed $password, \Symfony\Component\Validator\Constraint $constraint): void;
+    }
+}

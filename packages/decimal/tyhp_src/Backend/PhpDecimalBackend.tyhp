@@ -12,10 +12,10 @@ namespace Tyhp\Backend;
  *
  * @see https://php-decimal.github.io/
  */
-final class PhpDecimalBackend implements DecimalBackend
+internal final class PhpDecimalBackend implements DecimalBackend
 {
     private function precisionFor(string $value, int $scale): int {
-        int $digitCount = \strlen((string) \str_replace(['-', '.'], '', $value));
+        int $digitCount = \strlen(\str_replace(['-', '.'], '', $value));
 
         return (int) \max(\Decimal\Decimal::DEFAULT_PRECISION, $digitCount + $scale + 8);
     }
@@ -90,7 +90,7 @@ final class PhpDecimalBackend implements DecimalBackend
         return $this->format($operand->sqrt(), $scale);
     }
 
-    public function compare(string $a, string $b, int $scale): int {
+    public function compare(string $a, string $b, int $scale): -1|0|1 {
         // Normalize both sides to the requested scale so compare matches bccomp semantics.
         string $left = $this->format($this->toDecimal($a, $scale), $scale);
         string $right = $this->format($this->toDecimal($b, $scale), $scale);

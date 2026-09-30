@@ -5,11 +5,10 @@ namespace Tyhp;
 /**
  * A property-access chain extracted from a lambda or built via {@see PropertyPathBuilder}.
  *
- * @template TSource
- * @template TReturn
- * @extends Expression<TSource, TReturn>
+ * @template TCallableShape of callable
+ * @extends Expression<TCallableShape>
  */
-class PropertyPath<TSource, TReturn> extends Expression<TSource, TReturn> {
+class PropertyPath<TCallableShape extends callable> extends Expression<TCallableShape> {
     public readonly array<string> $path;
 
     /**
@@ -21,7 +20,7 @@ class PropertyPath<TSource, TReturn> extends Expression<TSource, TReturn> {
         string $sourceType,
         string $resultType,
         array<string> $path,
-        \Closure $callable,
+        \Closure<TCallableShape> $callable,
         bool $allowEmpty = false,
         array<bool> $nullSafeFlags = [],
     ) {
@@ -46,7 +45,12 @@ class PropertyPath<TSource, TReturn> extends Expression<TSource, TReturn> {
     }
 
     public function getPropertyName(): string {
-        return $this->path[\array_key_last($this->path)] ?? '';
+        $key = \array_key_last($this->path);
+        if ($key === null) {
+            // path is empty
+            return '';
+        }
+        return $this->path[$key] ?? '';
     }
 
     public function getPath(): string {
@@ -57,16 +61,16 @@ class PropertyPath<TSource, TReturn> extends Expression<TSource, TReturn> {
         return $this->path;
     }
 
-    public function getValue(TSource $source): TReturn {
+    public function getValue(mixed $source): __CallableReturnType<TCallableShape> {
         mixed $result = ($this->callable)($source);
         // Always stash first so callers who catch can inspect the mismatched value.
         $this->lastResult = $result;
-        if ($result is TReturn) {
+        if ($result is __CallableReturnType<TCallableShape>) {
             return $result;
         }
 
         throw new Exceptions\IncompatibleTypeException(
-            typeof(TReturn),
+            typeof(__CallableReturnType<TCallableShape>),
             Type::of($result),
             nameof($this->lastResult),
         );

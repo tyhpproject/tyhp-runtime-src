@@ -1,0 +1,18 @@
+<?tyhp
+
+function test_redis_construct_signature(): Redis
+{
+    return new Redis();
+}
+
+// Regression coverage: `echo`, `eval`, and `function` are PHP reserved words but are valid
+// Redis/RedisCluster method names (phpredis exposes them as-is). Confirms they parse, bind,
+// and type-check as ordinary identifiers via both `.tyhpdef` declaration and call sites.
+function test_redis_reserved_word_methods(Redis $redis, RedisCluster $cluster): void
+{
+    $redis->echo("ping");
+    $redis->eval("return 1", [], 0);
+    $redis->function("LIST");
+    $cluster->echo("node", "ping");
+    $cluster->eval("return 1", [], 0);
+}

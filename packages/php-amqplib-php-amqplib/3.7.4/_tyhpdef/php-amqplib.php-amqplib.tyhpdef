@@ -1,0 +1,4799 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace PhpAmqpLib {
+    final class Package {
+        public const string NAME ?? 'AMQPLib';
+        public const string VERSION ?? '3.7.4';
+    }
+}
+namespace PhpAmqpLib\Channel {
+    abstract class AbstractChannel {
+        /**
+        * @deprecated
+        * @generated
+        */
+        deprecated public const mixed PROTOCOL_080 ?? \PhpAmqpLib\Wire\Constants080::VERSION;
+        /**
+        * @deprecated
+        * @generated
+        */
+        deprecated public const mixed PROTOCOL_091 ?? \PhpAmqpLib\Wire\Constants091::VERSION;
+        /**
+        * Lower level queue for frames
+        *
+        * @var \SplQueue|array<int, Frame>
+        * @generated
+        */
+        protected \SplQueue|array<int, \PhpAmqpLib\Channel\Frame> $frame_queue;
+        /**
+        * Higher level queue for methods
+        *
+        * @var array
+        * @generated
+        */
+        protected array $method_queue ?? [];
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $auto_decode ?? false;
+        /**
+        * @var Wire\Constants
+        * @generated
+        */
+        protected \Wire\Constants $constants;
+        /**
+        * @var \PhpAmqpLib\Helper\DebugHelper
+        * @generated
+        */
+        protected \PhpAmqpLib\Helper\DebugHelper $debug;
+        /**
+        * @var null|\PhpAmqpLib\Connection\AbstractConnection
+        * @generated
+        */
+        protected null|\PhpAmqpLib\Connection\AbstractConnection $connection;
+        /**
+        * @var string
+        * @deprecated
+        * @generated
+        */
+        deprecated protected string $protocolVersion;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $maxBodySize;
+        /**
+        * @var \PhpAmqpLib\Helper\Protocol\Protocol080|\PhpAmqpLib\Helper\Protocol\Protocol091
+        * @generated
+        */
+        protected \PhpAmqpLib\Helper\Protocol\Protocol080|\PhpAmqpLib\Helper\Protocol\Protocol091 $protocolWriter;
+        /**
+        * @var \PhpAmqpLib\Helper\Protocol\Wait080|\PhpAmqpLib\Helper\Protocol\Wait091
+        * @generated
+        */
+        protected \PhpAmqpLib\Helper\Protocol\Wait080|\PhpAmqpLib\Helper\Protocol\Wait091 $waitHelper;
+        /**
+        * @var \PhpAmqpLib\Helper\Protocol\MethodMap080|\PhpAmqpLib\Helper\Protocol\MethodMap091
+        * @generated
+        */
+        protected \PhpAmqpLib\Helper\Protocol\MethodMap080|\PhpAmqpLib\Helper\Protocol\MethodMap091 $methodMap;
+        /**
+        * @var int|null
+        * @generated
+        */
+        protected int|null $channel_id;
+        /**
+        * @var Wire\AMQPBufferReader
+        * @generated
+        */
+        protected \Wire\AMQPBufferReader $msg_property_reader;
+        /**
+        * @var Wire\AMQPBufferReader
+        * @generated
+        */
+        protected \Wire\AMQPBufferReader $dispatch_reader;
+        /**
+        * @param \PhpAmqpLib\Connection\AbstractConnection $connection
+        * @param int $channel_id
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @generated
+        */
+        public function __construct(\PhpAmqpLib\Connection\AbstractConnection $connection, int $channel_id): void;
+        /**
+        * @return string
+        * @throws AMQPOutOfRangeException
+        * @deprecated
+        * @generated
+        */
+        deprecated public static function getProtocolVersion(): string;
+        /**
+        * @return int|null
+        * @generated
+        */
+        public function getChannelId(): int|null;
+        /**
+        * @param int $max_bytes Max message body size for this channel
+        * @return static
+        * @generated
+        */
+        public function setBodySizeLimit(int $max_bytes): static;
+        /**
+        * @return \PhpAmqpLib\Connection\AbstractConnection|null
+        * @generated
+        */
+        public function getConnection(): \PhpAmqpLib\Connection\AbstractConnection|null;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getMethodQueue(): array;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function hasPendingMethods(): bool;
+        /**
+        * @param string $method_sig
+        * @param string $args
+        * @param \PhpAmqpLib\Message\AMQPMessage|null $amqpMessage
+        * @return mixed
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @generated
+        */
+        public function dispatch(string $method_sig, string $args, \PhpAmqpLib\Message\AMQPMessage|null $amqpMessage): mixed;
+        /**
+        * @param int|float|null $timeout
+        * @return \PhpAmqpLib\Channel\Frame
+        * @generated
+        */
+        protected function next_frame(int|float|null $timeout = 0): \PhpAmqpLib\Channel\Frame;
+        /**
+        * @param array $method_sig
+        * @param \PhpAmqpLib\Wire\AMQPWriter|string $args
+        * @generated
+        */
+        protected function send_method_frame(array $method_sig, \PhpAmqpLib\Wire\AMQPWriter|string $args = ''): mixed;
+        /**
+        * This is here for performance reasons to batch calls to fwrite from basic.publish
+        *
+        * @param array $method_sig
+        * @param \PhpAmqpLib\Wire\AMQPWriter|string $args
+        * @param \PhpAmqpLib\Wire\AMQPWriter $pkt
+        * @return \PhpAmqpLib\Wire\AMQPWriter
+        * @generated
+        */
+        protected function prepare_method_frame(array $method_sig, \PhpAmqpLib\Wire\AMQPWriter|string $args = '', \PhpAmqpLib\Wire\AMQPWriter $pkt = null): \PhpAmqpLib\Wire\AMQPWriter;
+        /**
+        * @return \PhpAmqpLib\Message\AMQPMessage
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @throws AMQPInvalidFrameException
+        * @generated
+        */
+        public function wait_content(): \PhpAmqpLib\Message\AMQPMessage;
+        protected function createMessage(\PhpAmqpLib\Wire\AMQPReader $propertyReader, int $bodySize): \PhpAmqpLib\Message\AMQPMessage;
+        /**
+        * Wait for some expected AMQP methods and dispatch to them.
+        *
+        * Unexpected methods are queued up for later calls to this PHP
+        * method.
+        *
+        * @param array|null $allowed_methods
+        * @param bool $non_blocking
+        * @param int|float|null $timeout
+        * @return mixed
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws \PhpAmqpLib\Exception\AMQPConnectionClosedException
+        * @throws AMQPOutOfBoundsException
+        * @generated
+        */
+        public function wait(array|null $allowed_methods = null, bool $non_blocking = false, int|float|null $timeout = 0): mixed;
+        /**
+        * @param array|null $allowed_methods
+        * @return array
+        * @generated
+        */
+        protected function process_deferred_methods(array|null $allowed_methods): array;
+        /**
+        * @param array $queued_method
+        * @return mixed
+        * @generated
+        */
+        protected function dispatch_deferred_method(array $queued_method): mixed;
+        /**
+        * @param \PhpAmqpLib\Channel\Frame $frame
+        * @throws \PhpAmqpLib\Exception\AMQPInvalidFrameException
+        * @generated
+        */
+        protected function validate_method_frame(\PhpAmqpLib\Channel\Frame $frame): void;
+        /**
+        * @param \PhpAmqpLib\Channel\Frame $frame
+        * @param int $expectedType
+        * @throws AMQPInvalidFrameException
+        * @generated
+        */
+        protected function validate_frame(\PhpAmqpLib\Channel\Frame $frame, int $expectedType): void;
+        /**
+        * @param \PhpAmqpLib\Channel\Frame $frame
+        * @throws AMQPOutOfBoundsException
+        * @throws AMQPInvalidFrameException
+        * @generated
+        */
+        protected function validate_frame_payload(\PhpAmqpLib\Channel\Frame $frame): void;
+        protected function parseMethod(string $payload): \PhpAmqpLib\Channel\Method;
+        /**
+        * @param array|null $allowed_methods
+        * @param string $method_sig
+        * @return bool
+        * @generated
+        */
+        protected function should_dispatch_method(array|null $allowed_methods, string $method_sig): bool;
+        /**
+        * @param string $method_sig
+        * @return \PhpAmqpLib\Message\AMQPMessage|null
+        * @generated
+        */
+        protected function maybe_wait_for_content(string $method_sig): \PhpAmqpLib\Message\AMQPMessage|null;
+        /**
+        * @param callable $handler
+        * @param array $arguments
+        * @generated
+        */
+        protected function dispatch_to_handler(callable $handler, array $arguments = []): mixed;
+    }
+    class AMQPChannel extends \PhpAmqpLib\Channel\AbstractChannel {
+        /**
+        * @var bool Whether or not the channel has been "opened"
+        * @generated
+        */
+        protected bool $is_open ?? false;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $default_ticket ?? 0;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $active ?? true;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $stopConsume ?? false;
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $alerts ?? [];
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $auto_decode;
+        /**
+        * These parameters will be passed to function in case of basic_return:
+        *
+        *    param int $reply_code
+        *    param string $reply_text
+        *    param string $exchange
+        *    param string $routing_key
+        *    param AMQPMessage $msg
+        *
+        * @var null|callable
+        * @generated
+        */
+        protected null|callable $basic_return_callback;
+        /**
+        * @var array Used to keep track of the messages that are going to be batch published.
+        * @generated
+        */
+        protected array $batch_messages ?? [];
+        /**
+        * Maximum time to wait for operations on this channel, in seconds.
+        *
+        * @var float
+        * @generated
+        */
+        protected float $channel_rpc_timeout;
+        /**
+        * @param \PhpAmqpLib\Connection\AbstractConnection $connection
+        * @param int|null $channel_id
+        * @param bool $auto_decode
+        * @param int|float $channel_rpc_timeout
+        * @throws \PhpAmqpLib\Exception\AMQPOutOfBoundsException
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws \PhpAmqpLib\Exception\AMQPConnectionClosedException
+        * @generated
+        */
+        public function __construct(\PhpAmqpLib\Connection\AbstractConnection $connection, int|null $channel_id = null, bool $auto_decode = true, int|float $channel_rpc_timeout = 0): void;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function is_open(): bool;
+        /**
+        * Tear down this object, after we've agreed to close with the server.
+        *
+        * @generated
+        */
+        protected function do_close(): mixed;
+        /**
+        * Only for AMQP0.8.0
+        *
+        * This method allows the server to send a non-fatal warning to
+        * the client.  This is used for methods that are normally
+        * asynchronous and thus do not have confirmations, and for which
+        * the server may detect errors that need to be reported.  Fatal
+        * errors are handled as channel or connection exceptions; non-
+        * fatal errors are sent through this method.
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @generated
+        */
+        protected function channel_alert(\PhpAmqpLib\Wire\AMQPReader $reader): void;
+        /**
+        * Request a channel close
+        *
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param array $method_sig
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function close(int $reply_code = 0, string $reply_text = '', array $method_sig = []): mixed;
+        /**
+        * Closes a channel if no connection or a connection is closed
+        *
+        * @return bool
+        * @generated
+        */
+        public function closeIfDisconnected(): bool;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @throws AMQPProtocolChannelException
+        * @generated
+        */
+        protected function channel_close(\PhpAmqpLib\Wire\AMQPReader $reader): void;
+        /**
+        * Confirm a channel close
+        *
+        * Alias of AMQPChannel::do_close()
+        *
+        * @generated
+        */
+        protected function channel_close_ok(): mixed;
+        /**
+        * Enables/disables flow from peer
+        *
+        * @param bool $active
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function flow(bool $active): mixed;
+        protected function channel_flow(\PhpAmqpLib\Wire\AMQPReader $reader): void;
+        /**
+        * @param bool $active
+        * @generated
+        */
+        protected function x_flow_ok(bool $active): mixed;
+        protected function channel_flow_ok(\PhpAmqpLib\Wire\AMQPReader $reader): bool;
+        /**
+        * @param string $out_of_band
+        * @throws \PhpAmqpLib\Exception\AMQPOutOfBoundsException
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws \PhpAmqpLib\Exception\AMQPConnectionClosedException
+        * @return mixed
+        * @generated
+        */
+        protected function x_open(string $out_of_band = ''): mixed;
+        protected function channel_open_ok(): mixed;
+        /**
+        * Requests an access ticket
+        *
+        * @param string $realm
+        * @param bool $exclusive
+        * @param bool $passive
+        * @param bool $active
+        * @param bool $write
+        * @param bool $read
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function access_request(string $realm, bool $exclusive = false, bool $passive = false, bool $active = false, bool $write = false, bool $read = false): mixed;
+        /**
+        * Grants access to server resources
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return int
+        * @generated
+        */
+        protected function access_request_ok(\PhpAmqpLib\Wire\AMQPReader $reader): int;
+        /**
+        * Declares exchange
+        *
+        * @param string $exchange
+        * @param string $type
+        * @param bool $passive
+        * @param bool $durable
+        * @param bool $auto_delete
+        * @param bool $internal
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function exchange_declare(string $exchange, string $type, bool $passive = false, bool $durable = false, bool $auto_delete = true, bool $internal = false, bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = [], int|null $ticket = null): mixed;
+        /**
+        * Confirms an exchange declaration
+        *
+        * @generated
+        */
+        protected function exchange_declare_ok(): mixed;
+        /**
+        * Deletes an exchange
+        *
+        * @param string $exchange
+        * @param bool $if_unused
+        * @param bool $nowait
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function exchange_delete(string $exchange, bool $if_unused = false, bool $nowait = false, int|null $ticket = null): mixed;
+        /**
+        * Confirms deletion of an exchange
+        *
+        * @generated
+        */
+        protected function exchange_delete_ok(): mixed;
+        /**
+        * Binds dest exchange to source exchange
+        *
+        * @param string $destination
+        * @param string $source
+        * @param string $routing_key
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function exchange_bind(string $destination, string $source, string $routing_key = '', bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = [], int|null $ticket = null): mixed;
+        /**
+        * Confirms bind successful
+        *
+        * @generated
+        */
+        protected function exchange_bind_ok(): mixed;
+        /**
+        * Unbinds dest exchange from source exchange
+        *
+        * @param string $destination
+        * @param string $source
+        * @param string $routing_key
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function exchange_unbind(string $destination, string $source, string $routing_key = '', bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = [], int|null $ticket = null): mixed;
+        /**
+        * Confirms unbind successful
+        *
+        * @generated
+        */
+        protected function exchange_unbind_ok(): mixed;
+        /**
+        * Binds queue to an exchange
+        *
+        * @param string $queue
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function queue_bind(string $queue, string $exchange, string $routing_key = '', bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = [], int|null $ticket = null): mixed;
+        /**
+        * Confirms bind successful
+        *
+        * @generated
+        */
+        protected function queue_bind_ok(): mixed;
+        /**
+        * Unbind queue from an exchange
+        *
+        * @param string $queue
+        * @param string $exchange
+        * @param string $routing_key
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function queue_unbind(string $queue, string $exchange, string $routing_key = '', \PhpAmqpLib\Wire\AMQPTable|array $arguments = [], int|null $ticket = null): mixed;
+        /**
+        * Confirms unbind successful
+        *
+        * @generated
+        */
+        protected function queue_unbind_ok(): mixed;
+        /**
+        * Declares queue, creates if needed
+        *
+        * @param string $queue
+        * @param bool $passive
+        * @param bool $durable
+        * @param bool $exclusive
+        * @param bool $auto_delete
+        * @param bool $nowait
+        * @param array|\PhpAmqpLib\Wire\AMQPTable $arguments
+        * @param int|null $ticket
+        * @return array|null
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @generated
+        */
+        public function queue_declare(string $queue = '', bool $passive = false, bool $durable = false, bool $exclusive = false, bool $auto_delete = true, bool $nowait = false, array|\PhpAmqpLib\Wire\AMQPTable $arguments = [], int|null $ticket = null): array|null;
+        /**
+        * Confirms a queue definition
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array<int, string>
+        * @generated
+        */
+        protected function queue_declare_ok(\PhpAmqpLib\Wire\AMQPReader $reader): array<int, string>;
+        /**
+        * Deletes a queue
+        *
+        * @param string $queue
+        * @param bool $if_unused
+        * @param bool $if_empty
+        * @param bool $nowait
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function queue_delete(string $queue = '', bool $if_unused = false, bool $if_empty = false, bool $nowait = false, int|null $ticket = null): mixed;
+        /**
+        * Confirms deletion of a queue
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return int|string
+        * @generated
+        */
+        protected function queue_delete_ok(\PhpAmqpLib\Wire\AMQPReader $reader): int|string;
+        /**
+        * Purges a queue
+        *
+        * @param string $queue
+        * @param bool $nowait
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function queue_purge(string $queue = '', bool $nowait = false, int|null $ticket = null): mixed;
+        /**
+        * Confirms a queue purge
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return int|string
+        * @generated
+        */
+        protected function queue_purge_ok(\PhpAmqpLib\Wire\AMQPReader $reader): int|string;
+        /**
+        * Acknowledges one or more messages
+        *
+        * @param int $delivery_tag
+        * @param bool $multiple
+        * @generated
+        */
+        public function basic_ack(int $delivery_tag, bool $multiple = false): mixed;
+        /**
+        * Called when the server sends a basic.ack
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        protected function basic_ack_from_server(\PhpAmqpLib\Wire\AMQPReader $reader): void;
+        /**
+        * Called when the server sends a basic.nack
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        protected function basic_nack_from_server(\PhpAmqpLib\Wire\AMQPReader $reader): void;
+        /**
+        * Handles the deletion of messages from this->publishedMessages and dispatches them to the $handler
+        *
+        * @param int $delivery_tag
+        * @param bool $multiple
+        * @param callable $handler
+        * @generated
+        */
+        protected function internal_ack_handler(int $delivery_tag, bool $multiple, callable $handler): mixed;
+        /**
+        * @param array<int, \PhpAmqpLib\Message\AMQPMessage> $messages
+        * @param string $value
+        * @return mixed
+        * @generated
+        */
+        protected function get_keys_less_or_equal(array<int, \PhpAmqpLib\Message\AMQPMessage> $messages, string $value): mixed;
+        /**
+        * Rejects one or several received messages
+        *
+        * @param int $delivery_tag
+        * @param bool $multiple
+        * @param bool $requeue
+        * @generated
+        */
+        public function basic_nack(int $delivery_tag, bool $multiple = false, bool $requeue = false): mixed;
+        /**
+        * Ends a queue consumer
+        *
+        * @param string $consumer_tag
+        * @param bool $nowait
+        * @param bool $noreturn
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function basic_cancel(string $consumer_tag, bool $nowait = false, bool $noreturn = false): mixed;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @throws \PhpAmqpLib\Exception\AMQPBasicCancelException
+        * @generated
+        */
+        protected function basic_cancel_from_server(\PhpAmqpLib\Wire\AMQPReader $reader): mixed;
+        /**
+        * Confirm a cancelled consumer
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return string
+        * @generated
+        */
+        protected function basic_cancel_ok(\PhpAmqpLib\Wire\AMQPReader $reader): string;
+        /**
+        * @return bool
+        * @generated
+        */
+        public function is_consuming(): bool;
+        /**
+        * Start a queue consumer.
+        *
+        * This method asks the server to start a "consumer", which is a transient request for messages
+        * from a specific queue.
+        * Consumers last as long as the channel they were declared on, or until the client cancels them.
+        *
+        * @link https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.consume
+        * @param string $queue
+        * @param string $consumer_tag
+        * @param bool $no_local
+        * @param bool $no_ack
+        * @param bool $exclusive
+        * @param bool $nowait
+        * @param callable|null $callback
+        * @param int|null $ticket
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @throws \InvalidArgumentException
+        * @return string
+        * @generated
+        */
+        public function basic_consume(string $queue = '', string $consumer_tag = '', bool $no_local = false, bool $no_ack = false, bool $exclusive = false, bool $nowait = false, callable|null $callback = null, int|null $ticket = null, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): string;
+        /**
+        * Confirms a new consumer
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return string
+        * @generated
+        */
+        protected function basic_consume_ok(\PhpAmqpLib\Wire\AMQPReader $reader): string;
+        /**
+        * Notifies the client of a consumer message
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @param \PhpAmqpLib\Message\AMQPMessage $message
+        * @generated
+        */
+        protected function basic_deliver(\PhpAmqpLib\Wire\AMQPReader $reader, \PhpAmqpLib\Message\AMQPMessage $message): void;
+        /**
+        * Direct access to a queue if no message was available in the queue, return null
+        *
+        * @param string $queue
+        * @param bool $no_ack
+        * @param int|null $ticket
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return \PhpAmqpLib\Message\AMQPMessage|null
+        * @generated
+        */
+        public function basic_get(string $queue = '', bool $no_ack = false, int|null $ticket = null): \PhpAmqpLib\Message\AMQPMessage|null;
+        /**
+        * Indicates no messages available
+        *
+        * @generated
+        */
+        protected function basic_get_empty(): mixed;
+        /**
+        * Provides client with a message
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @param \PhpAmqpLib\Message\AMQPMessage $message
+        * @return \PhpAmqpLib\Message\AMQPMessage
+        * @generated
+        */
+        protected function basic_get_ok(\PhpAmqpLib\Wire\AMQPReader $reader, \PhpAmqpLib\Message\AMQPMessage $message): \PhpAmqpLib\Message\AMQPMessage;
+        /**
+        * Publishes a message
+        *
+        * @param \PhpAmqpLib\Message\AMQPMessage $msg
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $mandatory
+        * @param bool $immediate
+        * @param int|null $ticket
+        * @throws AMQPChannelClosedException
+        * @throws AMQPConnectionClosedException
+        * @throws AMQPConnectionBlockedException
+        * @generated
+        */
+        public function basic_publish(\PhpAmqpLib\Message\AMQPMessage $msg, string $exchange = '', string $routing_key = '', bool $mandatory = false, bool $immediate = false, int|null $ticket = null): mixed;
+        /**
+        * @param \PhpAmqpLib\Message\AMQPMessage $message
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $mandatory
+        * @param bool $immediate
+        * @param int|null $ticket
+        * @generated
+        */
+        public function batch_basic_publish(\PhpAmqpLib\Message\AMQPMessage $message, string $exchange = '', string $routing_key = '', bool $mandatory = false, bool $immediate = false, int|null $ticket = null): mixed;
+        /**
+        * Publish batch
+        *
+        * @return void
+        * @throws AMQPChannelClosedException
+        * @throws AMQPConnectionClosedException
+        * @throws AMQPConnectionBlockedException
+        * @generated
+        */
+        public function publish_batch(): void;
+        /**
+        * Specifies QoS
+        *
+        * See https://www.rabbitmq.com/consumer-prefetch.html#overview for details
+        *
+        * @param int $prefetch_size Default is 0 (Alias for unlimited)
+        * @param int $prefetch_count Default is 0 (Alias for unlimited)
+        * @param bool $global Default is false, prefetch size and count are applied to each channel consumer separately
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function basic_qos(int $prefetch_size, int $prefetch_count, mixed $a_global): mixed;
+        /**
+        * Confirms QoS request
+        *
+        * @generated
+        */
+        protected function basic_qos_ok(): mixed;
+        /**
+        * Redelivers unacknowledged messages
+        *
+        * @param bool $requeue
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function basic_recover(bool $requeue = false): mixed;
+        /**
+        * Confirm the requested recover
+        *
+        * @generated
+        */
+        protected function basic_recover_ok(): mixed;
+        /**
+        * Rejects an incoming message
+        *
+        * @param int $delivery_tag
+        * @param bool $requeue
+        * @generated
+        */
+        public function basic_reject(int $delivery_tag, bool $requeue): mixed;
+        /**
+        * Returns a failed message
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @param \PhpAmqpLib\Message\AMQPMessage $message
+        * @generated
+        */
+        protected function basic_return(\PhpAmqpLib\Wire\AMQPReader $reader, \PhpAmqpLib\Message\AMQPMessage $message): mixed;
+        /**
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function tx_commit(): mixed;
+        /**
+        * Confirms a successful commit
+        *
+        * @generated
+        */
+        protected function tx_commit_ok(): mixed;
+        /**
+        * Rollbacks the current transaction
+        *
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function tx_rollback(): mixed;
+        /**
+        * Confirms a successful rollback
+        *
+        * @generated
+        */
+        protected function tx_rollback_ok(): mixed;
+        /**
+        * Puts the channel into confirm mode
+        *
+        * Beware that only non-transactional channels may be put into confirm mode and vice versa
+        *
+        * @param bool $nowait
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @generated
+        */
+        public function confirm_select(bool $nowait = false): mixed;
+        /**
+        * Confirms a selection
+        *
+        * @generated
+        */
+        public function confirm_select_ok(): mixed;
+        /**
+        * Waits for pending acks and nacks from the server.
+        *
+        * If there are no pending acks, the method returns immediately
+        *
+        * @param int|float $timeout Waits until $timeout value is reached
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @generated
+        */
+        public function wait_for_pending_acks(int|float $timeout = 0): mixed;
+        /**
+        * Waits for pending acks, nacks and returns from the server.
+        *
+        * If there are no pending acks, the method returns immediately.
+        *
+        * @param int|float $timeout If set to value > 0 the method will wait at most $timeout seconds for pending acks.
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @generated
+        */
+        public function wait_for_pending_acks_returns(int|float $timeout = 0): mixed;
+        /**
+        * Selects standard transaction mode
+        *
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException if the specified operation timeout was exceeded
+        * @return mixed
+        * @generated
+        */
+        public function tx_select(): mixed;
+        /**
+        * Confirms transaction mode
+        *
+        * @generated
+        */
+        protected function tx_select_ok(): mixed;
+        /**
+        * @param int|null $ticket
+        * @return int
+        * @generated
+        */
+        protected function getTicket(int|null $ticket): int;
+        /**
+        * Helper method to get a particular method from $this->publishedMessages, removes it from the array and returns it.
+        *
+        * @param int $index
+        * @return \PhpAmqpLib\Message\AMQPMessage
+        * @generated
+        */
+        protected function get_and_unset_message(int $index): \PhpAmqpLib\Message\AMQPMessage;
+        /**
+        * Sets callback for basic_return
+        *
+        * @param callable $callback
+        * @throws \InvalidArgumentException if $callback is not callable
+        * @generated
+        */
+        public function set_return_listener(callable $callback): mixed;
+        /**
+        * Sets a handler which called for any message nack'ed by the server, with the AMQPMessage as first argument.
+        *
+        * @param callable $callback
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function set_nack_handler(callable $callback): mixed;
+        /**
+        * Sets a handler which called for any message ack'ed by the server, with the AMQPMessage as first argument.
+        *
+        * @param callable $callback
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function set_ack_handler(callable $callback): mixed;
+        /**
+        * Wait and process all incoming messages in an endless loop,
+        *
+        * until connection exception or manual stop using self::stopConsume()
+        *
+        * @param float $maximumPoll Maximum time in seconds between read attempts
+        * @throws \PhpAmqpLib\Exception\AMQPOutOfBoundsException
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @throws \PhpAmqpLib\Exception\AMQPConnectionClosedException
+        * @throws \ErrorException
+        * @since 3.2.0
+        * @generated
+        */
+        public function consume(float $maximumPoll = 10.0): void;
+        /**
+        * Stop AMQPChannel::consume() loop. Useful for signal handlers and other interrupts.
+        *
+        * @since 3.2.0
+        * @generated
+        */
+        public function stopConsume(): mixed;
+    }
+    /**
+    * @link https://livebook.manning.com/book/rabbitmq-in-depth/chapter-2/v-13/22
+    * @link https://www.rabbitmq.com/resources/specs/amqp0-9-1.pdf 4.2.6 Content Framing
+    * @generated
+    */
+    final class Frame {
+        public const mixed FRAME_HEADER_SIZE;
+        public const int END ?? 206;
+        public const int TYPE_METHOD ?? 1;
+        public const int TYPE_HEADER ?? 2;
+        public const int TYPE_BODY ?? 3;
+        public const int TYPE_HEARTBEAT ?? 8;
+        public function __construct(int $type, int $channel, int $size, ?string $payload = null): void;
+        /**
+        * @return int
+        * @generated
+        */
+        public function getType(): int;
+        /**
+        * @return int
+        * @generated
+        */
+        public function getChannel(): int;
+        /**
+        * @return int
+        * @generated
+        */
+        public function getSize(): int;
+        public function getPayload(): ?string;
+        public function isMethod(): bool;
+        public function isHeartbeat(): bool;
+    }
+    final class Method {
+        public function __construct(int $class, int $method, string $arguments): void;
+        public function getClass(): int;
+        public function getMethod(): int;
+        public function getArguments(): string;
+        public function getSignature(): string;
+    }
+}
+namespace PhpAmqpLib\Connection {
+    abstract class AbstractConnection extends \PhpAmqpLib\Channel\AbstractChannel {
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $version_major;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $version_minor;
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $server_properties;
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $mechanisms;
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $locales;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $wait_tune_ok;
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $known_hosts;
+        /**
+        * @var null|Wire\AMQPIOReader
+        * @generated
+        */
+        protected null|\Wire\AMQPIOReader $input;
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $vhost;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $insist;
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $login_method;
+        /**
+        * @var null|string
+        * @generated
+        */
+        protected null|string $login_response;
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $locale;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $heartbeat;
+        /**
+        * @var float
+        * @generated
+        */
+        protected float $last_frame;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $channel_max ?? 65535;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $frame_max ?? 131072;
+        /**
+        * @var array Constructor parameters for clone
+        * @generated
+        */
+        protected array $construct_params;
+        /**
+        * @var bool Close the connection in destructor
+        * @generated
+        */
+        protected bool $close_on_destruct ?? true;
+        /**
+        * @var bool Maintain connection status
+        * @generated
+        */
+        protected bool $is_connected ?? false;
+        /**
+        * @var \PhpAmqpLib\Wire\IO\AbstractIO
+        * @generated
+        */
+        protected \PhpAmqpLib\Wire\IO\AbstractIO $io;
+        /**
+        * @var int Connection timeout value
+        * @generated
+        */
+        protected int $connection_timeout;
+        /**
+        * @var AMQPConnectionConfig|null
+        * @generated
+        */
+        protected \PhpAmqpLib\Connection\AMQPConnectionConfig|null $config;
+        /**
+        * If connection is blocked due to the broker running low on resources.
+        *
+        * @var bool
+        * @generated
+        */
+        protected bool $blocked ?? false;
+        /**
+        * If a frame is currently being written
+        *
+        * @var bool
+        * @generated
+        */
+        protected bool $writing ?? false;
+        /**
+        * @param string $user
+        * @param string $password
+        * @param string $vhost
+        * @param bool $insist
+        * @param string $login_method
+        * @param null $login_response @deprecated
+        * @param string $locale
+        * @param ?\PhpAmqpLib\Wire\IO\AbstractIO $io
+        * @param int $heartbeat
+        * @param int|float $connection_timeout
+        * @param int|float $channel_rpc_timeout
+        * @param ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config
+        * @throws \Exception
+        * @generated
+        */
+        public function __construct(string $user, string $password, string $vhost = '/', bool $insist = false, string $login_method = 'AMQPLAIN', null $login_response = null, string $locale = 'en_US', ?\PhpAmqpLib\Wire\IO\AbstractIO $io = null, int $heartbeat = 0, int|float $connection_timeout = 0, int|float $channel_rpc_timeout = 0.0, ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config = null): void;
+        /**
+        * Connects to the AMQP server
+        *
+        * @throws \Exception
+        * @generated
+        */
+        protected function connect(): mixed;
+        /**
+        * Reconnects using the original connection settings.
+        *
+        * This will not recreate any channels that were established previously
+        *
+        * @throws \Exception
+        * @generated
+        */
+        public function reconnect(): mixed;
+        /**
+        * Cloning will use the old properties to make a new connection to the same server
+        *
+        * @generated
+        */
+        public function __clone(): mixed;
+        public function __destruct(): void;
+        /**
+        * Attempts to close the connection safely
+        *
+        * @generated
+        */
+        protected function safeClose(): mixed;
+        /**
+        * @param ?int $sec
+        * @param int $usec
+        * @return int
+        * @throws AMQPIOException
+        * @throws AMQPRuntimeException
+        * @throws AMQPConnectionClosedException
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        public function select(?int $sec, int $usec = 0): int;
+        /**
+        * Allows to not close the connection
+        *
+        * it's useful after the fork when you don't want to close parent process connection
+        *
+        * @param bool $close
+        * @generated
+        */
+        public function set_close_on_destruct(bool $close = true): mixed;
+        protected function close_input(): mixed;
+        protected function close_socket(): mixed;
+        /**
+        * @param string $data
+        * @throws AMQPIOException
+        * @generated
+        */
+        public function write(string $data): mixed;
+        protected function do_close(): mixed;
+        /**
+        * @return int
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        public function get_free_channel_id(): int;
+        /**
+        * @param int $channel
+        * @param int $class_id
+        * @param int $weight
+        * @param int $body_size
+        * @param string $packed_properties
+        * @param string $body
+        * @param \PhpAmqpLib\Wire\AMQPWriter $pkt
+        * @throws AMQPIOException
+        * @generated
+        */
+        public function send_content(int $channel, int $class_id, int $weight, int $body_size, string $packed_properties, string $body, \PhpAmqpLib\Wire\AMQPWriter $pkt): mixed;
+        /**
+        * Returns a new AMQPWriter or mutates the provided $pkt
+        *
+        * @param int $channel
+        * @param int $class_id
+        * @param int $weight
+        * @param int $body_size
+        * @param string $packed_properties
+        * @param string $body
+        * @param \PhpAmqpLib\Wire\AMQPWriter|null $pkt
+        * @return \PhpAmqpLib\Wire\AMQPWriter
+        * @generated
+        */
+        public function prepare_content(int $channel, int $class_id, int $weight, int $body_size, string $packed_properties, string $body, \PhpAmqpLib\Wire\AMQPWriter|null $pkt): \PhpAmqpLib\Wire\AMQPWriter;
+        /**
+        * @param int $channel
+        * @param array $method_sig
+        * @param \PhpAmqpLib\Wire\AMQPWriter|string $args
+        * @param null $pkt
+        * @throws AMQPIOException
+        * @generated
+        */
+        protected function send_channel_method_frame(int $channel, array $method_sig, \PhpAmqpLib\Wire\AMQPWriter|string $args = '', null $pkt = null): mixed;
+        /**
+        * Returns a new AMQPWriter or mutates the provided $pkt
+        *
+        * @param int $channel
+        * @param array $method_sig
+        * @param \PhpAmqpLib\Wire\AMQPWriter|string $args
+        * @param \PhpAmqpLib\Wire\AMQPWriter|null $pkt
+        * @return \PhpAmqpLib\Wire\AMQPWriter
+        * @generated
+        */
+        protected function prepare_channel_method_frame(int $channel, array $method_sig, \PhpAmqpLib\Wire\AMQPWriter|string $args = '', \PhpAmqpLib\Wire\AMQPWriter|null $pkt = null): \PhpAmqpLib\Wire\AMQPWriter;
+        /**
+        * Waits for a frame from the server
+        *
+        * @param int|float|null $timeout
+        * @return \PhpAmqpLib\Channel\Frame
+        * @throws \Exception
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        protected function wait_frame(int|float|null $timeout = 0): \PhpAmqpLib\Channel\Frame;
+        /**
+        * Waits for a frame from the server destined for a particular channel.
+        *
+        * @param int $channel_id
+        * @param int|float|null $timeout
+        * @return \PhpAmqpLib\Channel\Frame
+        * @throws \Exception
+        * @generated
+        */
+        protected function wait_channel(int $channel_id, int|float|null $timeout = 0): \PhpAmqpLib\Channel\Frame;
+        /**
+        * Fetches a channel object identified by the numeric channel_id, or
+        *
+        * create that object if it doesn't already exist.
+        *
+        * @param int|null $channel_id
+        * @return \PhpAmqpLib\Channel\AMQPChannel
+        * @throws \PhpAmqpLib\Exception\AMQPOutOfBoundsException
+        * @throws \PhpAmqpLib\Exception\AMQPRuntimeException
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws \PhpAmqpLib\Exception\AMQPConnectionClosedException
+        * @generated
+        */
+        public function channel(int|null $channel_id = null): \PhpAmqpLib\Channel\AMQPChannel;
+        /**
+        * Requests a connection close
+        *
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param array $method_sig
+        * @return mixed
+        * @throws \Exception
+        * @generated
+        */
+        public function close(int $reply_code = 0, string $reply_text = '', array $method_sig = []): mixed;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @throws AMQPConnectionClosedException
+        * @generated
+        */
+        protected function connection_close(\PhpAmqpLib\Wire\AMQPReader $reader): mixed;
+        /**
+        * Confirms a connection close
+        *
+        * @generated
+        */
+        protected function x_close_ok(): mixed;
+        /**
+        * Confirm a connection close
+        *
+        * @generated
+        */
+        protected function connection_close_ok(): mixed;
+        /**
+        * @param string $virtual_host
+        * @param string $capabilities
+        * @param bool $insist
+        * @return mixed
+        * @generated
+        */
+        protected function x_open(string $virtual_host, string $capabilities = '', bool $insist = false): mixed;
+        /**
+        * Signals that the connection is ready
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $args
+        * @generated
+        */
+        protected function connection_open_ok(\PhpAmqpLib\Wire\AMQPReader $args): mixed;
+        /**
+        * Asks the client to use a different server
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $args
+        * @return string
+        * @generated
+        */
+        protected function connection_redirect(\PhpAmqpLib\Wire\AMQPReader $args): string;
+        /**
+        * Security mechanism challenge
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $args
+        * @generated
+        */
+        protected function connection_secure(\PhpAmqpLib\Wire\AMQPReader $args): mixed;
+        /**
+        * Security mechanism response
+        *
+        * @param string $response
+        * @generated
+        */
+        protected function x_secure_ok(string $response): mixed;
+        /**
+        * Starts connection negotiation
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $args
+        * @generated
+        */
+        protected function connection_start(\PhpAmqpLib\Wire\AMQPReader $args): mixed;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $clientProperties
+        * @param string $mechanism
+        * @param string $response
+        * @param string $locale
+        * @generated
+        */
+        protected function x_start_ok(\PhpAmqpLib\Wire\AMQPTable|array $clientProperties, string $mechanism, string $response, string $locale): mixed;
+        /**
+        * Proposes connection tuning parameters
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $args
+        * @generated
+        */
+        protected function connection_tune(\PhpAmqpLib\Wire\AMQPReader $args): mixed;
+        /**
+        * Negotiates connection tuning parameters
+        *
+        * @param int $channel_max
+        * @param int $frame_max
+        * @param int $heartbeat
+        * @generated
+        */
+        protected function x_tune_ok(int $channel_max, int $frame_max, int $heartbeat): mixed;
+        /**
+        * @return \PhpAmqpLib\Wire\IO\AbstractIO
+        * @deprecated
+        * @generated
+        */
+        deprecated public function getIO(): \PhpAmqpLib\Wire\IO\AbstractIO;
+        /**
+        * Check connection heartbeat if enabled.
+        *
+        * @throws AMQPHeartbeatMissedException If too much time passed since last connection activity.
+        * @throws AMQPConnectionClosedException If connection was closed due to network issues or timeouts.
+        * @throws AMQPSocketException If connection was already closed.
+        * @throws AMQPTimeoutException If heartbeat write takes too much time.
+        * @throws AMQPIOException If other connection problems occurred.
+        * @generated
+        */
+        public function checkHeartBeat(): mixed;
+        /**
+        * @return float|int
+        * @generated
+        */
+        public function getLastActivity(): float|int;
+        /**
+        * @return float
+        * @since 3.2.0
+        * @generated
+        */
+        public function getReadTimeout(): float;
+        /**
+        * Handles connection blocked notifications
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $args
+        * @generated
+        */
+        protected function connection_blocked(\PhpAmqpLib\Wire\AMQPReader $args): mixed;
+        /**
+        * Handles connection unblocked notifications
+        *
+        * @generated
+        */
+        protected function connection_unblocked(): mixed;
+        /**
+        * Sets a handler which is called whenever a connection.block is sent from the server
+        *
+        * @param callable $callback
+        * @throws \InvalidArgumentException if $callback is not callable
+        * @generated
+        */
+        public function set_connection_block_handler(callable $callback): mixed;
+        /**
+        * Sets a handler which is called whenever a connection.block is sent from the server
+        *
+        * @param callable $callback
+        * @throws \InvalidArgumentException if $callback is not callable
+        * @generated
+        */
+        public function set_connection_unblock_handler(callable $callback): mixed;
+        /**
+        * Gets the connection status
+        *
+        * @return bool
+        * @generated
+        */
+        public function isConnected(): bool;
+        /**
+        * Get the connection blocked state.
+        *
+        * @return bool
+        * @since 2.12.0
+        * @generated
+        */
+        public function isBlocked(): bool;
+        /**
+        * Get the io writing state.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isWriting(): bool;
+        /**
+        * Set the connection status
+        *
+        * @param bool $is_connected
+        * @generated
+        */
+        protected function setIsConnected(bool $is_connected): mixed;
+        /**
+        * Closes all available channels
+        *
+        * @generated
+        */
+        protected function closeChannels(): mixed;
+        /**
+        * Closes all available channels if disconnected
+        *
+        * @generated
+        */
+        protected function closeChannelsIfDisconnected(): mixed;
+        /**
+        * Should the connection be attempted during construction?
+        *
+        * @return bool
+        * @generated
+        */
+        public function connectOnConstruct(): bool;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getServerProperties(): array;
+        /**
+        * @return int
+        * @generated
+        */
+        public function getHeartbeat(): int;
+        /**
+        * Get the library properties for populating the client protocol information
+        *
+        * @return array
+        * @generated
+        */
+        public function getLibraryProperties(): array;
+        /**
+        * @param array $hosts
+        * @param array $options
+        * @return mixed
+        * @throws \Exception
+        * @deprecated Use AMQPConnectionFactory.
+        * @generated
+        */
+        deprecated public static function create_connection(array $hosts, array $options = []): mixed;
+        public static function validate_host(mixed $host): mixed;
+    }
+    /**
+    * @since 3.2.0
+    * @generated
+    */
+    final class AMQPConnectionConfig {
+        public const string AUTH_PLAIN ?? 'PLAIN';
+        public const string AUTH_AMQPPLAIN ?? 'AMQPLAIN';
+        public const string AUTH_EXTERNAL ?? 'EXTERNAL';
+        public const string IO_TYPE_STREAM ?? 'stream';
+        public const string IO_TYPE_SOCKET ?? 'socket';
+        public function getIoType(): string;
+        /**
+        * Set which IO type will be used, stream or socket.
+        *
+        * @param string $ioType
+        * @generated
+        */
+        public function setIoType(string $ioType): void;
+        public function isLazy(): bool;
+        public function setIsLazy(bool $isLazy): void;
+        public function getHost(): string;
+        public function setHost(string $host): void;
+        public function getPort(): int;
+        public function setPort(int $port): void;
+        public function getUser(): string;
+        public function setUser(string $user): void;
+        public function getPassword(): string;
+        public function setPassword(string $password): void;
+        public function getVhost(): string;
+        public function setVhost(string $vhost): void;
+        public function isInsist(): bool;
+        public function setInsist(bool $insist): void;
+        public function getLoginMethod(): string;
+        public function setLoginMethod(string $loginMethod): void;
+        public function getLoginResponse(): ?string;
+        public function setLoginResponse(string $loginResponse): void;
+        public function getLocale(): string;
+        public function setLocale(string $locale): void;
+        public function getConnectionTimeout(): float;
+        public function setConnectionTimeout(float $connectionTimeout): void;
+        public function getReadTimeout(): float;
+        public function setReadTimeout(float $readTimeout): void;
+        public function getWriteTimeout(): float;
+        public function setWriteTimeout(float $writeTimeout): void;
+        public function getChannelRPCTimeout(): float;
+        public function setChannelRPCTimeout(float $channelRPCTimeout): void;
+        public function getHeartbeat(): int;
+        public function setHeartbeat(int $heartbeat): void;
+        public function isKeepalive(): bool;
+        public function setKeepalive(bool $keepalive): void;
+        public function isSecure(): bool;
+        public function setIsSecure(bool $isSecure): void;
+        /**
+        * @deprecated Use getSslCryptoMethod()
+        * @generated
+        */
+        deprecated public function getNetworkProtocol(): string;
+        /**
+        * @deprecated Use setIsSecure() and setSslCryptoMethod()
+        * @generated
+        */
+        deprecated public function setNetworkProtocol(string $networkProtocol): void;
+        /**
+        * @return resource|null
+        * @generated
+        */
+        public function getStreamContext(): resource|null;
+        /**
+        * @param resource|null $streamContext
+        * @generated
+        */
+        public function setStreamContext(resource|null $streamContext): void;
+        /**
+        * @return int
+        * @since 3.2.1
+        * @generated
+        */
+        public function getSendBufferSize(): int;
+        /**
+        * Socket send buffer size. Set 0 to keep system default.
+        *
+        * @param int $sendBufferSize
+        * @return void
+        * @since 3.2.1
+        * @generated
+        */
+        public function setSendBufferSize(int $sendBufferSize): void;
+        public function isSignalsDispatchEnabled(): bool;
+        public function enableSignalDispatch(bool $dispatchSignals): void;
+        /**
+        * @return string
+        * @deprecated
+        * @generated
+        */
+        deprecated public function getAMQPProtocol(): string;
+        /**
+        * @param string $protocol
+        * @deprecated
+        * @generated
+        */
+        deprecated public function setAMQPProtocol(string $protocol): void;
+        public function isProtocolStrictFieldsEnabled(): bool;
+        public function setProtocolStrictFields(bool $protocolStrictFields): void;
+        public function getSslCaCert(): ?string;
+        public function setSslCaCert(?string $sslCaCert): void;
+        public function getSslCaPath(): ?string;
+        public function setSslCaPath(?string $sslCaPath): void;
+        public function getSslCert(): ?string;
+        public function setSslCert(?string $sslCert): void;
+        public function getSslKey(): ?string;
+        public function setSslKey(?string $sslKey): void;
+        public function getSslVerify(): ?bool;
+        public function setSslVerify(?bool $sslVerify): void;
+        public function getSslVerifyName(): ?bool;
+        public function setSslVerifyName(?bool $sslVerifyName): void;
+        public function getSslPassPhrase(): ?string;
+        public function setSslPassPhrase(?string $sslPassPhrase): void;
+        public function getSslCiphers(): ?string;
+        public function setSslCiphers(?string $sslCiphers): void;
+        public function getSslSecurityLevel(): ?int;
+        public function setSslSecurityLevel(?int $sslSecurityLevel): void;
+        public function getSslCryptoMethod(): ?int;
+        public function setSslCryptoMethod(?int $sslCryptoMethod): void;
+        public function isDebugPackets(): bool;
+        public function setDebugPackets(bool $debugPackets): void;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getConnectionName(): string;
+        /**
+        * @param string $connectionName
+        * @generated
+        */
+        public function setConnectionName(string $connectionName): void;
+    }
+    /**
+    * @since 3.2.0
+    * @generated
+    */
+    class AMQPConnectionFactory {
+        public static function create(\PhpAmqpLib\Connection\AMQPConnectionConfig $config): \PhpAmqpLib\Connection\AbstractConnection;
+    }
+    /**
+    * @deprecated AMQPStreamConnection can be lazy too. Use AMQPConnectionFactory with AMQPConnectionConfig::setIsLazy(true)
+    * @generated
+    */
+    deprecated class AMQPLazyConnection extends \PhpAmqpLib\Connection\AMQPStreamConnection {
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function connectOnConstruct(): bool;
+        /**
+        * @param array<int, array<int, string>> $hosts
+        * @param array<int, string> $options
+        * @return self
+        * @throws \Exception
+        * @deprecated Use ConnectionFactory
+        * @generated
+        */
+        deprecated public static function create_connection(array<int, array<int, string>> $hosts, array<int, string> $options = []): self;
+    }
+    /**
+    * @deprecated AMQPSocketConnection can be lazy too. Use AMQPConnectionFactory with AMQPConnectionConfig::setIsLazy(true)
+    * @generated
+    */
+    deprecated class AMQPLazySocketConnection extends \PhpAmqpLib\Connection\AMQPSocketConnection {
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function connectOnConstruct(): bool;
+        /**
+        * @param array<int, array<int, string>> $hosts
+        * @param array<int, string> $options
+        * @return self
+        * @throws \Exception
+        * @deprecated Use ConnectionFactory
+        * @generated
+        */
+        deprecated public static function create_connection(array<int, array<int, string>> $hosts, array<int, string> $options = []): self;
+    }
+    /**
+    * @deprecated AMQPLazySSLConnection can be lazy too. Use AMQPConnectionFactory with AMQPConnectionConfig::setIsLazy(true)
+    * @generated
+    */
+    deprecated class AMQPLazySSLConnection extends \PhpAmqpLib\Connection\AMQPSSLConnection {
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function connectOnConstruct(): bool;
+        /**
+        * @param array<int, array<int, string>> $hosts
+        * @param array<int, string> $options
+        * @return self
+        * @throws \Exception
+        * @deprecated Use ConnectionFactory
+        * @generated
+        */
+        deprecated public static function create_connection(array<int, array<int, string>> $hosts, array<int, string> $options = []): self;
+    }
+    class AMQPSocketConnection extends \PhpAmqpLib\Connection\AbstractConnection {
+        /**
+        * @param string $host
+        * @param int $port
+        * @param string $user
+        * @param string $password
+        * @param string $vhost
+        * @param bool $insist
+        * @param string $login_method
+        * @param null $login_response @deprecated
+        * @param string $locale
+        * @param int|float $read_timeout
+        * @param bool $keepalive
+        * @param int $write_timeout
+        * @param int $heartbeat
+        * @param float $channel_rpc_timeout
+        * @param ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config
+        * @throws \Exception
+        * @generated
+        */
+        public function __construct(string $host, int $port, string $user, string $password, string $vhost = '/', bool $insist = false, string $login_method = 'AMQPLAIN', null $login_response = null, string $locale = 'en_US', int|float $read_timeout = 3, bool $keepalive = false, int $write_timeout = 3, int $heartbeat = 0, float $channel_rpc_timeout = 0.0, ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config = null): void;
+        /**
+        * @deprecated Use AmqpConnectionFactory
+        * @throws \Exception
+        * @generated
+        */
+        deprecated protected static function try_create_connection(mixed $host, mixed $port, mixed $user, mixed $password, mixed $vhost, mixed $options): mixed;
+    }
+    /**
+    * @deprecated Use AMQPConnectionFactory with AMQPConnectionConfig::setIsSecure(true) and AMQPConnectionConfig::setSsl* methods.
+    * @generated
+    */
+    deprecated class AMQPSSLConnection extends \PhpAmqpLib\Connection\AMQPStreamConnection {
+        /**
+        * @param string $host
+        * @param int $port
+        * @param string $user
+        * @param string $password
+        * @param string $vhost
+        * @param array $ssl_options
+        * @param array $options
+        * @param ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config
+        * @throws \Exception
+        * @generated
+        */
+        public function __construct(string $host, int $port, string $user, string $password, string $vhost = '/', array $ssl_options = [], array $options = [], ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config = null): void;
+        /**
+        * @deprecated Use AmqpConnectionFactory
+        * @throws \Exception
+        * @generated
+        */
+        deprecated public static function try_create_connection(mixed $host, mixed $port, mixed $user, mixed $password, mixed $vhost, mixed $options): mixed;
+    }
+    class AMQPStreamConnection extends \PhpAmqpLib\Connection\AbstractConnection {
+        /**
+        * @param string $host
+        * @param int $port
+        * @param string $user
+        * @param string $password
+        * @param string $vhost
+        * @param bool $insist
+        * @param string $login_method
+        * @param null $login_response @deprecated
+        * @param string $locale
+        * @param float $connection_timeout
+        * @param float $read_write_timeout
+        * @param resource|array|null $context
+        * @param bool $keepalive
+        * @param int $heartbeat
+        * @param float $channel_rpc_timeout
+        * @param string|AMQPConnectionConfig|null $ssl_protocol @deprecated
+        * @param ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config
+        * @throws \Exception
+        * @generated
+        */
+        public function __construct(string $host, int $port, string $user, string $password, string $vhost = '/', bool $insist = false, string $login_method = 'AMQPLAIN', null $login_response = null, string $locale = 'en_US', float $connection_timeout = 3.0, float $read_write_timeout = 3.0, resource|array|null $context = null, bool $keepalive = false, int $heartbeat = 0, float $channel_rpc_timeout = 0.0, string|\PhpAmqpLib\Connection\AMQPConnectionConfig|null $ssl_protocol = null, ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config = null): void;
+        /**
+        * @deprecated Use AmqpConnectionFactory
+        * @throws \Exception
+        * @generated
+        */
+        deprecated protected static function try_create_connection(mixed $host, mixed $port, mixed $user, mixed $password, mixed $vhost, mixed $options): mixed;
+    }
+}
+namespace PhpAmqpLib\Connection\Heartbeat {
+    /**
+    * Manages pcntl-based heartbeat sending for a {@link AbstractConnection}.
+    *
+    * @generated
+    */
+    abstract class AbstractSignalHeartbeatSender {
+        /**
+        * @var \PhpAmqpLib\Connection\AbstractConnection|null
+        * @generated
+        */
+        protected \PhpAmqpLib\Connection\AbstractConnection|null $connection;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $wasActive ?? false;
+        /**
+        * @param \PhpAmqpLib\Connection\AbstractConnection $connection
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        public function __construct(\PhpAmqpLib\Connection\AbstractConnection $connection): void;
+        public function __destruct(): void;
+        /**
+        * @return bool
+        * @generated
+        */
+        protected function isSupported(): bool;
+        /**
+        * Starts the heartbeats
+        *
+        * @generated
+        */
+        public abstract function register(): void;
+        /**
+        * Stops the heartbeats.
+        *
+        * @generated
+        */
+        public abstract function unregister(): void;
+        /**
+        * Handles the heartbeat when a signal interrupt is received
+        *
+        * @param int $interval
+        * @generated
+        */
+        protected function handleSignal(int $interval): void;
+    }
+    /**
+    * @see AbstractSignalHeartbeatSender
+    * 
+    * This version of a signal based heartbeat sendler relies on using SIGALRM and uses the OS to trigger an alarm
+    * after a given time.
+    * @generated
+    */
+    final class PCNTLHeartbeatSender extends \PhpAmqpLib\Connection\Heartbeat\AbstractSignalHeartbeatSender {
+        public function register(): void;
+        public function unregister(): void;
+    }
+    /**
+    * @see AbstractSignalHeartbeatSender
+    * @since 3.2.0
+    * 
+    * This version of a signal based heartbeat sender allows using any signal number. It forks the current process
+    * to create a child process that periodically sends a signal to the parent process.
+    * The default signal used is SIGUSR1
+    * @generated
+    */
+    final class SIGHeartbeatSender extends \PhpAmqpLib\Connection\Heartbeat\AbstractSignalHeartbeatSender {
+        /**
+        * @param \PhpAmqpLib\Connection\AbstractConnection $connection
+        * @param int $signal
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        public function __construct(\PhpAmqpLib\Connection\AbstractConnection $connection, int $signal): void;
+        public function register(): void;
+        public function unregister(): void;
+    }
+}
+namespace PhpAmqpLib\Exception {
+    class AMQPBasicCancelException extends \Exception implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+        /**
+        * @param string $consumerTag
+        * @generated
+        */
+        public function __construct(string $consumerTag): void;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getConsumerTag(): string;
+    }
+    class AMQPChannelClosedException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPConnectionBlockedException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+        public function __construct(mixed $message = '', mixed $code = 0, mixed $previous = null): void;
+    }
+    /**
+    * When connection was closed by server, proxy or some tunnel due to timeout or network issue.
+    *
+    * @generated
+    */
+    class AMQPConnectionClosedException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPDataReadException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPEmptyDeliveryTagException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    interface AMQPExceptionInterface extends \Throwable {
+    }
+    class AMQPHeartbeatMissedException extends \PhpAmqpLib\Exception\AMQPConnectionClosedException {
+    }
+    class AMQPInvalidArgumentException extends \RuntimeException implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+    }
+    class AMQPInvalidFrameException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPIOException extends \Exception implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+    }
+    class AMQPIOWaitException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPLogicException extends \LogicException implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+    }
+    /**
+    * Used mostly in non-blocking methods when no data is ready for processing.
+    *
+    * @generated
+    */
+    class AMQPNoDataException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPNotImplementedException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPOutOfBoundsException extends \OutOfBoundsException implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+    }
+    class AMQPOutOfRangeException extends \OutOfRangeException implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+    }
+    class AMQPProtocolChannelException extends \PhpAmqpLib\Exception\AMQPProtocolException {
+    }
+    class AMQPProtocolException extends \Exception implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+        /**
+        * @var int
+        * @generated
+        */
+        public int $amqp_reply_code;
+        /**
+        * @var string
+        * @generated
+        */
+        public string $amqp_reply_text;
+        /**
+        * @var array<int, int>
+        * @generated
+        */
+        public array<int, int> $amqp_method_sig;
+        /**
+        * @var array
+        * @generated
+        */
+        public array $args;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param array<int, int> $method_sig
+        * @generated
+        */
+        public function __construct(int $reply_code, string $reply_text, array<int, int> $method_sig): void;
+    }
+    class AMQPRuntimeException extends \RuntimeException implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+    }
+    class AMQPSocketException extends \PhpAmqpLib\Exception\AMQPRuntimeException {
+    }
+    class AMQPTimeoutException extends \RuntimeException implements \PhpAmqpLib\Exception\AMQPExceptionInterface {
+        public function __construct(mixed $message = '', mixed $timeout = 0, mixed $code = 0, ?\Exception $previous = null): void;
+        /**
+        * @param int|float|null $timeout
+        * @param int $code
+        * @return self
+        * @generated
+        */
+        public static function writeTimeout(int|float|null $timeout, int $code = 0): self;
+        /**
+        * @return int|float|null
+        * @generated
+        */
+        public function getTimeout(): int|float|null;
+    }
+}
+namespace PhpAmqpLib\Exchange {
+    final class AMQPExchangeType {
+        public const string DIRECT ?? 'direct';
+        public const string FANOUT ?? 'fanout';
+        public const string TOPIC ?? 'topic';
+        public const string HEADERS ?? 'headers';
+    }
+}
+namespace PhpAmqpLib\Helper {
+    class Assert {
+        /**
+        * @param mixed $argument
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public static function isCallable(mixed $argument): mixed;
+    }
+    class DebugHelper {
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $debug;
+        /**
+        * @var resource
+        * @generated
+        */
+        protected resource $debug_output;
+        /**
+        * @var \PhpAmqpLib\Wire\Constants
+        * @generated
+        */
+        protected \PhpAmqpLib\Wire\Constants $constants;
+        /**
+        * @param \PhpAmqpLib\Wire\Constants $constants
+        * @generated
+        */
+        public function __construct(\PhpAmqpLib\Wire\Constants $constants): void;
+        /**
+        * @param string $msg
+        * @generated
+        */
+        public function debug_msg(string $msg): mixed;
+        /**
+        * @param array|null $allowed_methods
+        * @generated
+        */
+        public function debug_allowed_methods(array|null $allowed_methods): mixed;
+        /**
+        * @param string|array $method_sig
+        * @generated
+        */
+        public function debug_method_signature1(string|array $method_sig): mixed;
+        /**
+        * @param string $msg
+        * @param string|array $method_sig
+        * @generated
+        */
+        public function debug_method_signature(string $msg, string|array $method_sig): mixed;
+        /**
+        * @param string $data
+        * @generated
+        */
+        public function debug_hexdump(string $data): mixed;
+        /**
+        * @param int $version_major
+        * @param int $version_minor
+        * @param array $server_properties
+        * @param array $mechanisms
+        * @param array $locales
+        * @generated
+        */
+        public function debug_connection_start(int $version_major, int $version_minor, array $server_properties, array $mechanisms, array $locales): mixed;
+        /**
+        * @param string $s
+        * @generated
+        */
+        protected function print_msg(string $s): mixed;
+    }
+    class MiscHelper {
+        /**
+        * @param string|array $a
+        * @return string
+        * @generated
+        */
+        public static function methodSig(string|array $a): string;
+        /**
+        * Gets a number (either int or float) and returns an array containing its integer part as first element and its
+        *
+        * decimal part multiplied by 10^6. Useful for some PHP stream functions that need seconds and microseconds as
+        * different arguments
+        *
+        * @param int|float $number
+        * @return array<int, int>
+        * @generated
+        */
+        public static function splitSecondsMicroseconds(int|float $number): array<int, int>;
+        /**
+        * View any string as a hexdump.
+        *
+        * This is most commonly used to view binary data from streams
+        * or sockets while debugging, but can be used to view any string
+        * with non-viewable characters.
+        *
+        * @version 1.3.2
+        * @author Aidan Lister <aidan@php.net>
+        * @author Peter Waller <iridum@php.net>
+        * @link http://aidanlister.com/repos/v/function.hexdump.php
+        * @param string $data The string to be dumped
+        * @param bool $htmloutput Set to false for non-HTML output
+        * @param bool $uppercase Set to true for uppercase hex
+        * @param bool $return Set to true to return the dump
+        * @return string|null
+        * @generated
+        */
+        public static function hexdump(string $data, bool $htmloutput = true, bool $uppercase = false, bool $return = false): string|null;
+        /**
+        * @param array $table
+        * @return string
+        * @generated
+        */
+        public static function dump_table(array $table): string;
+    }
+    /**
+    * @property-read int $SOCKET_EPIPE
+    * @property-read int $SOCKET_ENETDOWN
+    * @property-read int $SOCKET_ENETUNREACH
+    * @property-read int $SOCKET_ENETRESET
+    * @property-read int $SOCKET_ECONNABORTED
+    * @property-read int $SOCKET_ECONNRESET
+    * @property-read int $SOCKET_ECONNREFUSED
+    * @property-read int $SOCKET_ETIMEDOUT
+    * @property-read int $SOCKET_EWOULDBLOCK
+    * @property-read int $SOCKET_EINTR
+    * @property-read int $SOCKET_EAGAIN
+    * @generated
+    */
+    final class SocketConstants {
+        public int $SOCKET_EPIPE;
+        public int $SOCKET_ENETDOWN;
+        public int $SOCKET_ENETUNREACH;
+        public int $SOCKET_ENETRESET;
+        public int $SOCKET_ECONNABORTED;
+        public int $SOCKET_ECONNRESET;
+        public int $SOCKET_ECONNREFUSED;
+        public int $SOCKET_ETIMEDOUT;
+        public int $SOCKET_EWOULDBLOCK;
+        public int $SOCKET_EINTR;
+        public int $SOCKET_EAGAIN;
+        public function __construct(): void;
+        /**
+        * @param string $name
+        * @return int
+        * @generated
+        */
+        public function __get(string $name): int;
+        /**
+        * @param string $name
+        * @return bool
+        * @generated
+        */
+        public function __isset(string $name): bool;
+        /**
+        * @return self
+        * @generated
+        */
+        public static function getInstance(): self;
+    }
+}
+namespace PhpAmqpLib\Helper\Protocol {
+    class MethodMap080 {
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $method_map ?? [];
+        /**
+        * @var string $method_sig
+        * @return string
+        * @generated
+        */
+        public function get_method(mixed $method_sig): string;
+        /**
+        * @var string $method_sig
+        * @return bool
+        * @generated
+        */
+        public function valid_method(mixed $method_sig): bool;
+    }
+    class MethodMap091 {
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $method_map ?? [];
+        /**
+        * @var string $method_sig
+        * @return string
+        * @generated
+        */
+        public function get_method(mixed $method_sig): string;
+        /**
+        * @var string $method_sig
+        * @return bool
+        * @generated
+        */
+        public function valid_method(mixed $method_sig): bool;
+    }
+    class Protocol080 {
+        /**
+        * @param int $version_major
+        * @param int $version_minor
+        * @param mixed $server_properties
+        * @param string $mechanisms
+        * @param string $locales
+        * @return array
+        * @generated
+        */
+        public function connectionStart(int $version_major = 0, int $version_minor = 8, mixed $server_properties = [], string $mechanisms = 'PLAIN', string $locales = 'en_US'): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionStartOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $challenge
+        * @return array
+        * @generated
+        */
+        public function connectionSecure(string $challenge): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionSecureOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $channel_max
+        * @param int $frame_max
+        * @param int $heartbeat
+        * @return array
+        * @generated
+        */
+        public function connectionTune(int $channel_max = 0, int $frame_max = 0, int $heartbeat = 0): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionTuneOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $virtual_host
+        * @param string $capabilities
+        * @param bool $insist
+        * @return array
+        * @generated
+        */
+        public function connectionOpen(string $virtual_host = '/', string $capabilities = '', bool $insist = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionOpenOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $host
+        * @param string $known_hosts
+        * @return array
+        * @generated
+        */
+        public function connectionRedirect(string $host, string $known_hosts = ''): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param int $class_id
+        * @param int $method_id
+        * @return array
+        * @generated
+        */
+        public function connectionClose(int $reply_code, string $reply_text, int $class_id, int $method_id): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionCloseOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $out_of_band
+        * @return array
+        * @generated
+        */
+        public function channelOpen(string $out_of_band = ''): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function channelOpenOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param bool $active
+        * @return array
+        * @generated
+        */
+        public function channelFlow(bool $active): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function channelFlowOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $details
+        * @return array
+        * @generated
+        */
+        public function channelAlert(int $reply_code, string $reply_text = '', \PhpAmqpLib\Wire\AMQPTable|array $details = []): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param int $class_id
+        * @param int $method_id
+        * @return array
+        * @generated
+        */
+        public function channelClose(int $reply_code, string $reply_text, int $class_id, int $method_id): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function channelCloseOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $realm
+        * @param bool $exclusive
+        * @param bool $passive
+        * @param bool $active
+        * @param bool $write
+        * @param bool $read
+        * @return array
+        * @generated
+        */
+        public function accessRequest(string $realm = '/data', bool $exclusive = false, bool $passive = true, bool $active = true, bool $write = true, bool $read = true): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function accessRequestOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param string $type
+        * @param bool $passive
+        * @param bool $durable
+        * @param bool $auto_delete
+        * @param bool $internal
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function exchangeDeclare(int $ticket = 1, string $exchange = '', string $type = 'direct', bool $passive = false, bool $durable = false, bool $auto_delete = false, bool $internal = false, bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function exchangeDeclareOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param bool $if_unused
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function exchangeDelete(int $ticket = 1, string $exchange = '', bool $if_unused = false, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function exchangeDeleteOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $passive
+        * @param bool $durable
+        * @param bool $exclusive
+        * @param bool $auto_delete
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function queueDeclare(int $ticket = 1, string $queue = '', bool $passive = false, bool $durable = false, bool $exclusive = false, bool $auto_delete = false, bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueDeclareOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function queueBind(int $ticket = 1, string $queue = '', string $exchange = '', string $routing_key = '', bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueBindOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function queuePurge(int $ticket = 1, string $queue = '', bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queuePurgeOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $if_unused
+        * @param bool $if_empty
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function queueDelete(int $ticket = 1, string $queue = '', bool $if_unused = false, bool $if_empty = false, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueDeleteOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $exchange
+        * @param string $routing_key
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function queueUnbind(int $ticket = 1, string $queue = '', string $exchange = '', string $routing_key = '', \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueUnbindOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $prefetch_size
+        * @param int $prefetch_count
+        * @param bool $global
+        * @return array
+        * @generated
+        */
+        public function basicQos(int $prefetch_size = 0, int $prefetch_count = 0, bool $global = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicQosOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $consumer_tag
+        * @param bool $no_local
+        * @param bool $no_ack
+        * @param bool $exclusive
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function basicConsume(int $ticket = 1, string $queue = '', string $consumer_tag = '', bool $no_local = false, bool $no_ack = false, bool $exclusive = false, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicConsumeOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $consumer_tag
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function basicCancel(string $consumer_tag, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicCancelOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $mandatory
+        * @param bool $immediate
+        * @return array
+        * @generated
+        */
+        public function basicPublish(int $ticket = 1, string $exchange = '', string $routing_key = '', bool $mandatory = false, bool $immediate = false): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param string $exchange
+        * @param string $routing_key
+        * @return array
+        * @generated
+        */
+        public function basicReturn(int $reply_code, string $reply_text, string $exchange, string $routing_key): array;
+        /**
+        * @param string $consumer_tag
+        * @param int $delivery_tag
+        * @param bool $redelivered
+        * @param string $exchange
+        * @param string $routing_key
+        * @return array
+        * @generated
+        */
+        public function basicDeliver(string $consumer_tag, int $delivery_tag, bool $redelivered, string $exchange, string $routing_key): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $no_ack
+        * @return array
+        * @generated
+        */
+        public function basicGet(int $ticket = 1, string $queue = '', bool $no_ack = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicGetOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicGetEmpty(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $delivery_tag
+        * @param bool $multiple
+        * @return array
+        * @generated
+        */
+        public function basicAck(int $delivery_tag = 0, bool $multiple = false): array;
+        /**
+        * @param int $delivery_tag
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function basicReject(int $delivery_tag, bool $requeue = true): array;
+        /**
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function basicRecoverAsync(bool $requeue = false): array;
+        /**
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function basicRecover(bool $requeue = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicRecoverOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $prefetch_size
+        * @param int $prefetch_count
+        * @param bool $global
+        * @return array
+        * @generated
+        */
+        public function fileQos(int $prefetch_size = 0, int $prefetch_count = 0, bool $global = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function fileQosOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $consumer_tag
+        * @param bool $no_local
+        * @param bool $no_ack
+        * @param bool $exclusive
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function fileConsume(int $ticket = 1, string $queue = '', string $consumer_tag = '', bool $no_local = false, bool $no_ack = false, bool $exclusive = false, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function fileConsumeOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $consumer_tag
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function fileCancel(string $consumer_tag, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function fileCancelOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $identifier
+        * @param int $content_size
+        * @return array
+        * @generated
+        */
+        public function fileOpen(string $identifier, int $content_size): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function fileOpenOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function fileStage(): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $mandatory
+        * @param bool $immediate
+        * @param string $identifier
+        * @return array
+        * @generated
+        */
+        public function filePublish(int $ticket = 1, string $exchange = '', string $routing_key = '', bool $mandatory = false, bool $immediate = false, string $identifier = ''): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param string $exchange
+        * @param string $routing_key
+        * @return array
+        * @generated
+        */
+        public function fileReturn(int $reply_code = 200, string $reply_text = '', string $exchange = '', string $routing_key = ''): array;
+        /**
+        * @param string $consumer_tag
+        * @param int $delivery_tag
+        * @param bool $redelivered
+        * @param string $exchange
+        * @param string $routing_key
+        * @param string $identifier
+        * @return array
+        * @generated
+        */
+        public function fileDeliver(string $consumer_tag, int $delivery_tag, bool $redelivered, string $exchange, string $routing_key, string $identifier): array;
+        /**
+        * @param int $delivery_tag
+        * @param bool $multiple
+        * @return array
+        * @generated
+        */
+        public function fileAck(int $delivery_tag = 0, bool $multiple = false): array;
+        /**
+        * @param int $delivery_tag
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function fileReject(int $delivery_tag, bool $requeue = true): array;
+        /**
+        * @param int $prefetch_size
+        * @param int $prefetch_count
+        * @param int $consume_rate
+        * @param bool $global
+        * @return array
+        * @generated
+        */
+        public function streamQos(int $prefetch_size = 0, int $prefetch_count = 0, int $consume_rate = 0, bool $global = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function streamQosOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $consumer_tag
+        * @param bool $no_local
+        * @param bool $exclusive
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function streamConsume(int $ticket = 1, string $queue = '', string $consumer_tag = '', bool $no_local = false, bool $exclusive = false, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function streamConsumeOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $consumer_tag
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function streamCancel(string $consumer_tag, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function streamCancelOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $mandatory
+        * @param bool $immediate
+        * @return array
+        * @generated
+        */
+        public function streamPublish(int $ticket = 1, string $exchange = '', string $routing_key = '', bool $mandatory = false, bool $immediate = false): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param string $exchange
+        * @param string $routing_key
+        * @return array
+        * @generated
+        */
+        public function streamReturn(int $reply_code = 200, string $reply_text = '', string $exchange = '', string $routing_key = ''): array;
+        /**
+        * @param string $consumer_tag
+        * @param int $delivery_tag
+        * @param string $exchange
+        * @param string $queue
+        * @return array
+        * @generated
+        */
+        public function streamDeliver(string $consumer_tag, int $delivery_tag, string $exchange, string $queue): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function txSelect(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function txSelectOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function txCommit(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function txCommitOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function txRollback(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function txRollbackOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function dtxSelect(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function dtxSelectOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $dtx_identifier
+        * @return array
+        * @generated
+        */
+        public function dtxStart(string $dtx_identifier): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function dtxStartOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $meta_data
+        * @return array
+        * @generated
+        */
+        public function tunnelRequest(\PhpAmqpLib\Wire\AMQPTable|array $meta_data): array;
+        /**
+        * @param int $integer_1
+        * @param int $integer_2
+        * @param int $integer_3
+        * @param int $integer_4
+        * @param int $operation
+        * @return array
+        * @generated
+        */
+        public function testInteger(int $integer_1, int $integer_2, int $integer_3, int $integer_4, int $operation): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function testIntegerOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $string_1
+        * @param string $string_2
+        * @param int $operation
+        * @return array
+        * @generated
+        */
+        public function testString(string $string_1, string $string_2, int $operation): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function testStringOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $table
+        * @param int $integer_op
+        * @param int $string_op
+        * @return array
+        * @generated
+        */
+        public function testTable(\PhpAmqpLib\Wire\AMQPTable|array $table, int $integer_op, int $string_op): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function testTableOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function testContent(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function testContentOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+    }
+    class Protocol091 {
+        /**
+        * @param int $version_major
+        * @param int $version_minor
+        * @param mixed $server_properties
+        * @param string $mechanisms
+        * @param string $locales
+        * @return array
+        * @generated
+        */
+        public function connectionStart(int $version_major = 0, int $version_minor = 9, mixed $server_properties = [], string $mechanisms = 'PLAIN', string $locales = 'en_US'): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionStartOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $challenge
+        * @return array
+        * @generated
+        */
+        public function connectionSecure(string $challenge): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionSecureOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $channel_max
+        * @param int $frame_max
+        * @param int $heartbeat
+        * @return array
+        * @generated
+        */
+        public function connectionTune(int $channel_max = 0, int $frame_max = 0, int $heartbeat = 0): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionTuneOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $virtual_host
+        * @param string $capabilities
+        * @param bool $insist
+        * @return array
+        * @generated
+        */
+        public function connectionOpen(string $virtual_host = '/', string $capabilities = '', bool $insist = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionOpenOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param int $class_id
+        * @param int $method_id
+        * @return array
+        * @generated
+        */
+        public function connectionClose(int $reply_code, string $reply_text, int $class_id, int $method_id): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionCloseOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $reason
+        * @return array
+        * @generated
+        */
+        public function connectionBlocked(string $reason = ''): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function connectionUnblocked(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $out_of_band
+        * @return array
+        * @generated
+        */
+        public function channelOpen(string $out_of_band = ''): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function channelOpenOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param bool $active
+        * @return array
+        * @generated
+        */
+        public function channelFlow(bool $active): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function channelFlowOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param int $class_id
+        * @param int $method_id
+        * @return array
+        * @generated
+        */
+        public function channelClose(int $reply_code, string $reply_text, int $class_id, int $method_id): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function channelCloseOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $realm
+        * @param bool $exclusive
+        * @param bool $passive
+        * @param bool $active
+        * @param bool $write
+        * @param bool $read
+        * @return array
+        * @generated
+        */
+        public function accessRequest(string $realm = '/data', bool $exclusive = false, bool $passive = true, bool $active = true, bool $write = true, bool $read = true): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function accessRequestOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param string $type
+        * @param bool $passive
+        * @param bool $durable
+        * @param bool $auto_delete
+        * @param bool $internal
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function exchangeDeclare(int $ticket = 0, string $exchange = '', string $type = 'direct', bool $passive = false, bool $durable = false, bool $auto_delete = false, bool $internal = false, bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function exchangeDeclareOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param bool $if_unused
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function exchangeDelete(int $ticket = 0, string $exchange = '', bool $if_unused = false, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function exchangeDeleteOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $destination
+        * @param string $source
+        * @param string $routing_key
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function exchangeBind(int $ticket = 0, string $destination = '', string $source = '', string $routing_key = '', bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function exchangeBindOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $destination
+        * @param string $source
+        * @param string $routing_key
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function exchangeUnbind(int $ticket = 0, string $destination = '', string $source = '', string $routing_key = '', bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function exchangeUnbindOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $passive
+        * @param bool $durable
+        * @param bool $exclusive
+        * @param bool $auto_delete
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function queueDeclare(int $ticket = 0, string $queue = '', bool $passive = false, bool $durable = false, bool $exclusive = false, bool $auto_delete = false, bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueDeclareOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function queueBind(int $ticket = 0, string $queue = '', string $exchange = '', string $routing_key = '', bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueBindOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function queuePurge(int $ticket = 0, string $queue = '', bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queuePurgeOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $if_unused
+        * @param bool $if_empty
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function queueDelete(int $ticket = 0, string $queue = '', bool $if_unused = false, bool $if_empty = false, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueDeleteOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $exchange
+        * @param string $routing_key
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function queueUnbind(int $ticket = 0, string $queue = '', string $exchange = '', string $routing_key = '', \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function queueUnbindOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * Specifies QoS
+        *
+        * See https://www.rabbitmq.com/consumer-prefetch.html#overview for details
+        *
+        * @param int $prefetch_size Default is 0 (Alias for unlimited)
+        * @param int $prefetch_count Default is 0 (Alias for unlimited)
+        * @param bool $global Default is false, prefetch size and count are applied to each channel consumer separately
+        * @return array
+        * @generated
+        */
+        public function basicQos(int $prefetch_size = 0, int $prefetch_count = 0, bool $global = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicQosOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param string $consumer_tag
+        * @param bool $no_local
+        * @param bool $no_ack
+        * @param bool $exclusive
+        * @param bool $nowait
+        * @param \PhpAmqpLib\Wire\AMQPTable|array $arguments
+        * @return array
+        * @generated
+        */
+        public function basicConsume(int $ticket = 0, string $queue = '', string $consumer_tag = '', bool $no_local = false, bool $no_ack = false, bool $exclusive = false, bool $nowait = false, \PhpAmqpLib\Wire\AMQPTable|array $arguments = []): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicConsumeOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param string $consumer_tag
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function basicCancel(string $consumer_tag, bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicCancelOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $ticket
+        * @param string $exchange
+        * @param string $routing_key
+        * @param bool $mandatory
+        * @param bool $immediate
+        * @return array
+        * @generated
+        */
+        public function basicPublish(int $ticket = 0, string $exchange = '', string $routing_key = '', bool $mandatory = false, bool $immediate = false): array;
+        /**
+        * @param int $reply_code
+        * @param string $reply_text
+        * @param string $exchange
+        * @param string $routing_key
+        * @return array
+        * @generated
+        */
+        public function basicReturn(int $reply_code, string $reply_text, string $exchange, string $routing_key): array;
+        /**
+        * @param string $consumer_tag
+        * @param int $delivery_tag
+        * @param bool $redelivered
+        * @param string $exchange
+        * @param string $routing_key
+        * @return array
+        * @generated
+        */
+        public function basicDeliver(string $consumer_tag, int $delivery_tag, bool $redelivered, string $exchange, string $routing_key): array;
+        /**
+        * @param int $ticket
+        * @param string $queue
+        * @param bool $no_ack
+        * @return array
+        * @generated
+        */
+        public function basicGet(int $ticket = 0, string $queue = '', bool $no_ack = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicGetOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicGetEmpty(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $delivery_tag
+        * @param bool $multiple
+        * @return array
+        * @generated
+        */
+        public function basicAck(int $delivery_tag = 0, bool $multiple = false): array;
+        /**
+        * @param int $delivery_tag
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function basicReject(int $delivery_tag, bool $requeue = true): array;
+        /**
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function basicRecoverAsync(bool $requeue = false): array;
+        /**
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function basicRecover(bool $requeue = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function basicRecoverOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param int $delivery_tag
+        * @param bool $multiple
+        * @param bool $requeue
+        * @return array
+        * @generated
+        */
+        public function basicNack(int $delivery_tag = 0, bool $multiple = false, bool $requeue = true): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function txSelect(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function txSelectOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function txCommit(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function txCommitOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function txRollback(): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function txRollbackOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+        /**
+        * @param bool $nowait
+        * @return array
+        * @generated
+        */
+        public function confirmSelect(bool $nowait = false): array;
+        /**
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader
+        * @return array
+        * @generated
+        */
+        public static function confirmSelectOk(\PhpAmqpLib\Wire\AMQPReader $reader): array;
+    }
+    class Wait080 {
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $wait ?? [];
+        /**
+        * @var string $method
+        * @return string
+        * @generated
+        */
+        public function get_wait(mixed $method): string;
+    }
+    class Wait091 {
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $wait ?? [];
+        /**
+        * @var string $method
+        * @return string
+        * @generated
+        */
+        public function get_wait(mixed $method): string;
+    }
+}
+namespace PhpAmqpLib\Message {
+    /**
+    * A Message for use with the Channnel.basic_* methods.
+    *
+    * @generated
+    */
+    class AMQPMessage {
+        public const int DELIVERY_MODE_NON_PERSISTENT ?? 1;
+        public const int DELIVERY_MODE_PERSISTENT ?? 2;
+        /**
+        * @var string
+        * @deprecated Will be removed in version 4.0, use getBody() instead.
+        * @generated
+        */
+        deprecated public string $body;
+        /**
+        * @var int
+        * @deprecated Will be removed in version 4.0, use getBodySize() instead.
+        * @generated
+        */
+        deprecated public int $body_size;
+        /**
+        * @var bool
+        * @deprecated Will be removed in version 4.0, use isTruncated() instead.
+        * @generated
+        */
+        deprecated public bool $is_truncated ?? false;
+        /**
+        * @var string
+        * @deprecated Will be removed in version 4.0, use getContentEncoding() instead.
+        * @generated
+        */
+        deprecated public string $content_encoding;
+        /**
+        * @var array Properties content
+        * @generated
+        */
+        protected array $properties ?? [];
+        /**
+        * @var null|string Compiled properties
+        * @generated
+        */
+        protected null|string $serialized_properties;
+        /**
+        * @var array
+        * @generated
+        */
+        protected static array $propertyDefinitions ?? [];
+        /**
+        * @param string $body
+        * @param array $properties
+        * @generated
+        */
+        public function __construct(string $body = '', array $properties = []): void;
+        /**
+        * Acknowledge one or more messages.
+        *
+        * @param bool $multiple If true, the delivery tag is treated as "up to and including",
+        *  *                           so that multiple messages can be acknowledged with a single method.
+        * @since 2.12.0
+        * @link https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.ack
+        * @generated
+        */
+        public function ack(bool $multiple = false): mixed;
+        /**
+        * Reject one or more incoming messages.
+        *
+        * @param bool $requeue If true, the server will attempt to requeue the message. If requeue is false or the requeue
+        *  *                           attempt fails the messages are discarded or dead-lettered.
+        * @param bool $multiple If true, the delivery tag is treated as "up to and including",
+        *  *                           so that multiple messages can be rejected with a single method.
+        * @since 2.12.0
+        * @link https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.nack
+        * @generated
+        */
+        public function nack(bool $requeue = false, bool $multiple = false): mixed;
+        /**
+        * Reject an incoming message.
+        *
+        * @param bool $requeue If requeue is true, the server will attempt to requeue the message.
+        *  *                         If requeue is false or the requeue attempt fails the messages are discarded or dead-lettered.
+        * @since 2.12.0
+        * @link https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.reject
+        * @generated
+        */
+        public function reject(bool $requeue = true): mixed;
+        /**
+        * @throws \LogicException When response to broker was already sent.
+        * @generated
+        */
+        protected function assertUnacked(): mixed;
+        protected function onResponse(): mixed;
+        /**
+        * @return \PhpAmqpLib\Channel\AMQPChannel|null
+        * @since 2.12.0
+        * @generated
+        */
+        public function getChannel(): \PhpAmqpLib\Channel\AMQPChannel|null;
+        /**
+        * @param \PhpAmqpLib\Channel\AMQPChannel $channel
+        * @return static
+        * @throws \RuntimeException
+        * @since 2.12.0
+        * @generated
+        */
+        public function setChannel(\PhpAmqpLib\Channel\AMQPChannel $channel): static;
+        /**
+        * @param int $deliveryTag
+        * @param bool $redelivered
+        * @param string $exchange
+        * @param string $routingKey
+        * @return static
+        * @since 2.12.0
+        * @generated
+        */
+        public function setDeliveryInfo(int $deliveryTag, bool $redelivered, string $exchange, string $routingKey): static;
+        /**
+        * @return bool|null
+        * @since 2.12.0
+        * @generated
+        */
+        public function isRedelivered(): bool|null;
+        /**
+        * @return string|null
+        * @since 2.12.0
+        * @generated
+        */
+        public function getExchange(): string|null;
+        /**
+        * @return string|null
+        * @since 2.12.0
+        * @generated
+        */
+        public function getRoutingKey(): string|null;
+        /**
+        * @return string|null
+        * @since 2.12.0
+        * @generated
+        */
+        public function getConsumerTag(): string|null;
+        /**
+        * @param string $consumerTag
+        * @return static
+        * @since 2.12.0
+        * @generated
+        */
+        public function setConsumerTag(string $consumerTag): static;
+        /**
+        * @return int|null
+        * @since 2.12.0
+        * @generated
+        */
+        public function getMessageCount(): int|null;
+        /**
+        * @param int $messageCount
+        * @return static
+        * @since 2.12.0
+        * @generated
+        */
+        public function setMessageCount(int $messageCount): static;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getBody(): string;
+        /**
+        * Sets the message payload
+        *
+        * @param string $body
+        * @return static
+        * @generated
+        */
+        public function setBody(string $body): static;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getContentEncoding(): string;
+        /**
+        * @return int
+        * @generated
+        */
+        public function getBodySize(): int;
+        /**
+        * @param int $body_size Message body size in byte(s)
+        * @return AMQPMessage
+        * @generated
+        */
+        public function setBodySize(int $body_size): \PhpAmqpLib\Message\AMQPMessage;
+        /**
+        * @return boolean
+        * @generated
+        */
+        public function isTruncated(): boolean;
+        /**
+        * @param bool $is_truncated
+        * @return AMQPMessage
+        * @generated
+        */
+        public function setIsTruncated(bool $is_truncated): \PhpAmqpLib\Message\AMQPMessage;
+        /**
+        * @param int|string $deliveryTag
+        * @return static
+        * @since 2.12.0
+        * @generated
+        */
+        public function setDeliveryTag(int|string $deliveryTag): static;
+        /**
+        * @return int
+        * @throws AMQPEmptyDeliveryTagException
+        * @generated
+        */
+        public function getDeliveryTag(): int;
+        /**
+        * Check whether a property exists in the 'properties' dictionary
+        *
+        * or if present - in the 'delivery_info' dictionary.
+        *
+        * @param string $name
+        * @return bool
+        * @generated
+        */
+        public function has(string $name): bool;
+        /**
+        * Look for additional properties in the 'properties' dictionary,
+        *
+        * and if present - the 'delivery_info' dictionary.
+        *
+        * @param string $name
+        * @return mixed
+        * @throws \OutOfBoundsException
+        * @generated
+        */
+        public function get(string $name): mixed;
+        /**
+        * Returns the properties content
+        *
+        * @return array
+        * @generated
+        */
+        public function get_properties(): array;
+        /**
+        * Sets a property value
+        *
+        * @param string $name The property name (one of the property definition)
+        * @param mixed $value The property value
+        * @throws \OutOfBoundsException
+        * @generated
+        */
+        public function set(string $name, mixed $value): mixed;
+        /**
+        * Given the raw bytes containing the property-flags and
+        *
+        * property-list from a content-frame-header, parse and insert
+        * into a dictionary stored in this object as an attribute named
+        * 'properties'.
+        *
+        * @param \PhpAmqpLib\Wire\AMQPReader $reader NOTE: do not mutate $reader
+        * @return static
+        * @generated
+        */
+        public function load_properties(\PhpAmqpLib\Wire\AMQPReader $reader): static;
+        /**
+        * Serializes the 'properties' attribute (a dictionary) into the
+        *
+        * raw bytes making up a set of property flags and a property
+        * list, suitable for putting into a content frame header.
+        *
+        * @return string
+        * @todo Inject the AMQPWriter to make the method easier to test
+        * @generated
+        */
+        public function serialize_properties(): string;
+    }
+}
+namespace PhpAmqpLib\Wire {
+    /**
+    * Iterator implemented for transparent integration with AMQPWriter::write_[array|table]()
+    *
+    * @generated
+    */
+    abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess {
+        public const string PROTOCOL_RBT ?? 'rabbit';
+        public const int T_INT_SHORTSHORT ?? 1;
+        public const int T_INT_SHORTSHORT_U ?? 2;
+        public const int T_INT_SHORT ?? 3;
+        public const int T_INT_SHORT_U ?? 4;
+        public const int T_INT_LONG ?? 5;
+        public const int T_INT_LONG_U ?? 6;
+        public const int T_INT_LONGLONG ?? 7;
+        public const int T_INT_LONGLONG_U ?? 8;
+        public const int T_DECIMAL ?? 9;
+        public const int T_TIMESTAMP ?? 10;
+        public const int T_VOID ?? 11;
+        public const int T_BOOL ?? 12;
+        public const int T_STRING_SHORT ?? 13;
+        public const int T_STRING_LONG ?? 14;
+        public const int T_ARRAY ?? 15;
+        public const int T_TABLE ?? 16;
+        public const int T_BYTES ?? 17;
+        public const int T_FLOAT ?? 18;
+        public const int T_DOUBLE ?? 19;
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $data ?? [];
+        public function __construct(?array $data = null): void;
+        /**
+        * @return int
+        * @generated
+        */
+        public abstract function getType(): int;
+        /**
+        * @param mixed $val
+        * @param int|null $type
+        * @param string $key
+        * @generated
+        */
+        protected final function setValue(mixed $val, int|null $type = null, string $key = null): mixed;
+        /**
+        * @return array
+        * @generated
+        */
+        public final function getNativeData(): array;
+        /**
+        * @param array $val
+        * @return array
+        * @generated
+        */
+        protected final function encodeCollection(array $val): array;
+        /**
+        * @param array $val
+        * @return array
+        * @generated
+        */
+        protected final function decodeCollection(array $val): array;
+        public function offsetExists(mixed $offset): bool;
+        /**
+        * @param mixed $offset
+        * @return mixed
+        * @generated
+        */
+        public function offsetGet(mixed $offset): mixed;
+        public function offsetSet(mixed $offset, mixed $value): void;
+        public function offsetUnset(mixed $offset): void;
+        /**
+        * @param mixed $val
+        * @return mixed
+        * @throws Exception\AMQPOutOfBoundsException
+        * @generated
+        */
+        protected function encodeValue(mixed $val): mixed;
+        /**
+        * @param mixed $val
+        * @param int $type
+        * @return array|bool|\DateTime|null
+        * @generated
+        */
+        protected function decodeValue(mixed $val, int $type): array|bool|\DateTime|null;
+        /**
+        * @param string $val
+        * @return array
+        * @generated
+        */
+        protected function encodeString(string $val): array;
+        /**
+        * @param int $val
+        * @return array
+        * @generated
+        */
+        protected function encodeInt(int $val): array;
+        /**
+        * @param float $val
+        * @return array
+        * @generated
+        */
+        protected function encodeFloat(float $val): array;
+        /**
+        * @param bool $val
+        * @return array
+        * @generated
+        */
+        protected function encodeBool(bool $val): array;
+        /**
+        * @return array
+        * @generated
+        */
+        protected function encodeVoid(): array;
+        /**
+        * @return string
+        * @deprecated
+        * @generated
+        */
+        deprecated public static final function getProtocol(): string;
+        /**
+        * @param string $proto
+        * @return bool
+        * @generated
+        */
+        public static final function isProtocol(string $proto): bool;
+        /**
+        * @return array [dataTypeConstant => dataTypeSymbol]
+        * @generated
+        */
+        public static final function getSupportedDataTypes(): array;
+        /**
+        * @param string $type
+        * @param bool $return Whether to return or raise AMQPOutOfRangeException
+        * @return boolean
+        * @generated
+        */
+        public static final function checkDataTypeIsSupported(string $type, bool $return = true): boolean;
+        /**
+        * @param int $type
+        * @return string
+        * @generated
+        */
+        public static final function getSymbolForDataType(int $type): string;
+        /**
+        * @param string $symbol
+        * @return integer
+        * @generated
+        */
+        public static final function getDataTypeForSymbol(string $symbol): integer;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function current(): mixed;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function key(): mixed;
+        public function next(): void;
+        public function rewind(): void;
+        public function valid(): bool;
+    }
+    class AMQPArray extends \PhpAmqpLib\Wire\AMQPAbstractCollection {
+        /**
+        * @param array|null $data
+        * @generated
+        */
+        public function __construct(array|null $data = null): void;
+        /**
+        * @return int
+        * @generated
+        */
+        public final function getType(): int;
+        /**
+        * @param mixed $val
+        * @param int|null $type
+        * @return static
+        * @generated
+        */
+        public function push(mixed $val, int|null $type = null): static;
+    }
+    class AMQPBufferReader extends \PhpAmqpLib\Wire\AMQPReader {
+        public function __construct(string $buffer): void;
+        public function close(): void;
+        /**
+        * Resets the object from the injected param
+        *
+        * Used to not need to create a new AMQPBufferReader instance every time.
+        * when we can just pass a string and reset the object state.
+        * NOTE: since we are working with strings we don't need to pass an AbstractIO
+        *       or a timeout.
+        *
+        * @param string $str
+        * @generated
+        */
+        public function reset(string $str): void;
+        protected function rawread(int $n): string;
+    }
+    abstract class AMQPByteStream {
+        public const int BIT ?? 1;
+        public const int OCTET ?? 1;
+        public const int SHORTSTR ?? 1;
+        public const int SHORT ?? 2;
+        public const int LONG ?? 4;
+        public const int SIGNED_LONG ?? 4;
+        public const int READ_PHP_INT ?? 4;
+        public const int LONGLONG ?? 8;
+        public const int TIMESTAMP ?? 8;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected const bool PLATFORM_64BIT;
+        /**
+        * @var array<int, array<int, \PhpAmqpLib\Helper\BigInteger>>
+        * @generated
+        */
+        protected static array<int, array<int, \PhpAmqpLib\Helper\BigInteger>> $bigIntegers ?? [];
+        /**
+        * @var bool
+        * @generated
+        */
+        protected static bool $isLittleEndian;
+        /**
+        * Converts byte-string between native and network byte order, in both directions
+        *
+        * @param string $bytes
+        * @return string
+        * @generated
+        */
+        protected function correctEndianness(string $bytes): string;
+        /**
+        * @param string $bytes
+        * @return string
+        * @generated
+        */
+        protected function convertByteOrder(string $bytes): string;
+        /**
+        * @param int $longInt
+        * @return bool
+        * @generated
+        */
+        protected function getLongMSB(int $longInt): bool;
+        /**
+        * @param string $bytes
+        * @return bool
+        * @generated
+        */
+        protected function getMSB(string $bytes): bool;
+        /**
+        * @return bool
+        * @generated
+        */
+        protected static function isLittleEndian(): bool;
+        /**
+        * @param string $value
+        * @param int $base
+        * @return \PhpAmqpLib\Helper\BigInteger
+        * @generated
+        */
+        protected static function getBigInteger(string $value, int $base = 10): \PhpAmqpLib\Helper\BigInteger;
+    }
+    /**
+    * AMQP protocol decimal value.
+    *
+    * Values are represented as (n,e) pairs. The actual value
+    * is n * 10^(-e).
+    * 
+    * From 0.8 spec: Decimal values are
+    * not intended to support floating point values, but rather
+    * business values such as currency rates and amounts. The
+    * 'decimals' octet is not signed.
+    *
+    * @generated
+    */
+    class AMQPDecimal {
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $n;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $e;
+        /**
+        * @param int $n
+        * @param int $e
+        * @throws \PhpAmqpLib\Exception\AMQPOutOfBoundsException
+        * @generated
+        */
+        public function __construct(int $n, int $e): void;
+        /**
+        * @return string
+        * @generated
+        */
+        public function asBCvalue(): string;
+        /**
+        * @return int
+        * @generated
+        */
+        public function getE(): int;
+        /**
+        * @return int
+        * @generated
+        */
+        public function getN(): int;
+    }
+    class AMQPIOReader extends \PhpAmqpLib\Wire\AMQPReader {
+        /**
+        * @var int|float|null
+        * @generated
+        */
+        protected int|float|null $timeout;
+        public function __construct(\PhpAmqpLib\Wire\IO\AbstractIO $io, mixed $timeout = 0): void;
+        public function close(): void;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getTimeout(): mixed;
+        /**
+        * Sets the timeout (second)
+        *
+        * @param int|float|null $timeout
+        * @generated
+        */
+        public function setTimeout(int|float|null $timeout): mixed;
+        /**
+        * @param int $n
+        * @return string
+        * @throws RuntimeException
+        * @throws AMQPDataReadException|AMQPNoDataException|AMQPIOException
+        * @generated
+        */
+        protected function rawread(int $n): string;
+        /**
+        * Waits until some data is retrieved from the socket.
+        *
+        * AMQPTimeoutException can be raised if the timeout is set
+        *
+        * @throws AMQPTimeoutException when timeout is set and no data received
+        * @throws AMQPNoDataException when no data is ready to read from IO
+        * @generated
+        */
+        protected function wait(): void;
+    }
+    abstract class AMQPReader extends \PhpAmqpLib\Wire\AMQPByteStream {
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $offset ?? 0;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $bitcount ?? 0;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $bits ?? 0;
+        /**
+        * Close the byte stream.
+        *
+        * @generated
+        */
+        public abstract function close(): void;
+        protected abstract function rawread(int $n): string;
+        /**
+        * @param int $n
+        * @return string
+        * @generated
+        */
+        public function read(int $n): string;
+        public function read_bit(): bool;
+        /**
+        * @return int
+        * @generated
+        */
+        public function read_octet(): int;
+        /**
+        * @return int
+        * @generated
+        */
+        public function read_signed_octet(): int;
+        /**
+        * @return int
+        * @generated
+        */
+        public function read_short(): int;
+        /**
+        * @return int
+        * @generated
+        */
+        public function read_signed_short(): int;
+        /**
+        * Reads 32 bit integer in big-endian byte order.
+        *
+        * On 64 bit systems it will return always unsigned int
+        * value in 0..2^32 range.
+        * 
+        * On 32 bit systems it will return signed int value in
+        * -2^31...+2^31 range.
+        * 
+        * Use with caution!
+        *
+        * @return int|string
+        * @generated
+        */
+        public function read_php_int(): int|string;
+        /**
+        * PHP does not have unsigned 32 bit int,
+        *
+        * so we return it as a string
+        *
+        * @return int|string
+        * @generated
+        */
+        public function read_long(): int|string;
+        /**
+        * Even on 64 bit systems PHP integers are signed.
+        *
+        * Since we need an unsigned value here we return it as a string.
+        *
+        * @return int|string
+        * @generated
+        */
+        public function read_longlong(): int|string;
+        /**
+        * @return int|string
+        * @generated
+        */
+        public function read_signed_longlong(): int|string;
+        /**
+        * @return float
+        * @generated
+        */
+        public function read_float(): float;
+        /**
+        * @return float
+        * @generated
+        */
+        public function read_double(): float;
+        /**
+        * Read a utf-8 encoded string that's stored in up to
+        *
+        * 255 bytes.  Return it decoded as a PHP unicode object.
+        *
+        * @return string
+        * @generated
+        */
+        public function read_shortstr(): string;
+        /**
+        * Read a string that's up to 2**32 bytes, the encoding
+        *
+        * isn't specified in the AMQP spec, so just return it as
+        * a plain PHP string.
+        *
+        * @return string
+        * @generated
+        */
+        public function read_longstr(): string;
+        /**
+        * Read and AMQP timestamp, which is a 64-bit integer representing
+        *
+        * seconds since the Unix epoch in 1-second resolution.
+        *
+        * @return int|string
+        * @generated
+        */
+        public function read_timestamp(): int|string;
+        /**
+        * Read an AMQP table, and return as a PHP array. keys are strings,
+        *
+        * values are (type,value) tuples.
+        *
+        * @param bool $returnObject Whether to return AMQPArray instance instead of plain array
+        * @return array|AMQPTable
+        * @generated
+        */
+        public function read_table(bool $returnObject = false): array|\PhpAmqpLib\Wire\AMQPTable;
+        /**
+        * @return array|AMQPTable
+        * @generated
+        */
+        public function read_table_object(): array|\PhpAmqpLib\Wire\AMQPTable;
+        /**
+        * Reads the array in the next value.
+        *
+        * @param bool $returnObject Whether to return AMQPArray instance instead of plain array
+        * @return array|AMQPArray
+        * @generated
+        */
+        public function read_array(bool $returnObject = false): array|\PhpAmqpLib\Wire\AMQPArray;
+        /**
+        * @return array|AMQPArray
+        * @generated
+        */
+        public function read_array_object(): array|\PhpAmqpLib\Wire\AMQPArray;
+        /**
+        * @return array
+        * @generated
+        */
+        public function readFrameHeader(): array;
+        /**
+        * Reads the next value as the provided field type.
+        *
+        * @param int $fieldType One of AMQPAbstractCollection::T_* constants
+        * @param bool $collectionsAsObjects Description
+        * @return mixed
+        * @throws \PhpAmqpLib\Exception\AMQPDataReadException
+        * @generated
+        */
+        public function read_value(int $fieldType, bool $collectionsAsObjects = false): mixed;
+        protected function tell(): int;
+        protected function resetCounters(): void;
+    }
+    class AMQPTable extends \PhpAmqpLib\Wire\AMQPAbstractCollection {
+        /**
+        * @return int
+        * @generated
+        */
+        public final function getType(): int;
+        /**
+        * @param string $key
+        * @param mixed $val
+        * @param int|null $type
+        * @generated
+        */
+        public function set(string $key, mixed $val, int|null $type = null): mixed;
+    }
+    class AMQPWriter extends \PhpAmqpLib\Wire\AMQPByteStream {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $out ?? '';
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $bits ?? [];
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $bitcount ?? 0;
+        /**
+        * Get what's been encoded so far.
+        *
+        * @return string
+        * @generated
+        */
+        public function getvalue(): string;
+        /**
+        * Write a plain PHP string, with no special encoding.
+        *
+        * @param string $s
+        * @return static
+        * @generated
+        */
+        public function write(string $s): static;
+        /**
+        * Write a boolean value.
+        *
+        * (deprecated, use write_bits instead)
+        *
+        * @deprecated
+        * @param bool $b
+        * @return static
+        * @generated
+        */
+        deprecated public function write_bit(bool $b): static;
+        /**
+        * Write multiple bits as an octet
+        *
+        * @param array<int, bool> $bits
+        * @return static
+        * @generated
+        */
+        public function write_bits(array<int, bool> $bits): static;
+        /**
+        * Write an integer as an unsigned 8-bit value
+        *
+        * @param int $n
+        * @return static
+        * @throws \PhpAmqpLib\Exception\AMQPInvalidArgumentException
+        * @generated
+        */
+        public function write_octet(int $n): static;
+        /**
+        * @param int $n
+        * @return static
+        * @generated
+        */
+        public function write_signed_octet(int $n): static;
+        /**
+        * Write an integer as an unsigned 16-bit value
+        *
+        * @param int $n
+        * @return static
+        * @throws \PhpAmqpLib\Exception\AMQPInvalidArgumentException
+        * @generated
+        */
+        public function write_short(int $n): static;
+        /**
+        * @param int $n
+        * @return static
+        * @generated
+        */
+        public function write_signed_short(int $n): static;
+        /**
+        * Write an integer as an unsigned 32-bit value
+        *
+        * @param int|string $n
+        * @return static
+        * @generated
+        */
+        public function write_long(int|string $n): static;
+        /**
+        * Write a numeric value as an unsigned 64-bit value
+        *
+        * @param int|string $n
+        * @return static
+        * @throws AMQPOutOfRangeException
+        * @generated
+        */
+        public function write_longlong(int|string $n): static;
+        /**
+        * @param int|string $n
+        * @return static
+        * @generated
+        */
+        public function write_signed_longlong(int|string $n): static;
+        /**
+        * Write a string up to 255 bytes long after encoding.
+        *
+        * Assume UTF-8 encoding
+        *
+        * @param string $s
+        * @return static
+        * @throws \PhpAmqpLib\Exception\AMQPInvalidArgumentException
+        * @generated
+        */
+        public function write_shortstr(string $s): static;
+        /**
+        * Write a string up to 2**32 bytes long.  Assume UTF-8 encoding
+        *
+        * @param string $s
+        * @return static
+        * @generated
+        */
+        public function write_longstr(string $s): static;
+        /**
+        * Supports the writing of Array types, so that you can implement
+        *
+        * array methods, like Rabbitmq's HA parameters
+        *
+        * @param AMQPArray|array $a Instance of AMQPArray or PHP array WITHOUT format hints (unlike write_table())
+        * @return self
+        * @generated
+        */
+        public function write_array(\PhpAmqpLib\Wire\AMQPArray|array $a): self;
+        /**
+        * Write unix time_t value as 64 bit timestamp
+        *
+        * @param int $v
+        * @return static
+        * @generated
+        */
+        public function write_timestamp(int $v): static;
+        /**
+        * Write PHP array, as table. Input array format: keys are strings,
+        *
+        * values are (type,value) tuples.
+        *
+        * @param AMQPTable|array $d Instance of AMQPTable or PHP array WITH format hints (unlike write_array())
+        * @return static
+        * @throws \PhpAmqpLib\Exception\AMQPInvalidArgumentException
+        * @generated
+        */
+        public function write_table(\PhpAmqpLib\Wire\AMQPTable|array $d): static;
+        /**
+        * for compat with method mapping used by AMQPMessage
+        *
+        * @param AMQPTable|array $d
+        * @return static
+        * @generated
+        */
+        public function write_table_object(\PhpAmqpLib\Wire\AMQPTable|array $d): static;
+    }
+    abstract class Constants {
+        public const string VERSION ?? '';
+        public const string AMQP_HEADER ?? '';
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected static array<int, string> $FRAME_TYPES ?? [];
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected static array<int, string> $CONTENT_METHODS ?? [];
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected static array<int, string> $CLOSE_METHODS ?? [];
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        public static array<string, string> $GLOBAL_METHOD_NAMES ?? [];
+        /**
+        * @return string
+        * @generated
+        */
+        public function getHeader(): string;
+        /**
+        * @param int $type
+        * @return bool
+        * @generated
+        */
+        public function isFrameType(int $type): bool;
+        /**
+        * @param int $type
+        * @return string
+        * @generated
+        */
+        public function getFrameType(int $type): string;
+        /**
+        * @param string $method
+        * @return bool
+        * @generated
+        */
+        public function isContentMethod(string $method): bool;
+        /**
+        * @param string $method
+        * @return bool
+        * @generated
+        */
+        public function isCloseMethod(string $method): bool;
+    }
+    final class Constants080 extends \PhpAmqpLib\Wire\Constants {
+        public const string VERSION ?? '8.0';
+        public const string AMQP_HEADER ?? "AMQP\x01\x01\x08\x00";
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $FRAME_TYPES ?? [];
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $CONTENT_METHODS ?? [];
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $CLOSE_METHODS ?? [];
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $GLOBAL_METHOD_NAMES ?? [];
+    }
+    final class Constants091 extends \PhpAmqpLib\Wire\Constants {
+        public const string VERSION ?? '0.9.1';
+        public const string AMQP_HEADER ?? "AMQP\x00\x00\x09\x01";
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $FRAME_TYPES ?? [];
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $CONTENT_METHODS ?? [];
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $CLOSE_METHODS ?? [];
+        /**
+        * @var array
+        * @generated
+        */
+        public static array $GLOBAL_METHOD_NAMES ?? [];
+    }
+}
+namespace PhpAmqpLib\Wire\IO {
+    abstract class AbstractIO {
+        public const int BUFFER_SIZE ?? 8192;
+        /**
+        * @var null|\PhpAmqpLib\Connection\AMQPConnectionConfig
+        * @generated
+        */
+        protected null|\PhpAmqpLib\Connection\AMQPConnectionConfig $config;
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $host;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $port;
+        /**
+        * @var int|float
+        * @generated
+        */
+        protected int|float $connection_timeout;
+        /**
+        * @var float
+        * @generated
+        */
+        protected float $read_timeout;
+        /**
+        * @var float
+        * @generated
+        */
+        protected float $write_timeout;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $heartbeat;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $initial_heartbeat;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $keepalive;
+        /**
+        * @var int|float
+        * @generated
+        */
+        protected int|float $last_read;
+        /**
+        * @var int|float
+        * @generated
+        */
+        protected int|float $last_write;
+        /**
+        * @var \ErrorException|null
+        * @generated
+        */
+        protected \ErrorException|null $last_error;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $canDispatchPcntlSignal ?? false;
+        /**
+        * @param int $len
+        * @return string
+        * @throws \PhpAmqpLib\Exception\AMQPIOException
+        * @throws AMQPRuntimeException
+        * @throws \PhpAmqpLib\Exception\AMQPSocketException
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @throws \PhpAmqpLib\Exception\AMQPConnectionClosedException
+        * @generated
+        */
+        public abstract function read(int $len): string;
+        /**
+        * @param string $data
+        * @throws \PhpAmqpLib\Exception\AMQPIOException
+        * @throws \PhpAmqpLib\Exception\AMQPSocketException
+        * @throws \PhpAmqpLib\Exception\AMQPConnectionClosedException
+        * @throws \PhpAmqpLib\Exception\AMQPTimeoutException
+        * @generated
+        */
+        public abstract function write(string $data): mixed;
+        /**
+        * @return void
+        * @generated
+        */
+        public abstract function close(): void;
+        /**
+        * @param ?int $sec
+        * @param int $usec
+        * @return int
+        * @throws AMQPIOWaitException
+        * @throws AMQPRuntimeException
+        * @throws AMQPConnectionClosedException
+        * @generated
+        */
+        public function select(?int $sec, int $usec = 0): int;
+        /**
+        * @param ?int $sec
+        * @param int $usec
+        * @return int|bool
+        * @throws AMQPConnectionClosedException
+        * @generated
+        */
+        protected abstract function do_select(?int $sec, int $usec): int|bool;
+        /**
+        * Set ups the connection.
+        *
+        * @return void
+        * @throws \PhpAmqpLib\Exception\AMQPIOException
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        public abstract function connect(): void;
+        /**
+        * Set connection params connection tune(negotiation).
+        *
+        * @param int $heartbeat
+        * @generated
+        */
+        public function afterTune(int $heartbeat): void;
+        /**
+        * Heartbeat logic: check connection health here
+        *
+        * @return void
+        * @throws AMQPRuntimeException
+        * @generated
+        */
+        public function check_heartbeat(): void;
+        /**
+        * @throws \PhpAmqpLib\Exception\AMQPHeartbeatMissedException
+        * @generated
+        */
+        protected function checkBrokerHeartbeat(): void;
+        /**
+        * @return float|int
+        * @generated
+        */
+        public function getLastActivity(): float|int;
+        public function getReadTimeout(): float;
+        /**
+        * @return static
+        * @generated
+        */
+        public function disableHeartbeat(): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function reenableHeartbeat(): static;
+        /**
+        * Sends a heartbeat message
+        *
+        * @generated
+        */
+        protected function write_heartbeat(): mixed;
+        /**
+        * Begin tracking errors and set the error handler
+        *
+        * @generated
+        */
+        protected function setErrorHandler(): void;
+        protected function throwOnError(): void;
+        protected function restoreErrorHandler(): void;
+        /**
+        * Internal error handler to deal with stream and socket errors.
+        *
+        * @param int $errno
+        * @param string $errstr
+        * @param string $errfile
+        * @param int $errline
+        * @return void
+        * @generated
+        */
+        public function error_handler(int $errno, string $errstr, string $errfile, int $errline): void;
+        protected function isPcntlSignalEnabled(): bool;
+    }
+    class SocketIO extends \PhpAmqpLib\Wire\IO\AbstractIO {
+        /**
+        * @param string $host
+        * @param int $port
+        * @param int|float $read_timeout
+        * @param bool $keepalive
+        * @param int|float|null $write_timeout if null defaults to read timeout
+        * @param int $heartbeat how often to send heartbeat. 0 means off
+        * @param ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config
+        * @generated
+        */
+        public function __construct(string $host, int $port, int|float $read_timeout = 3, bool $keepalive = false, int|float|null $write_timeout = null, int $heartbeat = 0, ?\PhpAmqpLib\Connection\AMQPConnectionConfig $config = null): void;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function connect(): mixed;
+        /**
+        * @deprecated
+        * @return null|resource|\Socket
+        * @generated
+        */
+        deprecated public function getSocket(): null|resource|\Socket;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function read(mixed $len): mixed;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function write(mixed $data): mixed;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function close(): mixed;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        protected function do_select(?int $sec, int $usec): mixed;
+        /**
+        * @return int|bool
+        * @generated
+        */
+        protected function select_write(): int|bool;
+        /**
+        * @throws \PhpAmqpLib\Exception\AMQPIOException
+        * @generated
+        */
+        protected function enable_keepalive(): void;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function error_handler(mixed $errno, mixed $errstr, mixed $errfile, mixed $errline): void;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        protected function setErrorHandler(): void;
+    }
+    class StreamIO extends \PhpAmqpLib\Wire\IO\AbstractIO {
+        /**
+        * @var null|resource
+        * @generated
+        */
+        protected null|resource $context;
+        /**
+        * @param string $host
+        * @param int $port
+        * @param float $connection_timeout
+        * @param float $read_write_timeout
+        * @param resource|null $context
+        * @param bool $keepalive
+        * @param int $heartbeat
+        * @param string|null $ssl_protocol @deprecated
+        * @generated
+        */
+        public function __construct(string $host, int $port, float $connection_timeout, float $read_write_timeout, resource|null $context = null, bool $keepalive = false, int $heartbeat = 0, string|null $ssl_protocol = null): void;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function connect(): mixed;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function read(mixed $len): mixed;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function write(mixed $data): mixed;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function error_handler(mixed $errno, mixed $errstr, mixed $errfile, mixed $errline): void;
+        public function close(): mixed;
+        /**
+        * @deprecated
+        * @return null|resource|\Socket
+        * @generated
+        */
+        deprecated public function getSocket(): null|resource|\Socket;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        protected function do_select(?int $sec, int $usec): mixed;
+        /**
+        * @return int|bool
+        * @generated
+        */
+        protected function select_write(): int|bool;
+        /**
+        * @return mixed
+        * @generated
+        */
+        protected function timed_out(): mixed;
+        /**
+        * @throws \PhpAmqpLib\Exception\AMQPIOException
+        * @generated
+        */
+        protected function enable_keepalive(): void;
+        /**
+        * @param string $message
+        * @return int
+        * @generated
+        */
+        protected function extract_error_code(string $message): int;
+    }
+}

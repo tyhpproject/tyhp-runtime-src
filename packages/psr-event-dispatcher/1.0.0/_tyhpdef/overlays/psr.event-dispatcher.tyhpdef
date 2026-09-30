@@ -1,0 +1,39 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Preserve the dispatched event type and type listener callables against that event.
+ */
+
+namespace Psr\EventDispatcher {
+    /**
+     * Listener callable: event in, no result (PSR-14 listeners return void).
+     */
+    type EventListener<T extends object = object> = callable(T): void;
+
+    /**
+     * Overlay: `dispatch($event)` returns the same event type that was passed.
+     */
+    // @overlay-against: interface EventDispatcherInterface
+    partial interface EventDispatcherInterface {
+        /**
+         * @param T $event The object to process.
+         * @return T The event that was passed, now modified by listeners.
+         */
+        // @overlay-against: function dispatch(object $event): object
+        public function dispatch<T extends object>(T $event): T;
+    }
+
+    /**
+     * Overlay: listeners are callables compatible with the given event type.
+     */
+    // @overlay-against: interface ListenerProviderInterface
+    partial interface ListenerProviderInterface {
+        /**
+         * @param T $event An event for which to return the relevant listeners.
+         * @return iterable<\Psr\EventDispatcher\EventListener<T>> Listeners for `$event`.
+         */
+        // @overlay-against: function getListenersForEvent(object $event): iterable
+        public function getListenersForEvent<T extends object>(T $event): iterable<\Psr\EventDispatcher\EventListener<T>>;
+    }
+}

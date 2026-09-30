@@ -1,0 +1,50 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * readline_info array-shape, history list, completion/callback callables.
+ */
+
+/**
+ * Overlay: `readline_info()` with no arguments. Keys vary by libreadline vs libedit.
+ */
+type ReadlineInfo = struct {
+    ?bool $done;
+    ?int $end;
+    ?int $erase_empty_line;
+    ?string $library_version;
+    ?string $line_buffer;
+    ?int $mark;
+    ?int $pending_input;
+    ?int $point;
+    ?string $prompt;
+    ?string $readline_name;
+    ?string $terminal_name;
+};
+
+type ReadlineCompletionCallback = (callable(string): array<int, string>)&(callable(string, int): array<int, string>);
+type ReadlineLineCallback = callable(string): void;
+
+// @overlay-against: function readline_completion_function(callable $callback): bool
+function readline_completion_function(ReadlineCompletionCallback $callback): bool;
+
+// @overlay-against: function readline_info(?string $var_name, mixed $value): mixed
+function readline_info(): ReadlineInfo;
+// @overlay-against: function readline_info(?string $var_name, mixed $value): mixed
+function readline_info(string $var_name): mixed;
+// @overlay-against: function readline_info(?string $var_name, mixed $value): mixed
+function readline_info(string $var_name, mixed $value): mixed;
+
+// @overlay-against: function readline_list_history(): array
+function readline_list_history(): array<int, string>;
+
+declare(php="<8.5") {
+    // @overlay-against: function readline_callback_handler_install(string $prompt, callable $callback): bool
+    function readline_callback_handler_install(string $prompt, ReadlineLineCallback $callback): bool;
+}
+
+declare(php=">=8.5") {
+    // @overlay-against: function readline_callback_handler_install(string $prompt, callable $callback): true
+    function readline_callback_handler_install(string $prompt, ReadlineLineCallback $callback): true;
+}

@@ -1,0 +1,98 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * Passwd/group/uname/times array-shapes as structs; getgroups as int list.
+ */
+
+/**
+ * Overlay: one `posix_getrlimit()` soft/hard pair. `"unlimited"` is a string.
+ */
+type PosixRlimit = struct {
+    int|string $soft;
+    int|string $hard;
+};
+
+/**
+ * Overlay: `posix_getgrgid()` / `posix_getgrnam()` group record.
+ */
+type PosixGroup = struct {
+    string $name;
+    string $passwd;
+    int $gid;
+    array<int, string> $members;
+};
+
+/**
+ * Overlay: `posix_getpwuid()` / `posix_getpwnam()` passwd record.
+ */
+type PosixPasswd = struct {
+    string $name;
+    string $passwd;
+    int $uid;
+    int $gid;
+    string $gecos;
+    string $dir;
+    string $shell;
+};
+
+/**
+ * Overlay: `posix_times()` process CPU usage. Values are clock ticks.
+ */
+type PosixTimes = struct {
+    int $ticks;
+    int $utime;
+    int $stime;
+    int $cutime;
+    int $cstime;
+};
+
+/**
+ * Overlay: `posix_uname()` system name. `domainname` is a GNU extension.
+ */
+type PosixUname = struct {
+    string $sysname;
+    string $nodename;
+    string $release;
+    string $version;
+    string $machine;
+    ?string $domainname;
+};
+
+// @overlay-against: function posix_getgrgid(int $group_id): array|false
+function posix_getgrgid(int $group_id): PosixGroup|false;
+
+// @overlay-against: function posix_getgrnam(string $name): array|false
+function posix_getgrnam(string $name): PosixGroup|false;
+
+// @overlay-against: function posix_getgroups(): array|false
+function posix_getgroups(): array<int, int>|false;
+
+// @overlay-against: function posix_getpwnam(string $username): array|false
+function posix_getpwnam(string $username): PosixPasswd|false;
+
+// @overlay-against: function posix_getpwuid(int $user_id): array|false
+function posix_getpwuid(int $user_id): PosixPasswd|false;
+
+// @overlay-against: function posix_times(): array|false
+function posix_times(): PosixTimes|false;
+
+// @overlay-against: function posix_uname(): array|false
+function posix_uname(): PosixUname|false;
+
+declare(php="<8.3") {
+    // @overlay-against: function posix_getrlimit(): array|false
+    function posix_getrlimit(): array<string, PosixRlimit>|false;
+}
+declare(php=">=8.3") {
+    // @overlay-against: function posix_getrlimit(?int $resource): array|false
+    function posix_getrlimit(null $resource = null): array<string, PosixRlimit>|false;
+    // @overlay-against: function posix_getrlimit(?int $resource): array|false
+    function posix_getrlimit(int $resource): PosixRlimit|false;
+}
+
+declare(php=">=8.5") {
+    // @overlay-against: function posix_fpathconf(mixed $file_descriptor, int $name): int|false
+    function posix_fpathconf(int|resource $file_descriptor, int $name): int|false;
+}

@@ -1,0 +1,1021 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Http\Client\Common {
+    final class BatchClient implements \Http\Client\Common\BatchClientInterface {
+        public function __construct(\Psr\Http\Client\ClientInterface $client): void;
+        public function sendRequests(array $requests): \Http\Client\Common\BatchResult;
+    }
+    /**
+    * BatchClient allow to sends multiple request and retrieve a Batch Result.
+    *
+    * This implementation simply loops over the requests and uses sendRequest with each of them.
+    *
+    * @author Joel Wurtz <jwurtz@jolicode.com>
+    * @generated
+    */
+    interface BatchClientInterface {
+        /**
+        * Send several requests.
+        *
+        * You may not assume that the requests are executed in a particular order. If the order matters
+        * for your application, use sendRequest sequentially.
+        *
+        * @param array<int, \Psr\Http\Message\RequestInterface> $requests The requests to send
+        * @return \Http\Client\Common\BatchResult Containing one result per request
+        * @throws BatchException If one or more requests fails. The exception gives access to the
+        *                        BatchResult with a map of request to result for success, request to
+        *                        exception for failures
+        * @generated
+        */
+        public function sendRequests(array<int, \Psr\Http\Message\RequestInterface> $requests): \Http\Client\Common\BatchResult;
+    }
+    /**
+    * Responses and exceptions returned from parallel request execution.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    final class BatchResult {
+        public function __construct(): void;
+        /**
+        * Checks if there are any successful responses at all.
+        *
+        * @generated
+        */
+        public function hasResponses(): bool;
+        /**
+        * Returns all successful responses.
+        *
+        * @return array<int, \Psr\Http\Message\ResponseInterface>
+        * @generated
+        */
+        public function getResponses(): array<int, \Psr\Http\Message\ResponseInterface>;
+        /**
+        * Checks if there is a successful response for a request.
+        *
+        * @generated
+        */
+        public function isSuccessful(\Psr\Http\Message\RequestInterface $request): bool;
+        /**
+        * Returns the response for a successful request.
+        *
+        * @throws \UnexpectedValueException If request was not part of the batch or failed
+        * @generated
+        */
+        public function getResponseFor(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Adds a response in an immutable way.
+        *
+        * @return self the new BatchResult with this request-response pair added to it
+        * @generated
+        */
+        public function addResponse(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response): self;
+        /**
+        * Checks if there are any unsuccessful requests at all.
+        *
+        * @generated
+        */
+        public function hasExceptions(): bool;
+        /**
+        * Returns all exceptions for the unsuccessful requests.
+        *
+        * @return array<int, \Psr\Http\Client\ClientExceptionInterface>
+        * @generated
+        */
+        public function getExceptions(): array<int, \Psr\Http\Client\ClientExceptionInterface>;
+        /**
+        * Checks if there is an exception for a request, meaning the request failed.
+        *
+        * @generated
+        */
+        public function isFailed(\Psr\Http\Message\RequestInterface $request): bool;
+        /**
+        * Returns the exception for a failed request.
+        *
+        * @throws \UnexpectedValueException If request was not part of the batch or was successful
+        * @generated
+        */
+        public function getExceptionFor(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Client\ClientExceptionInterface;
+        /**
+        * Adds an exception in an immutable way.
+        *
+        * @return self the new BatchResult with this request-exception pair added to it
+        * @generated
+        */
+        public function addException(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Client\ClientExceptionInterface $exception): self;
+        public function __clone(): mixed;
+    }
+    /**
+    * A deferred allow to return a promise which has not been resolved yet.
+    *
+    * @generated
+    */
+    final class Deferred implements \Http\Promise\Promise {
+        public function __construct(callable $waitCallback): void;
+        public function then(?callable $onFulfilled = null, ?callable $onRejected = null): \Http\Promise\Promise;
+        public function getState(): string;
+        /**
+        * Resolve this deferred with a Response.
+        *
+        * @generated
+        */
+        public function resolve(\Psr\Http\Message\ResponseInterface $response): void;
+        /**
+        * Reject this deferred with an Exception.
+        *
+        * @generated
+        */
+        public function reject(\Psr\Http\Client\ClientExceptionInterface $exception): void;
+        public function wait(mixed $unwrap = true): mixed;
+    }
+    /**
+    * Emulates an async HTTP client with the help of a synchronous client.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    final class EmulatedHttpAsyncClient implements \Http\Client\HttpClient, \Http\Client\HttpAsyncClient {
+        use \Http\Client\Common\HttpAsyncClientEmulator, \Http\Client\Common\HttpClientDecorator;
+        public function __construct(\Psr\Http\Client\ClientInterface $httpClient): void;
+    }
+    /**
+    * Emulates a synchronous HTTP client with the help of an asynchronous client.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    final class EmulatedHttpClient implements \Http\Client\HttpClient, \Http\Client\HttpAsyncClient {
+        use \Http\Client\Common\HttpAsyncClientDecorator, \Http\Client\Common\HttpClientEmulator;
+        public function __construct(\Http\Client\HttpAsyncClient $httpAsyncClient): void;
+    }
+    /**
+    * A flexible http client, which implements both interface and will emulate
+    *
+    * one contract, the other, or none at all depending on the injected client contract.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class FlexibleHttpClient implements \Http\Client\HttpClient, \Http\Client\HttpAsyncClient {
+        use \Http\Client\Common\HttpClientDecorator, \Http\Client\Common\HttpAsyncClientDecorator;
+        /**
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client
+        * @generated
+        */
+        public function __construct(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client): void;
+    }
+    /**
+    * Decorates an HTTP Async Client.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    trait HttpAsyncClientDecorator {
+        /**
+        * @var \Http\Client\HttpAsyncClient
+        * @generated
+        */
+        protected \Http\Client\HttpAsyncClient $httpAsyncClient;
+        /**
+        * @see HttpAsyncClient::sendAsyncRequest
+        * @generated
+        */
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed;
+    }
+    /**
+    * Emulates an HTTP Async Client in an HTTP Client.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    trait HttpAsyncClientEmulator {
+        /**
+        * @see HttpClient::sendRequest
+        * @generated
+        */
+        public abstract function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+        /**
+        * @see HttpAsyncClient::sendAsyncRequest
+        * @generated
+        */
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed;
+    }
+    /**
+    * Decorates an HTTP Client.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    trait HttpClientDecorator {
+        /**
+        * @var \Psr\Http\Client\ClientInterface
+        * @generated
+        */
+        protected \Psr\Http\Client\ClientInterface $httpClient;
+        /**
+        * @see ClientInterface::sendRequest
+        * @generated
+        */
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+    }
+    /**
+    * Emulates an HTTP Client in an HTTP Async Client.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    trait HttpClientEmulator {
+        /**
+        * @see HttpClient::sendRequest
+        * @generated
+        */
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+        /**
+        * @see HttpAsyncClient::sendAsyncRequest
+        * @generated
+        */
+        public abstract function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed;
+    }
+    /**
+    * A http client pool allows to send requests on a pool of different http client using a specific strategy (least used,
+    *
+    * round robin, ...).
+    *
+    * @generated
+    */
+    interface HttpClientPool extends \Http\Client\HttpAsyncClient, \Http\Client\HttpClient {
+        /**
+        * Add a client to the pool.
+        *
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient|\Http\Client\Common\HttpClientPool\HttpClientPoolItem $client
+        * @generated
+        */
+        public function addHttpClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient|\Http\Client\Common\HttpClientPool\HttpClientPoolItem $client): void;
+    }
+    /**
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class HttpClientRouter implements \Http\Client\Common\HttpClientRouterInterface {
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed;
+        /**
+        * Add a client to the router.
+        *
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client
+        * @generated
+        */
+        public function addClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, \Http\Message\RequestMatcher $requestMatcher): void;
+    }
+    /**
+    * Route a request to a specific client in the stack based using a RequestMatcher.
+    *
+    * This is not a HttpClientPool client because it uses a matcher to select the client.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    interface HttpClientRouterInterface extends \Http\Client\HttpClient, \Http\Client\HttpAsyncClient {
+        /**
+        * Add a client to the router.
+        *
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client
+        * @generated
+        */
+        public function addClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, \Http\Message\RequestMatcher $requestMatcher): void;
+    }
+    final class HttpMethodsClient implements \Http\Client\Common\HttpMethodsClientInterface {
+        /**
+        * @param \Http\Message\RequestFactory|\Psr\Http\Message\RequestFactoryInterface $requestFactory
+        * @generated
+        */
+        public function __construct(\Psr\Http\Client\ClientInterface $httpClient, \Http\Message\RequestFactory|\Psr\Http\Message\RequestFactoryInterface $requestFactory, ?\Psr\Http\Message\StreamFactoryInterface $streamFactory = null): void;
+        public function get(mixed $uri, array $headers = []): \Psr\Http\Message\ResponseInterface;
+        public function head(mixed $uri, array $headers = []): \Psr\Http\Message\ResponseInterface;
+        public function trace(mixed $uri, array $headers = []): \Psr\Http\Message\ResponseInterface;
+        public function post(mixed $uri, array $headers = [], mixed $body = null): \Psr\Http\Message\ResponseInterface;
+        public function put(mixed $uri, array $headers = [], mixed $body = null): \Psr\Http\Message\ResponseInterface;
+        public function patch(mixed $uri, array $headers = [], mixed $body = null): \Psr\Http\Message\ResponseInterface;
+        public function delete(mixed $uri, array $headers = [], mixed $body = null): \Psr\Http\Message\ResponseInterface;
+        public function options(mixed $uri, array $headers = [], mixed $body = null): \Psr\Http\Message\ResponseInterface;
+        public function send(string $method, mixed $uri, array $headers = [], mixed $body = null): \Psr\Http\Message\ResponseInterface;
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+    }
+    /**
+    * Convenience HTTP client that integrates the MessageFactory in order to send
+    *
+    * requests in the following form:.
+    * 
+    * $client
+    *     ->get('/foo')
+    *     ->post('/bar')
+    * ;
+    * 
+    * The client also exposes the sendRequest methods of the wrapped HttpClient.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @author David Buchmann <mail@davidbu.ch>
+    * @generated
+    */
+    interface HttpMethodsClientInterface extends \Http\Client\HttpClient {
+        /**
+        * Sends a GET request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @throws Exception
+        * @generated
+        */
+        public function get(string|\Psr\Http\Message\UriInterface $uri, array $headers = []): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends an HEAD request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @throws Exception
+        * @generated
+        */
+        public function head(string|\Psr\Http\Message\UriInterface $uri, array $headers = []): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends a TRACE request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @throws Exception
+        * @generated
+        */
+        public function trace(string|\Psr\Http\Message\UriInterface $uri, array $headers = []): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends a POST request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @param string|\Psr\Http\Message\StreamInterface|null $body
+        * @throws Exception
+        * @generated
+        */
+        public function post(string|\Psr\Http\Message\UriInterface $uri, array $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends a PUT request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @param string|\Psr\Http\Message\StreamInterface|null $body
+        * @throws Exception
+        * @generated
+        */
+        public function put(string|\Psr\Http\Message\UriInterface $uri, array $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends a PATCH request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @param string|\Psr\Http\Message\StreamInterface|null $body
+        * @throws Exception
+        * @generated
+        */
+        public function patch(string|\Psr\Http\Message\UriInterface $uri, array $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends a DELETE request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @param string|\Psr\Http\Message\StreamInterface|null $body
+        * @throws Exception
+        * @generated
+        */
+        public function delete(string|\Psr\Http\Message\UriInterface $uri, array $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends an OPTIONS request.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @param string|\Psr\Http\Message\StreamInterface|null $body
+        * @throws Exception
+        * @generated
+        */
+        public function options(string|\Psr\Http\Message\UriInterface $uri, array $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Sends a request with any HTTP method.
+        *
+        * @param string $method HTTP method to use
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @param string|\Psr\Http\Message\StreamInterface|null $body
+        * @throws Exception
+        * @generated
+        */
+        public function send(string $method, string|\Psr\Http\Message\UriInterface $uri, array $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+    }
+    /**
+    * A plugin is a middleware to transform the request and/or the response.
+    *
+    * The plugin can:
+    *  - break the chain and return a response
+    *  - dispatch the request to the next middleware
+    *  - restart the request
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    interface Plugin {
+        /**
+        * Handle the request and return the response coming from the next callable.
+        *
+        * @see http://docs.php-http.org/en/latest/plugins/build-your-own.html
+        * @param callable $next Next middleware in the chain, the request is passed as the first argument
+        * @param callable $first First middleware in the chain, used to to restart a request
+        * @return \Http\Promise\Promise Resolves a PSR-7 Response or fails with an Http\Client\Exception (The same as HttpAsyncClient)
+        * @generated
+        */
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    final class PluginChain {
+        /**
+        * @param array<int, Plugin> $plugins A plugin chain
+        * @param callable $clientCallable Callable making the HTTP call
+        * @param array $options
+        * @generated
+        */
+        public function __construct(array<int, \Http\Client\Common\Plugin> $plugins, callable $clientCallable, array $options = []): void;
+        public function __invoke(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+    /**
+    * The client managing plugins and providing a decorator around HTTP Clients.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class PluginClient implements \Http\Client\HttpClient, \Http\Client\HttpAsyncClient {
+        /**
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client An HTTP async client
+        * @param array<int, Plugin> $plugins A plugin chain
+        * @param array $options
+        * @generated
+        */
+        public function __construct(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, array<int, \Http\Client\Common\Plugin> $plugins = [], array $options = []): void;
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed;
+    }
+    /**
+    * Build an instance of a PluginClient with a dynamic list of plugins.
+    *
+    * @author Baptiste Clavié <clavie.b@gmail.com>
+    * @generated
+    */
+    final class PluginClientBuilder {
+        /**
+        * @param int $priority Priority of the plugin. The higher comes first.
+        * @generated
+        */
+        public function addPlugin(\Http\Client\Common\Plugin $plugin, int $priority = 0): self;
+        /**
+        * @param string|int|float|bool|array<int, string> $value
+        * @generated
+        */
+        public function setOption(string $name, string|int|float|bool|array<int, string> $value): self;
+        public function removeOption(string $name): self;
+        /**
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client
+        * @generated
+        */
+        public function createClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client): \Http\Client\Common\PluginClient;
+    }
+    /**
+    * Factory to create PluginClient instances. Using this factory instead of calling PluginClient constructor will enable
+    *
+    * the Symfony profiling without any configuration.
+    *
+    * @author Fabien Bourigault <bourigaultfabien@gmail.com>
+    * @generated
+    */
+    final class PluginClientFactory {
+        /**
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client
+        * @param array<int, Plugin> $plugins
+        * @param array $options Configuration options:
+        *  *       - client_name: to give client a name which may be used when displaying client information
+        *  *         like in the HTTPlugBundle profiler
+        * @see PluginClient constructor for PluginClient specific $options.
+        * @generated
+        */
+        public function createClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, array<int, \Http\Client\Common\Plugin> $plugins = [], array $options = []): \Http\Client\Common\PluginClient;
+    }
+    /**
+    * A client that helps you migrate from php-http/httplug 1.x to 2.x. This
+    *
+    * will also help you to support PHP5 at the same time you support 2.x.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    trait VersionBridgeClient {
+        protected abstract function doSendRequest(\Psr\Http\Message\RequestInterface $request): mixed;
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+    }
+}
+namespace Http\Client\Common\Exception {
+    /**
+    * This exception is thrown when HttpClient::sendRequests led to at least one failure.
+    *
+    * It gives access to a BatchResult with the request-exception and request-response pairs.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    final class BatchException extends \Http\Client\Exception\TransferException {
+        public function __construct(\Http\Client\Common\BatchResult $result): void;
+        /**
+        * Returns the BatchResult that contains all responses and exceptions.
+        *
+        * @generated
+        */
+        public function getResult(): \Http\Client\Common\BatchResult;
+    }
+    /**
+    * Thrown when circular redirection is detected.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class CircularRedirectionException extends \Http\Client\Exception\HttpException {
+    }
+    /**
+    * Thrown when there is a client error (4xx).
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class ClientErrorException extends \Http\Client\Exception\HttpException {
+    }
+    /**
+    * Thrown when a http client match in the HTTPClientRouter.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    final class HttpClientNoMatchException extends \Http\Client\Exception\TransferException {
+        public function __construct(string $message, \Psr\Http\Message\RequestInterface $request, ?\Exception $previous = null): void;
+        public function getRequest(): \Psr\Http\Message\RequestInterface;
+    }
+    /**
+    * Thrown when a http client cannot be chosen in a pool.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class HttpClientNotFoundException extends \Http\Client\Exception\TransferException {
+    }
+    /**
+    * Thrown when the Plugin Client detects an endless loop.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class LoopException extends \Http\Client\Exception\RequestException {
+    }
+    /**
+    * Redirect location cannot be chosen.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class MultipleRedirectionException extends \Http\Client\Exception\HttpException {
+    }
+    /**
+    * Thrown when there is a server error (5xx).
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class ServerErrorException extends \Http\Client\Exception\HttpException {
+    }
+}
+namespace Http\Client\Common\HttpClientPool {
+    /**
+    * A http client pool allows to send requests on a pool of different http client using a specific strategy (least used,
+    *
+    * round robin, ...).
+    *
+    * @generated
+    */
+    abstract class HttpClientPool implements \Http\Client\Common\HttpClientPool {
+        /**
+        * @var array<int, HttpClientPoolItem>
+        * @generated
+        */
+        protected array<int, HttpClientPoolItem> $clientPool ?? [];
+        /**
+        * Add a client to the pool.
+        *
+        * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client
+        * @generated
+        */
+        public function addHttpClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client): void;
+        /**
+        * Return an http client given a specific strategy.
+        *
+        * @return \Http\Client\Common\HttpClientPool\HttpClientPoolItem Return a http client that can do both sync or async
+        * @throws HttpClientNotFoundException When no http client has been found into the pool
+        * @generated
+        */
+        protected abstract function chooseHttpClient(): \Http\Client\Common\HttpClientPool\HttpClientPoolItem;
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed;
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+    }
+    /**
+    * LeastUsedClientPool will choose the client with the less current request in the pool.
+    *
+    * This strategy is only useful when doing async request
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class LeastUsedClientPool extends \Http\Client\Common\HttpClientPool\HttpClientPool {
+        protected function chooseHttpClient(): \Http\Client\Common\HttpClientPool\HttpClientPoolItem;
+    }
+    /**
+    * RandomClientPool will choose a random enabled client in the pool.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class RandomClientPool extends \Http\Client\Common\HttpClientPool\HttpClientPool {
+        protected function chooseHttpClient(): \Http\Client\Common\HttpClientPool\HttpClientPoolItem;
+    }
+    /**
+    * RoundRobinClientPool will choose the next client in the pool.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class RoundRobinClientPool extends \Http\Client\Common\HttpClientPool\HttpClientPool {
+        protected function chooseHttpClient(): \Http\Client\Common\HttpClientPool\HttpClientPoolItem;
+    }
+}
+namespace Http\Client\Common\Plugin {
+    /**
+    * Add schema, host and port to a request. Can be set to overwrite the schema and host if desired.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    final class AddHostPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $config Configuration options:
+        *  *       - replace: True will replace all hosts, false will only add host when none is specified
+        * @generated
+        */
+        public function __construct(\Psr\Http\Message\UriInterface $host, array $config = []): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Prepend a base path to the request URI. Useful for base API URLs like http://domain.com/api.
+    *
+    * @author Sullivan Senechal <soullivaneuh@gmail.com>
+    * @generated
+    */
+    final class AddPathPlugin implements \Http\Client\Common\Plugin {
+        public function __construct(\Psr\Http\Message\UriInterface $uri): void;
+        /**
+        * Adds a prefix in the beginning of the URL's path.
+        *
+        * The prefix is not added if that prefix is already on the URL's path. This will fail on the edge
+        * case of the prefix being repeated, for example if `https://example.com/api/api/foo` is a valid
+        * URL on the server and the configured prefix is `/api`.
+        * 
+        * We looked at other solutions, but they are all much more complicated, while still having edge
+        * cases:
+        * - Doing an spl_object_hash on `$first` will lead to collisions over time because over time the
+        *   hash can collide.
+        * - Have the PluginClient provide a magic header to identify the request chain and only apply
+        *   this plugin once.
+        * 
+        * There are 2 reasons for the AddPathPlugin to be executed twice on the same request:
+        * - A plugin can restart the chain by calling `$first`, e.g. redirect
+        * - A plugin can call `$next` more than once, e.g. retry
+        * 
+        * Depending on the scenario, the path should or should not be added. E.g. `$first` could
+        * be called after a redirect response from the server. The server likely already has the
+        * correct path.
+        * 
+        * No solution fits all use cases. This implementation will work fine for the common use cases.
+        * If you have a specific situation where this is not the right thing, you can build a custom plugin
+        * that does exactly what you need.
+        * 
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Send an authenticated request.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class AuthenticationPlugin implements \Http\Client\Common\Plugin {
+        public function __construct(\Http\Message\Authentication $authentication): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Combines the AddHostPlugin and AddPathPlugin.
+    *
+    * @author Sullivan Senechal <soullivaneuh@gmail.com>
+    * @generated
+    */
+    final class BaseUriPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param \Psr\Http\Message\UriInterface $uri Has to contain a host name and can have a path
+        * @param array $hostConfig Config for AddHostPlugin. @see AddHostPlugin::configureOptions
+        * @generated
+        */
+        public function __construct(\Psr\Http\Message\UriInterface $uri, array $hostConfig = []): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Allow to set the correct content length header on the request or to transfer it as a chunk if not possible.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class ContentLengthPlugin implements \Http\Client\Common\Plugin {
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Allow to set the correct content type header on the request automatically only if it is not set.
+    *
+    * @author Karim Pinchon <karim.pinchon@gmail.com>
+    * @generated
+    */
+    final class ContentTypePlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $config Configuration options:
+        *  *       - skip_detection: true skip detection if stream size is bigger than $size_limit
+        *  *       - size_limit: size stream limit for which the detection as to be skipped
+        * @generated
+        */
+        public function __construct(array $config = []): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Handle request cookies.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class CookiePlugin implements \Http\Client\Common\Plugin {
+        public function __construct(\Http\Message\CookieJar $cookieJar): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Allow to decode response body with a chunk, deflate, compress or gzip encoding.
+    *
+    * If zlib is not installed, only chunked encoding can be handled.
+    * 
+    * If Content-Encoding is not disabled, the plugin will add an Accept-Encoding header for the encoding methods it supports.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class DecoderPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $config Configuration options:
+        *  *       - use_content_encoding: Whether this plugin should look at the Content-Encoding header first or only at the Transfer-Encoding (defaults to true)
+        * @generated
+        */
+        public function __construct(array $config = []): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Throw exception when the response of a request is not acceptable.
+    *
+    * Status codes 400-499 lead to a ClientErrorException, status 500-599 to a ServerErrorException.
+    * 
+    * Warning
+    * =======
+    * 
+    * Throwing an exception on a valid response violates the PSR-18 specification.
+    * This plugin is provided as a convenience when writing a small application.
+    * When providing a client to a third party library, this plugin must not be
+    * included, or the third party library will have problems with error handling.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class ErrorPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $config Configuration options:
+        *  *       - only_server_exception: Whether this plugin should only throw 5XX Exceptions (default to false)
+        * @generated
+        */
+        public function __construct(array $config = []): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Append headers to the request.
+    *
+    * If the header already exists the value will be appended to the current value.
+    * 
+    * This only makes sense for headers that can have multiple values like 'Forwarded'
+    *
+    * @see https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
+    * @author Soufiane Ghzal <sghzal@gmail.com>
+    * @generated
+    */
+    final class HeaderAppendPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $headers Hashmap of header name to header value
+        * @generated
+        */
+        public function __construct(array $headers): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Set header to default value if it does not exist.
+    *
+    * If a given header already exists the value wont be replaced and the request wont be changed.
+    *
+    * @author Soufiane Ghzal <sghzal@gmail.com>
+    * @generated
+    */
+    final class HeaderDefaultsPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $headers Hashmap of header name to header value
+        * @generated
+        */
+        public function __construct(array $headers): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Removes headers from the request.
+    *
+    * @author Soufiane Ghzal <sghzal@gmail.com>
+    * @generated
+    */
+    final class HeaderRemovePlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $headers List of header names to remove from the request
+        * @generated
+        */
+        public function __construct(array $headers): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Set headers on the request.
+    *
+    * If the header does not exist it wil be set, if the header already exists it will be replaced.
+    *
+    * @author Soufiane Ghzal <sghzal@gmail.com>
+    * @generated
+    */
+    final class HeaderSetPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $headers Hashmap of header name to header value
+        * @generated
+        */
+        public function __construct(array $headers): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Record HTTP calls.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class HistoryPlugin implements \Http\Client\Common\Plugin {
+        public function __construct(\Http\Client\Common\Plugin\Journal $journal): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Records history of HTTP calls.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    interface Journal {
+        /**
+        * Record a successful call.
+        *
+        * @param \Psr\Http\Message\RequestInterface $request Request use to make the call
+        * @param \Psr\Http\Message\ResponseInterface $response Response returned by the call
+        * @generated
+        */
+        public function addSuccess(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response): mixed;
+        /**
+        * Record a failed call.
+        *
+        * @param \Psr\Http\Message\RequestInterface $request Request use to make the call
+        * @param \Psr\Http\Client\ClientExceptionInterface $exception Exception returned by the call
+        * @generated
+        */
+        public function addFailure(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Client\ClientExceptionInterface $exception): mixed;
+    }
+    /**
+    * Set query to default value if it does not exist.
+    *
+    * If a given query parameter already exists the value wont be replaced and the request wont be changed.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    final class QueryDefaultsPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $queryParams Hashmap of query name to query value. Names and values must not be url encoded as
+        *  *                               this plugin will encode them
+        * @generated
+        */
+        public function __construct(array $queryParams): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Follow redirections.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class RedirectPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $config Configuration options:
+        *  *       - preserve_header: True keeps all headers, false remove all of them, an array is interpreted as a list of header names to keep
+        *  *       - use_default_for_multiple: Whether the location header must be directly used for a multiple redirection status code (300)
+        *  *       - strict: When true, redirect codes 300, 301, 302 will not modify request method and body
+        *  *       - stream_factory: If set, must be a PSR-17 StreamFactoryInterface - if not set, we try to discover one
+        * @generated
+        */
+        public function __construct(array $config = []): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+        /**
+        * The default only needs to be determined if no value is provided.
+        *
+        * @generated
+        */
+        public function guessStreamFactory(): ?\Psr\Http\Message\StreamFactoryInterface;
+    }
+    /**
+    * Apply a delegated plugin based on a request match.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    final class RequestMatcherPlugin implements \Http\Client\Common\Plugin {
+        public function __construct(\Http\Message\RequestMatcher $requestMatcher, ?\Http\Client\Common\Plugin $delegateOnMatch, ?\Http\Client\Common\Plugin $delegateOnNoMatch = null): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Allow body used in request to be always seekable.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class RequestSeekableBodyPlugin extends \Http\Client\Common\Plugin\SeekableBodyPlugin {
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Allow body used in response to be always seekable.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class ResponseSeekableBodyPlugin extends \Http\Client\Common\Plugin\SeekableBodyPlugin {
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+    /**
+    * Retry the request if an exception is thrown.
+    *
+    * By default will retry only one time.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    final class RetryPlugin implements \Http\Client\Common\Plugin {
+        /**
+        * @param array $config Configuration options:
+        *  *       - retries: Number of retries to attempt if an exception occurs before letting the exception bubble up
+        *  *       - error_response_decider: A callback that gets a request and response to decide whether the request should be retried
+        *  *       - exception_decider: A callback that gets a request and an exception to decide after a failure whether the request should be retried
+        *  *       - error_response_delay: A callback that gets a request and response and the current number of retries and returns how many microseconds we should wait before trying again
+        *  *       - exception_delay: A callback that gets a request, an exception and the current number of retries and returns how many microseconds we should wait before trying again
+        * @generated
+        */
+        public function __construct(array $config = []): void;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+        /**
+        * @param int $retries The number of retries we made before. First time this get called it will be 0.
+        * @generated
+        */
+        public static function defaultErrorResponseDelay(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response, int $retries): int;
+        /**
+        * @param int $retries The number of retries we made before. First time this get called it will be 0.
+        * @generated
+        */
+        public static function defaultExceptionDelay(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Client\ClientExceptionInterface $e, int $retries): int;
+    }
+    /**
+    * A plugin that helps you migrate from php-http/client-common 1.x to 2.x. This
+    *
+    * will also help you to support PHP5 at the same time you support 2.x.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    trait VersionBridgePlugin {
+        protected abstract function doHandleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): mixed;
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise;
+    }
+}

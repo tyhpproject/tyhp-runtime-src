@@ -1,0 +1,51 @@
+<?tyhp
+
+namespace OverlayTests\ProcOpen;
+
+function procOpen_pipesAreResourceArray_notMixed(): void {
+    array<int, resource> $pipes = [];
+    $proc = \proc_open('echo hi', [1 => ['pipe', 'w']], $pipes);
+    if (!\is_resource($proc)) {
+        return;
+    }
+    resource $stdout = $pipes[1];
+}
+
+function procOpen_returnIsFalseOrResource(): false|resource {
+    array<int, resource> $pipes = [];
+    return \proc_open('echo hi', [1 => ['pipe', 'w']], $pipes);
+}
+
+function procOpen_arrayCommandAndOptionsBag_typeCheck(): void {
+    array<int, resource> $pipes = [];
+    $proc = \proc_open(
+        ['echo', 'hi'],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $pipes,
+        null,
+        null,
+        ['bypass_shell' => true]
+    );
+    if (!\is_resource($proc)) {
+        return;
+    }
+    resource $stdout = $pipes[1];
+    resource $stderr = $pipes[2];
+}
+
+function procOpen_envVarsAreStringMap(): false|resource {
+    array<int, resource> $pipes = [];
+    return \proc_open(
+        'echo hi',
+        [1 => ['pipe', 'w']],
+        $pipes,
+        null,
+        ['PATH' => '/bin']
+    );
+}
+
+function procOpen_inferredPipesFromEmptyArray_areNotMixed(): array<int, resource> {
+    $pipes = [];
+    \proc_open('echo hi', [1 => ['pipe', 'w']], $pipes);
+    return $pipes;
+}

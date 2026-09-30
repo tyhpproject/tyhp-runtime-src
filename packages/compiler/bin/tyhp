@@ -1,0 +1,39 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * PHP shim for the native Tyhp CLI.
+ *
+ * Native binary: {package}/native/tyhp (or native/tyhp.exe on Windows).
+ * `--install-binary` downloads that file and is never forwarded to the native CLI.
+ */
+
+$autoloadCandidates = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+    __DIR__ . '/../autoload.php',
+];
+
+$autoload = null;
+foreach ($autoloadCandidates as $candidate) {
+    if (\is_file($candidate)) {
+        $autoload = $candidate;
+        break;
+    }
+}
+
+if ($autoload === null) {
+    \fwrite(\STDERR, "tyhp: Composer autoloader not found. Run `composer install` in the project that requires tyhp/compiler.\n");
+    exit(1);
+}
+
+require $autoload;
+
+try {
+    exit((new \Tyhp\Compiler\Shim())->run($_SERVER['argv'] ?? []));
+} catch (\Throwable $e) {
+    \fwrite(\STDERR, $e->getMessage() . "\n");
+    exit(1);
+}

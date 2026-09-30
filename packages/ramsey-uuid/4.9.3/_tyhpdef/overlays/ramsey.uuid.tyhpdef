@@ -1,0 +1,151 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Collection subclasses keep the PHPDoc `@extends` type argument.
+ * Serialization shapes and factory/time-generator node arguments match the PHP sources.
+ */
+
+namespace Ramsey\Uuid {
+    /**
+     * `Uuid::__serialize()` payload (`array{bytes: string}`).
+     */
+    type UuidBytesState = struct {
+        string $bytes;
+    };
+
+    /**
+     * Overlay: serialized UUID is the codec bytes.
+     */
+    // @overlay-against: class Uuid implements \Ramsey\Uuid\UuidInterface, \Ramsey\Uuid\DeprecatedUuidMethodsTrait
+    partial class Uuid {
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Ramsey\Uuid\UuidBytesState;
+
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(\Ramsey\Uuid\UuidBytesState $data): void;
+    }
+
+    /**
+     * Overlay: factory `uuid1` / `uuid3` / `uuid5` match `UuidFactoryInterface`.
+     * Layer 1 left these as `mixed` because the method docblock is `{@inheritdoc}`.
+     */
+    // @overlay-against: class UuidFactory implements \Ramsey\Uuid\UuidFactoryInterface
+    partial class UuidFactory {
+        // @overlay-against: function uuid1(mixed $node, ?int $clockSeq): \Ramsey\Uuid\UuidInterface
+        public function uuid1(\Ramsey\Uuid\Type\Hexadecimal|int|string|null $node = null, ?int $clockSeq = null): \Ramsey\Uuid\UuidInterface;
+
+        // @overlay-against: function uuid3(mixed $ns, string $name): \Ramsey\Uuid\UuidInterface
+        public function uuid3(\Ramsey\Uuid\UuidInterface|string $ns, string $name): \Ramsey\Uuid\UuidInterface;
+
+        // @overlay-against: function uuid5(mixed $ns, string $name): \Ramsey\Uuid\UuidInterface
+        public function uuid5(\Ramsey\Uuid\UuidInterface|string $ns, string $name): \Ramsey\Uuid\UuidInterface;
+    }
+}
+
+namespace Ramsey\Uuid\Builder {
+    /**
+     * Overlay: builders are a typed Ramsey collection.
+     */
+    // @overlay-against: class BuilderCollection extends \Ramsey\Collection\AbstractCollection
+    partial class BuilderCollection extends \Ramsey\Collection\AbstractCollection<\Ramsey\Uuid\Builder\UuidBuilderInterface>;
+}
+
+namespace Ramsey\Uuid\Fields {
+    /**
+     * `SerializableFieldsTrait::__serialize()` payload (`array{bytes: string}`).
+     */
+    type FieldsBytesState = struct {
+        string $bytes;
+    };
+
+    /**
+     * Overlay: fields serialize as bytes.
+     */
+    // @overlay-against: trait SerializableFieldsTrait
+    partial trait SerializableFieldsTrait {
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Ramsey\Uuid\Fields\FieldsBytesState;
+
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(\Ramsey\Uuid\Fields\FieldsBytesState $data): void;
+    }
+}
+
+namespace Ramsey\Uuid\Generator {
+    /**
+     * Overlay: time generators take the same node union as `TimeGeneratorInterface`.
+     */
+    // @overlay-against: class DefaultTimeGenerator implements \Ramsey\Uuid\Generator\TimeGeneratorInterface
+    partial class DefaultTimeGenerator {
+        // @overlay-against: function generate(mixed $node, ?int $clockSeq): string
+        public function generate(\Ramsey\Uuid\Type\Hexadecimal|int|string|null $node = null, ?int $clockSeq = null): string;
+    }
+
+    // @overlay-against: class PeclUuidTimeGenerator implements \Ramsey\Uuid\Generator\TimeGeneratorInterface
+    partial class PeclUuidTimeGenerator {
+        // @overlay-against: function generate(mixed $node, ?int $clockSeq): string
+        public function generate(\Ramsey\Uuid\Type\Hexadecimal|int|string|null $node = null, ?int $clockSeq = null): string;
+    }
+}
+
+namespace Ramsey\Uuid\Provider\Node {
+    /**
+     * Overlay: node providers are a typed Ramsey collection.
+     */
+    // @overlay-against: class NodeProviderCollection extends \Ramsey\Collection\AbstractCollection
+    partial class NodeProviderCollection extends \Ramsey\Collection\AbstractCollection<\Ramsey\Uuid\Provider\NodeProviderInterface>;
+}
+
+namespace Ramsey\Uuid\Type {
+    /**
+     * `Decimal` / `Hexadecimal` / `Integer` payload (`array{string: string}`).
+     */
+    type NumberStringState = struct {
+        string $string;
+    };
+
+    /**
+     * `Time::__serialize()` payload (`array{seconds: string, microseconds: string}`).
+     */
+    type TimeState = struct {
+        string $microseconds;
+        string $seconds;
+    };
+
+    // @overlay-against: class Decimal implements \Ramsey\Uuid\Type\NumberInterface
+    partial class Decimal {
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Ramsey\Uuid\Type\NumberStringState;
+
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(\Ramsey\Uuid\Type\NumberStringState $data): void;
+    }
+
+    // @overlay-against: class Hexadecimal implements \Ramsey\Uuid\Type\TypeInterface
+    partial class Hexadecimal {
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Ramsey\Uuid\Type\NumberStringState;
+
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(\Ramsey\Uuid\Type\NumberStringState $data): void;
+    }
+
+    // @overlay-against: class Integer implements \Ramsey\Uuid\Type\NumberInterface
+    partial class Integer {
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Ramsey\Uuid\Type\NumberStringState;
+
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(\Ramsey\Uuid\Type\NumberStringState $data): void;
+    }
+
+    // @overlay-against: class Time implements \Ramsey\Uuid\Type\TypeInterface
+    partial class Time {
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Ramsey\Uuid\Type\TimeState;
+
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(\Ramsey\Uuid\Type\TimeState $data): void;
+    }
+}

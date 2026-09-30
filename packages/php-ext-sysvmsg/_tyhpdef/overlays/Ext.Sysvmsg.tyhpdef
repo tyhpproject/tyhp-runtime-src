@@ -1,0 +1,61 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * msg_receive/msg_send by-ref ints; msg_stat_queue documented keys.
+ */
+
+/**
+ * Overlay: `msg_stat_queue()` return. Dotted PHP keys are aliased.
+ */
+type SysvMsgQueueStat = struct {
+    int 'msg_perm.uid' as $msg_perm_uid;
+    int 'msg_perm.gid' as $msg_perm_gid;
+    int 'msg_perm.mode' as $msg_perm_mode;
+    int $msg_stime;
+    int $msg_rtime;
+    int $msg_ctime;
+    int $msg_qnum;
+    int $msg_qbytes;
+    int $msg_lspid;
+    int $msg_lrpid;
+};
+
+/**
+ * Overlay: `msg_set_queue()` writable subset of `msg_stat_queue()` keys.
+ */
+type SysvMsgQueueSet = struct {
+    ?int 'msg_perm.uid' as $msg_perm_uid;
+    ?int 'msg_perm.gid' as $msg_perm_gid;
+    ?int 'msg_perm.mode' as $msg_perm_mode;
+    ?int $msg_qbytes;
+};
+
+// @overlay-against: function msg_receive(\SysvMessageQueue $queue, int $desired_message_type, mixed $received_message_type, int $max_message_size, mixed $message, bool $unserialize, int $flags, mixed $error_code): bool
+function msg_receive(
+    \SysvMessageQueue $queue,
+    int $desired_message_type,
+    int &$received_message_type,
+    int $max_message_size,
+    mixed &$message,
+    bool $unserialize = true,
+    int $flags = 0,
+    int &$error_code = null
+): bool;
+
+// @overlay-against: function msg_send(\SysvMessageQueue $queue, int $message_type, mixed $message, bool $serialize, bool $blocking, mixed $error_code): bool
+function msg_send(
+    \SysvMessageQueue $queue,
+    int $message_type,
+    mixed $message,
+    bool $serialize = true,
+    bool $blocking = true,
+    int &$error_code = null
+): bool;
+
+// @overlay-against: function msg_set_queue(\SysvMessageQueue $queue, array $data): bool
+function msg_set_queue(\SysvMessageQueue $queue, SysvMsgQueueSet $data): bool;
+
+// @overlay-against: function msg_stat_queue(\SysvMessageQueue $queue): array|false
+function msg_stat_queue(\SysvMessageQueue $queue): SysvMsgQueueStat|false;

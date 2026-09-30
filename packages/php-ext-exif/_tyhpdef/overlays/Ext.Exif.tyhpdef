@@ -1,0 +1,30 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * `read_exif_data` alias, `as_arrays` overloads, and thumbnail by-ref ints.
+ * Declaration order: TYHPDEF_ORDERING.md.
+ */
+
+/**
+ * Overlay: `exif_read_data()` `THUMBNAIL` section (always an array).
+ * Extra camera-specific thumbnail tags may also be present.
+ */
+type ExifThumbnailSection = struct {
+    ?int $JPEGInterchangeFormat;
+    ?int $JPEGInterchangeFormatLength;
+    ?int $ImageWidth;
+    ?int $ImageLength;
+    ?string $THUMBNAIL;
+};
+
+// @overlay-against: function exif_read_data(mixed $file, ?string $required_sections, bool $as_arrays, bool $read_thumbnail): array|false
+function exif_read_data(resource|string $file, ?string $required_sections = null, false $as_arrays = false, bool $read_thumbnail = false): array<string, mixed>|false;
+// @overlay-against: function exif_read_data(mixed $file, ?string $required_sections, bool $as_arrays, bool $read_thumbnail): array|false
+function exif_read_data(resource|string $file, ?string $required_sections, true $as_arrays, bool $read_thumbnail = false): array<string, array<int|string, mixed>|ExifThumbnailSection>|false;
+
+// @overlay-against: function exif_thumbnail(mixed $file, mixed $width, mixed $height, mixed $image_type): string|false
+function exif_thumbnail(resource|string $file, ?int &$width = null, ?int &$height = null, ?int &$image_type = null): string|false;
+
+function read_exif_data(resource|string $file, ?string $required_sections = null, false $as_arrays = false, bool $read_thumbnail = false): array<string, mixed>|false;
+function read_exif_data(resource|string $file, ?string $required_sections, true $as_arrays, bool $read_thumbnail = false): array<string, array<int|string, mixed>|ExifThumbnailSection>|false;

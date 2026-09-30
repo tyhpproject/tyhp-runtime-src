@@ -1,0 +1,1842 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace League\OAuth2\Server {
+    class AuthorizationServer implements \League\OAuth2\Server\EventEmitting\EmitterAwareInterface {
+        use \League\OAuth2\Server\EventEmitting\EmitterAwarePolyfill;
+        /**
+        * @var array<int, \League\OAuth2\Server\Grant\GrantTypeInterface>
+        * @generated
+        */
+        protected array<int, \League\OAuth2\Server\Grant\GrantTypeInterface> $enabledGrantTypes ?? [];
+        /**
+        * @var array<int, \DateInterval>
+        * @generated
+        */
+        protected array<int, \DateInterval> $grantTypeAccessTokenTTL ?? [];
+        protected \League\OAuth2\Server\CryptKeyInterface $privateKey;
+        protected \League\OAuth2\Server\CryptKeyInterface $publicKey;
+        protected \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType;
+        /**
+        * New server instance
+        *
+        * @generated
+        */
+        public function __construct(\League\OAuth2\Server\Repositories\ClientRepositoryInterface $clientRepository, \League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokenRepository, \League\OAuth2\Server\Repositories\ScopeRepositoryInterface $scopeRepository, \League\OAuth2\Server\CryptKeyInterface|string $privateKey, \Defuse\Crypto\Key|string $encryptionKey, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface|null $responseType = null): void;
+        /**
+        * Enable a grant type on the server
+        *
+        * @generated
+        */
+        public function enableGrantType(\League\OAuth2\Server\Grant\GrantTypeInterface $grantType, \DateInterval|null $accessTokenTTL = null): void;
+        /**
+        * Validate an authorization request
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        public function validateAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
+        /**
+        * Complete an authorization request
+        *
+        * @generated
+        */
+        public function completeAuthorizationRequest(\League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface $authRequest, \Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Respond to device authorization request
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        public function respondToDeviceAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Complete a device authorization request
+        *
+        * @generated
+        */
+        public function completeDeviceAuthorizationRequest(string $deviceCode, string $userId, bool $userApproved): void;
+        /**
+        * Return an access token response.
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Get the token type that grants will return in the HTTP response.
+        *
+        * @generated
+        */
+        protected function getResponseType(): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * Set the default scope for the authorization server.
+        *
+        * @generated
+        */
+        public function setDefaultScope(string $defaultScope): void;
+        /**
+        * Sets whether to revoke refresh tokens or not (for all grant types).
+        *
+        * @generated
+        */
+        public function revokeRefreshTokens(bool $revokeRefreshTokens): void;
+    }
+    class CryptKey implements \League\OAuth2\Server\CryptKeyInterface {
+        /**
+        * @var string Key contents
+        * @generated
+        */
+        protected string $keyContents;
+        protected string $keyPath;
+        protected ?string $passPhrase ?? null;
+        public function __construct(string $keyPath, ?string $passPhrase = null, bool $keyPermissionsCheck = true): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getKeyContents(): string;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getKeyPath(): string;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getPassPhrase(): ?string;
+    }
+    interface CryptKeyInterface {
+        /**
+        * Retrieve key path.
+        *
+        * @generated
+        */
+        public function getKeyPath(): string;
+        /**
+        * Retrieve key pass phrase.
+        *
+        * @generated
+        */
+        public function getPassPhrase(): ?string;
+        /**
+        * Get key contents
+        *
+        * @return string Key contents
+        * @generated
+        */
+        public function getKeyContents(): string;
+    }
+    trait CryptTrait {
+        protected string|\Defuse\Crypto\Key|null $encryptionKey ?? null;
+        /**
+        * Encrypt data with encryptionKey.
+        *
+        * @throws LogicException
+        * @generated
+        */
+        protected function encrypt(string $unencryptedData): string;
+        /**
+        * Decrypt data with encryptionKey.
+        *
+        * @throws LogicException
+        * @generated
+        */
+        protected function decrypt(string $encryptedData): string;
+        public function setEncryptionKey(\Defuse\Crypto\Key|string|null $key = null): void;
+    }
+    class RequestAccessTokenEvent extends \League\OAuth2\Server\RequestEvent {
+        public function __construct(string $name, \Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken): void;
+        /**
+        * @codecoverageignore
+        * @generated
+        */
+        public function getAccessToken(): \League\OAuth2\Server\Entities\AccessTokenEntityInterface;
+    }
+    class RequestEvent extends \League\OAuth2\Server\EventEmitting\AbstractEvent {
+        public const string CLIENT_AUTHENTICATION_FAILED ?? 'client.authentication.failed';
+        public const string USER_AUTHENTICATION_FAILED ?? 'user.authentication.failed';
+        public const string REFRESH_TOKEN_CLIENT_FAILED ?? 'refresh_token.client.failed';
+        public const string REFRESH_TOKEN_ISSUED ?? 'refresh_token.issued';
+        public const string ACCESS_TOKEN_ISSUED ?? 'access_token.issued';
+        public function __construct(string $name, \Psr\Http\Message\ServerRequestInterface $request): void;
+        /**
+        * @codecoverageignore
+        * @generated
+        */
+        public function getRequest(): \Psr\Http\Message\ServerRequestInterface;
+    }
+    class RequestRefreshTokenEvent extends \League\OAuth2\Server\RequestEvent {
+        public function __construct(string $name, \Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\Entities\RefreshTokenEntityInterface $refreshToken): void;
+        /**
+        * @codecoverageignore
+        * @generated
+        */
+        public function getRefreshToken(): \League\OAuth2\Server\Entities\RefreshTokenEntityInterface;
+    }
+    class ResourceServer {
+        public function __construct(\League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokenRepository, \League\OAuth2\Server\CryptKeyInterface|string $publicKey, ?\League\OAuth2\Server\AuthorizationValidators\AuthorizationValidatorInterface $authorizationValidator = null): void;
+        protected function getAuthorizationValidator(): \League\OAuth2\Server\AuthorizationValidators\AuthorizationValidatorInterface;
+        /**
+        * Determine the access token validity.
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        public function validateAuthenticatedRequest(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ServerRequestInterface;
+    }
+}
+namespace League\OAuth2\Server\AuthorizationValidators {
+    interface AuthorizationValidatorInterface {
+        /**
+        * Determine the access token in the authorization header and append OAUth
+        *
+        * properties to the request as attributes.
+        *
+        * @generated
+        */
+        public function validateAuthorization(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ServerRequestInterface;
+    }
+    class BearerTokenValidator implements \League\OAuth2\Server\AuthorizationValidators\AuthorizationValidatorInterface {
+        use \League\OAuth2\Server\CryptTrait;
+        protected \League\OAuth2\Server\CryptKeyInterface $publicKey;
+        public function __construct(\League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokenRepository, ?\DateInterval $jwtValidAtDateLeeway = null): void;
+        /**
+        * Set the public key
+        *
+        * @generated
+        */
+        public function setPublicKey(\League\OAuth2\Server\CryptKeyInterface $key): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function validateAuthorization(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ServerRequestInterface;
+    }
+}
+namespace League\OAuth2\Server\CodeChallengeVerifiers {
+    interface CodeChallengeVerifierInterface {
+        /**
+        * Return code challenge method.
+        *
+        * @generated
+        */
+        public function getMethod(): string;
+        /**
+        * Verify the code challenge.
+        *
+        * @generated
+        */
+        public function verifyCodeChallenge(string $codeVerifier, string $codeChallenge): bool;
+    }
+    class PlainVerifier implements \League\OAuth2\Server\CodeChallengeVerifiers\CodeChallengeVerifierInterface {
+        /**
+        * Return code challenge method.
+        *
+        * @generated
+        */
+        public function getMethod(): string;
+        /**
+        * Verify the code challenge.
+        *
+        * @generated
+        */
+        public function verifyCodeChallenge(string $codeVerifier, string $codeChallenge): bool;
+    }
+    class S256Verifier implements \League\OAuth2\Server\CodeChallengeVerifiers\CodeChallengeVerifierInterface {
+        /**
+        * Return code challenge method.
+        *
+        * @generated
+        */
+        public function getMethod(): string;
+        /**
+        * Verify the code challenge.
+        *
+        * @generated
+        */
+        public function verifyCodeChallenge(string $codeVerifier, string $codeChallenge): bool;
+    }
+}
+namespace League\OAuth2\Server\Entities {
+    interface AccessTokenEntityInterface extends \League\OAuth2\Server\Entities\TokenInterface {
+        /**
+        * Set a private key used to encrypt the access token.
+        *
+        * @generated
+        */
+        public function setPrivateKey(\League\OAuth2\Server\CryptKeyInterface $privateKey): void;
+        /**
+        * Generate a string representation of the access token.
+        *
+        * @generated
+        */
+        public function toString(): string;
+    }
+    interface AuthCodeEntityInterface extends \League\OAuth2\Server\Entities\TokenInterface {
+        public function getRedirectUri(): string|null;
+        public function setRedirectUri(string $uri): void;
+    }
+    interface ClientEntityInterface {
+        /**
+        * Get the client's identifier.
+        *
+        * @return string
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * Get the client's name.
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Returns the registered redirect URI (as a string). Alternatively return
+        *
+        * an indexed array of redirect URIs.
+        *
+        * @return string|array
+        * @generated
+        */
+        public function getRedirectUri(): string|array;
+        /**
+        * Returns true if the client is confidential.
+        *
+        * @generated
+        */
+        public function isConfidential(): bool;
+    }
+    interface DeviceCodeEntityInterface extends \League\OAuth2\Server\Entities\TokenInterface {
+        public function getUserCode(): string;
+        public function setUserCode(string $userCode): void;
+        public function getVerificationUri(): string;
+        public function setVerificationUri(string $verificationUri): void;
+        public function getVerificationUriComplete(): string;
+        public function getLastPolledAt(): ?\DateTimeImmutable;
+        public function setLastPolledAt(\DateTimeImmutable $lastPolledAt): void;
+        public function getInterval(): int;
+        public function setInterval(int $interval): void;
+        public function getUserApproved(): bool;
+        public function setUserApproved(bool $userApproved): void;
+    }
+    interface RefreshTokenEntityInterface {
+        /**
+        * Get the token's identifier.
+        *
+        * @return string
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * Set the token's identifier.
+        *
+        * @param string $identifier
+        * @generated
+        */
+        public function setIdentifier(string $identifier): void;
+        /**
+        * Get the token's expiry date time.
+        *
+        * @generated
+        */
+        public function getExpiryDateTime(): \DateTimeImmutable;
+        /**
+        * Set the date time when the token expires.
+        *
+        * @generated
+        */
+        public function setExpiryDateTime(\DateTimeImmutable $dateTime): void;
+        /**
+        * Set the access token that the refresh token was associated with.
+        *
+        * @generated
+        */
+        public function setAccessToken(\League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken): void;
+        /**
+        * Get the access token that the refresh token was originally associated with.
+        *
+        * @generated
+        */
+        public function getAccessToken(): \League\OAuth2\Server\Entities\AccessTokenEntityInterface;
+    }
+    interface ScopeEntityInterface extends \JsonSerializable {
+        /**
+        * Get the scope's identifier.
+        *
+        * @return string
+        * @generated
+        */
+        public function getIdentifier(): string;
+    }
+    interface TokenInterface {
+        /**
+        * Get the token's identifier.
+        *
+        * @return string
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * Set the token's identifier.
+        *
+        * @param string $identifier
+        * @generated
+        */
+        public function setIdentifier(string $identifier): void;
+        /**
+        * Get the token's expiry date time.
+        *
+        * @generated
+        */
+        public function getExpiryDateTime(): \DateTimeImmutable;
+        /**
+        * Set the date time when the token expires.
+        *
+        * @generated
+        */
+        public function setExpiryDateTime(\DateTimeImmutable $dateTime): void;
+        /**
+        * Set the identifier of the user associated with the token.
+        *
+        * @param string $identifier
+        * @generated
+        */
+        public function setUserIdentifier(string $identifier): void;
+        /**
+        * Get the token user's identifier.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getUserIdentifier(): string|null;
+        /**
+        * Get the client that the token was issued to.
+        *
+        * @generated
+        */
+        public function getClient(): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        /**
+        * Set the client that the token was issued to.
+        *
+        * @generated
+        */
+        public function setClient(\League\OAuth2\Server\Entities\ClientEntityInterface $client): void;
+        /**
+        * Associate a scope with the token.
+        *
+        * @generated
+        */
+        public function addScope(\League\OAuth2\Server\Entities\ScopeEntityInterface $scope): void;
+        /**
+        * Return an array of scopes associated with the token.
+        *
+        * @return array<int, ScopeEntityInterface>
+        * @generated
+        */
+        public function getScopes(): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+    }
+    interface UserEntityInterface {
+        /**
+        * Return the user's identifier.
+        *
+        * @return string
+        * @generated
+        */
+        public function getIdentifier(): string;
+    }
+}
+namespace League\OAuth2\Server\Entities\Traits {
+    trait AccessTokenTrait {
+        /**
+        * Set the private key used to encrypt this access token.
+        *
+        * @generated
+        */
+        public function setPrivateKey(\League\OAuth2\Server\CryptKeyInterface $privateKey): void;
+        /**
+        * Initialise the JWT Configuration.
+        *
+        * @generated
+        */
+        public function initJwtConfiguration(): void;
+        /**
+        * Generate a string representation from the access token
+        *
+        * @generated
+        */
+        public function toString(): string;
+        public abstract function getClient(): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        public abstract function getExpiryDateTime(): \DateTimeImmutable;
+        /**
+        * @return string|null
+        * @generated
+        */
+        public abstract function getUserIdentifier(): string|null;
+        /**
+        * @return array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        public abstract function getScopes(): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+        /**
+        * @return string
+        * @generated
+        */
+        public abstract function getIdentifier(): string;
+    }
+    trait AuthCodeTrait {
+        protected ?string $redirectUri ?? null;
+        public function getRedirectUri(): string|null;
+        public function setRedirectUri(string $uri): void;
+    }
+    trait ClientTrait {
+        protected string $name;
+        /**
+        * @var string|array
+        * @generated
+        */
+        protected string|array $redirectUri;
+        protected bool $isConfidential ?? false;
+        /**
+        * Get the client's name.
+        *
+        * @codecoverageignore
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Returns the registered redirect URI (as a string). Alternatively return
+        *
+        * an indexed array of redirect URIs.
+        *
+        * @return string|array
+        * @generated
+        */
+        public function getRedirectUri(): string|array;
+        /**
+        * Returns true if the client is confidential.
+        *
+        * @generated
+        */
+        public function isConfidential(): bool;
+        /**
+        * Returns true if the client supports the given grant type.
+        *
+        * @generated
+        */
+        public function supportsGrantType(string $grantType): bool;
+    }
+    trait DeviceCodeTrait {
+        public function getUserCode(): string;
+        public function setUserCode(string $userCode): void;
+        public function getVerificationUri(): string;
+        public function setVerificationUri(string $verificationUri): void;
+        public function getVerificationUriComplete(): string;
+        public abstract function getClient(): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        public abstract function getExpiryDateTime(): \DateTimeImmutable;
+        /**
+        * @return array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        public abstract function getScopes(): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+        /**
+        * @return string
+        * @generated
+        */
+        public abstract function getIdentifier(): string;
+        public function getLastPolledAt(): ?\DateTimeImmutable;
+        public function setLastPolledAt(\DateTimeImmutable $lastPolledAt): void;
+        public function getInterval(): int;
+        public function setInterval(int $interval): void;
+        public function getUserApproved(): bool;
+        public function setUserApproved(bool $userApproved): void;
+        public function getVerificationUriCompleteInAuthResponse(): bool;
+        public function setVerificationUriCompleteInAuthResponse(bool $includeVerificationUriComplete): void;
+    }
+    trait EntityTrait {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $identifier;
+        /**
+        * @return string
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * @param string $identifier
+        * @generated
+        */
+        public function setIdentifier(string $identifier): void;
+    }
+    trait RefreshTokenTrait {
+        protected \League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken;
+        protected \DateTimeImmutable $expiryDateTime;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function setAccessToken(\League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getAccessToken(): \League\OAuth2\Server\Entities\AccessTokenEntityInterface;
+        /**
+        * Get the token's expiry date time.
+        *
+        * @generated
+        */
+        public function getExpiryDateTime(): \DateTimeImmutable;
+        /**
+        * Set the date time when the token expires.
+        *
+        * @generated
+        */
+        public function setExpiryDateTime(\DateTimeImmutable $dateTime): void;
+    }
+    trait ScopeTrait {
+        /**
+        * Serialize the object to the scopes string identifier when using json_encode().
+        *
+        * @generated
+        */
+        public function jsonSerialize(): string;
+        public abstract function getIdentifier(): string;
+    }
+    trait TokenEntityTrait {
+        /**
+        * @var array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        protected array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes ?? [];
+        protected \DateTimeImmutable $expiryDateTime;
+        /**
+        * @var string|null
+        * @generated
+        */
+        protected string|null $userIdentifier ?? null;
+        protected \League\OAuth2\Server\Entities\ClientEntityInterface $client;
+        /**
+        * Associate a scope with the token.
+        *
+        * @generated
+        */
+        public function addScope(\League\OAuth2\Server\Entities\ScopeEntityInterface $scope): void;
+        /**
+        * Return an array of scopes associated with the token.
+        *
+        * @return array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        public function getScopes(): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+        /**
+        * Get the token's expiry date time.
+        *
+        * @generated
+        */
+        public function getExpiryDateTime(): \DateTimeImmutable;
+        /**
+        * Set the date time when the token expires.
+        *
+        * @generated
+        */
+        public function setExpiryDateTime(\DateTimeImmutable $dateTime): void;
+        /**
+        * Set the identifier of the user associated with the token.
+        *
+        * @param string $identifier The identifier of the user
+        * @generated
+        */
+        public function setUserIdentifier(string $identifier): void;
+        /**
+        * Get the token user's identifier.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getUserIdentifier(): string|null;
+        /**
+        * Get the client that the token was issued to.
+        *
+        * @generated
+        */
+        public function getClient(): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        /**
+        * Set the client that the token was issued to.
+        *
+        * @generated
+        */
+        public function setClient(\League\OAuth2\Server\Entities\ClientEntityInterface $client): void;
+    }
+}
+namespace League\OAuth2\Server\EventEmitting {
+    class AbstractEvent implements \Psr\EventDispatcher\StoppableEventInterface, \League\Event\HasEventName {
+        public function __construct(string $name): void;
+        public function eventName(): string;
+        /**
+        * Backwards compatibility method
+        *
+        * @deprecated use eventName instead
+        * @generated
+        */
+        deprecated public function getName(): string;
+        public function isPropagationStopped(): bool;
+        public function stopPropagation(): self;
+    }
+    interface EmitterAwareInterface {
+        public function getEmitter(): \League\OAuth2\Server\EventEmitting\EventEmitter;
+        public function setEmitter(\League\OAuth2\Server\EventEmitting\EventEmitter $emitter): self;
+    }
+    trait EmitterAwarePolyfill {
+        public function getEmitter(): \League\OAuth2\Server\EventEmitting\EventEmitter;
+        public function setEmitter(\League\OAuth2\Server\EventEmitting\EventEmitter $emitter): self;
+        public function getEventDispatcher(): \Psr\EventDispatcher\EventDispatcherInterface;
+        public function getListenerRegistry(): \League\Event\ListenerRegistry;
+    }
+    final class EventEmitter extends \League\Event\EventDispatcher {
+        public function addListener(string $event, callable $listener, int $priority = \League\Event\ListenerPriority::NORMAL): self;
+        public function emit(object $event): object;
+    }
+}
+namespace League\OAuth2\Server\Exception {
+    class OAuthServerException extends \Exception {
+        /**
+        * Throw a new exception.
+        *
+        * @generated
+        */
+        public final function __construct(string $message, int $code, string $errorType, int $httpStatusCode = 400, ?string $hint = null, ?string $redirectUri = null, ?\Throwable $previous = null): void;
+        /**
+        * Returns the current payload.
+        *
+        * @return array<string, string>
+        * @generated
+        */
+        public function getPayload(): array<string, string>;
+        /**
+        * Updates the current payload.
+        *
+        * @param array<string, string> $payload
+        * @generated
+        */
+        public function setPayload(array<string, string> $payload): void;
+        /**
+        * Set the server request that is responsible for generating the exception
+        *
+        * @generated
+        */
+        public function setServerRequest(\Psr\Http\Message\ServerRequestInterface $serverRequest): void;
+        /**
+        * Unsupported grant type error.
+        *
+        * @generated
+        */
+        public static function unsupportedGrantType(): static;
+        /**
+        * Invalid request error.
+        *
+        * @generated
+        */
+        public static function invalidRequest(string $parameter, ?string $hint = null, ?\Throwable $previous = null): static;
+        /**
+        * Invalid client error.
+        *
+        * @generated
+        */
+        public static function invalidClient(\Psr\Http\Message\ServerRequestInterface $serverRequest): static;
+        /**
+        * Invalid scope error
+        *
+        * @generated
+        */
+        public static function invalidScope(string $scope, string|null $redirectUri = null): static;
+        /**
+        * Invalid credentials error.
+        *
+        * @generated
+        */
+        public static function invalidCredentials(): static;
+        /**
+        * Server error.
+        *
+        * @codecoverageignore
+        * @generated
+        */
+        public static function serverError(string $hint, ?\Throwable $previous = null): static;
+        /**
+        * Invalid refresh token.
+        *
+        * @generated
+        */
+        public static function invalidRefreshToken(?string $hint = null, ?\Throwable $previous = null): static;
+        /**
+        * Access denied.
+        *
+        * @generated
+        */
+        public static function accessDenied(?string $hint = null, ?string $redirectUri = null, ?\Throwable $previous = null): static;
+        /**
+        * Invalid grant.
+        *
+        * @generated
+        */
+        public static function invalidGrant(string $hint = ''): static;
+        public function getErrorType(): string;
+        /**
+        * Expired token error.
+        *
+        * @param ?\Throwable $previous Previous exception
+        * @return static
+        * @generated
+        */
+        public static function expiredToken(?string $hint = null, ?\Throwable $previous = null): static;
+        public static function authorizationPending(string $hint = '', ?\Throwable $previous = null): static;
+        /**
+        * Slow down error used with the Device Authorization Grant.
+        *
+        * @return static
+        * @generated
+        */
+        public static function slowDown(string $hint = '', ?\Throwable $previous = null): static;
+        /**
+        * Unauthorized client error.
+        *
+        * @generated
+        */
+        public static function unauthorizedClient(?string $hint = null): static;
+        /**
+        * Generate a HTTP response.
+        *
+        * @generated
+        */
+        public function generateHttpResponse(\Psr\Http\Message\ResponseInterface $response, bool $useFragment = false, int $jsonOptions = 0): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Get all headers that have to be send with the error response.
+        *
+        * @return array<string, string> Array with header values
+        * @generated
+        */
+        public function getHttpHeaders(): array<string, string>;
+        /**
+        * Check if the exception has an associated redirect URI.
+        *
+        * Returns whether the exception includes a redirect, since
+        * getHttpStatusCode() doesn't return a 302 when there's a
+        * redirect enabled. This helps when you want to override local
+        * error pages but want to let redirects through.
+        *
+        * @generated
+        */
+        public function hasRedirect(): bool;
+        /**
+        * Returns the Redirect URI used for redirecting.
+        *
+        * @generated
+        */
+        public function getRedirectUri(): ?string;
+        /**
+        * Returns the HTTP status code to send when the exceptions is output.
+        *
+        * @generated
+        */
+        public function getHttpStatusCode(): int;
+        public function getHint(): ?string;
+    }
+    class UniqueTokenIdentifierConstraintViolationException extends \League\OAuth2\Server\Exception\OAuthServerException {
+        public static function create(): \League\OAuth2\Server\Exception\UniqueTokenIdentifierConstraintViolationException;
+    }
+}
+namespace League\OAuth2\Server\Grant {
+    abstract class AbstractAuthorizeGrant extends \League\OAuth2\Server\Grant\AbstractGrant {
+        /**
+        * @param array<mixed, mixed> $params
+        * @generated
+        */
+        public function makeRedirectUri(string $uri, array<mixed, mixed> $params = [], string $queryDelimiter = '?'): string;
+        protected function createAuthorizationRequest(): \League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
+        /**
+        * Get the client redirect URI.
+        *
+        * @generated
+        */
+        protected function getClientRedirectUri(\League\OAuth2\Server\Entities\ClientEntityInterface $client): string;
+    }
+    /**
+    * Abstract grant class.
+    *
+    * @generated
+    */
+    abstract class AbstractGrant implements \League\OAuth2\Server\Grant\GrantTypeInterface {
+        use \League\OAuth2\Server\EventEmitting\EmitterAwarePolyfill, \League\OAuth2\Server\CryptTrait;
+        protected const string SCOPE_DELIMITER_STRING ?? ' ';
+        protected const int MAX_RANDOM_TOKEN_GENERATION_ATTEMPTS ?? 10;
+        protected \League\OAuth2\Server\Repositories\ClientRepositoryInterface $clientRepository;
+        protected \League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokenRepository;
+        protected \League\OAuth2\Server\Repositories\ScopeRepositoryInterface $scopeRepository;
+        protected \League\OAuth2\Server\Repositories\AuthCodeRepositoryInterface $authCodeRepository;
+        protected \League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface $refreshTokenRepository;
+        protected \League\OAuth2\Server\Repositories\UserRepositoryInterface $userRepository;
+        protected \DateInterval $refreshTokenTTL;
+        protected \League\OAuth2\Server\CryptKeyInterface $privateKey;
+        protected string $defaultScope;
+        protected bool $revokeRefreshTokens ?? true;
+        public function setClientRepository(\League\OAuth2\Server\Repositories\ClientRepositoryInterface $clientRepository): void;
+        public function setAccessTokenRepository(\League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokenRepository): void;
+        public function setScopeRepository(\League\OAuth2\Server\Repositories\ScopeRepositoryInterface $scopeRepository): void;
+        public function setRefreshTokenRepository(\League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface $refreshTokenRepository): void;
+        public function setAuthCodeRepository(\League\OAuth2\Server\Repositories\AuthCodeRepositoryInterface $authCodeRepository): void;
+        public function setUserRepository(\League\OAuth2\Server\Repositories\UserRepositoryInterface $userRepository): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function setRefreshTokenTTL(\DateInterval $refreshTokenTTL): void;
+        /**
+        * Set the private key
+        *
+        * @generated
+        */
+        public function setPrivateKey(\League\OAuth2\Server\CryptKeyInterface $privateKey): void;
+        public function setDefaultScope(string $scope): void;
+        public function revokeRefreshTokens(bool $willRevoke): void;
+        /**
+        * Validate the client.
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function validateClient(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        /**
+        * Wrapper around ClientRepository::getClientEntity() that ensures we emit
+        *
+        * an event and throw an exception if the repo doesn't return a client
+        * entity.
+        * 
+        * This is a bit of defensive coding because the interface contract
+        * doesn't actually enforce non-null returns/exception-on-no-client so
+        * getClientEntity might return null. By contrast, this method will
+        * always either return a ClientEntityInterface or throw.
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function getClientEntityOrFail(string $clientId, \Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        /**
+        * Returns true if the given client is authorized to use the given grant type.
+        *
+        * @generated
+        */
+        protected function supportsGrantType(\League\OAuth2\Server\Entities\ClientEntityInterface $client, string $grantType): bool;
+        /**
+        * Gets the client credentials from the request from the request body or
+        *
+        * the Http Basic Authorization header
+        *
+        * @return array
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function getClientCredentials(\Psr\Http\Message\ServerRequestInterface $request): array;
+        /**
+        * Validate redirectUri from the request. If a redirect URI is provided
+        *
+        * ensure it matches what is pre-registered
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function validateRedirectUri(string $redirectUri, \League\OAuth2\Server\Entities\ClientEntityInterface $client, \Psr\Http\Message\ServerRequestInterface $request): void;
+        /**
+        * Validate scopes in the request.
+        *
+        * @param string|array|null $scopes
+        * @throws OAuthServerException
+        * @return array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        public function validateScopes(string|array|null $scopes, ?string $redirectUri = null): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+        /**
+        * Retrieve request parameter.
+        *
+        * @return ?string
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function getRequestParameter(string $parameter, \Psr\Http\Message\ServerRequestInterface $request, ?string $default = null): ?string;
+        /**
+        * Retrieve HTTP Basic Auth credentials with the Authorization header
+        *
+        * of a request. First index of the returned array is the username,
+        * second is the password (so list() will work). If the header does
+        * not exist, or is otherwise an invalid HTTP Basic header, return
+        * [null, null].
+        *
+        * @return array
+        * @generated
+        */
+        protected function getBasicAuthCredentials(\Psr\Http\Message\ServerRequestInterface $request): array;
+        /**
+        * Retrieve query string parameter.
+        *
+        * @return ?string
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function getQueryStringParameter(string $parameter, \Psr\Http\Message\ServerRequestInterface $request, ?string $default = null): ?string;
+        /**
+        * Retrieve cookie parameter.
+        *
+        * @return ?string
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function getCookieParameter(string $parameter, \Psr\Http\Message\ServerRequestInterface $request, ?string $default = null): ?string;
+        /**
+        * Retrieve server parameter.
+        *
+        * @return ?string
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function getServerParameter(string $parameter, \Psr\Http\Message\ServerRequestInterface $request, ?string $default = null): ?string;
+        /**
+        * Issue an access token.
+        *
+        * @param array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes
+        * @throws OAuthServerException
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        protected function issueAccessToken(\DateInterval $accessTokenTTL, \League\OAuth2\Server\Entities\ClientEntityInterface $client, string|null $userIdentifier, array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes = []): \League\OAuth2\Server\Entities\AccessTokenEntityInterface;
+        /**
+        * Issue an auth code.
+        *
+        * @param string $userIdentifier
+        * @param array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes
+        * @throws OAuthServerException
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        protected function issueAuthCode(\DateInterval $authCodeTTL, \League\OAuth2\Server\Entities\ClientEntityInterface $client, string $userIdentifier, ?string $redirectUri, array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes = []): \League\OAuth2\Server\Entities\AuthCodeEntityInterface;
+        /**
+        * @throws OAuthServerException
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        protected function issueRefreshToken(\League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken): ?\League\OAuth2\Server\Entities\RefreshTokenEntityInterface;
+        /**
+        * Generate a new unique identifier.
+        *
+        * @return string
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function generateUniqueIdentifier(int $length = 40): string;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function canRespondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function canRespondToAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function validateAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function completeAuthorizationRequest(\League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface $authorizationRequest): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function canRespondToDeviceAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function respondToDeviceAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\ResponseTypes\DeviceCodeResponse;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function completeDeviceAuthorizationRequest(string $deviceCode, string $userId, bool $userApproved): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function setIntervalVisibility(bool $intervalVisibility): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getIntervalVisibility(): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function setIncludeVerificationUriComplete(bool $includeVerificationUriComplete): void;
+    }
+    class AuthCodeGrant extends \League\OAuth2\Server\Grant\AbstractAuthorizeGrant {
+        /**
+        * @throws Exception
+        * @generated
+        */
+        public function __construct(\League\OAuth2\Server\Repositories\AuthCodeRepositoryInterface $authCodeRepository, \League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface $refreshTokenRepository, \DateInterval $authCodeTTL): void;
+        /**
+        * Disable the requirement for a code challenge for public clients.
+        *
+        * @generated
+        */
+        public function disableRequireCodeChallengeForPublicClients(): void;
+        /**
+        * Respond to an access token request.
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType, \DateInterval $accessTokenTTL): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * Return the grant identifier that can be used in matching up requests.
+        *
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function canRespondToAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function validateAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function completeAuthorizationRequest(\League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface $authorizationRequest): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+    }
+    /**
+    * Client credentials grant class.
+    *
+    * @generated
+    */
+    class ClientCredentialsGrant extends \League\OAuth2\Server\Grant\AbstractGrant {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType, \DateInterval $accessTokenTTL): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getIdentifier(): string;
+    }
+    /**
+    * Device Code grant class.
+    *
+    * @generated
+    */
+    class DeviceCodeGrant extends \League\OAuth2\Server\Grant\AbstractGrant {
+        protected \League\OAuth2\Server\Repositories\DeviceCodeRepositoryInterface $deviceCodeRepository;
+        public function __construct(\League\OAuth2\Server\Repositories\DeviceCodeRepositoryInterface $deviceCodeRepository, \League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface $refreshTokenRepository, \DateInterval $deviceCodeTTL, string $verificationUri, int $retryInterval = 5): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function canRespondToDeviceAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function respondToDeviceAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\ResponseTypes\DeviceCodeResponse;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function completeDeviceAuthorizationRequest(string $deviceCode, string $userId, bool $userApproved): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType, \DateInterval $accessTokenTTL): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function validateDeviceCode(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\Entities\ClientEntityInterface $client): \League\OAuth2\Server\Entities\DeviceCodeEntityInterface;
+        /**
+        * Set the verification uri
+        *
+        * @generated
+        */
+        public function setVerificationUri(string $verificationUri): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * Issue a device code.
+        *
+        * @param array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes
+        * @throws OAuthServerException
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        protected function issueDeviceCode(\DateInterval $deviceCodeTTL, \League\OAuth2\Server\Entities\ClientEntityInterface $client, string $verificationUri, array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes = []): \League\OAuth2\Server\Entities\DeviceCodeEntityInterface;
+        /**
+        * Generate a new user code.
+        *
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function generateUserCode(int $length = 8): string;
+        public function setIntervalVisibility(bool $intervalVisibility): void;
+        public function getIntervalVisibility(): bool;
+        public function setIncludeVerificationUriComplete(bool $includeVerificationUriComplete): void;
+    }
+    /**
+    * Grant type interface.
+    *
+    * @generated
+    */
+    interface GrantTypeInterface extends \League\OAuth2\Server\EventEmitting\EmitterAwareInterface {
+        /**
+        * Set refresh token TTL.
+        *
+        * @generated
+        */
+        public function setRefreshTokenTTL(\DateInterval $refreshTokenTTL): void;
+        /**
+        * Return the grant identifier that can be used in matching up requests.
+        *
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * Respond to an incoming request.
+        *
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType, \DateInterval $accessTokenTTL): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * The grant type should return true if it is able to respond to an authorization request
+        *
+        * @generated
+        */
+        public function canRespondToAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * If the grant can respond to an authorization request this method should be called to validate the parameters of
+        *
+        * the request.
+        * 
+        * If the validation is successful an AuthorizationRequest object will be returned. This object can be safely
+        * serialized in a user's session, and can be used during user authentication and authorization.
+        *
+        * @generated
+        */
+        public function validateAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
+        /**
+        * Once a user has authenticated and authorized the client the grant can complete the authorization request.
+        *
+        * The AuthorizationRequest object's $userId property must be set to the authenticated user and the
+        * $authorizationApproved property must reflect their desire to authorize or deny the client.
+        *
+        * @generated
+        */
+        public function completeAuthorizationRequest(\League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface $authorizationRequest): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * The grant type should return true if it is able to respond to this request.
+        *
+        * For example most grant types will check that the $_POST['grant_type'] property matches it's identifier property.
+        *
+        * @generated
+        */
+        public function canRespondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * The grant type should return true if it is able to respond to a device authorization request
+        *
+        * @generated
+        */
+        public function canRespondToDeviceAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * If the grant can respond to a device authorization request this method should be called to validate the parameters of
+        *
+        * the request.
+        * 
+        * If the validation is successful a DeviceAuthorizationRequest object will be returned. This object can be safely
+        * serialized in a user's session, and can be used during user authentication and authorization.
+        *
+        * @generated
+        */
+        public function respondToDeviceAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\ResponseTypes\DeviceCodeResponse;
+        /**
+        * If the grant can respond to a device authorization request this method should be called to validate the parameters of
+        *
+        * the request.
+        * 
+        * If the validation is successful a DeviceCode object is persisted.
+        *
+        * @generated
+        */
+        public function completeDeviceAuthorizationRequest(string $deviceCode, string $userId, bool $userApproved): void;
+        /**
+        * Set the client repository.
+        *
+        * @generated
+        */
+        public function setClientRepository(\League\OAuth2\Server\Repositories\ClientRepositoryInterface $clientRepository): void;
+        /**
+        * Set the access token repository.
+        *
+        * @generated
+        */
+        public function setAccessTokenRepository(\League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokenRepository): void;
+        /**
+        * Set the scope repository.
+        *
+        * @generated
+        */
+        public function setScopeRepository(\League\OAuth2\Server\Repositories\ScopeRepositoryInterface $scopeRepository): void;
+        /**
+        * Set the default scope.
+        *
+        * @generated
+        */
+        public function setDefaultScope(string $scope): void;
+        /**
+        * Set the path to the private key.
+        *
+        * @generated
+        */
+        public function setPrivateKey(\League\OAuth2\Server\CryptKeyInterface $privateKey): void;
+        public function setEncryptionKey(\Defuse\Crypto\Key|string|null $key = null): void;
+        /**
+        * Enable or prevent the revocation of refresh tokens upon usage.
+        *
+        * @generated
+        */
+        public function revokeRefreshTokens(bool $willRevoke): void;
+        /**
+        * If set, the minimum interval between device code polling will be
+        *
+        * returned by the server.
+        *
+        * @generated
+        */
+        public function setIntervalVisibility(bool $intervalVisibility): void;
+        /**
+        * Checks if the minimum interval between device code polling should be
+        *
+        * returned by the server.
+        *
+        * @generated
+        */
+        public function getIntervalVisibility(): bool;
+        /**
+        * If set, the server will return a full verification URI to the client.
+        *
+        * This is useful when your device authorization endpoint might not be able
+        * to enter the user code easily.
+        *
+        * @generated
+        */
+        public function setIncludeVerificationUriComplete(bool $includeVerificationUriComplete): void;
+    }
+    class ImplicitGrant extends \League\OAuth2\Server\Grant\AbstractAuthorizeGrant {
+        public function __construct(\DateInterval $accessTokenTTL, string $queryDelimiter = '#'): void;
+        /**
+        * @throws LogicException
+        * @generated
+        */
+        public function setRefreshTokenTTL(\DateInterval $refreshTokenTTL): void;
+        /**
+        * @throws LogicException
+        * @generated
+        */
+        public function setRefreshTokenRepository(\League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface $refreshTokenRepository): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function canRespondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * Return the grant identifier that can be used in matching up requests.
+        *
+        * @generated
+        */
+        public function getIdentifier(): string;
+        /**
+        * Respond to an incoming request.
+        *
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType, \DateInterval $accessTokenTTL): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function canRespondToAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function validateAuthorizationRequest(\Psr\Http\Message\ServerRequestInterface $request): \League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function completeAuthorizationRequest(\League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface $authorizationRequest): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+    }
+    /**
+    * Password grant class.
+    *
+    * @generated
+    */
+    class PasswordGrant extends \League\OAuth2\Server\Grant\AbstractGrant {
+        public function __construct(\League\OAuth2\Server\Repositories\UserRepositoryInterface $userRepository, \League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface $refreshTokenRepository): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType, \DateInterval $accessTokenTTL): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * @throws OAuthServerException
+        * @generated
+        */
+        protected function validateUser(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\Entities\ClientEntityInterface $client): \League\OAuth2\Server\Entities\UserEntityInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getIdentifier(): string;
+    }
+    /**
+    * Refresh token grant.
+    *
+    * @generated
+    */
+    class RefreshTokenGrant extends \League\OAuth2\Server\Grant\AbstractGrant {
+        public function __construct(\League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface $refreshTokenRepository): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function respondToAccessTokenRequest(\Psr\Http\Message\ServerRequestInterface $request, \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface $responseType, \DateInterval $accessTokenTTL): \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
+        /**
+        * @throws OAuthServerException
+        * @return array<string, mixed>
+        * @generated
+        */
+        protected function validateOldRefreshToken(\Psr\Http\Message\ServerRequestInterface $request, string $clientId): array<string, mixed>;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getIdentifier(): string;
+    }
+}
+namespace League\OAuth2\Server\Middleware {
+    class AuthorizationServerMiddleware {
+        public function __construct(\League\OAuth2\Server\AuthorizationServer $server): void;
+        public function __invoke(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, callable $next): \Psr\Http\Message\ResponseInterface;
+    }
+    class ResourceServerMiddleware {
+        public function __construct(\League\OAuth2\Server\ResourceServer $server): void;
+        public function __invoke(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, callable $next): \Psr\Http\Message\ResponseInterface;
+    }
+}
+namespace League\OAuth2\Server\RedirectUriValidators {
+    class RedirectUriValidator implements \League\OAuth2\Server\RedirectUriValidators\RedirectUriValidatorInterface {
+        /**
+        * New validator instance for the given uri
+        *
+        * @param array|string $allowedRedirectUris
+        * @generated
+        */
+        public function __construct(array|string $allowedRedirectUris): void;
+        /**
+        * Validates the redirect uri.
+        *
+        * @return bool Return true if valid, false otherwise
+        * @generated
+        */
+        public function validateRedirectUri(string $redirectUri): bool;
+    }
+    interface RedirectUriValidatorInterface {
+        /**
+        * Validates the redirect uri.
+        *
+        * @generated
+        */
+        public function validateRedirectUri(string $redirectUri): bool;
+    }
+}
+namespace League\OAuth2\Server\Repositories {
+    /**
+    * Access token interface.
+    *
+    * @generated
+    */
+    interface AccessTokenRepositoryInterface extends \League\OAuth2\Server\Repositories\RepositoryInterface {
+        /**
+        * Create a new access token
+        *
+        * @param array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes
+        * @generated
+        */
+        public function getNewToken(\League\OAuth2\Server\Entities\ClientEntityInterface $clientEntity, array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes, string|null $userIdentifier = null): \League\OAuth2\Server\Entities\AccessTokenEntityInterface;
+        /**
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        public function persistNewAccessToken(\League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessTokenEntity): void;
+        public function revokeAccessToken(string $tokenId): void;
+        public function isAccessTokenRevoked(string $tokenId): bool;
+    }
+    /**
+    * Auth code storage interface.
+    *
+    * @generated
+    */
+    interface AuthCodeRepositoryInterface extends \League\OAuth2\Server\Repositories\RepositoryInterface {
+        public function getNewAuthCode(): \League\OAuth2\Server\Entities\AuthCodeEntityInterface;
+        /**
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        public function persistNewAuthCode(\League\OAuth2\Server\Entities\AuthCodeEntityInterface $authCodeEntity): void;
+        public function revokeAuthCode(string $codeId): void;
+        public function isAuthCodeRevoked(string $codeId): bool;
+    }
+    /**
+    * Client storage interface.
+    *
+    * @generated
+    */
+    interface ClientRepositoryInterface extends \League\OAuth2\Server\Repositories\RepositoryInterface {
+        /**
+        * Get a client.
+        *
+        * @generated
+        */
+        public function getClientEntity(string $clientIdentifier): ?\League\OAuth2\Server\Entities\ClientEntityInterface;
+        /**
+        * Validate a client's secret.
+        *
+        * @generated
+        */
+        public function validateClient(string $clientIdentifier, ?string $clientSecret, ?string $grantType): bool;
+    }
+    interface DeviceCodeRepositoryInterface extends \League\OAuth2\Server\Repositories\RepositoryInterface {
+        /**
+        * Creates a new DeviceCode
+        *
+        * @generated
+        */
+        public function getNewDeviceCode(): \League\OAuth2\Server\Entities\DeviceCodeEntityInterface;
+        /**
+        * Persists a device code to permanent storage.
+        *
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        public function persistDeviceCode(\League\OAuth2\Server\Entities\DeviceCodeEntityInterface $deviceCodeEntity): void;
+        /**
+        * Get a device code entity.
+        *
+        * @generated
+        */
+        public function getDeviceCodeEntityByDeviceCode(string $deviceCodeEntity): ?\League\OAuth2\Server\Entities\DeviceCodeEntityInterface;
+        /**
+        * Revoke a device code.
+        *
+        * @generated
+        */
+        public function revokeDeviceCode(string $codeId): void;
+        /**
+        * Check if the device code has been revoked.
+        *
+        * @return bool Return true if this code has been revoked
+        * @generated
+        */
+        public function isDeviceCodeRevoked(string $codeId): bool;
+    }
+    /**
+    * Refresh token interface.
+    *
+    * @generated
+    */
+    interface RefreshTokenRepositoryInterface extends \League\OAuth2\Server\Repositories\RepositoryInterface {
+        public function getNewRefreshToken(): ?\League\OAuth2\Server\Entities\RefreshTokenEntityInterface;
+        /**
+        * @throws UniqueTokenIdentifierConstraintViolationException
+        * @generated
+        */
+        public function persistNewRefreshToken(\League\OAuth2\Server\Entities\RefreshTokenEntityInterface $refreshTokenEntity): void;
+        public function revokeRefreshToken(string $tokenId): void;
+        public function isRefreshTokenRevoked(string $tokenId): bool;
+    }
+    /**
+    * Repository interface.
+    *
+    * @generated
+    */
+    interface RepositoryInterface {
+    }
+    /**
+    * Scope interface.
+    *
+    * @generated
+    */
+    interface ScopeRepositoryInterface extends \League\OAuth2\Server\Repositories\RepositoryInterface {
+        /**
+        * Return information about a scope.
+        *
+        * @param string $identifier The scope identifier
+        * @generated
+        */
+        public function getScopeEntityByIdentifier(string $identifier): ?\League\OAuth2\Server\Entities\ScopeEntityInterface;
+        /**
+        * Given a client, grant type and optional user identifier validate the set of scopes requested are valid and optionally
+        *
+        * append additional scopes or remove requested scopes.
+        *
+        * @param array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes
+        * @return array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        public function finalizeScopes(array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes, string $grantType, \League\OAuth2\Server\Entities\ClientEntityInterface $clientEntity, string|null $userIdentifier = null, ?string $authCodeId = null): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+    }
+    interface UserRepositoryInterface extends \League\OAuth2\Server\Repositories\RepositoryInterface {
+        /**
+        * Get a user entity.
+        *
+        * @generated
+        */
+        public function getUserEntityByUserCredentials(string $username, string $password, string $grantType, \League\OAuth2\Server\Entities\ClientEntityInterface $clientEntity): ?\League\OAuth2\Server\Entities\UserEntityInterface;
+    }
+}
+namespace League\OAuth2\Server\RequestTypes {
+    class AuthorizationRequest implements \League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface {
+        /**
+        * The grant type identifier
+        *
+        * @generated
+        */
+        protected string $grantTypeId;
+        /**
+        * The client identifier
+        *
+        * @generated
+        */
+        protected \League\OAuth2\Server\Entities\ClientEntityInterface $client;
+        /**
+        * The user identifier
+        *
+        * @generated
+        */
+        protected \League\OAuth2\Server\Entities\UserEntityInterface $user;
+        /**
+        * An array of scope identifiers
+        *
+        * @var array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        protected array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes ?? [];
+        /**
+        * Has the user authorized the authorization request
+        *
+        * @generated
+        */
+        protected bool $authorizationApproved ?? false;
+        /**
+        * The redirect URI used in the request
+        *
+        * @generated
+        */
+        protected ?string $redirectUri ?? null;
+        /**
+        * The state parameter on the authorization request
+        *
+        * @generated
+        */
+        protected ?string $state ?? null;
+        /**
+        * The code challenge (if provided)
+        *
+        * @generated
+        */
+        protected string $codeChallenge;
+        /**
+        * The code challenge method (if provided)
+        *
+        * @generated
+        */
+        protected string $codeChallengeMethod;
+        public function getGrantTypeId(): string;
+        public function setGrantTypeId(string $grantTypeId): void;
+        public function getClient(): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        public function setClient(\League\OAuth2\Server\Entities\ClientEntityInterface $client): void;
+        public function getUser(): ?\League\OAuth2\Server\Entities\UserEntityInterface;
+        public function setUser(\League\OAuth2\Server\Entities\UserEntityInterface $user): void;
+        /**
+        * @return array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        public function getScopes(): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+        /**
+        * @param array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes
+        * @generated
+        */
+        public function setScopes(array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes): void;
+        public function isAuthorizationApproved(): bool;
+        public function setAuthorizationApproved(bool $authorizationApproved): void;
+        public function getRedirectUri(): ?string;
+        public function setRedirectUri(?string $redirectUri): void;
+        public function getState(): ?string;
+        public function setState(string $state): void;
+        public function getCodeChallenge(): ?string;
+        public function setCodeChallenge(string $codeChallenge): void;
+        public function getCodeChallengeMethod(): ?string;
+        public function setCodeChallengeMethod(string $codeChallengeMethod): void;
+    }
+    interface AuthorizationRequestInterface {
+        public function getUser(): \League\OAuth2\Server\Entities\UserEntityInterface|null;
+        public function setState(string $state): void;
+        public function getClient(): \League\OAuth2\Server\Entities\ClientEntityInterface;
+        public function setAuthorizationApproved(bool $authorizationApproved): void;
+        /**
+        * @param array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes
+        * @generated
+        */
+        public function setScopes(array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface> $scopes): void;
+        public function setRedirectUri(?string $redirectUri): void;
+        public function getRedirectUri(): ?string;
+        public function getCodeChallengeMethod(): ?string;
+        public function setGrantTypeId(string $grantTypeId): void;
+        public function setUser(\League\OAuth2\Server\Entities\UserEntityInterface $user): void;
+        public function setClient(\League\OAuth2\Server\Entities\ClientEntityInterface $client): void;
+        public function setCodeChallenge(string $codeChallenge): void;
+        public function isAuthorizationApproved(): bool;
+        public function getState(): ?string;
+        public function getCodeChallenge(): ?string;
+        public function setCodeChallengeMethod(string $codeChallengeMethod): void;
+        /**
+        * @return array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>
+        * @generated
+        */
+        public function getScopes(): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+        public function getGrantTypeId(): string;
+    }
+}
+namespace League\OAuth2\Server\ResponseTypes {
+    abstract class AbstractResponseType implements \League\OAuth2\Server\ResponseTypes\ResponseTypeInterface {
+        use \League\OAuth2\Server\CryptTrait;
+        protected \League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken;
+        protected \League\OAuth2\Server\Entities\RefreshTokenEntityInterface $refreshToken;
+        protected \League\OAuth2\Server\CryptKeyInterface $privateKey;
+        public function setAccessToken(\League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken): void;
+        public function setRefreshToken(\League\OAuth2\Server\Entities\RefreshTokenEntityInterface $refreshToken): void;
+        public function setPrivateKey(\League\OAuth2\Server\CryptKeyInterface $key): void;
+    }
+    class BearerTokenResponse extends \League\OAuth2\Server\ResponseTypes\AbstractResponseType {
+        public function generateHttpResponse(\Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Add custom fields to your Bearer Token response here, then override
+        *
+        * AuthorizationServer::getResponseType() to pull in your version of
+        * this class rather than the default.
+        *
+        * @return array<mixed, mixed>
+        * @generated
+        */
+        protected function getExtraParams(\League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken): array<mixed, mixed>;
+    }
+    class DeviceCodeResponse extends \League\OAuth2\Server\ResponseTypes\AbstractResponseType {
+        protected \League\OAuth2\Server\Entities\DeviceCodeEntityInterface $deviceCodeEntity;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function generateHttpResponse(\Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function setDeviceCodeEntity(\League\OAuth2\Server\Entities\DeviceCodeEntityInterface $deviceCodeEntity): void;
+        public function includeVerificationUriComplete(): void;
+        public function includeInterval(): void;
+        /**
+        * Add custom fields to your Bearer Token response here, then override
+        *
+        * AuthorizationServer::getResponseType() to pull in your version of
+        * this class rather than the default.
+        *
+        * @return array<mixed, mixed>
+        * @generated
+        */
+        protected function getExtraParams(\League\OAuth2\Server\Entities\DeviceCodeEntityInterface $deviceCode): array<mixed, mixed>;
+    }
+    class RedirectResponse extends \League\OAuth2\Server\ResponseTypes\AbstractResponseType {
+        public function setRedirectUri(string $redirectUri): void;
+        public function generateHttpResponse(\Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+    }
+    interface ResponseTypeInterface {
+        public function setAccessToken(\League\OAuth2\Server\Entities\AccessTokenEntityInterface $accessToken): void;
+        public function setRefreshToken(\League\OAuth2\Server\Entities\RefreshTokenEntityInterface $refreshToken): void;
+        public function generateHttpResponse(\Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+        public function setEncryptionKey(\Defuse\Crypto\Key|string|null $key = null): void;
+    }
+}

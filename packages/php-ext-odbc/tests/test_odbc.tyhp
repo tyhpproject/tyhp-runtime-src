@@ -1,0 +1,23 @@
+<?tyhp
+
+function test_odbc_errormsg_signature(): string
+{
+    return odbc_errormsg();
+}
+
+// odbc_connect() / odbc_exec() returned a plain `resource` before PHP 8.4;
+// PHP 8.4+ returns `Odbc\Connection` / `Odbc\Result` objects instead — see
+// tyhp-php8.4.json for the >= 8.4 signature.
+declare(php="<8.4") {
+    function test_odbc_connect_resource_signature(resource $conn): resource|false
+    {
+        return odbc_exec($conn, "SELECT 1");
+    }
+}
+
+declare(php=">=8.4") {
+    function test_odbc_connect_object_signature(\Odbc\Connection $conn): \Odbc\Result|false
+    {
+        return odbc_exec($conn, "SELECT 1");
+    }
+}

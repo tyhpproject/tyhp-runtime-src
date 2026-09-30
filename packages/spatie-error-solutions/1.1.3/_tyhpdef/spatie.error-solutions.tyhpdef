@@ -1,0 +1,920 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Spatie\ErrorSolutions {
+    class DiscoverSolutionProviders {
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected array<string, string> $config ?? [];
+        protected array<string> $types;
+        /**
+        * @param array<string> $types
+        * @return array<\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable>
+        * @generated
+        */
+        public static function for(array<string> $types): array<\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable>;
+        /**
+        * @param array<string> $types
+        * @generated
+        */
+        public function __construct(array<string> $types): void;
+        /**
+        * @return array<\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable>
+        * @generated
+        */
+        public function get(): array<\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable>;
+        /**
+        * @return array<\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable>
+        * @generated
+        */
+        protected function getProviderClassesForType(string $type): array<\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable>;
+        protected function getNamespaceForPath(string $relativePath): string;
+    }
+    class SolutionProviderRepository implements \Spatie\ErrorSolutions\Contracts\SolutionProviderRepository {
+        /**
+        * @var \Illuminate\Support\Collection
+        * @generated
+        */
+        protected \Illuminate\Support\Collection $solutionProviders;
+        /**
+        * @param array<int, string|\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable> $solutionProviders
+        * @generated
+        */
+        public function __construct(array<int, string|\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable> $solutionProviders = []): void;
+        public function registerSolutionProvider(string|\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable $solutionProvider): \Spatie\ErrorSolutions\Contracts\SolutionProviderRepository;
+        public function registerSolutionProviders(array $solutionProviderClasses): \Spatie\ErrorSolutions\Contracts\SolutionProviderRepository;
+        public function getSolutionsForThrowable(\Throwable $throwable): array;
+        public function getSolutionForClass(string $solutionClass): ?\Spatie\ErrorSolutions\Contracts\Solution;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function initialiseSolutionProviderRepositories(): \Illuminate\Support\Collection;
+    }
+}
+namespace Spatie\ErrorSolutions\Contracts {
+    class BaseSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        protected string $title;
+        protected string $description ?? '';
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected array<string, string> $links ?? [];
+        public static function create(string $title = ''): static;
+        /**
+        * @phpstan-ignore-next-line
+        * @generated
+        */
+        public function __construct(string $title = ''): void;
+        public function getSolutionTitle(): string;
+        public function setSolutionTitle(string $title): self;
+        public function getSolutionDescription(): string;
+        public function setSolutionDescription(string $description): self;
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function getDocumentationLinks(): array<string, string>;
+        /**
+        * @param array<string, string> $links
+        * @generated
+        */
+        public function setDocumentationLinks(array<string, string> $links): self;
+    }
+    /**
+    * Interface used for SolutionProviders.
+    *
+    * @generated
+    */
+    interface HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        /**
+        * @return array<int, Solution>
+        * @generated
+        */
+        public function getSolutions(\Throwable $throwable): array<int, \Spatie\ErrorSolutions\Contracts\Solution>;
+    }
+    /**
+    * Interface to be used on exceptions that provide their own solution.
+    *
+    * @generated
+    */
+    interface ProvidesSolution {
+        public function getSolution(): \Spatie\ErrorSolutions\Contracts\Solution;
+    }
+    interface RunnableSolution extends \Spatie\ErrorSolutions\Contracts\Solution {
+        public function getSolutionActionDescription(): string;
+        public function getRunButtonText(): string;
+        /**
+        * @param array<string, mixed> $parameters
+        * @generated
+        */
+        public function run(array<string, mixed> $parameters = []): void;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getRunParameters(): array<string, mixed>;
+    }
+    interface Solution {
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function getDocumentationLinks(): array<string, string>;
+    }
+    interface SolutionProviderRepository {
+        /**
+        * @param string $solutionProvider
+        * @return self
+        * @generated
+        */
+        public function registerSolutionProvider(string $solutionProvider): self;
+        /**
+        * @param array<string|HasSolutionsForThrowable> $solutionProviders
+        * @return self
+        * @generated
+        */
+        public function registerSolutionProviders(array<string|\Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable> $solutionProviders): self;
+        /**
+        * @param \Throwable $throwable
+        * @return array<int, Solution>
+        * @generated
+        */
+        public function getSolutionsForThrowable(\Throwable $throwable): array<int, \Spatie\ErrorSolutions\Contracts\Solution>;
+        /**
+        * @param string $solutionClass
+        * @return ?\Spatie\ErrorSolutions\Contracts\Solution
+        * @generated
+        */
+        public function getSolutionForClass(string $solutionClass): ?\Spatie\ErrorSolutions\Contracts\Solution;
+    }
+}
+namespace Spatie\ErrorSolutions\SolutionProviders {
+    class BadMethodCallSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected const string REGEX ?? '/([a-zA-Z\\\\]+)::([a-zA-Z]+)/m';
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        public function getSolutionDescription(\Throwable $throwable): string;
+        /**
+        * @param string $message
+        * @return null|array<string, mixed>
+        * @generated
+        */
+        protected function getClassAndMethodFromExceptionMessage(string $message): null|array<string, mixed>;
+        /**
+        * @param string $class
+        * @param string $invalidMethodName
+        * @return ?\ReflectionMethod
+        * @generated
+        */
+        protected function findPossibleMethod(string $class, string $invalidMethodName): ?\ReflectionMethod;
+        /**
+        * @param string $class
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function getAvailableMethods(string $class): \Illuminate\Support\Collection;
+    }
+    class MergeConflictSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        protected function getCurrentBranch(string $directory): string;
+        protected function hasMergeConflictExceptionMessage(\Throwable $throwable): bool;
+    }
+    class UndefinedPropertySolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected const string REGEX ?? '/([a-zA-Z\\\\]+)::\$([a-zA-Z]+)/m';
+        protected const int MINIMUM_SIMILARITY ?? 80;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        public function getSolutionDescription(\Throwable $throwable): string;
+        /**
+        * @phpstan-ignore-next-line
+        * @generated
+        */
+        protected function similarPropertyExists(\Throwable $throwable): bool;
+        /**
+        * @param string $message
+        * @return null|array<string, string>
+        * @generated
+        */
+        protected function getClassAndPropertyFromExceptionMessage(string $message): null|array<string, string>;
+        /**
+        * @param string $class
+        * @param string $invalidPropertyName
+        * @return mixed
+        * @generated
+        */
+        protected function findPossibleProperty(string $class, string $invalidPropertyName): mixed;
+        /**
+        * @param string $class
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function getAvailableProperties(string $class): \Illuminate\Support\Collection;
+    }
+}
+namespace Spatie\ErrorSolutions\SolutionProviders\Laravel {
+    class DefaultDbNameSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public const int MYSQL_UNKNOWN_DATABASE_CODE ?? 1049;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class GenericLaravelExceptionSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        /**
+        * @param \Throwable $throwable
+        * @return array<string, mixed>|null
+        * @generated
+        */
+        protected function getSolutionTexts(\Throwable $throwable): array<string, mixed>|null;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        protected function getSupportedExceptions(): array<string, mixed>;
+    }
+    class IncorrectValetDbCredentialsSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public const int MYSQL_ACCESS_DENIED_CODE ?? 1045;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        protected function envFileExists(): bool;
+        protected function isAccessDeniedCode(string $code): bool;
+        protected function isValetInstalled(): bool;
+        protected function usingCorrectDefaultCredentials(): bool;
+    }
+    class InvalidRouteActionSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected const string REGEX ?? '/\[([a-zA-Z\\\\]+)\]/m';
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        protected function findRelatedController(string $invalidController): ?string;
+    }
+    class LazyLoadingViolationSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class MissingAppKeySolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class MissingColumnSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        /**
+        * See https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html#error_er_bad_field_error.
+        *
+        * @generated
+        */
+        public const string MYSQL_BAD_FIELD_CODE ?? '42S22';
+        public function canSolve(\Throwable $throwable): bool;
+        protected function isBadTableErrorCode(string $code): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class MissingImportSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected ?string $foundClass;
+        protected \Spatie\ErrorSolutions\Support\Laravel\Composer\ComposerClassMap $composerClassMap;
+        public function canSolve(\Throwable $throwable): bool;
+        /**
+        * @param \Throwable $throwable
+        * @return array<int, \Spatie\ErrorSolutions\Solutions\SuggestImportSolution>
+        * @generated
+        */
+        public function getSolutions(\Throwable $throwable): array<int, \Spatie\ErrorSolutions\Solutions\SuggestImportSolution>;
+        protected function search(string $missingClass): void;
+    }
+    class MissingLivewireComponentSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        public function livewireIsInstalled(): bool;
+    }
+    class MissingMixManifestSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class MissingViteManifestSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected array<string, string> $links ?? [];
+        public function __construct(): void;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        public function getSolution(): \Spatie\ErrorSolutions\Contracts\Solution;
+        /**
+        * @var string
+        * @generated
+        */
+        protected function getLocalSolution(string $baseCommand): \Spatie\ErrorSolutions\Contracts\Solution;
+        protected function getProductionSolution(string $baseCommand): \Spatie\ErrorSolutions\Contracts\Solution;
+    }
+    class OpenAiSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class RouteNotDefinedSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected const string REGEX ?? '/Route \[(.*)\] not defined/m';
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        protected function findRelatedRoute(string $missingRoute): ?string;
+    }
+    class RunningLaravelDuskInProductionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class SailNetworkSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class TableNotFoundSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        /**
+        * See https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html#error_er_bad_table_error.
+        *
+        * @generated
+        */
+        public const string MYSQL_BAD_TABLE_CODE ?? '42S02';
+        public function canSolve(\Throwable $throwable): bool;
+        protected function isBadTableErrorCode(string $code): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class UndefinedLivewireMethodSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        /**
+        * @return array<string, string|null>
+        * @generated
+        */
+        protected function getMethodAndComponent(\Throwable $throwable): array<string, string|null>;
+    }
+    class UndefinedLivewirePropertySolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        /**
+        * @param \Throwable $throwable
+        * @return array<string, string|null>
+        * @generated
+        */
+        protected function getMethodAndComponent(\Throwable $throwable): array<string, string|null>;
+    }
+    class UndefinedViewVariableSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected string $variableName;
+        protected string $viewFile;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        /**
+        * @param \Spatie\LaravelIgnition\Exceptions\ViewException|\Spatie\LaravelFlare\Exceptions\ViewException $throwable
+        * @param string $variableName
+        * @param string $viewFile
+        * @return array<int, \Spatie\ErrorSolutions\Contracts\Solution>
+        * @generated
+        */
+        protected function findCorrectVariableSolutions(\Spatie\LaravelIgnition\Exceptions\ViewException|\Spatie\LaravelFlare\Exceptions\ViewException $throwable, string $variableName, string $viewFile): array<int, \Spatie\ErrorSolutions\Contracts\Solution>;
+        protected function findOptionalVariableSolution(string $variableName, string $viewFile): \Spatie\ErrorSolutions\Contracts\Solution;
+        /**
+        * @param \Throwable $throwable
+        * @return array<string, string>|null
+        * @generated
+        */
+        protected function getNameAndView(\Throwable $throwable): array<string, string>|null;
+    }
+    class UnknownMariadbCollationSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public const int MYSQL_UNKNOWN_COLLATION_CODE ?? 1273;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class UnknownMysql8CollationSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        public const int MYSQL_UNKNOWN_COLLATION_CODE ?? 1273;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+    }
+    class UnknownValidationSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected const string REGEX ?? '/Illuminate\\\\Validation\\\\Validator::(?P<method>validate(?!(Attribute|UsingCustomRule))[A-Z][a-zA-Z]+)/m';
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        protected function getSolutionDescription(\Throwable $throwable): string;
+        protected function getMethodFromExceptionMessage(string $message): ?string;
+        protected function getAvailableMethods(): \Illuminate\Support\Collection;
+    }
+    class ViewNotFoundSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected const string REGEX ?? '/View \[(.*)\] not found/m';
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        protected function findRelatedView(string $missingView): ?string;
+        /**
+        * @return array<int, string>
+        * @generated
+        */
+        protected function getAllViews(): array<int, string>;
+        /**
+        * @param string $path
+        * @param array<int, string> $extensions
+        * @return array<int, string>
+        * @generated
+        */
+        protected function getViewsInPath(string $path, array<int, string> $extensions): array<int, string>;
+    }
+}
+namespace Spatie\ErrorSolutions\Solutions {
+    /**
+    * @implements Arrayable<string, array<string,string>|string|false>
+    * @generated
+    */
+    class SolutionTransformer implements \Illuminate\Contracts\Support\Arrayable {
+        protected \Spatie\ErrorSolutions\Contracts\Solution $solution;
+        public function __construct(\Spatie\ErrorSolutions\Contracts\Solution $solution): void;
+        /**
+        * @return array<string, array<string, string>|string|false>
+        * @generated
+        */
+        public function toArray(): array<string, array<string, string>|string|false>;
+    }
+    class SuggestCorrectVariableNameSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        protected ?string $variableName;
+        protected ?string $viewFile;
+        protected ?string $suggested;
+        public function __construct(?string $variableName = null, ?string $viewFile = null, ?string $suggested = null): void;
+        public function getSolutionTitle(): string;
+        public function getDocumentationLinks(): array;
+        public function getSolutionDescription(): string;
+        public function isRunnable(): bool;
+    }
+    class SuggestImportSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        protected string $class;
+        public function __construct(string $class): void;
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        public function getDocumentationLinks(): array;
+    }
+}
+namespace Spatie\ErrorSolutions\Solutions\Concerns {
+    trait IsProvidedByFlare {
+        public function solutionProvidedByName(): string;
+        public function solutionProvidedByLink(): string;
+    }
+}
+namespace Spatie\ErrorSolutions\Solutions\Laravel {
+    class GenerateAppKeySolution implements \Spatie\ErrorSolutions\Contracts\RunnableSolution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        public function getSolutionTitle(): string;
+        public function getDocumentationLinks(): array;
+        public function getSolutionActionDescription(): string;
+        public function getRunButtonText(): string;
+        public function getSolutionDescription(): string;
+        public function getRunParameters(): array;
+        public function run(array $parameters = []): void;
+    }
+    class LivewireDiscoverSolution implements \Spatie\ErrorSolutions\Contracts\RunnableSolution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        protected string $customTitle;
+        public function __construct(string $customTitle = ''): void;
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        public function getDocumentationLinks(): array;
+        public function getRunParameters(): array;
+        public function getSolutionActionDescription(): string;
+        public function getRunButtonText(): string;
+        public function run(array $parameters = []): void;
+    }
+    class MakeViewVariableOptionalSolution implements \Spatie\ErrorSolutions\Contracts\RunnableSolution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        protected ?string $variableName;
+        protected ?string $viewFile;
+        public function __construct(?string $variableName = null, ?string $viewFile = null): void;
+        public function getSolutionTitle(): string;
+        public function getDocumentationLinks(): array;
+        public function getSolutionActionDescription(): string;
+        public function getRunButtonText(): string;
+        public function getSolutionDescription(): string;
+        public function getRunParameters(): array;
+        /**
+        * @param array<string, mixed> $parameters
+        * @return bool
+        * @generated
+        */
+        public function isRunnable(array<string, mixed> $parameters = []): bool;
+        /**
+        * @param array<string, string> $parameters
+        * @return void
+        * @generated
+        */
+        public function run(array<string, string> $parameters = []): void;
+        protected function isSafePath(string $path): bool;
+        /**
+        * @param array<string, string> $parameters
+        * @return bool|string
+        * @generated
+        */
+        public function makeOptional(array<string, string> $parameters = []): bool|string;
+        /**
+        * @param array<int, mixed> $originalTokens
+        * @param string $variableName
+        * @return array<int, mixed>
+        * @generated
+        */
+        protected function generateExpectedTokens(array<int, mixed> $originalTokens, string $variableName): array<int, mixed>;
+    }
+    class RunMigrationsSolution implements \Spatie\ErrorSolutions\Contracts\RunnableSolution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        protected string $customTitle;
+        public function __construct(string $customTitle = ''): void;
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        public function getDocumentationLinks(): array;
+        public function getRunParameters(): array;
+        public function getSolutionActionDescription(): string;
+        public function getRunButtonText(): string;
+        public function run(array $parameters = []): void;
+    }
+    class SuggestLivewireMethodNameSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        protected string $methodName;
+        protected string $componentClass;
+        protected string $suggested;
+        public function __construct(string $methodName, string $componentClass, string $suggested): void;
+        public function getSolutionTitle(): string;
+        public function getDocumentationLinks(): array;
+        public function getSolutionDescription(): string;
+        public function isRunnable(): bool;
+    }
+    class SuggestLivewirePropertyNameSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        protected string $variableName;
+        protected string $componentClass;
+        protected string $suggested;
+        public function __construct(string $variableName, string $componentClass, string $suggested): void;
+        public function getSolutionTitle(): string;
+        public function getDocumentationLinks(): array;
+        public function getSolutionDescription(): string;
+        public function isRunnable(): bool;
+    }
+    class SuggestUsingCorrectDbNameSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function getDocumentationLinks(): array<string, string>;
+    }
+    class SuggestUsingMariadbDatabaseSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function getDocumentationLinks(): array<string, string>;
+    }
+    class SuggestUsingMysql8DatabaseSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function getDocumentationLinks(): array<string, string>;
+    }
+    class UseDefaultValetDbCredentialsSolution implements \Spatie\ErrorSolutions\Contracts\RunnableSolution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        public function getSolutionActionDescription(): string;
+        public function getRunButtonText(): string;
+        public function getSolutionTitle(): string;
+        public function run(array $parameters = []): void;
+        protected function ensureLineExists(string $key, string $value): void;
+        public function getRunParameters(): array;
+        public function getDocumentationLinks(): array;
+        public function getSolutionDescription(): string;
+    }
+}
+namespace Spatie\ErrorSolutions\Solutions\OpenAi {
+    class OpenAiPromptViewModel {
+        protected string $file;
+        protected string $exceptionMessage;
+        protected string $exceptionClass;
+        protected string $snippet;
+        protected string $line;
+        protected string|null $applicationType ?? null;
+        public function __construct(string $file, string $exceptionMessage, string $exceptionClass, string $snippet, string $line, string|null $applicationType = null): void;
+        public function file(): string;
+        public function line(): string;
+        public function snippet(): string;
+        public function exceptionMessage(): string;
+        public function exceptionClass(): string;
+        public function applicationType(): string|null;
+    }
+    class OpenAiSolution implements \Spatie\ErrorSolutions\Contracts\Solution {
+        use \Spatie\ErrorSolutions\Solutions\Concerns\IsProvidedByFlare;
+        public bool $aiGenerated ?? true;
+        protected string $prompt;
+        protected \Spatie\ErrorSolutions\Solutions\OpenAi\OpenAiSolutionResponse $openAiSolutionResponse;
+        protected \Throwable $throwable;
+        protected string $openAiKey;
+        protected \Psr\SimpleCache\CacheInterface|null $cache ?? null;
+        protected int|null $cacheTtlInSeconds ?? 60;
+        protected string|null $applicationType ?? null;
+        protected string|null $applicationPath ?? null;
+        protected string|null $openAiModel ?? null;
+        public function __construct(\Throwable $throwable, string $openAiKey, \Psr\SimpleCache\CacheInterface|null $cache = null, int|null $cacheTtlInSeconds = 60, string|null $applicationType = null, string|null $applicationPath = null, string|null $openAiModel = null): void;
+        public function getSolutionTitle(): string;
+        public function getSolutionDescription(): string;
+        public function getDocumentationLinks(): array;
+        public function getAiSolution(): ?\Spatie\ErrorSolutions\Solutions\OpenAi\OpenAiSolutionResponse;
+        protected function getCacheKey(): string;
+        protected function generatePrompt(): string;
+        protected function getModel(): string;
+        protected function getApplicationFrame(\Throwable $throwable): ?\Spatie\Backtrace\Frame;
+    }
+    class OpenAiSolutionProvider implements \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+        protected string $openAiKey;
+        protected ?\Psr\SimpleCache\CacheInterface $cache ?? null;
+        protected int $cacheTtlInSeconds;
+        protected string|null $applicationType ?? null;
+        protected string|null $applicationPath ?? null;
+        protected string $openAiModel ?? 'gpt-3.5-turbo';
+        public function __construct(string $openAiKey, ?\Psr\SimpleCache\CacheInterface $cache = null, int $cacheTtlInSeconds = null, string|null $applicationType = null, string|null $applicationPath = null, string $openAiModel = 'gpt-3.5-turbo'): void;
+        public function canSolve(\Throwable $throwable): bool;
+        public function getSolutions(\Throwable $throwable): array;
+        public function applicationType(string $applicationType): self;
+        public function applicationPath(string $applicationPath): self;
+        public function useCache(\Psr\SimpleCache\CacheInterface $cache, int $cacheTtlInSeconds = null): self;
+    }
+    class OpenAiSolutionResponse {
+        protected string $rawText;
+        public function __construct(string $rawText): void;
+        public function description(): string;
+        public function links(): array;
+        protected function between(string $start, string $end, string $text): string;
+    }
+}
+namespace Spatie\ErrorSolutions\Support {
+    class AiPromptRenderer {
+        /**
+        * @param array<string, mixed> $data
+        * @return void
+        * @generated
+        */
+        public function render(array<string, mixed> $data, string $viewPath): void;
+        /**
+        * @param array<string, mixed> $data
+        * @generated
+        */
+        public function renderAsString(array<string, mixed> $data, string $viewPath): string;
+    }
+}
+namespace Spatie\ErrorSolutions\Support\Laravel {
+    class LaravelVersion {
+        public static function major(): string;
+    }
+    class LivewireComponentParser {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $componentClass;
+        /**
+        * @var \ReflectionClass
+        * @generated
+        */
+        protected \ReflectionClass $reflectionClass;
+        protected string $componentAlias;
+        public static function create(string $componentAlias): self;
+        public function __construct(string $componentAlias): void;
+        public function getComponentClass(): string;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function getPropertyNamesLike(string $similar): \Illuminate\Support\Collection;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function getMethodNamesLike(string $similar): \Illuminate\Support\Collection;
+        /**
+        * @param \Illuminate\Support\Collection $items
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function filterItemsBySimilarity(\Illuminate\Support\Collection $items, string $similar): \Illuminate\Support\Collection;
+    }
+    class StringComparator {
+        /**
+        * @param array<int|string, string> $strings
+        * @param string $input
+        * @param int $sensitivity
+        * @return ?string
+        * @generated
+        */
+        public static function findClosestMatch(array<int|string, string> $strings, string $input, int $sensitivity = 4): ?string;
+        /**
+        * @param array<int, string> $strings
+        * @param string $input
+        * @return ?string
+        * @generated
+        */
+        public static function findSimilarText(array<int, string> $strings, string $input): ?string;
+    }
+}
+namespace Spatie\ErrorSolutions\Support\Laravel\Composer {
+    interface Composer {
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getClassMap(): array<string, mixed>;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getPrefixes(): array<string, mixed>;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getPrefixesPsr4(): array<string, mixed>;
+    }
+    class ComposerClassMap {
+        /**
+        * @var \Spatie\ErrorSolutions\Support\Laravel\Composer\Composer
+        * @generated
+        */
+        protected \Spatie\ErrorSolutions\Support\Laravel\Composer\Composer $composer;
+        protected string $basePath;
+        public function __construct(?string $autoloaderPath = null): void;
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function listClasses(): array<string, string>;
+        public function searchClassMap(string $missingClass): ?string;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function listClassesInPsrMaps(): array<string, mixed>;
+        public function searchPsrMaps(string $missingClass): ?string;
+        protected function getFullyQualifiedClassNameFromFile(string $rootNamespace, \Symfony\Component\Finder\SplFileInfo $file): string;
+    }
+    class FakeComposer implements \Spatie\ErrorSolutions\Support\Laravel\Composer\Composer {
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getClassMap(): array<string, mixed>;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getPrefixes(): array<string, mixed>;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getPrefixesPsr4(): array<string, mixed>;
+    }
+}
+namespace Spatie\Ignition\Contracts {
+    class BaseSolution extends \Spatie\ErrorSolutions\Contracts\BaseSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    interface HasSolutionsForThrowable extends \Spatie\ErrorSolutions\Contracts\HasSolutionsForThrowable {
+    }
+    interface ProvidesSolution extends \Spatie\ErrorSolutions\Contracts\ProvidesSolution {
+    }
+    interface RunnableSolution extends \Spatie\Ignition\Contracts\Solution {
+        public function getSolutionActionDescription(): string;
+        public function getRunButtonText(): string;
+        /**
+        * @param array<string, mixed> $parameters
+        * @generated
+        */
+        public function run(array<string, mixed> $parameters = []): void;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function getRunParameters(): array<string, mixed>;
+    }
+    interface Solution extends \Spatie\ErrorSolutions\Contracts\Solution {
+    }
+    interface SolutionProviderRepository extends \Spatie\ErrorSolutions\Contracts\SolutionProviderRepository {
+    }
+}
+namespace Spatie\Ignition\Solutions {
+    class SolutionTransformer extends \Spatie\ErrorSolutions\Solutions\SolutionTransformer {
+    }
+    class SuggestCorrectVariableNameSolution extends \Spatie\ErrorSolutions\Solutions\SuggestCorrectVariableNameSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestImportSolution extends \Spatie\ErrorSolutions\Solutions\SuggestImportSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+}
+namespace Spatie\Ignition\Solutions\OpenAi {
+    class OpenAiPromptViewModel extends \Spatie\ErrorSolutions\Solutions\OpenAi\OpenAiPromptViewModel {
+    }
+    class OpenAiSolution extends \Spatie\ErrorSolutions\Solutions\OpenAi\OpenAiSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class OpenAiSolutionProvider extends \Spatie\ErrorSolutions\Solutions\OpenAi\OpenAiSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class OpenAiSolutionResponse extends \Spatie\ErrorSolutions\Solutions\OpenAi\OpenAiSolutionResponse {
+    }
+}
+namespace Spatie\Ignition\Solutions\SolutionProviders {
+    class BadMethodCallSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\BadMethodCallSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class MergeConflictSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\MergeConflictSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class SolutionProviderRepository extends \Spatie\ErrorSolutions\SolutionProviderRepository implements \Spatie\Ignition\Contracts\SolutionProviderRepository {
+    }
+    class UndefinedPropertySolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\UndefinedPropertySolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+}
+namespace Spatie\LaravelIgnition\Solutions {
+    class GenerateAppKeySolution extends \Spatie\ErrorSolutions\Solutions\Laravel\GenerateAppKeySolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class LivewireDiscoverSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\LivewireDiscoverSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class MakeViewVariableOptionalSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\MakeViewVariableOptionalSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class RunMigrationsSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\RunMigrationsSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestCorrectVariableNameSolution extends \Spatie\ErrorSolutions\Solutions\SuggestCorrectVariableNameSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestImportSolution extends \Spatie\ErrorSolutions\Solutions\SuggestImportSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestLivewireMethodNameSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\SuggestLivewireMethodNameSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestLivewirePropertyNameSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\SuggestLivewirePropertyNameSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestUsingCorrectDbNameSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\SuggestUsingCorrectDbNameSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestUsingMariadbDatabaseSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\SuggestUsingMariadbDatabaseSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class SuggestUsingMysql8DatabaseSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\SuggestUsingMysql8DatabaseSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+    class UseDefaultValetDbCredentialsSolution extends \Spatie\ErrorSolutions\Solutions\Laravel\UseDefaultValetDbCredentialsSolution implements \Spatie\Ignition\Contracts\Solution {
+    }
+}
+namespace Spatie\LaravelIgnition\Solutions\SolutionProviders {
+    class DefaultDbNameSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\DefaultDbNameSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class GenericLaravelExceptionSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\GenericLaravelExceptionSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class IncorrectValetDbCredentialsSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\IncorrectValetDbCredentialsSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class InvalidRouteActionSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\InvalidRouteActionSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class LazyLoadingViolationSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\LazyLoadingViolationSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class MissingAppKeySolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\MissingAppKeySolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class MissingColumnSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\MissingColumnSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class MissingImportSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\MissingImportSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class MissingLivewireComponentSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\MissingLivewireComponentSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class MissingMixManifestSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\MissingMixManifestSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class MissingViteManifestSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\MissingViteManifestSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class OpenAiSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\OpenAiSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class RouteNotDefinedSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\RouteNotDefinedSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class RunningLaravelDuskInProductionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\RunningLaravelDuskInProductionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class SailNetworkSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\SailNetworkSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class SolutionProviderRepository extends \Spatie\ErrorSolutions\SolutionProviderRepository implements \Spatie\Ignition\Contracts\SolutionProviderRepository {
+    }
+    class TableNotFoundSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\TableNotFoundSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class UndefinedLivewireMethodSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\UndefinedLivewireMethodSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class UndefinedLivewirePropertySolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\UndefinedLivewirePropertySolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class UndefinedViewVariableSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\UndefinedViewVariableSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class UnknownMariadbCollationSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\UnknownMariadbCollationSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class UnknownMysql8CollationSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\UnknownMysql8CollationSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class UnknownValidationSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\UnknownValidationSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+    class ViewNotFoundSolutionProvider extends \Spatie\ErrorSolutions\SolutionProviders\Laravel\ViewNotFoundSolutionProvider implements \Spatie\Ignition\Contracts\HasSolutionsForThrowable {
+    }
+}
+namespace Spatie\LaravelIgnition\Support {
+    class StringComparator extends \Spatie\ErrorSolutions\Support\Laravel\StringComparator {
+    }
+}

@@ -1,0 +1,166 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Generics, array shapes, and FETCH_* literal overloads. Bitwise `|` of
+ * FETCH_* constants is not folded, so an `int` catch-all remains.
+ */
+
+/**
+ * PDO::errorInfo() / PDOStatement::errorInfo() — at least these three fields.
+ * Drivers may append extra elements; keys `0`, `1`, and `2` are stable.
+ */
+type PdoErrorInfo = struct {
+    string '0' as $sqlstate;
+    int|string|null '1' as $code;
+    ?string '2' as $message;
+};
+
+/**
+ * PDOStatement::getColumnMeta() associative metadata. Several keys are
+ * driver-dependent and may be omitted.
+ */
+type PdoColumnMeta = struct {
+    ?string 'driver:decl_type' as $driverDeclType;
+    ?array<int, string> $flags;
+    ?int $len;
+    ?string $name;
+    ?string $native_type;
+    ?int $pdo_type;
+    ?int $precision;
+    ?string $table;
+};
+
+// @overlay-against: function pdo_drivers(): array
+function pdo_drivers(): array<int, string>;
+
+// @overlay-against: class PDO
+partial class PDO {
+    // @overlay-against: function connect(string $dsn, ?string $username, ?string $password, ?array $options): static
+    #[\Tyhp\Php(">=8.4")]
+    static public function connect(string $dsn, ?string $username = null, #[\SensitiveParameter] ?string $password = null, ?array<int, mixed> $options = null): static;
+    // @overlay-against: function getAvailableDrivers(): array
+    static public function getAvailableDrivers(): array<int, string>;
+    // @overlay-against: function __construct(string $dsn, ?string $username, ?string $password, ?array $options)
+    public function __construct(string $dsn, ?string $username = null, #[\SensitiveParameter] ?string $password = null, ?array<int, mixed> $options = null);
+    // @overlay-against: function errorInfo(): array
+    public function errorInfo(): PdoErrorInfo;
+    // @overlay-against: function prepare(string $query, array $options): \PDOStatement|false
+    public function prepare(string $query, array<int, mixed> $options = []): \PDOStatement|false;
+}
+
+// @overlay-against: class PDOException extends \RuntimeException implements \Stringable, \Throwable
+partial class PDOException {
+    // @overlay-against: ?array $errorInfo
+    public ?PdoErrorInfo $errorInfo;
+}
+
+// @overlay-against: class PDOStatement implements \IteratorAggregate, \Traversable
+partial class PDOStatement<TRow = mixed> implements \IteratorAggregate<int, TRow>;
+// @overlay-against: class PDOStatement implements \IteratorAggregate, \Traversable
+partial class PDOStatement {
+    // @overlay-against: function errorInfo(): array
+    public function errorInfo(): PdoErrorInfo;
+    // @overlay-against: function execute(?array $params): bool
+    public function execute(?array<int|string, mixed> $params = null): bool;
+    /**
+     * FETCH_LAZY (`1`).
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(1 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): \PDORow|false;
+    /**
+     * FETCH_ASSOC (`2`).
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(2 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): array<string, mixed>|false;
+    /**
+     * FETCH_NUM (`3`).
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(3 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): array<int, mixed>|false;
+    /**
+     * FETCH_BOTH (`4`).
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(4 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): array<int|string, mixed>|false;
+    /**
+     * FETCH_OBJ (`5`).
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(5 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): object|false;
+    /**
+     * FETCH_BOUND (`6`).
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(6 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): bool;
+    /**
+     * FETCH_COLUMN (`7`).
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(7 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed;
+    /**
+     * FETCH_NAMED (`11`). Duplicate column names store a list of values.
+     */
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(11 $mode, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): array<string, mixed>|false;
+    // @overlay-against: function fetch(int $mode, int $cursorOrientation, int $cursorOffset): mixed
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): TRow|false;
+    /**
+     * FETCH_LAZY (`1`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(1 $mode): array<int, \PDORow>;
+    /**
+     * FETCH_ASSOC (`2`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(2 $mode): array<int, array<string, mixed>>;
+    /**
+     * FETCH_NUM (`3`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(3 $mode): array<int, array<int, mixed>>;
+    /**
+     * FETCH_BOTH (`4`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(4 $mode): array<int, array<int|string, mixed>>;
+    /**
+     * FETCH_OBJ (`5`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(5 $mode): array<int, object>;
+    /**
+     * FETCH_COLUMN (`7`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(7 $mode, int $column = 0): array<int, mixed>;
+    /**
+     * FETCH_CLASS (`8`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(8 $mode, string $class, array<int, mixed> $constructorArgs = []): array<int, object>;
+    /**
+     * FETCH_FUNC (`10`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(10 $mode, callable $callback): array<int, mixed>;
+    /**
+     * FETCH_NAMED (`11`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(11 $mode): array<int, array<string, mixed>>;
+    /**
+     * FETCH_KEY_PAIR (`12`).
+     */
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(12 $mode): array<int|string, mixed>;
+    // @overlay-against: function fetchAll(int $mode, mixed $args): array
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array<int, TRow>;
+    // @overlay-against: function fetchObject(?string $class, array $constructorArgs): object|false
+    public function fetchObject<T extends object = \stdClass>(?__ClassName<T> $class = 'stdClass', array<int, mixed> $constructorArgs = []): T|false;
+    // @overlay-against: function getColumnMeta(int $column): array|false
+    public function getColumnMeta(int $column): PdoColumnMeta|false;
+    // @overlay-against: function getIterator(): \Iterator
+    public function getIterator(): \Iterator<int, TRow>;
+}

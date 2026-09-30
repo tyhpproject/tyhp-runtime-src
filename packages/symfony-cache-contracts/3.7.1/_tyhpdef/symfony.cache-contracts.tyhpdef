@@ -1,0 +1,163 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Contracts\Cache {
+    /**
+    * Covers most simple to advanced caching needs.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface CacheInterface {
+        /**
+        * Fetches a value from the pool or computes it if not found.
+        *
+        * On cache misses, a callback is called that should return the missing value.
+        * This callback is given a PSR-6 CacheItemInterface instance corresponding to the
+        * requested key, that could be used e.g. for expiration control. It could also
+        * be an ItemInterface instance when its additional features are needed.
+        *
+        * @template T
+        * @param string $key The key of the item to retrieve from the cache
+        * @param callable|CallbackInterface<T> $callback
+        * @param ?float $beta A float that, as it grows, controls the likeliness of triggering
+        *  *                                  early expiration. 0 disables it, INF forces immediate expiration.
+        *  *                                  The default (or providing null) is implementation dependent but should
+        *  *                                  typically be 1.0, which should provide optimal stampede protection.
+        *  *                                  See https://en.wikipedia.org/wiki/Cache_stampede#Probabilistic_early_expiration
+        * @param array $ &$metadata The metadata of the cached item {@see ItemInterface::getMetadata()}
+        * @return T
+        * @throws InvalidArgumentException When $key is not valid or when $beta is negative
+        * @generated
+        */
+        public function get<T>(string $key, callable|\Symfony\Contracts\Cache\CallbackInterface<T> $callback, ?float $beta = null, ?array &$metadata = null): T;
+        /**
+        * Removes an item from the pool.
+        *
+        * @param string $key The key to delete
+        * @return bool True if the item was successfully removed, false if there was any error
+        * @throws InvalidArgumentException When $key is not valid
+        * @generated
+        */
+        public function delete(string $key): bool;
+    }
+    /**
+    * An implementation of CacheInterface for PSR-6 CacheItemPoolInterface classes.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    trait CacheTrait {
+        public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed;
+        public function delete(string $key): bool;
+    }
+    /**
+    * Computes and returns the cached value of an item.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @template T
+    * @generated
+    */
+    interface CallbackInterface<T> {
+        /**
+        * @param \Psr\Cache\CacheItemInterface $item The item to compute the value for
+        * @param bool $ &$save Should be set to false when the value should not be saved in the pool
+        * @return T The computed value for the passed item
+        * @generated
+        */
+        public function __invoke(\Psr\Cache\CacheItemInterface $item, bool &$save): T;
+    }
+    /**
+    * Augments PSR-6's CacheItemInterface with support for tags and metadata.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ItemInterface extends \Psr\Cache\CacheItemInterface {
+        /**
+        * References the Unix timestamp stating when the item will expire.
+        *
+        * @generated
+        */
+        public const string METADATA_EXPIRY ?? 'expiry';
+        /**
+        * References the time the item took to be created, in milliseconds.
+        *
+        * @generated
+        */
+        public const string METADATA_CTIME ?? 'ctime';
+        /**
+        * References the list of tags that were assigned to the item, as string[].
+        *
+        * @generated
+        */
+        public const string METADATA_TAGS ?? 'tags';
+        /**
+        * Reserved characters that cannot be used in a key or tag.
+        *
+        * @generated
+        */
+        public const string RESERVED_CHARACTERS ?? '{}()/\@:';
+        /**
+        * Adds a tag to a cache item.
+        *
+        * Tags are strings that follow the same validation rules as keys.
+        *
+        * @param string|iterable $tags A tag or array of tags
+        * @return static
+        * @throws InvalidArgumentException When $tag is not valid
+        * @throws CacheException           When the item comes from a pool that is not tag-aware
+        * @generated
+        */
+        public function tag(string|iterable $tags): static;
+        /**
+        * Returns a list of metadata info that were saved alongside with the cached value.
+        *
+        * See ItemInterface::METADATA_* consts for keys potentially found in the returned array.
+        *
+        * @generated
+        */
+        public function getMetadata(): array;
+    }
+    /**
+    * Enables namespace-based invalidation by prefixing keys with backend-native namespace separators.
+    *
+    * Note that calling `withSubNamespace()` MUST NOT mutate the pool, but return a new instance instead.
+    * 
+    * When tags are used, they MUST ignore sub-namespaces.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface NamespacedPoolInterface {
+        /**
+        * @throws InvalidArgumentException If the namespace contains characters found in ItemInterface's RESERVED_CHARACTERS
+        * @generated
+        */
+        public function withSubNamespace(string $namespace): static;
+    }
+    /**
+    * Allows invalidating cached items using tags.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface TagAwareCacheInterface extends \Symfony\Contracts\Cache\CacheInterface {
+        /**
+        * Invalidates cached items using tags.
+        *
+        * When implemented on a PSR-6 pool, invalidation should not apply
+        * to deferred items. Instead, they should be committed as usual.
+        * This allows replacing old tagged values by new ones without
+        * race conditions.
+        *
+        * @param array<int, string> $tags An array of tags to invalidate
+        * @return bool True on success
+        * @throws InvalidArgumentException When $tags is not valid
+        * @generated
+        */
+        public function invalidateTags(array<int, string> $tags): bool;
+    }
+}

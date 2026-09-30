@@ -1,0 +1,321 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\RateLimiter {
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class CompoundLimiter implements \Symfony\Component\RateLimiter\LimiterInterface {
+        /**
+        * @param array<int, LimiterInterface> $limiters
+        * @generated
+        */
+        public function __construct(array<int, \Symfony\Component\RateLimiter\LimiterInterface> $limiters): void;
+        public function reserve(int $tokens = 1, ?float $maxTime = null): \Symfony\Component\RateLimiter\Reservation;
+        public function consume(int $tokens = 1): \Symfony\Component\RateLimiter\RateLimit;
+        public function reset(): void;
+    }
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    final class CompoundRateLimiterFactory implements \Symfony\Component\RateLimiter\RateLimiterFactoryInterface {
+        /**
+        * @param iterable<RateLimiterFactoryInterface> $rateLimiterFactories
+        * @generated
+        */
+        public function __construct(iterable<\Symfony\Component\RateLimiter\RateLimiterFactoryInterface> $rateLimiterFactories): void;
+        public function create(?string $key = null): \Symfony\Component\RateLimiter\LimiterInterface;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface LimiterInterface {
+        /**
+        * Waits until the required number of tokens is available.
+        *
+        * The reserved tokens will be taken into account when calculating
+        * future token consumptions. Do not use this method if you intend
+        * to skip this process.
+        *
+        * @param int $tokens the number of tokens required
+        * @param ?float $maxTime maximum accepted waiting time in seconds
+        * @throws MaxWaitDurationExceededException if $maxTime is set and the process needs to wait longer than its value (in seconds)
+        * @throws ReserveNotSupportedException     if this limiter implementation doesn't support reserving tokens
+        * @throws \InvalidArgumentException        if $tokens is larger than the maximum burst size
+        * @generated
+        */
+        public function reserve(int $tokens = 1, ?float $maxTime = null): \Symfony\Component\RateLimiter\Reservation;
+        /**
+        * Use this method if you intend to drop if the required number
+        *
+        * of tokens is unavailable.
+        *
+        * @param int $tokens the number of tokens required
+        * @generated
+        */
+        public function consume(int $tokens = 1): \Symfony\Component\RateLimiter\RateLimit;
+        /**
+        * Resets the limit.
+        *
+        * @generated
+        */
+        public function reset(): void;
+    }
+    /**
+    * Representing the stored state of the limiter.
+    *
+    * Classes implementing this interface must be serializable,
+    * which is used by the storage implementations to store the
+    * object.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface LimiterStateInterface {
+        public function getId(): string;
+        public function getExpirationTime(): ?int;
+    }
+    /**
+    * @author Valentin Silvestre <vsilvestre.pro@gmail.com>
+    * @generated
+    */
+    class RateLimit {
+        public function __construct(int $availableTokens, \DateTimeImmutable $retryAfter, bool $accepted, int $limit): void;
+        public function isAccepted(): bool;
+        /**
+        * @return static
+        * @throws RateLimitExceededException if not accepted
+        * @generated
+        */
+        public function ensureAccepted(): static;
+        public function getRetryAfter(): \DateTimeImmutable;
+        public function getRemainingTokens(): int;
+        public function getLimit(): int;
+        public function wait(): void;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class RateLimiterFactory implements \Symfony\Component\RateLimiter\RateLimiterFactoryInterface {
+        public function __construct(array $config, \Symfony\Component\RateLimiter\Storage\StorageInterface $storage, ?\Symfony\Component\Lock\LockFactory $lockFactory = null): void;
+        public function create(?string $key = null): \Symfony\Component\RateLimiter\LimiterInterface;
+    }
+    /**
+    * @author Alexandre Daubois <alex.daubois@gmail.com>
+    * @generated
+    */
+    interface RateLimiterFactoryInterface {
+        /**
+        * @param ?string $key an optional key used to identify the limiter
+        * @generated
+        */
+        public function create(?string $key = null): \Symfony\Component\RateLimiter\LimiterInterface;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class Reservation {
+        /**
+        * @param float $timeToAct Unix timestamp in seconds when this reservation should act
+        * @generated
+        */
+        public function __construct(float $timeToAct, \Symfony\Component\RateLimiter\RateLimit $rateLimit): void;
+        public function getTimeToAct(): float;
+        public function getWaitDuration(): float;
+        public function getRateLimit(): \Symfony\Component\RateLimiter\RateLimit;
+        public function wait(): void;
+    }
+}
+namespace Symfony\Component\RateLimiter\Exception {
+    /**
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    class InvalidIntervalException extends \LogicException {
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class MaxWaitDurationExceededException extends \RuntimeException {
+        public function __construct(string $message, \Symfony\Component\RateLimiter\RateLimit $rateLimit, int $code = 0, ?\Throwable $previous = null): void;
+        public function getRateLimit(): \Symfony\Component\RateLimiter\RateLimit;
+    }
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    class RateLimitExceededException extends \RuntimeException {
+        public function __construct(\Symfony\Component\RateLimiter\RateLimit $rateLimit, int $code = 0, ?\Throwable $previous = null): void;
+        public function getRateLimit(): \Symfony\Component\RateLimiter\RateLimit;
+        public function getRetryAfter(): \DateTimeImmutable;
+        public function getRemainingTokens(): int;
+        public function getLimit(): int;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class ReserveNotSupportedException extends \BadMethodCallException {
+        public function __construct(string $limiterClass, int $code = 0, ?\Throwable $previous = null): void;
+    }
+}
+namespace Symfony\Component\RateLimiter\Policy {
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class FixedWindowLimiter implements \Symfony\Component\RateLimiter\LimiterInterface {
+        use \Symfony\Component\RateLimiter\Policy\ResetLimiterTrait;
+        public function __construct(string $id, int $limit, \DateInterval $interval, \Symfony\Component\RateLimiter\Storage\StorageInterface $storage, ?\Symfony\Component\Lock\LockInterface $lock = null): void;
+        public function reserve(int $tokens = 1, ?float $maxTime = null): \Symfony\Component\RateLimiter\Reservation;
+        public function consume(int $tokens = 1): \Symfony\Component\RateLimiter\RateLimit;
+        public function getAvailableTokens(int $hitCount): int;
+    }
+    /**
+    * Implements a non limiting limiter.
+    *
+    * This can be used in cases where an implementation requires a
+    * limiter, but no rate limit should be enforced.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class NoLimiter implements \Symfony\Component\RateLimiter\LimiterInterface {
+        public function reserve(int $tokens = 1, ?float $maxTime = null): \Symfony\Component\RateLimiter\Reservation;
+        public function consume(int $tokens = 1): \Symfony\Component\RateLimiter\RateLimit;
+        public function reset(): void;
+    }
+    /**
+    * Data object representing the fill rate of a token bucket.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class Rate {
+        public function __construct(\DateInterval $refillTime, int $refillAmount = 1): void;
+        public static function perSecond(int $rate = 1): self;
+        public static function perMinute(int $rate = 1): self;
+        public static function perHour(int $rate = 1): self;
+        public static function perDay(int $rate = 1): self;
+        public static function perMonth(int $rate = 1): self;
+        public static function perYear(int $rate = 1): self;
+        /**
+        * @param string $string using the format: "%interval_spec%-%rate%", {@see DateInterval}
+        * @generated
+        */
+        public static function fromString(string $string): self;
+        /**
+        * Calculates the time needed to free up the provided number of tokens in seconds.
+        *
+        * The result is capped at self::MAX_SECONDS, as the exact value overflows the
+        * integer range for very large numbers of tokens.
+        *
+        * @generated
+        */
+        public function calculateTimeForTokens(int $tokens): int;
+        /**
+        * Calculates the next moment of token availability.
+        *
+        * @generated
+        */
+        public function calculateNextTokenAvailability(): \DateTimeImmutable;
+        /**
+        * Calculates the number of new free tokens during $duration.
+        *
+        * @param float $duration interval in seconds
+        * @generated
+        */
+        public function calculateNewTokensDuringInterval(float $duration): int;
+        /**
+        * Calculates total amount in seconds of refill intervals during $duration (for maintain strict refill frequency).
+        *
+        * @param float $duration interval in seconds
+        * @generated
+        */
+        public function calculateRefillInterval(float $duration): int;
+        public function __toString(): string;
+    }
+    trait ResetLimiterTrait {
+        public function reset(): void;
+    }
+    /**
+    * The sliding window algorithm will look at your last window and the current one.
+    *
+    * It is good algorithm to reduce bursts.
+    * 
+    * Example:
+    * Last time window we did 8 hits. We are currently 25% into
+    * the current window. We have made 3 hits in the current window so far.
+    * That means our sliding window hit count is (75% * 8) + 3 = 9.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    final class SlidingWindowLimiter implements \Symfony\Component\RateLimiter\LimiterInterface {
+        use \Symfony\Component\RateLimiter\Policy\ResetLimiterTrait;
+        public function __construct(string $id, int $limit, \DateInterval $interval, \Symfony\Component\RateLimiter\Storage\StorageInterface $storage, ?\Symfony\Component\Lock\LockInterface $lock = null): void;
+        public function reserve(int $tokens = 1, ?float $maxTime = null): \Symfony\Component\RateLimiter\Reservation;
+        public function consume(int $tokens = 1): \Symfony\Component\RateLimiter\RateLimit;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class TokenBucketLimiter implements \Symfony\Component\RateLimiter\LimiterInterface {
+        use \Symfony\Component\RateLimiter\Policy\ResetLimiterTrait;
+        public function __construct(string $id, int $maxBurst, \Symfony\Component\RateLimiter\Policy\Rate $rate, \Symfony\Component\RateLimiter\Storage\StorageInterface $storage, ?\Symfony\Component\Lock\LockInterface $lock = null): void;
+        /**
+        * Waits until the required number of tokens is available.
+        *
+        * The reserved tokens will be taken into account when calculating
+        * future token consumptions. Do not use this method if you intend
+        * to skip this process.
+        *
+        * @param int $tokens the number of tokens required
+        * @param ?float $maxTime maximum accepted waiting time in seconds
+        * @throws MaxWaitDurationExceededException if $maxTime is set and the process needs to wait longer than its value (in seconds)
+        * @throws \InvalidArgumentException        if $tokens is larger than the maximum burst size
+        * @generated
+        */
+        public function reserve(int $tokens = 1, ?float $maxTime = null): \Symfony\Component\RateLimiter\Reservation;
+        public function consume(int $tokens = 1): \Symfony\Component\RateLimiter\RateLimit;
+    }
+}
+namespace Symfony\Component\RateLimiter\Storage {
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class CacheStorage implements \Symfony\Component\RateLimiter\Storage\StorageInterface {
+        public function __construct(\Psr\Cache\CacheItemPoolInterface $pool): void;
+        public function save(\Symfony\Component\RateLimiter\LimiterStateInterface $limiterState): void;
+        public function fetch(string $limiterStateId): ?\Symfony\Component\RateLimiter\LimiterStateInterface;
+        public function delete(string $limiterStateId): void;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class InMemoryStorage implements \Symfony\Component\RateLimiter\Storage\StorageInterface {
+        public function save(\Symfony\Component\RateLimiter\LimiterStateInterface $limiterState): void;
+        public function fetch(string $limiterStateId): ?\Symfony\Component\RateLimiter\LimiterStateInterface;
+        public function delete(string $limiterStateId): void;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface StorageInterface {
+        public function save(\Symfony\Component\RateLimiter\LimiterStateInterface $limiterState): void;
+        public function fetch(string $limiterStateId): ?\Symfony\Component\RateLimiter\LimiterStateInterface;
+        public function delete(string $limiterStateId): void;
+    }
+}

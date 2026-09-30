@@ -1,0 +1,118 @@
+<?tyhp
+
+namespace Tyhp;
+
+final class StringHelper
+{
+    private static ?bool $hasMbStringExt = null;
+
+    public static function hasMbStringExt(): bool
+    {
+        ?bool $cached = self::$hasMbStringExt;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        self::$hasMbStringExt = false;
+        declare(ext="mbstring") {
+            self::$hasMbStringExt = true;
+        }
+
+        return self::$hasMbStringExt;
+    }
+
+    public static function strlen(string $string): int
+    {
+        return self::hasMbStringExt() ? \mb_strlen($string) : \strlen($string);
+    }
+
+    public static function substr(string $string, int $start, ?int $length = null): string
+    {
+        return self::hasMbStringExt() ? \mb_substr($string, $start, $length) : \substr($string, $start, $length);
+    }
+
+    public static function strpos(string $haystack, string $needle, int $offset = 0): int|false
+    {
+        return self::hasMbStringExt() ? \mb_strpos($haystack, $needle, $offset) : \strpos($haystack, $needle, $offset);
+    }
+
+    public static function strrpos(string $haystack, string $needle, int $offset = 0): int|false
+    {
+        return self::hasMbStringExt() ? \mb_strrpos($haystack, $needle, $offset) : \strrpos($haystack, $needle, $offset);
+    }
+
+    public static function stripos(string $haystack, string $needle, int $offset = 0): int|false
+    {
+        return self::hasMbStringExt() ? \mb_stripos($haystack, $needle, $offset) : \stripos($haystack, $needle, $offset);
+    }
+
+    public static function strtolower(string $string): string
+    {
+        return self::hasMbStringExt() ? \mb_strtolower($string) : \strtolower($string);
+    }
+
+    public static function strtoupper(string $string): string
+    {
+        return self::hasMbStringExt() ? \mb_strtoupper($string) : \strtoupper($string);
+    }
+
+    public static function strSplit(string $string, int $length = 1): array<int, string>
+    {
+        return self::hasMbStringExt() ? \mb_str_split($string, $length) : \str_split($string, $length);
+    }
+
+    public static function ord(string $string): int|false
+    {
+        return self::hasMbStringExt() ? \mb_ord($string) : \ord($string);
+    }
+
+    public static function ucWords(string $string): string
+    {
+        return self::hasMbStringExt() ? \mb_convert_case($string, \MB_CASE_TITLE) : \ucwords($string);
+    }
+
+    public static function convertEncoding(
+        string $string,
+        string $toEncoding,
+        array|string|null $fromEncoding = null
+    ): string|false {
+        if (!self::hasMbStringExt()) {
+            return false;
+        }
+
+        return \mb_convert_encoding($string, $toEncoding, $fromEncoding);
+    }
+
+    public static function detectEncoding(string $string): string|false
+    {
+        if (!self::hasMbStringExt()) {
+            return false;
+        }
+
+        return \mb_detect_encoding($string);
+    }
+
+    #[\Tyhp\Php(">=8.3")]
+    public static function strPad(
+        string $string,
+        int $length,
+        string $padString = ' ',
+        int $padType = \STR_PAD_RIGHT
+    ): string {
+        return self::hasMbStringExt()
+            ? \mb_str_pad($string, $length, $padString, $padType)
+            : \str_pad($string, $length, $padString, $padType);
+    }
+
+    #[\Tyhp\Php(">=8.4")]
+    public static function ucFirst(string $string): string
+    {
+        return self::hasMbStringExt() ? \mb_ucfirst($string) : \ucfirst($string);
+    }
+
+    #[\Tyhp\Php(">=8.4")]
+    public static function lcFirst(string $string): string
+    {
+        return self::hasMbStringExt() ? \mb_lcfirst($string) : \lcfirst($string);
+    }
+}

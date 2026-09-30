@@ -1,0 +1,137 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Http\Client {
+    /**
+    * Every HTTP Client related Exception must implement this interface.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    interface Exception extends \Psr\Http\Client\ClientExceptionInterface {
+    }
+    /**
+    * Sends a PSR-7 Request in an asynchronous way by returning a Promise.
+    *
+    * @author Joel Wurtz <joel.wurtz@gmail.com>
+    * @generated
+    */
+    interface HttpAsyncClient {
+        /**
+        * Sends a PSR-7 request in an asynchronous way.
+        *
+        * Exceptions related to processing the request are available from the returned Promise.
+        *
+        * @return \Http\Promise\Promise resolves a PSR-7 Response or fails with an Http\Client\Exception
+        * @throws \Exception If processing the request is impossible (eg. bad configuration).
+        * @generated
+        */
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+    /**
+    * {@inheritdoc}
+    *
+    * Provide the Httplug HttpClient interface for BC.
+    * You should typehint Psr\Http\Client\ClientInterface in new code
+    *
+    * @deprecated since version 2.4, use Psr\Http\Client\ClientInterface instead; see https://www.php-fig.org/psr/psr-18/
+    * @generated
+    */
+    deprecated interface HttpClient extends \Psr\Http\Client\ClientInterface {
+    }
+}
+namespace Http\Client\Exception {
+    /**
+    * Thrown when a response was received but the request itself failed.
+    *
+    * In addition to the request, this exception always provides access to the response object.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    class HttpException extends \Http\Client\Exception\RequestException {
+        /**
+        * @var \Psr\Http\Message\ResponseInterface
+        * @generated
+        */
+        protected \Psr\Http\Message\ResponseInterface $response;
+        /**
+        * @param string $message
+        * @generated
+        */
+        public function __construct(string $message, \Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response, ?\Exception $previous = null): void;
+        /**
+        * Returns the response.
+        *
+        * @return \Psr\Http\Message\ResponseInterface
+        * @generated
+        */
+        public function getResponse(): \Psr\Http\Message\ResponseInterface;
+        /**
+        * Factory method to create a new exception with a normalized error message.
+        *
+        * @generated
+        */
+        public static function create(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response, ?\Exception $previous = null): mixed;
+    }
+    /**
+    * Thrown when the request cannot be completed because of network issues.
+    *
+    * There is no response object as this exception is thrown when no response has been received.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    class NetworkException extends \Http\Client\Exception\TransferException implements \Psr\Http\Client\NetworkExceptionInterface {
+        use \Http\Client\Exception\RequestAwareTrait;
+        /**
+        * @param string $message
+        * @generated
+        */
+        public function __construct(string $message, \Psr\Http\Message\RequestInterface $request, ?\Exception $previous = null): void;
+    }
+    trait RequestAwareTrait {
+        public function getRequest(): \Psr\Http\Message\RequestInterface;
+    }
+    /**
+    * Exception for when a request failed, providing access to the failed request.
+    *
+    * This could be due to an invalid request, or one of the extending exceptions
+    * for network errors or HTTP error responses.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    class RequestException extends \Http\Client\Exception\TransferException implements \Psr\Http\Client\RequestExceptionInterface {
+        use \Http\Client\Exception\RequestAwareTrait;
+        /**
+        * @param string $message
+        * @generated
+        */
+        public function __construct(string $message, \Psr\Http\Message\RequestInterface $request, ?\Exception $previous = null): void;
+    }
+    /**
+    * Base exception for transfer related exceptions.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    class TransferException extends \RuntimeException implements \Http\Client\Exception {
+    }
+}
+namespace Http\Client\Promise {
+    final class HttpFulfilledPromise implements \Http\Promise\Promise {
+        public function __construct(\Psr\Http\Message\ResponseInterface $response): void;
+        public function then(?callable $onFulfilled = null, ?callable $onRejected = null): mixed;
+        public function getState(): mixed;
+        public function wait(mixed $unwrap = true): mixed;
+    }
+    final class HttpRejectedPromise implements \Http\Promise\Promise {
+        public function __construct(\Http\Client\Exception $exception): void;
+        public function then(?callable $onFulfilled = null, ?callable $onRejected = null): mixed;
+        public function getState(): mixed;
+        public function wait(mixed $unwrap = true): mixed;
+    }
+}

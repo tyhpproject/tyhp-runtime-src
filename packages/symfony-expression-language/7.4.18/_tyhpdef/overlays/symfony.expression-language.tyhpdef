@@ -1,0 +1,195 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * ExpressionLanguage evaluate/compile maps; restore `@internal` AST nodes named by Parser.
+ */
+
+namespace Symfony\Component\ExpressionLanguage {
+    /**
+     * Compiler callable: PHP text for the call. Arity matches the function arguments.
+     */
+    type ExpressionCompiler = callable(mixed...): string;
+
+    /**
+     * Evaluator callable: expression values, then the function arguments.
+     */
+    type ExpressionEvaluator = callable(array<string, mixed>, mixed...): mixed;
+
+    /**
+     * One registered function (`ExpressionLanguage::register` stores this pair).
+     */
+    type ExpressionFunctionCall = struct {
+        \Symfony\Component\ExpressionLanguage\ExpressionCompiler $compiler;
+        \Symfony\Component\ExpressionLanguage\ExpressionEvaluator $evaluator;
+    };
+
+    /**
+     * Overlay: registered functions are name => compiler/evaluator pairs.
+     */
+    // @overlay-against: class Compiler implements \Symfony\Contracts\Service\ResetInterface
+    partial class Compiler {
+        /**
+         * @param array<string, \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall> $functions
+         */
+        // @overlay-against: function __construct(array $functions): void
+        public function __construct(array<string, \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall> $functions): void;
+
+        /**
+         * @return \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall
+         */
+        // @overlay-against: function getFunction(string $name): array
+        public function getFunction(string $name): \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall;
+    }
+
+    /**
+     * Overlay: compiler returns PHP text; evaluator receives values then arguments.
+     */
+    // @overlay-against: class ExpressionFunction
+    partial class ExpressionFunction {
+        /**
+         * @param \Symfony\Component\ExpressionLanguage\ExpressionCompiler $compiler
+         * @param \Symfony\Component\ExpressionLanguage\ExpressionEvaluator $evaluator
+         */
+        // @overlay-against: function __construct(string $name, callable $compiler, callable $evaluator): void
+        public function __construct(string $name, \Symfony\Component\ExpressionLanguage\ExpressionCompiler $compiler, \Symfony\Component\ExpressionLanguage\ExpressionEvaluator $evaluator): void;
+
+        /**
+         * @return \Closure<\Symfony\Component\ExpressionLanguage\ExpressionCompiler>
+         */
+        // @overlay-against: function getCompiler(): \Closure
+        public function getCompiler(): \Closure<\Symfony\Component\ExpressionLanguage\ExpressionCompiler>;
+
+        /**
+         * @return \Closure<\Symfony\Component\ExpressionLanguage\ExpressionEvaluator>
+         */
+        // @overlay-against: function getEvaluator(): \Closure
+        public function getEvaluator(): \Closure<\Symfony\Component\ExpressionLanguage\ExpressionEvaluator>;
+    }
+
+    /**
+     * Overlay: PHPDoc shapes harvest left loose on `ExpressionFunctionProviderInterface`.
+     */
+    // @overlay-against: interface ExpressionFunctionProviderInterface
+    partial interface ExpressionFunctionProviderInterface {
+        /**
+         * @return array<\Symfony\Component\ExpressionLanguage\ExpressionFunction>
+         */
+        // @overlay-against: function getFunctions(): array
+        public function getFunctions(): array<\Symfony\Component\ExpressionLanguage\ExpressionFunction>;
+    }
+
+    /**
+     * Overlay: harvest left bare `array $values` / `array $names`.
+     * `$names` allows string keys (`['this' => 'container']`).
+     * `$flags` is `int-mask-of<Parser::IGNORE_*>`; Tyhp has no int-mask type.
+     */
+    // @overlay-against: class ExpressionLanguage
+    partial class ExpressionLanguage {
+        /**
+         * @param array<int|string, string> $names
+         */
+        // @overlay-against: function compile(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array $names): string
+        public function compile(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array<int|string, string> $names = []): string;
+
+        /**
+         * @param array<string, mixed> $values
+         */
+        // @overlay-against: function evaluate(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array $values): mixed
+        public function evaluate(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array<string, mixed> $values = []): mixed;
+
+        /**
+         * @param array<int|string, string>|null $names
+         */
+        // @overlay-against: function lint(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array|null $names, int $flags): void
+        public function lint(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array<int|string, string>|null $names, int $flags = 0): void;
+
+        /**
+         * @param array<int|string, string> $names
+         */
+        // @overlay-against: function parse(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array $names, int $flags): \Symfony\Component\ExpressionLanguage\ParsedExpression
+        public function parse(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array<int|string, string> $names, int $flags = 0): \Symfony\Component\ExpressionLanguage\ParsedExpression;
+
+        /**
+         * @param \Symfony\Component\ExpressionLanguage\ExpressionCompiler $compiler
+         * @param \Symfony\Component\ExpressionLanguage\ExpressionEvaluator $evaluator
+         */
+        // @overlay-against: function register(string $name, callable $compiler, callable $evaluator): void
+        public function register(string $name, \Symfony\Component\ExpressionLanguage\ExpressionCompiler $compiler, \Symfony\Component\ExpressionLanguage\ExpressionEvaluator $evaluator): void;
+    }
+
+    /**
+     * Overlay: `$functions` is the register() map. `$names` is the variable-name map.
+     * `$flags` stays `int` (`int-mask-of<Parser::IGNORE_*>` is not a Tyhp type).
+     */
+    // @overlay-against: class Parser
+    partial class Parser {
+        /**
+         * @param array<string, \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall> $functions
+         */
+        // @overlay-against: function __construct(array $functions): void
+        public function __construct(array<string, \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall> $functions): void;
+
+        /**
+         * @param array<int|string, string>|null $names
+         */
+        // @overlay-against: function lint(\Symfony\Component\ExpressionLanguage\TokenStream $stream, ?array $names, int $flags): void
+        public function lint(\Symfony\Component\ExpressionLanguage\TokenStream $stream, array<int|string, string>|null $names = [], int $flags = 0): void;
+
+        /**
+         * @param array<int|string, string> $names
+         */
+        // @overlay-against: function parse(\Symfony\Component\ExpressionLanguage\TokenStream $stream, array $names, int $flags): \Symfony\Component\ExpressionLanguage\Node\Node
+        public function parse(\Symfony\Component\ExpressionLanguage\TokenStream $stream, array<int|string, string> $names = [], int $flags = 0): \Symfony\Component\ExpressionLanguage\Node\Node;
+    }
+
+    /**
+     * Overlay: `$proposals` is a list of identifier suggestions. Harvest left `?array`.
+     */
+    // @overlay-against: class SyntaxError extends \LogicException
+    partial class SyntaxError {
+        /**
+         * @param array<int, string>|null $proposals
+         */
+        // @overlay-against: function __construct(string $message, int $cursor, string $expression, ?string $subject, ?array $proposals): void
+        public function __construct(string $message, int $cursor = 0, string $expression = '', ?string $subject = null, array<int, string>|null $proposals = null): void;
+    }
+
+}
+
+namespace Symfony\Component\ExpressionLanguage\Node {
+    /**
+     * Overlay: node lists and the function/value maps passed to `evaluate`.
+     */
+    // @overlay-against: class Node
+    partial class Node {
+        /**
+         * @param array<int|string, self> $nodes
+         * @param array<int|string, mixed> $attributes
+         */
+        // @overlay-against: function __construct(array $nodes, array $attributes): void
+        public function __construct(array<int|string, self> $nodes = [], array<int|string, mixed> $attributes = []): void;
+
+        /**
+         * @param array<string, \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall> $functions
+         * @param array<string, mixed> $values
+         */
+        // @overlay-against: function evaluate(array $functions, array $values): mixed
+        public function evaluate(array<string, \Symfony\Component\ExpressionLanguage\ExpressionFunctionCall> $functions, array<string, mixed> $values): mixed;
+
+        /**
+         * @return array<int|string, string|int|float|bool|self>
+         */
+        // @overlay-against: function toArray(): array
+        public function toArray(): array<int|string, string|int|float|bool|self>;
+    }
+
+    /**
+     * Overlay: `@internal` AST nodes omitted from Layer 1 but referenced by Parser return types.
+     */
+    class ArrayNode extends \Symfony\Component\ExpressionLanguage\Node\Node {
+    }
+
+    class GetAttrNode extends \Symfony\Component\ExpressionLanguage\Node\Node {
+    }
+}

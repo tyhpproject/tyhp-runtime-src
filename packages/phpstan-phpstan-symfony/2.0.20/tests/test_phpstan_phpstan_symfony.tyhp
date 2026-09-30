@@ -1,0 +1,95 @@
+<?tyhp
+
+function test_parameter_key(): string
+{
+    return (new \PHPStan\Symfony\Parameter('kernel.environment', 'dev'))->getKey();
+}
+
+function test_parameter_bool_value(): array<mixed>|bool|float|int|string
+{
+    return (new \PHPStan\Symfony\Parameter('kernel.debug', true))->getValue();
+}
+
+function test_service_tag_name(): string
+{
+    return (new \PHPStan\Symfony\ServiceTag('console.command', ['command' => 'app:hello']))->getName();
+}
+
+function test_service_tag_attributes(): array<string, string>
+{
+    return (new \PHPStan\Symfony\ServiceTag('console.command', ['command' => 'app:hello']))->getAttributes();
+}
+
+function test_service_id(): string
+{
+    $service = new \PHPStan\Symfony\Service('app.hello', 'App\\HelloCommand', true, false, null);
+    return $service->getId();
+}
+
+function test_service_tags(): array<int, \PHPStan\Symfony\ServiceTag>
+{
+    return (new \PHPStan\Symfony\Service('app.hello', 'App\\HelloCommand', true, false, null))->getTags();
+}
+
+function test_service_with_tags(\PHPStan\Symfony\ServiceTag $tag): string
+{
+    array<int, \PHPStan\Symfony\ServiceTag> $tags = [];
+    $tags[] = $tag;
+    return (new \PHPStan\Symfony\Service('app.hello', 'App\\HelloCommand', true, false, null, $tags))->getId();
+}
+
+function test_default_parameter_map(): ?\PHPStan\Symfony\ParameterDefinition
+{
+    array<int, \PHPStan\Symfony\ParameterDefinition> $parameters = [];
+    $parameters[] = new \PHPStan\Symfony\Parameter('locale', 'en');
+    $map = new \PHPStan\Symfony\DefaultParameterMap($parameters);
+    return $map->getParameter('locale');
+}
+
+function test_default_service_map(): ?\PHPStan\Symfony\ServiceDefinition
+{
+    array<int, \PHPStan\Symfony\ServiceDefinition> $services = [];
+    $services[] = new \PHPStan\Symfony\Service('app.hello', 'App\\HelloCommand', true, false, null);
+    $map = new \PHPStan\Symfony\DefaultServiceMap($services);
+    return $map->getService('app.hello');
+}
+
+function test_xml_service_map_factory(): \PHPStan\Symfony\ServiceMap
+{
+    return (new \PHPStan\Symfony\XmlServiceMapFactory(null))->create();
+}
+
+function test_xml_parameter_map_factory(): \PHPStan\Symfony\ParameterMap
+{
+    return (new \PHPStan\Symfony\XmlParameterMapFactory(null))->create();
+}
+
+function test_console_resolver_has_no_loader(): bool
+{
+    return (new \PHPStan\Symfony\ConsoleApplicationResolver(null))->hasConsoleApplicationLoader();
+}
+
+function test_stub_files_extension(): array
+{
+    return (new \PHPStan\Stubs\Symfony\StubFilesExtensionLoader())->getFiles();
+}
+
+function test_serializer_extension_class(): string
+{
+    return (new \PHPStan\Type\Symfony\SerializerDynamicReturnTypeExtension(\stdClass::class, 'deserialize'))->getClass();
+}
+
+function test_cache_extension_class(): string
+{
+    return (new \PHPStan\Type\Symfony\CacheInterfaceGetDynamicReturnTypeExtension())->getClass();
+}
+
+function test_fake_service_map_missing(): ?\PHPStan\Symfony\ServiceDefinition
+{
+    return (new \PHPStan\Symfony\FakeServiceMap())->getService('missing');
+}
+
+function test_container_private_service_rule(\PHPStan\Symfony\ServiceMap $map): \PHPStan\Rules\Symfony\ContainerInterfacePrivateServiceRule
+{
+    return new \PHPStan\Rules\Symfony\ContainerInterfacePrivateServiceRule($map);
+}

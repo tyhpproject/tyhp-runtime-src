@@ -1,0 +1,33 @@
+<?tyhp
+
+function test_s3_adapter(\Aws\S3\S3ClientInterface $client): \League\Flysystem\AwsS3V3\AwsS3V3Adapter
+{
+    return new \League\Flysystem\AwsS3V3\AwsS3V3Adapter($client, 'example-bucket', 'prefix');
+}
+
+function test_s3_write(\League\Flysystem\AwsS3V3\AwsS3V3Adapter $adapter): void
+{
+    $adapter->write('readme.txt', 'hello', new \League\Flysystem\Config(['visibility' => 'private']));
+}
+
+function test_s3_read(\League\Flysystem\AwsS3V3\AwsS3V3Adapter $adapter): string
+{
+    return $adapter->read('readme.txt');
+}
+
+function test_s3_exists(\League\Flysystem\AwsS3V3\AwsS3V3Adapter $adapter): bool
+{
+    return $adapter->fileExists('readme.txt');
+}
+
+function test_s3_public_url(\League\Flysystem\AwsS3V3\AwsS3V3Adapter $adapter): string
+{
+    return $adapter->publicUrl('readme.txt', new \League\Flysystem\Config());
+}
+
+function test_s3_visibility_acl(): string
+{
+    return (new \League\Flysystem\AwsS3V3\PortableVisibilityConverter())->aclToVisibility([
+        ['Grantee' => ['URI' => 'http://acs.amazonaws.com/groups/global/AllUsers'], 'Permission' => 'READ'],
+    ]);
+}

@@ -1,0 +1,142 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * TransportBuilder hosts. OpenTelemetry is an unowned peer.
+ */
+extern interface \OpenTelemetry\API\Trace\TracerProviderInterface;
+extern interface \OpenTelemetry\API\Trace\TracerInterface;
+
+namespace Elastic\Transport {
+    // @overlay-against: class TransportBuilder
+    partial class TransportBuilder {
+        // @overlay-against: function setHosts(array $hosts): self
+        public function setHosts(array<string> $hosts): self;
+    }
+}
+
+namespace Elastic\Transport\NodePool\Selector {
+    /**
+     * Node list. `SelectorInterface` already uses `array<int, Node>`.
+     */
+    // @overlay-against: trait SelectorTrait
+    partial trait SelectorTrait {
+        /**
+         * @return array<int|string, \Elastic\Transport\NodePool\Node>
+         */
+        // @overlay-against: function getNodes(): array
+        public function getNodes(): array<int|string, \Elastic\Transport\NodePool\Node>;
+
+        /**
+         * @param array<int|string, \Elastic\Transport\NodePool\Node> $nodes
+         */
+        // @overlay-against: function setNodes(array $nodes): void
+        public function setNodes(array<int|string, \Elastic\Transport\NodePool\Node> $nodes): void;
+    }
+}
+
+namespace Elastic\Transport\Serializer {
+    /**
+     * `JsonSerializer::serialize` / `NDJsonSerializer::serialize` option `remove_null`.
+     */
+    type JsonSerializeOptions = struct {
+        ?bool $remove_null;
+    };
+
+    /**
+     * `type` is the literal `object`.
+     */
+    type JsonUnserializeAsObject = struct {
+        'object' $type;
+    };
+
+    /**
+     * `JsonSerializer::unserialize` / `NDJsonSerializer::unserialize` option `type`.
+     * Default decode is an array. `type: 'object'` returns `\stdClass` values.
+     */
+    type JsonUnserializeOptions = struct {
+        ?('array'|'object') $type;
+    };
+
+    // @overlay-against: class CsvSerializer implements \Elastic\Transport\Serializer\SerializerInterface
+    partial class CsvSerializer {
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function serialize(mixed $data, array $options): string
+        public static function serialize(mixed $data, array<string, mixed> $options = []): string;
+
+        /**
+         * @param array<string, mixed> $options
+         * @return array<int|string, mixed>
+         */
+        // @overlay-against: function unserialize(string $data, array $options): array
+        public static function unserialize(string $data, array<string, mixed> $options = []): array<int|string, mixed>;
+    }
+
+    // @overlay-against: class JsonSerializer implements \Elastic\Transport\Serializer\SerializerInterface
+    partial class JsonSerializer {
+        // @overlay-against: function serialize(mixed $data, array $options): string
+        public static function serialize(mixed $data, \Elastic\Transport\Serializer\JsonSerializeOptions $options = []): string;
+
+        /**
+         * @param \Elastic\Transport\Serializer\JsonUnserializeAsObject $options
+         */
+        // @overlay-against: function unserialize(string $data, array $options): mixed
+        public static function unserialize(string $data, \Elastic\Transport\Serializer\JsonUnserializeAsObject $options): \stdClass|array<int, \stdClass>|string|int|float|bool|null;
+
+        /**
+         * Default and `type: 'array'`. JSON objects are string-keyed arrays.
+         */
+        // @overlay-against: function unserialize(string $data, array $options): mixed
+        public static function unserialize(string $data, \Elastic\Transport\Serializer\JsonUnserializeOptions $options = []): array<int|string, mixed>|string|int|float|bool|null;
+    }
+
+    // @overlay-against: class NDJsonSerializer implements \Elastic\Transport\Serializer\SerializerInterface
+    partial class NDJsonSerializer {
+        /**
+         * @param array<int|string, mixed> $data
+         */
+        // @overlay-against: function serialize(array $data, array $options): string
+        public static function serialize(array<int|string, mixed> $data, \Elastic\Transport\Serializer\JsonSerializeOptions $options = []): string;
+
+        // @overlay-against: function unserialize(string $data, array $options): mixed
+        public static function unserialize(string $data, \Elastic\Transport\Serializer\JsonUnserializeAsObject $options): array<int|string, \stdClass>;
+
+        /**
+         * @return array<int|string, array<int|string, mixed>>
+         */
+        // @overlay-against: function unserialize(string $data, array $options): mixed
+        public static function unserialize(string $data, \Elastic\Transport\Serializer\JsonUnserializeOptions $options = []): array<int|string, array<int|string, mixed>>;
+    }
+
+    // @overlay-against: class TextSerializer implements \Elastic\Transport\Serializer\SerializerInterface
+    partial class TextSerializer {
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function serialize(mixed $data, array $options): string
+        public static function serialize(mixed $data, array<string, mixed> $options = []): string;
+
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function unserialize(string $data, array $options): string
+        public static function unserialize(string $data, array<string, mixed> $options = []): string;
+    }
+
+    // @overlay-against: class XmlSerializer implements \Elastic\Transport\Serializer\SerializerInterface
+    partial class XmlSerializer {
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function serialize(mixed $data, array $options): string
+        public static function serialize(mixed $data, array<string, mixed> $options = []): string;
+
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function unserialize(string $data, array $options): \SimpleXMLElement
+        public static function unserialize(string $data, array<string, mixed> $options = []): \SimpleXMLElement;
+    }
+}

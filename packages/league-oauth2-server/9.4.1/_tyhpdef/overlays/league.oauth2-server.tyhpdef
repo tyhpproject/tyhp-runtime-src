@@ -1,0 +1,104 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Request credential tuples, scope lists, and Slim-style middleware callables.
+ */
+
+namespace League\OAuth2\Server\EventEmitting {
+    /**
+     * Overlay: drop `HasEventName` — league/event is STOP (no invented APIs).
+     */
+    // @overlay-against: class AbstractEvent implements \Psr\EventDispatcher\StoppableEventInterface, \League\Event\HasEventName
+    partial class AbstractEvent implements \Psr\EventDispatcher\StoppableEventInterface;
+
+    /**
+     * Overlay: drop `extends EventDispatcher` — league/event is STOP (no invented APIs).
+     */
+    // @overlay-against: class EventEmitter extends \League\Event\EventDispatcher
+    final class EventEmitter {
+        // @overlay-against: function addListener(string $event, callable $listener, int $priority): self
+        public function addListener(string $event, callable $listener, int $priority = 0): self;
+
+        // @overlay-against: function emit(object $event): object
+        public function emit(object $event): object;
+    }
+}
+
+namespace League\OAuth2\Server\Grant {
+    /**
+     * Overlay: client credentials are a two-slot username/password tuple.
+     */
+    // @overlay-against: class AbstractGrant implements \League\OAuth2\Server\Grant\GrantTypeInterface, \League\OAuth2\Server\EventEmitting\EmitterAwarePolyfill, \League\OAuth2\Server\CryptTrait
+    partial class AbstractGrant {
+        /**
+         * @return array{0: string|null, 1: string|null}
+         */
+        // @overlay-against: function getBasicAuthCredentials(\Psr\Http\Message\ServerRequestInterface $request): array
+        protected function getBasicAuthCredentials(\Psr\Http\Message\ServerRequestInterface $request): array<int, string|null>;
+
+        /**
+         * @return array{0: string|null, 1: string|null}
+         */
+        // @overlay-against: function getClientCredentials(\Psr\Http\Message\ServerRequestInterface $request): array
+        protected function getClientCredentials(\Psr\Http\Message\ServerRequestInterface $request): array<int, string|null>;
+
+        /**
+         * @param string|array<int|string, string>|null $scopes
+         */
+        // @overlay-against: function validateScopes(string|array|null $scopes, ?string $redirectUri): array
+        public function validateScopes(string|array<int|string, string>|null $scopes, ?string $redirectUri = null): array<int, \League\OAuth2\Server\Entities\ScopeEntityInterface>;
+    }
+}
+
+namespace League\OAuth2\Server\Middleware {
+    /**
+     * Overlay: `$next` is Slim-style `(request, response) => response`.
+     */
+    // @overlay-against: class AuthorizationServerMiddleware
+    partial class AuthorizationServerMiddleware {
+        // @overlay-against: function __invoke(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, callable $next): \Psr\Http\Message\ResponseInterface
+        public function __invoke(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, callable(\Psr\Http\Message\ServerRequestInterface, \Psr\Http\Message\ResponseInterface): \Psr\Http\Message\ResponseInterface $next): \Psr\Http\Message\ResponseInterface;
+    }
+
+    /**
+     * Overlay: `$next` is Slim-style `(request, response) => response`.
+     */
+    // @overlay-against: class ResourceServerMiddleware
+    partial class ResourceServerMiddleware {
+        // @overlay-against: function __invoke(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, callable $next): \Psr\Http\Message\ResponseInterface
+        public function __invoke(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, callable(\Psr\Http\Message\ServerRequestInterface, \Psr\Http\Message\ResponseInterface): \Psr\Http\Message\ResponseInterface $next): \Psr\Http\Message\ResponseInterface;
+    }
+}
+
+namespace League\OAuth2\Server\RedirectUriValidators {
+    /**
+     * Overlay: allowed URIs are a string or list of strings.
+     */
+    // @overlay-against: class RedirectUriValidator implements \League\OAuth2\Server\RedirectUriValidators\RedirectUriValidatorInterface
+    partial class RedirectUriValidator {
+        /**
+         * @param array<int|string, string>|string $allowedRedirectUris
+         */
+        // @overlay-against: function __construct(array|string $allowedRedirectUris): void
+        public function __construct(array<int|string, string>|string $allowedRedirectUris): void;
+    }
+}
+
+namespace League\OAuth2\Server\Entities {
+    // @overlay-against: interface ClientEntityInterface
+    partial interface ClientEntityInterface {
+        // @overlay-against: function getRedirectUri(): string|array
+        public function getRedirectUri(): string|array<int, string>;
+    }
+}
+
+namespace League\OAuth2\Server\Entities\Traits {
+    // @overlay-against: trait ClientTrait
+    partial trait ClientTrait {
+        // @overlay-against: string|array $redirectUri
+        protected string|array<int, string> $redirectUri;
+        // @overlay-against: function getRedirectUri(): string|array
+        public function getRedirectUri(): string|array<int, string>;
+    }
+}

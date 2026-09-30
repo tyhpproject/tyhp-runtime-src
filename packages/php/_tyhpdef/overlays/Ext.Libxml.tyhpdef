@@ -1,0 +1,65 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * Libxml signature enrichments: entity-loader callable/context shape and
+ * `LibXMLError::$level`. Not Pure.
+ */
+
+/**
+ * Overlay: `$context` passed to `libxml_set_external_entity_loader()` resolvers.
+ * PHP always provides these four keys; values are null when unused.
+ */
+type LibxmlEntityLoaderContext = struct {
+    ?string $directory;
+    ?string $intSubName;
+    ?string $extSubURI;
+    ?string $extSubSystem;
+};
+
+/**
+ * Overlay: resolver installed by `libxml_set_external_entity_loader()`.
+ * Return a stream resource, a path/URI string, or null to fail resolution.
+ */
+type LibxmlEntityLoader = callable(string|null, string, LibxmlEntityLoaderContext): resource|string|null;
+
+/**
+ * Overlay: `LibXMLError::$level` (`LIBXML_ERR_NONE`…`FATAL`).
+ */
+type LibxmlErrorLevel = 0|1|2|3;
+
+/**
+ * Overlay: installed resolver, or null when the default loader is in use.
+ *
+ * @return ?LibxmlEntityLoader Current loader.
+ */
+// @overlay-against: function libxml_get_external_entity_loader(): ?callable
+function libxml_get_external_entity_loader(): ?LibxmlEntityLoader;
+
+declare(php="<8.5") {
+    /**
+     * Overlay: typed entity-loader callable. PHP `<8.5` returns `bool` (always true).
+     *
+     * @param ?LibxmlEntityLoader $resolver_function Loader, or null to restore the default.
+     * @return bool Always true.
+     */
+    // @overlay-against: function libxml_set_external_entity_loader(?callable $resolver_function): bool
+    function libxml_set_external_entity_loader(?LibxmlEntityLoader $resolver_function): bool;
+}
+
+declare(php=">=8.5") {
+    /**
+     * Overlay: typed entity-loader callable. PHP `>=8.5` returns `true`.
+     *
+     * @param ?LibxmlEntityLoader $resolver_function Loader, or null to restore the default.
+     * @return true Always true.
+     */
+    // @overlay-against: function libxml_set_external_entity_loader(?callable $resolver_function): true
+    function libxml_set_external_entity_loader(?LibxmlEntityLoader $resolver_function): true;
+}
+
+// @overlay-against: class LibXMLError
+partial class LibXMLError {
+    // @overlay-against: int $level
+    public LibxmlErrorLevel $level;
+}

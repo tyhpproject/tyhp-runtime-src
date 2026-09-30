@@ -1,0 +1,182 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * Cookie-param structs, `session_start()` options, and `session_set_save_handler`
+ * object + callable overloads.
+ */
+
+declare(php="<8.5") {
+    /**
+     * Overlay: `session_get_cookie_params()` return (PHP < 8.5, no `partitioned`).
+     */
+    type SessionCookieParams = struct {
+        int $lifetime;
+        string $path;
+        string $domain;
+        bool $secure;
+        bool $httponly;
+        string $samesite;
+    };
+
+    /**
+     * Overlay: `session_set_cookie_params()` array form (PHP < 8.5).
+     */
+    type SessionCookieOptions = struct {
+        ?int $lifetime;
+        ?string $path;
+        ?string $domain;
+        ?bool $secure;
+        ?bool $httponly;
+        ?string $samesite;
+    };
+
+    /**
+     * Overlay: `session_start()` `$options` (no `session.` prefix). PHP < 8.5.
+     */
+    type SessionStartOptions = struct {
+        ?int $cache_expire;
+        ?string $cache_limiter;
+        ?string $cookie_domain;
+        ?bool $cookie_httponly;
+        ?int $cookie_lifetime;
+        ?string $cookie_path;
+        ?string $cookie_samesite;
+        ?bool $cookie_secure;
+        ?int $gc_divisor;
+        ?int $gc_maxlifetime;
+        ?int $gc_probability;
+        ?bool $lazy_write;
+        ?string $name;
+        ?bool $read_and_close;
+        ?string $referer_check;
+        ?string $save_handler;
+        ?string $save_path;
+        ?string $serialize_handler;
+        ?int $sid_bits_per_character;
+        ?int $sid_length;
+        ?string $trans_sid_hosts;
+        ?string $trans_sid_tags;
+        ?bool $use_cookies;
+        ?bool $use_only_cookies;
+        ?bool $use_strict_mode;
+        ?bool $use_trans_sid;
+    };
+}
+
+declare(php=">=8.5") {
+    /**
+     * Overlay: `session_get_cookie_params()` return. PHP 8.5 adds `partitioned`.
+     */
+    type SessionCookieParams = struct {
+        int $lifetime;
+        string $path;
+        string $domain;
+        bool $secure;
+        bool $partitioned;
+        bool $httponly;
+        string $samesite;
+    };
+
+    /**
+     * Overlay: `session_set_cookie_params()` array form. PHP 8.5 adds `partitioned`.
+     */
+    type SessionCookieOptions = struct {
+        ?int $lifetime;
+        ?string $path;
+        ?string $domain;
+        ?bool $secure;
+        ?bool $partitioned;
+        ?bool $httponly;
+        ?string $samesite;
+    };
+
+    /**
+     * Overlay: `session_start()` `$options`. PHP 8.5 adds `cookie_partitioned`.
+     */
+    type SessionStartOptions = struct {
+        ?int $cache_expire;
+        ?string $cache_limiter;
+        ?string $cookie_domain;
+        ?bool $cookie_httponly;
+        ?int $cookie_lifetime;
+        ?bool $cookie_partitioned;
+        ?string $cookie_path;
+        ?string $cookie_samesite;
+        ?bool $cookie_secure;
+        ?int $gc_divisor;
+        ?int $gc_maxlifetime;
+        ?int $gc_probability;
+        ?bool $lazy_write;
+        ?string $name;
+        ?bool $read_and_close;
+        ?string $referer_check;
+        ?string $save_handler;
+        ?string $save_path;
+        ?string $serialize_handler;
+        ?int $sid_bits_per_character;
+        ?int $sid_length;
+        ?string $trans_sid_hosts;
+        ?string $trans_sid_tags;
+        ?bool $use_cookies;
+        ?bool $use_only_cookies;
+        ?bool $use_strict_mode;
+        ?bool $use_trans_sid;
+    };
+}
+
+type SessionCloseCallback = callable(): bool;
+type SessionCreateSidCallback = callable(): string;
+type SessionDestroyCallback = callable(string): bool;
+type SessionGcCallback = callable(int): int|bool;
+type SessionOpenCallback = callable(string, string): bool;
+type SessionReadCallback = callable(string): string;
+type SessionUpdateTimestampCallback = callable(string, string): bool;
+type SessionValidateSidCallback = callable(string): bool;
+type SessionWriteCallback = callable(string, string): bool;
+
+// @overlay-against: function session_get_cookie_params(): array
+function session_get_cookie_params(): SessionCookieParams;
+
+// @overlay-against: function session_set_cookie_params(array|int $lifetime_or_options, ?string $path, ?string $domain, ?bool $secure, ?bool $httponly): bool
+function session_set_cookie_params(SessionCookieOptions $lifetime_or_options): bool;
+// @overlay-against: function session_set_cookie_params(array|int $lifetime_or_options, ?string $path, ?string $domain, ?bool $secure, ?bool $httponly): bool
+function session_set_cookie_params(int $lifetime_or_options, ?string $path = null, ?string $domain = null, ?bool $secure = null, ?bool $httponly = null): bool;
+
+// @overlay-against: function session_start(array $options): bool
+function session_start(SessionStartOptions $options = []): bool;
+
+declare(php="<8.3") {
+    // @overlay-against: function session_set_save_handler(mixed $open, mixed $close, callable $read, callable $write, callable $destroy, callable $gc, callable $create_sid, callable $validate_sid, callable $update_timestamp): bool
+    function session_set_save_handler(\SessionHandlerInterface $open, bool $close = true): bool;
+    // @overlay-against: function session_set_save_handler(mixed $open, mixed $close, callable $read, callable $write, callable $destroy, callable $gc, callable $create_sid, callable $validate_sid, callable $update_timestamp): bool
+    function session_set_save_handler(
+        SessionOpenCallback $open,
+        SessionCloseCallback $close,
+        SessionReadCallback $read,
+        SessionWriteCallback $write,
+        SessionDestroyCallback $destroy,
+        SessionGcCallback $gc,
+        ?SessionCreateSidCallback $create_sid = null,
+        ?SessionValidateSidCallback $validate_sid = null,
+        ?SessionUpdateTimestampCallback $update_timestamp = null
+    ): bool;
+}
+
+declare(php=">=8.3") {
+    // @overlay-against: function session_set_save_handler(mixed $open, mixed $close, callable $read, callable $write, callable $destroy, callable $gc, ?callable $create_sid, ?callable $validate_sid, ?callable $update_timestamp): bool
+    function session_set_save_handler(\SessionHandlerInterface $open, bool $close = true): bool;
+    // @overlay-against: function session_set_save_handler(mixed $open, mixed $close, callable $read, callable $write, callable $destroy, callable $gc, ?callable $create_sid, ?callable $validate_sid, ?callable $update_timestamp): bool
+    function session_set_save_handler(
+        SessionOpenCallback $open,
+        SessionCloseCallback $close,
+        SessionReadCallback $read,
+        SessionWriteCallback $write,
+        SessionDestroyCallback $destroy,
+        SessionGcCallback $gc,
+        ?SessionCreateSidCallback $create_sid = null,
+        ?SessionValidateSidCallback $validate_sid = null,
+        ?SessionUpdateTimestampCallback $update_timestamp = null
+    ): bool;
+}

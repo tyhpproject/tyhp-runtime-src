@@ -1,0 +1,216 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * PHPDoc `boolean`/`integer` spellings, option maps, and grant class-strings from the PHP source.
+ */
+
+namespace League\OAuth2\Client\Grant {
+    /**
+     * Overlay: `isGrant()` takes a grant class-string.
+     */
+    // @overlay-against: class GrantFactory
+    partial class GrantFactory {
+        /**
+         * @param \__ClassName<\League\OAuth2\Client\Grant\AbstractGrant>|string $class
+         */
+        // @overlay-against: function isGrant(mixed $class): boolean
+        public function isGrant(\__ClassName<\League\OAuth2\Client\Grant\AbstractGrant>|string $class): bool;
+    }
+
+    /**
+     * Overlay: grant option maps are string-keyed.
+     */
+    // @overlay-against: class AbstractGrant implements \League\OAuth2\Client\Tool\RequiredParameterTrait
+    partial class AbstractGrant {
+        /**
+         * @param array<string, mixed> $defaults
+         * @param array<string, mixed> $options
+         * @return array<string, mixed>
+         */
+        // @overlay-against: function prepareRequestParameters(array $defaults, array $options): array
+        public function prepareRequestParameters(array<string, mixed> $defaults, array<string, mixed> $options): array<string, mixed>;
+    }
+}
+
+namespace League\OAuth2\Client\OptionProvider {
+    /**
+     * Access-token request options: `headers` is always set; `body` is set only for POST.
+     */
+    type AccessTokenRequestOptions = struct {
+        array<string, string> $headers;
+        ?string $body;
+    };
+
+    /**
+     * Overlay: reads `client_id` and `client_secret`, then forwards every other key.
+     * Those values are not pinned, so the map stays `array<string, mixed>`.
+     */
+    // @overlay-against: class HttpBasicAuthOptionProvider extends \League\OAuth2\Client\OptionProvider\PostAuthOptionProvider
+    partial class HttpBasicAuthOptionProvider {
+        // @overlay-against: function getAccessTokenOptions(mixed $method, array $params): mixed
+        public function getAccessTokenOptions(string $method, array<string, mixed> $params): \League\OAuth2\Client\OptionProvider\AccessTokenRequestOptions;
+    }
+
+    /**
+     * Overlay: the body builds `headers` and, for POST, `body`.
+     */
+    // @overlay-against: class PostAuthOptionProvider implements \League\OAuth2\Client\OptionProvider\OptionProviderInterface, \League\OAuth2\Client\Tool\QueryBuilderTrait
+    partial class PostAuthOptionProvider {
+        // @overlay-against: function getAccessTokenOptions(mixed $method, array $params): mixed
+        public function getAccessTokenOptions(string $method, array $params): \League\OAuth2\Client\OptionProvider\AccessTokenRequestOptions;
+    }
+}
+
+namespace League\OAuth2\Client\Provider {
+    /**
+     * Overlay: constructor/auth option maps; redirect limit is `int`.
+     */
+    // @overlay-against: class AbstractProvider implements \League\OAuth2\Client\Tool\ArrayAccessorTrait, \League\OAuth2\Client\Tool\GuardedPropertyTrait, \League\OAuth2\Client\Tool\QueryBuilderTrait
+    partial class AbstractProvider {
+        /**
+         * @param array<string, mixed> $options
+         * @param array<string, mixed> $collaborators
+         */
+        // @overlay-against: function __construct(array $options, array $collaborators): void
+        public function __construct(array<string, mixed> $options = [], array<string, mixed> $collaborators = []): void;
+
+        // @overlay-against: function authorize(array $options, callable|null $redirectHandler): mixed
+        public function authorize(array $options = [], (callable(string, \League\OAuth2\Client\Provider\AbstractProvider): mixed)|null $redirectHandler = null): mixed;
+
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function getAccessToken(mixed $grant, array $options): \League\OAuth2\Client\Token\AccessTokenInterface
+        public function getAccessToken(mixed $grant, array<string, mixed> $options = []): \League\OAuth2\Client\Token\AccessTokenInterface;
+
+        // @overlay-against: function getAllowedClientOptions(array $options): array
+        protected function getAllowedClientOptions(array<string, mixed> $options): array<int, string>;
+
+        /**
+         * @param array<string, mixed> $options
+         * @return array<string, mixed>
+         */
+        // @overlay-against: function getAuthorizationParameters(array $options): array
+        protected function getAuthorizationParameters(array<string, mixed> $options): array<string, mixed>;
+
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function getAuthorizationUrl(array $options): string
+        public function getAuthorizationUrl(array<string, mixed> $options = []): string;
+    }
+
+    /**
+     * Overlay: GenericProvider constructor options are the same map.
+     */
+    // @overlay-against: class GenericProvider extends \League\OAuth2\Client\Provider\AbstractProvider implements \League\OAuth2\Client\Tool\BearerAuthorizationTrait
+    partial class GenericProvider {
+        /**
+         * @param array<string, mixed> $options
+         * @param array<string, mixed> $collaborators
+         */
+        // @overlay-against: function __construct(array $options, array $collaborators): void
+        public function __construct(array<string, mixed> $options = [], array<string, mixed> $collaborators = []): void;
+
+        // @overlay-against: function checkResponse(\Psr\Http\Message\ResponseInterface $response, mixed $data): mixed
+        protected function checkResponse(\Psr\Http\Message\ResponseInterface $response, array<string, mixed> $data): mixed;
+
+        // @overlay-against: function createResourceOwner(array $response, \League\OAuth2\Client\Token\AccessToken $token): mixed
+        protected function createResourceOwner(array $response, \League\OAuth2\Client\Token\AccessToken $token): \League\OAuth2\Client\Provider\GenericResourceOwner;
+    }
+}
+
+namespace League\OAuth2\Client\Token {
+    /**
+     * Overlay: PHPDoc `integer`/`boolean` are `int`/`bool`; option maps are string-keyed.
+     */
+    // @overlay-against: class AccessToken implements \League\OAuth2\Client\Token\AccessTokenInterface, \League\OAuth2\Client\Token\ResourceOwnerAccessTokenInterface, \League\OAuth2\Client\Token\SettableRefreshTokenInterface
+    partial class AccessToken {
+        /**
+         * @param array<string, mixed> $options
+         */
+        // @overlay-against: function __construct(array $options): void
+        public function __construct(array<string, mixed> $options = []): void;
+
+        // @overlay-against: function getExpires(): mixed
+        public function getExpires(): ?int;
+
+        // @overlay-against: function getRefreshToken(): mixed
+        public function getRefreshToken(): ?string;
+
+        // @overlay-against: function getResourceOwnerId(): mixed
+        public function getResourceOwnerId(): ?string;
+
+        // @overlay-against: function getToken(): mixed
+        public function getToken(): string;
+
+        /**
+         * @return array<string, mixed>
+         */
+        // @overlay-against: function getValues(): mixed
+        public function getValues(): array<string, mixed>;
+
+        // @overlay-against: function hasExpired(): mixed
+        public function hasExpired(): bool;
+
+        // @overlay-against: function isExpirationTimestamp(integer $value): bool
+        protected function isExpirationTimestamp(int $value): bool;
+
+        // @overlay-against: function jsonSerialize(): mixed
+        public function jsonSerialize(): array<string, mixed>;
+
+        // @overlay-against: function setRefreshToken(mixed $refreshToken): mixed
+        public function setRefreshToken(?string $refreshToken): void;
+
+        // @overlay-against: function __toString(): mixed
+        public function __toString(): string;
+    }
+
+    /**
+     * Overlay: interface PHPDoc `integer`/`boolean` are `int`/`bool`.
+     */
+    // @overlay-against: interface AccessTokenInterface
+    partial interface AccessTokenInterface {
+        // @overlay-against: function getExpires(): integer|null
+        public function getExpires(): ?int;
+
+        /**
+         * @return array<string, mixed>
+         */
+        // @overlay-against: function getValues(): array
+        public function getValues(): array<string, mixed>;
+
+        // @overlay-against: function hasExpired(): boolean
+        public function hasExpired(): bool;
+
+        // @overlay-against: function jsonSerialize(): array
+        public function jsonSerialize(): array<string, mixed>;
+    }
+}
+
+namespace League\OAuth2\Client\Tool {
+    /**
+     * Overlay: MAC timestamp is `int`.
+     */
+    // @overlay-against: trait MacAuthorizationTrait
+    partial trait MacAuthorizationTrait {
+        // @overlay-against: function getMacSignature(string $id, integer $ts, string $nonce): string
+        protected abstract function getMacSignature(string $id, int $ts, string $nonce): string;
+    }
+
+    /**
+     * Overlay: redirect limit is `int`; `isRedirect` is `bool`.
+     */
+    // @overlay-against: trait ProviderRedirectTrait
+    partial trait ProviderRedirectTrait {
+        // @overlay-against: function getRedirectLimit(): integer
+        public function getRedirectLimit(): int;
+
+        // @overlay-against: function isRedirect(\Psr\Http\Message\ResponseInterface $response): boolean
+        protected function isRedirect(\Psr\Http\Message\ResponseInterface $response): bool;
+
+        // @overlay-against: function setRedirectLimit(integer $limit): \League\OAuth2\Client\Provider\AbstractProvider
+        public function setRedirectLimit(int $limit): \League\OAuth2\Client\Provider\AbstractProvider;
+    }
+}

@@ -1,0 +1,762 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Cache {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class CacheItem implements \Symfony\Contracts\Cache\ItemInterface {
+        protected string $key;
+        protected mixed $value ?? null;
+        protected bool $isHit ?? false;
+        protected float|int|null $expiry ?? null;
+        protected array $metadata ?? [];
+        protected array $newMetadata ?? [];
+        protected ?\Psr\Cache\CacheItemInterface $innerItem ?? null;
+        protected ?string $poolHash ?? null;
+        protected bool $isTaggable ?? false;
+        public function getKey(): string;
+        public function get(): mixed;
+        public function isHit(): bool;
+        /**
+        * @return static
+        * @generated
+        */
+        public function set(mixed $value): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function expiresAt(?\DateTimeInterface $expiration): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function expiresAfter(mixed $time): static;
+        public function tag(mixed $tags): static;
+        public function getMetadata(): array;
+        /**
+        * Validates a cache key according to PSR-6.
+        *
+        * @param mixed $key The key to validate
+        * @throws InvalidArgumentException When $key is not valid
+        * @generated
+        */
+        public static function validateKey(mixed $key): string;
+    }
+    /**
+    * LockRegistry is used internally by existing adapters to protect against cache stampede.
+    *
+    * It does so by wrapping the computation of items in a pool of locks.
+    * Foreach each apps, there can be at most 20 concurrent processes that
+    * compute items at the same time and only one per cache-key.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class LockRegistry {
+        /**
+        * Defines a set of existing files that will be used as keys to acquire locks.
+        *
+        * @param array<int, string> $files A list of existing files
+        * @return array<int, string> The previously defined set of files
+        * @generated
+        */
+        public static function setFiles(array<int, string> $files): array<int, string>;
+        public static function compute(callable $callback, \Symfony\Contracts\Cache\ItemInterface $item, bool &$save, \Symfony\Contracts\Cache\CacheInterface $pool, ?\Closure $setMetadata = null, ?\Psr\Log\LoggerInterface $logger = null, ?float $beta = null): mixed;
+    }
+    /**
+    * Interface extends psr-6 and psr-16 caches to allow for pruning (deletion) of all expired cache items.
+    *
+    * @generated
+    */
+    interface PruneableInterface {
+        public function prune(): bool;
+    }
+    /**
+    * Resets a pool's local state.
+    *
+    * @generated
+    */
+    interface ResettableInterface extends \Symfony\Contracts\Service\ResetInterface {
+    }
+}
+namespace Symfony\Component\Cache\Adapter {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    abstract class AbstractAdapter implements \Symfony\Component\Cache\Adapter\AdapterInterface, \Symfony\Contracts\Cache\CacheInterface, \Symfony\Contracts\Cache\NamespacedPoolInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Component\Cache\ResettableInterface {
+        use \Symfony\Component\Cache\Traits\AbstractAdapterTrait, \Symfony\Component\Cache\Traits\ContractsTrait;
+        protected function __construct(string $namespace = '', int $defaultLifetime = 0): void;
+        /**
+        * Returns the best possible adapter that your runtime supports.
+        *
+        * Using ApcuAdapter makes system caches compatible with read-only filesystems.
+        *
+        * @generated
+        */
+        public static function createSystemCache(string $namespace, int $defaultLifetime, string $version, string $directory, ?\Psr\Log\LoggerInterface $logger = null): \Symfony\Component\Cache\Adapter\AdapterInterface;
+        public static function createConnection(string $dsn, array $options = []): mixed;
+        public function commit(): bool;
+    }
+    /**
+    * Interface for adapters managing instances of Symfony's CacheItem.
+    *
+    * @author Kévin Dunglas <dunglas@gmail.com>
+    * @generated
+    */
+    interface AdapterInterface extends \Psr\Cache\CacheItemPoolInterface {
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        /**
+        * @return iterable<string, \Symfony\Component\Cache\CacheItem>
+        * @generated
+        */
+        public function getItems(array $keys = []): iterable<string, \Symfony\Component\Cache\CacheItem>;
+        public function clear(string $prefix = ''): bool;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class ApcuAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter {
+        /**
+        * @throws CacheException if APCu is not enabled
+        * @generated
+        */
+        public function __construct(string $namespace = '', int $defaultLifetime = 0, ?string $version = null, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public static function isSupported(): bool;
+        protected function doFetch(array $ids): iterable;
+        protected function doHave(string $id): bool;
+        protected function doClear(string $namespace): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doSave(array $values, int $lifetime): array|bool;
+    }
+    /**
+    * An in-memory cache storage.
+    *
+    * Acts as a least-recently-used (LRU) storage when configured with a maximum number of items.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class ArrayAdapter implements \Symfony\Component\Cache\Adapter\AdapterInterface, \Symfony\Contracts\Cache\CacheInterface, \Symfony\Contracts\Cache\NamespacedPoolInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Component\Cache\ResettableInterface {
+        use \Psr\Log\LoggerAwareTrait;
+        /**
+        * @param bool $storeSerialized Disabling serialization can lead to cache corruptions when storing mutable values but increases performance otherwise
+        * @generated
+        */
+        public function __construct(int $defaultLifetime = 0, bool $storeSerialized = true, float $maxLifetime = 0, int $maxItems = 0, ?\Psr\Clock\ClockInterface $clock = null): void;
+        public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed;
+        public function delete(string $key): bool;
+        public function hasItem(mixed $key): bool;
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        public function getItems(array $keys = []): iterable;
+        public function deleteItem(mixed $key): bool;
+        public function deleteItems(array $keys): bool;
+        public function save(\Psr\Cache\CacheItemInterface $item): bool;
+        public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool;
+        public function commit(): bool;
+        public function clear(string $prefix = ''): bool;
+        public function withSubNamespace(string $namespace): static;
+        /**
+        * Returns all cached values, with cache miss as null.
+        *
+        * @generated
+        */
+        public function getValues(): array;
+        public function reset(): void;
+        public function __clone(): mixed;
+    }
+    /**
+    * Chains several adapters together.
+    *
+    * Cached items are fetched from the first adapter having them in its data store.
+    * They are saved and deleted in all adapters at once.
+    *
+    * @author Kévin Dunglas <dunglas@gmail.com>
+    * @generated
+    */
+    class ChainAdapter implements \Symfony\Component\Cache\Adapter\AdapterInterface, \Symfony\Contracts\Cache\CacheInterface, \Symfony\Contracts\Cache\NamespacedPoolInterface, \Symfony\Component\Cache\PruneableInterface, \Symfony\Component\Cache\ResettableInterface {
+        use \Symfony\Component\Cache\Traits\ContractsTrait;
+        /**
+        * @param array<int, \Psr\Cache\CacheItemPoolInterface> $adapters The ordered list of adapters used to fetch cached items
+        * @param int $defaultLifetime The default lifetime of items propagated from lower adapters to upper ones
+        * @generated
+        */
+        public function __construct(array<int, \Psr\Cache\CacheItemPoolInterface> $adapters, int $defaultLifetime = 0): void;
+        public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed;
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        public function getItems(array $keys = []): iterable;
+        public function hasItem(mixed $key): bool;
+        public function clear(string $prefix = ''): bool;
+        public function deleteItem(mixed $key): bool;
+        public function deleteItems(array $keys): bool;
+        public function save(\Psr\Cache\CacheItemInterface $item): bool;
+        public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool;
+        public function commit(): bool;
+        public function prune(): bool;
+        public function withSubNamespace(string $namespace): static;
+        public function reset(): void;
+    }
+    /**
+    * @author Antonio Jose Cerezo Aranda <aj.cerezo@gmail.com>
+    * @deprecated since Symfony 7.1, use {@see CouchbaseCollectionAdapter} instead
+    * @generated
+    */
+    deprecated class CouchbaseBucketAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter {
+        public function __construct(\CouchbaseBucket $bucket, string $namespace = '', int $defaultLifetime = 0, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public static function createConnection(array|string $servers, array $options = []): \CouchbaseBucket;
+        public static function isSupported(): bool;
+        protected function doFetch(array $ids): iterable;
+        protected function doHave(string $id): bool;
+        protected function doClear(string $namespace): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doSave(array $values, int $lifetime): array|bool;
+    }
+    /**
+    * @author Antonio Jose Cerezo Aranda <aj.cerezo@gmail.com>
+    * @generated
+    */
+    class CouchbaseCollectionAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter {
+        public function __construct(\Couchbase\Collection $connection, string $namespace = '', int $defaultLifetime = 0, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public static function createConnection(array|string $dsn, array $options = []): \Couchbase\Bucket|\Couchbase\Collection;
+        public static function isSupported(): bool;
+        protected function doFetch(array $ids): array;
+        protected function doHave(mixed $id): bool;
+        protected function doClear(mixed $namespace): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doSave(array $values, mixed $lifetime): array|bool;
+    }
+    class DoctrineDbalAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter implements \Symfony\Component\Cache\PruneableInterface {
+        /**
+        * You can either pass an existing database Doctrine DBAL Connection or
+        *
+        * a DSN string that will be used to connect to the database.
+        * 
+        * The cache table is created automatically when possible.
+        * Otherwise, use the createTable() method.
+        * 
+        * List of available options:
+        *  * db_table: The name of the table [default: cache_items]
+        *  * db_id_col: The column where to store the cache id [default: item_id]
+        *  * db_data_col: The column where to store the cache data [default: item_data]
+        *  * db_lifetime_col: The column where to store the lifetime [default: item_lifetime]
+        *  * db_time_col: The column where to store the timestamp [default: item_time]
+        *
+        * @throws InvalidArgumentException When namespace contains invalid characters
+        * @generated
+        */
+        public function __construct(\Doctrine\DBAL\Connection|string $connOrDsn, string $namespace = '', int $defaultLifetime = 0, array $options = [], ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        /**
+        * Creates the table to store cache items which can be called once for setup.
+        *
+        * Cache ID are saved in a column of maximum length 255. Cache data is
+        * saved in a BLOB.
+        *
+        * @throws DBALException When the table already exists
+        * @generated
+        */
+        public function createTable(): void;
+        /**
+        * @return \Doctrine\DBAL\Schema\Schema The (possibly new) schema with the table added
+        * @generated
+        */
+        public function configureSchema(\Doctrine\DBAL\Schema\Schema $schema, \Doctrine\DBAL\Connection $forConnection, \Closure $isSameDatabase): \Doctrine\DBAL\Schema\Schema;
+        public function prune(): bool;
+        protected function doFetch(array $ids): iterable;
+        protected function doHave(string $id): bool;
+        protected function doClear(string $namespace): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doSave(array $values, int $lifetime): array|bool;
+    }
+    class FilesystemAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter implements \Symfony\Component\Cache\PruneableInterface {
+        use \Symfony\Component\Cache\Traits\FilesystemTrait;
+        public function __construct(string $namespace = '', int $defaultLifetime = 0, ?string $directory = null, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+    }
+    /**
+    * Stores tag id <> cache id relationship as a symlink, and lookup on invalidation calls.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author André Rømcke <andre.romcke+symfony@gmail.com>
+    * @generated
+    */
+    class FilesystemTagAwareAdapter extends \Symfony\Component\Cache\Adapter\AbstractTagAwareAdapter implements \Symfony\Component\Cache\PruneableInterface {
+        use \Symfony\Component\Cache\Traits\FilesystemTrait;
+        public function __construct(string $namespace = '', int $defaultLifetime = 0, ?string $directory = null, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public function prune(): bool;
+        protected function doClear(string $namespace): bool;
+        protected function doSave(array $values, int $lifetime, array $addTagData = [], array $removeTagData = []): array;
+        protected function doDeleteYieldTags(array $ids): iterable;
+        protected function doDeleteTagRelations(array $tagData): bool;
+        protected function doInvalidate(array $tagIds): bool;
+    }
+    /**
+    * @author Rob Frawley 2nd <rmf@src.run>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class MemcachedAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter {
+        /**
+        * Using a MemcachedAdapter with a TagAwareAdapter for storing tags is discouraged.
+        *
+        * Using a RedisAdapter is recommended instead. If you cannot do otherwise, be aware that:
+        * - the Memcached::OPT_BINARY_PROTOCOL must be enabled
+        *   (that's the default when using MemcachedAdapter::createConnection());
+        * - tags eviction by Memcached's LRU algorithm will break by-tags invalidation;
+        *   your Memcached memory should be large enough to never trigger LRU.
+        * 
+        * Using a MemcachedAdapter as a pure items store is fine.
+        *
+        * @generated
+        */
+        public function __construct(\Memcached $client, string $namespace = '', int $defaultLifetime = 0, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public static function isSupported(): bool;
+        /**
+        * Creates a Memcached instance.
+        *
+        * By default, the binary protocol, no block, and libketama compatible options are enabled.
+        * 
+        * Examples for servers:
+        * - 'memcached://user:pass@localhost?weight=33'
+        * - [['localhost', 11211, 33]]
+        *
+        * @param array|string $servers An array of servers, a DSN, or an array of DSNs
+        * @throws \ErrorException When invalid options or servers are provided
+        * @generated
+        */
+        public static function createConnection(array|string $servers, array $options = []): \Memcached;
+        protected function doSave(array $values, int $lifetime): array|bool;
+        protected function doFetch(array $ids): iterable;
+        protected function doHave(string $id): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doClear(string $namespace): bool;
+    }
+    /**
+    * @author Titouan Galopin <galopintitouan@gmail.com>
+    * @generated
+    */
+    class NullAdapter implements \Symfony\Component\Cache\Adapter\AdapterInterface, \Symfony\Contracts\Cache\CacheInterface, \Symfony\Contracts\Cache\NamespacedPoolInterface, \Symfony\Component\Cache\Adapter\TagAwareAdapterInterface {
+        public function __construct(): void;
+        public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed;
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        public function getItems(array $keys = []): iterable;
+        public function hasItem(mixed $key): bool;
+        public function clear(string $prefix = ''): bool;
+        public function deleteItem(mixed $key): bool;
+        public function deleteItems(array $keys): bool;
+        public function save(\Psr\Cache\CacheItemInterface $item): bool;
+        public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool;
+        public function commit(): bool;
+        public function delete(string $key): bool;
+        public function withSubNamespace(string $namespace): static;
+        public function invalidateTags(array $tags): bool;
+    }
+    /**
+    * @author Lars Strojny <lars@strojny.net>
+    * @generated
+    */
+    final class ParameterNormalizer {
+        public static function normalizeDuration(string $duration): int;
+    }
+    class PdoAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter implements \Symfony\Component\Cache\PruneableInterface {
+        /**
+        * You can either pass an existing database connection as PDO instance or
+        *
+        * a DSN string that will be used to lazy-connect to the database when the
+        * cache is actually used.
+        * 
+        * List of available options:
+        *  * db_table: The name of the table [default: cache_items]
+        *  * db_id_col: The column where to store the cache id [default: item_id]
+        *  * db_data_col: The column where to store the cache data [default: item_data]
+        *  * db_lifetime_col: The column where to store the lifetime [default: item_lifetime]
+        *  * db_time_col: The column where to store the timestamp [default: item_time]
+        *  * db_username: The username when lazy-connect [default: '']
+        *  * db_password: The password when lazy-connect [default: '']
+        *  * db_connection_options: An array of driver-specific connection options [default: []]
+        *
+        * @throws InvalidArgumentException When first argument is not PDO nor Connection nor string
+        * @throws InvalidArgumentException When PDO error mode is not PDO::ERRMODE_EXCEPTION
+        * @throws InvalidArgumentException When namespace contains invalid characters
+        * @generated
+        */
+        public function __construct(\PDO|string $connOrDsn, string $namespace = '', int $defaultLifetime = 0, array $options = [], ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public static function createConnection(string $dsn, array $options = []): \PDO|string;
+        /**
+        * Creates the table to store cache items which can be called once for setup.
+        *
+        * Cache ID are saved in a column of maximum length 255. Cache data is
+        * saved in a BLOB.
+        *
+        * @throws \PDOException    When the table already exists
+        * @throws \DomainException When an unsupported PDO driver is used
+        * @generated
+        */
+        public function createTable(): void;
+        public function prune(): bool;
+        protected function doFetch(array $ids): iterable;
+        protected function doHave(string $id): bool;
+        protected function doClear(string $namespace): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doSave(array $values, int $lifetime): array|bool;
+    }
+    /**
+    * Caches items at warm up time using a PHP array that is stored in shared memory by OPCache since PHP 7.0.
+    *
+    * Warmed up items are read-only and run-time discovered items are cached using a fallback adapter.
+    *
+    * @author Titouan Galopin <galopintitouan@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class PhpArrayAdapter implements \Symfony\Component\Cache\Adapter\AdapterInterface, \Symfony\Contracts\Cache\CacheInterface, \Symfony\Component\Cache\PruneableInterface, \Symfony\Component\Cache\ResettableInterface {
+        use \Symfony\Component\Cache\Traits\ContractsTrait, \Symfony\Component\Cache\Traits\ProxyTrait;
+        /**
+        * @param string $file The PHP file where values are cached
+        * @param \Symfony\Component\Cache\Adapter\AdapterInterface $fallbackPool A pool to fallback on when an item is not hit
+        * @generated
+        */
+        public function __construct(string $file, \Symfony\Component\Cache\Adapter\AdapterInterface $fallbackPool): void;
+        /**
+        * This adapter takes advantage of how PHP stores arrays in its latest versions.
+        *
+        * @param string $file The PHP file were values are cached
+        * @param \Psr\Cache\CacheItemPoolInterface $fallbackPool A pool to fallback on when an item is not hit
+        * @generated
+        */
+        public static function create(string $file, \Psr\Cache\CacheItemPoolInterface $fallbackPool): \Psr\Cache\CacheItemPoolInterface;
+        public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed;
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        public function getItems(array $keys = []): iterable;
+        public function hasItem(mixed $key): bool;
+        public function deleteItem(mixed $key): bool;
+        public function deleteItems(array $keys): bool;
+        public function save(\Psr\Cache\CacheItemInterface $item): bool;
+        public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool;
+        public function commit(): bool;
+        public function clear(string $prefix = ''): bool;
+        /**
+        * Store an array of cached values.
+        *
+        * @param array $values The cached values
+        * @return array<int, string> A list of classes to preload on PHP 7.4+
+        * @generated
+        */
+        public function warmUp(array $values): array<int, string>;
+    }
+    /**
+    * @author Piotr Stankowski <git@trakos.pl>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Rob Frawley 2nd <rmf@src.run>
+    * @generated
+    */
+    class PhpFilesAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter implements \Symfony\Component\Cache\PruneableInterface {
+        use \Symfony\Component\Cache\Traits\FilesystemCommonTrait;
+        /**
+        * @param bool $appendOnly Set to `true` to gain extra performance when the items stored in this pool never expire.
+        *  *                             Doing so is encouraged because it fits perfectly OPcache's memory model.
+        * @throws CacheException if OPcache is not enabled
+        * @generated
+        */
+        public function __construct(string $namespace = '', int $defaultLifetime = 0, ?string $directory = null, bool $appendOnly = false): void;
+        public static function isSupported(): bool;
+        public function prune(): bool;
+        protected function doFetch(array $ids): iterable;
+        protected function doHave(string $id): bool;
+        protected function doSave(array $values, int $lifetime): array|bool;
+        protected function doClear(string $namespace): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doUnlink(string $file): bool;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class ProxyAdapter implements \Symfony\Component\Cache\Adapter\AdapterInterface, \Symfony\Contracts\Cache\NamespacedPoolInterface, \Symfony\Contracts\Cache\CacheInterface, \Symfony\Component\Cache\PruneableInterface, \Symfony\Component\Cache\ResettableInterface {
+        use \Symfony\Component\Cache\Traits\ContractsTrait, \Symfony\Component\Cache\Traits\ProxyTrait;
+        public function __construct(\Psr\Cache\CacheItemPoolInterface $pool, string $namespace = '', int $defaultLifetime = 0): void;
+        public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed;
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        public function getItems(array $keys = []): iterable;
+        public function hasItem(mixed $key): bool;
+        public function clear(string $prefix = ''): bool;
+        public function deleteItem(mixed $key): bool;
+        public function deleteItems(array $keys): bool;
+        public function save(\Psr\Cache\CacheItemInterface $item): bool;
+        public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool;
+        public function commit(): bool;
+        public function withSubNamespace(string $namespace): static;
+    }
+    /**
+    * Turns a PSR-16 cache into a PSR-6 one.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class Psr16Adapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter implements \Symfony\Component\Cache\PruneableInterface, \Symfony\Component\Cache\ResettableInterface {
+        use \Symfony\Component\Cache\Traits\ProxyTrait;
+        public function __construct(\Psr\SimpleCache\CacheInterface $pool, string $namespace = '', int $defaultLifetime = 0): void;
+        protected function doFetch(array $ids): iterable;
+        protected function doHave(string $id): bool;
+        protected function doClear(string $namespace): bool;
+        protected function doDelete(array $ids): bool;
+        protected function doSave(array $values, int $lifetime): array|bool;
+    }
+    class RedisAdapter extends \Symfony\Component\Cache\Adapter\AbstractAdapter {
+        use \Symfony\Component\Cache\Traits\RedisTrait;
+        public function __construct(\Redis|\RedisArray|\RedisCluster|\Predis\ClientInterface|\Relay\Relay|\Relay\Cluster $redis, string $namespace = '', int $defaultLifetime = 0, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+    }
+    /**
+    * Stores tag id <> cache id relationship as a Redis Set.
+    *
+    * Set (tag relation info) is stored without expiry (non-volatile), while cache always gets an expiry (volatile) even
+    * if not set by caller. Thus if you configure redis with the right eviction policy you can be safe this tag <> cache
+    * relationship survives eviction (cache cleanup when Redis runs out of memory).
+    * 
+    * Redis server 2.8+ with any `volatile-*` eviction policy, OR `noeviction` if you're sure memory will NEVER fill up
+    * 
+    * Design limitations:
+    *  - Max 4 billion cache keys per cache tag as limited by Redis Set datatype.
+    *    E.g. If you use a "all" items tag for expiry instead of clear(), that limits you to 4 billion cache items also.
+    *
+    * @see https://redis.io/topics/lru-cache#eviction-policies Documentation for Redis eviction policies.
+    * @see https://redis.io/topics/data-types#sets Documentation for Redis Set datatype.
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author André Rømcke <andre.romcke+symfony@gmail.com>
+    * @generated
+    */
+    class RedisTagAwareAdapter extends \Symfony\Component\Cache\Adapter\AbstractTagAwareAdapter {
+        use \Symfony\Component\Cache\Traits\RedisTrait;
+        public function __construct(\Redis|\Relay\Relay|\Relay\Cluster|\RedisArray|\RedisCluster|\Predis\ClientInterface $redis, string $namespace = '', int $defaultLifetime = 0, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        protected function doSave(array $values, int $lifetime, array $addTagData = [], array $delTagData = []): array;
+        protected function doDeleteYieldTags(array $ids): iterable;
+        protected function doDeleteTagRelations(array $tagData): bool;
+        protected function doInvalidate(array $tagIds): bool;
+    }
+    /**
+    * Implements simple and robust tag-based invalidation suitable for use with volatile caches.
+    *
+    * This adapter works by storing a version for each tags. When saving an item, it is stored together with its tags and
+    * their corresponding versions. When retrieving an item, those tag versions are compared to the current version of
+    * each tags. Invalidation is achieved by deleting tags, thereby ensuring that their versions change even when the
+    * storage is out of space. When versions of non-existing tags are requested for item commits, this adapter assigns a
+    * new random version to them.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Sergey Belyshkin <sbelyshkin@gmail.com>
+    * @generated
+    */
+    class TagAwareAdapter implements \Symfony\Component\Cache\Adapter\TagAwareAdapterInterface, \Symfony\Contracts\Cache\TagAwareCacheInterface, \Symfony\Contracts\Cache\NamespacedPoolInterface, \Symfony\Component\Cache\PruneableInterface, \Symfony\Component\Cache\ResettableInterface, \Psr\Log\LoggerAwareInterface {
+        use \Symfony\Component\Cache\Traits\ContractsTrait, \Psr\Log\LoggerAwareTrait;
+        public const string TAGS_PREFIX ?? "\1tags\1";
+        public function __construct(\Symfony\Component\Cache\Adapter\AdapterInterface $itemsPool, ?\Symfony\Component\Cache\Adapter\AdapterInterface $tagsPool = null, float $knownTagVersionsTtl = 0.15): void;
+        public function invalidateTags(array $tags): bool;
+        public function hasItem(mixed $key): bool;
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        public function getItems(array $keys = []): iterable;
+        public function clear(string $prefix = ''): bool;
+        public function deleteItem(mixed $key): bool;
+        public function deleteItems(array $keys): bool;
+        public function save(\Psr\Cache\CacheItemInterface $item): bool;
+        public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool;
+        public function commit(): bool;
+        /**
+        * @throws BadMethodCallException When the item pool is not a NamespacedPoolInterface
+        * @generated
+        */
+        public function withSubNamespace(string $namespace): static;
+        public function prune(): bool;
+        public function reset(): void;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        public function __destruct(): void;
+    }
+    /**
+    * Interface for invalidating cached items using tags.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface TagAwareAdapterInterface extends \Symfony\Component\Cache\Adapter\AdapterInterface {
+        /**
+        * Invalidates cached items using tags.
+        *
+        * @param array<int, string> $tags An array of tags to invalidate
+        * @throws InvalidArgumentException When $tags is not valid
+        * @generated
+        */
+        public function invalidateTags(array<int, string> $tags): bool;
+    }
+    /**
+    * An adapter that collects data about all cache calls.
+    *
+    * @author Aaron Scherer <aequasi@gmail.com>
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class TraceableAdapter implements \Symfony\Component\Cache\Adapter\AdapterInterface, \Symfony\Contracts\Cache\CacheInterface, \Symfony\Contracts\Cache\NamespacedPoolInterface, \Symfony\Component\Cache\PruneableInterface, \Symfony\Component\Cache\ResettableInterface {
+        protected \Symfony\Component\Cache\Adapter\AdapterInterface $pool;
+        protected readonly ?\Closure $disabled ?? null;
+        public function __construct(\Symfony\Component\Cache\Adapter\AdapterInterface $pool, ?\Closure $disabled = null): void;
+        /**
+        * @throws BadMethodCallException When the item pool is not a CacheInterface
+        * @generated
+        */
+        public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed;
+        public function getItem(mixed $key): \Symfony\Component\Cache\CacheItem;
+        public function hasItem(mixed $key): bool;
+        public function deleteItem(mixed $key): bool;
+        public function save(\Psr\Cache\CacheItemInterface $item): bool;
+        public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool;
+        public function getItems(array $keys = []): iterable;
+        public function clear(string $prefix = ''): bool;
+        public function deleteItems(array $keys): bool;
+        public function commit(): bool;
+        public function prune(): bool;
+        public function reset(): void;
+        public function delete(string $key): bool;
+        public function getCalls(): array;
+        public function clearCalls(): void;
+        public function getPool(): \Symfony\Component\Cache\Adapter\AdapterInterface;
+        /**
+        * @throws BadMethodCallException When the item pool is not a NamespacedPoolInterface
+        * @generated
+        */
+        public function withSubNamespace(string $namespace): static;
+        protected function start(string $name): \Symfony\Component\Cache\Adapter\TraceableAdapterEvent;
+    }
+    /**
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    class TraceableTagAwareAdapter extends \Symfony\Component\Cache\Adapter\TraceableAdapter implements \Symfony\Component\Cache\Adapter\TagAwareAdapterInterface, \Symfony\Contracts\Cache\TagAwareCacheInterface {
+        public function __construct(\Symfony\Component\Cache\Adapter\TagAwareAdapterInterface $pool, ?\Closure $disabled = null): void;
+        public function invalidateTags(array $tags): bool;
+    }
+}
+namespace Symfony\Component\Cache\DataCollector {
+}
+namespace Symfony\Component\Cache\DependencyInjection {
+}
+namespace Symfony\Component\Cache\Marshaller {
+    /**
+    * Serializes/unserializes values using igbinary_serialize() if available, serialize() otherwise.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class DefaultMarshaller implements \Symfony\Component\Cache\Marshaller\MarshallerInterface {
+        public function __construct(?bool $useIgbinarySerialize = null, bool $throwOnSerializationFailure = false): void;
+        public function marshall(array $values, ?array &$failed): array;
+        public function unmarshall(string $value): mixed;
+    }
+    /**
+    * Compresses values using gzdeflate().
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class DeflateMarshaller implements \Symfony\Component\Cache\Marshaller\MarshallerInterface {
+        public function __construct(\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller): void;
+        public function marshall(array $values, ?array &$failed): array;
+        public function unmarshall(string $value): mixed;
+    }
+    /**
+    * Serializes/unserializes PHP values.
+    *
+    * Implementations of this interface MUST deal with errors carefully. They MUST
+    * also deal with forward and backward compatibility at the storage format level.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface MarshallerInterface {
+        /**
+        * Serializes a list of values.
+        *
+        * When serialization fails for a specific value, no exception should be
+        * thrown. Instead, its key should be listed in $failed.
+        *
+        * @generated
+        */
+        public function marshall(array $values, ?array &$failed): array;
+        /**
+        * Unserializes a single value and throws an exception if anything goes wrong.
+        *
+        * @throws \Exception Whenever unserialization fails
+        * @generated
+        */
+        public function unmarshall(string $value): mixed;
+    }
+    /**
+    * Encrypt/decrypt values using Libsodium.
+    *
+    * @author Ahmed TAILOULOUTE <ahmed.tailouloute@gmail.com>
+    * @generated
+    */
+    class SodiumMarshaller implements \Symfony\Component\Cache\Marshaller\MarshallerInterface {
+        /**
+        * @param array<int, string> $decryptionKeys The key at index "0" is required and is used to decrypt and encrypt values;
+        *  *                                     more rotating keys can be provided to decrypt values;
+        *  *                                     each key must be generated using sodium_crypto_box_keypair()
+        * @generated
+        */
+        public function __construct(array<int, string> $decryptionKeys, ?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public static function isSupported(): bool;
+        public function marshall(array $values, ?array &$failed): array;
+        public function unmarshall(string $value): mixed;
+    }
+    /**
+    * A marshaller optimized for data structures generated by AbstractTagAwareAdapter.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class TagAwareMarshaller implements \Symfony\Component\Cache\Marshaller\MarshallerInterface {
+        public function __construct(?\Symfony\Component\Cache\Marshaller\MarshallerInterface $marshaller = null): void;
+        public function marshall(array $values, ?array &$failed): array;
+        public function unmarshall(string $value): mixed;
+    }
+}
+namespace Symfony\Component\Cache\Messenger {
+    /**
+    * Sends the computation of cached values to a message bus.
+    *
+    * @generated
+    */
+    class EarlyExpirationDispatcher {
+        public function __construct(\Symfony\Component\Messenger\MessageBusInterface $bus, \Symfony\Component\DependencyInjection\ReverseContainer $reverseContainer, ?callable $callbackWrapper = null): void;
+        public function __invoke(callable $callback, \Symfony\Component\Cache\CacheItem $item, bool &$save, \Symfony\Component\Cache\Adapter\AdapterInterface $pool, \Closure $setMetadata, ?\Psr\Log\LoggerInterface $logger = null, ?float $beta = null): mixed;
+    }
+    /**
+    * Computes cached values sent to a message bus.
+    *
+    * @generated
+    */
+    class EarlyExpirationHandler {
+        public function __construct(\Symfony\Component\DependencyInjection\ReverseContainer $reverseContainer): void;
+        public function __invoke(\Symfony\Component\Cache\Messenger\EarlyExpirationMessage $message): void;
+    }
+    /**
+    * Conveys a cached value that needs to be computed.
+    *
+    * @generated
+    */
+    final class EarlyExpirationMessage {
+        public static function create(\Symfony\Component\DependencyInjection\ReverseContainer $reverseContainer, callable $callback, \Symfony\Component\Cache\CacheItem $item, \Symfony\Component\Cache\Adapter\AdapterInterface $pool): ?self;
+        public function getItem(): \Symfony\Component\Cache\CacheItem;
+        public function getPool(): string;
+        /**
+        * @return string|array
+        * @generated
+        */
+        public function getCallback(): string|array;
+        public function findPool(\Symfony\Component\DependencyInjection\ReverseContainer $reverseContainer): \Symfony\Component\Cache\Adapter\AdapterInterface;
+        public function findCallback(\Symfony\Component\DependencyInjection\ReverseContainer $reverseContainer): callable;
+    }
+}

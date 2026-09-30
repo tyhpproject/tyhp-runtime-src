@@ -1,0 +1,122 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Socket address out-params, `socket_select` / `socket_create_pair` Socket lists,
+ * and `socket_addrinfo_*` array shapes. Layer 1 already uses `\Socket` (PHP 8 object).
+ */
+
+/**
+ * Overlay: `socket_addrinfo_explain()` fields from `getaddrinfo`.
+ */
+type SocketAddrinfoExplain = struct {
+    ?string $ai_canonname;
+    int $ai_family;
+    int $ai_flags;
+    int $ai_protocol;
+    int $ai_socktype;
+};
+
+/**
+ * Overlay: `socket_addrinfo_lookup()` `$hints` (`getaddrinfo` hint fields).
+ */
+type SocketAddrinfoHints = struct {
+    ?int $ai_family;
+    ?int $ai_flags;
+    ?int $ai_protocol;
+    ?int $ai_socktype;
+};
+
+/**
+ * Overlay: one `socket_sendmsg()` / `socket_recvmsg()` ancillary (`control`) entry.
+ */
+type SocketControlMessage = struct {
+    mixed $data;
+    int $level;
+    int $type;
+};
+
+/**
+ * Overlay: `socket_sendmsg()` / `socket_recvmsg()` `$message`.
+ * `$name` is a sockaddr array, or a filesystem path for `AF_UNIX`.
+ */
+type SocketMessage = struct {
+    ?array<int, SocketControlMessage> $control;
+    array<int, string> $iov;
+    ?(SocketName|string) $name;
+};
+
+/**
+ * Overlay: sockaddr inside `SocketMessage` `$name`.
+ */
+type SocketName = struct {
+    ?string $addr;
+    ?int $family;
+    ?int $port;
+};
+
+/**
+ * Overlay: `getaddrinfo` explanation map.
+ */
+// @overlay-against: function socket_addrinfo_explain(\AddressInfo $address): array
+function socket_addrinfo_explain(\AddressInfo $address): SocketAddrinfoExplain;
+
+/**
+ * Overlay: list of `AddressInfo` handles; `$hints` is the getaddrinfo hint struct.
+ */
+// @overlay-against: function socket_addrinfo_lookup(string $host, ?string $service, array $hints): array|false
+function socket_addrinfo_lookup(string $host, ?string $service = null, SocketAddrinfoHints $hints = []): array<int, \AddressInfo>|false;
+
+/**
+ * Overlay: two connected sockets written into `$pair`.
+ */
+// @overlay-against: function socket_create_pair(int $domain, int $type, int $protocol, mixed $pair): bool
+function socket_create_pair(int $domain, int $type, int $protocol, array<int, \Socket> &$pair): bool;
+
+/**
+ * Overlay: `$address` is IP / Unix path; `$port` is set for `AF_INET` / `AF_INET6`.
+ */
+// @overlay-against: function socket_getpeername(\Socket $socket, mixed $address, mixed $port): bool
+function socket_getpeername(\Socket $socket, string &$address, int &$port = 0): bool;
+
+/**
+ * Overlay: `$address` is IP / Unix path; `$port` is set for `AF_INET` / `AF_INET6`.
+ */
+// @overlay-against: function socket_getsockname(\Socket $socket, mixed $address, mixed $port): bool
+function socket_getsockname(\Socket $socket, string &$address, int &$port = 0): bool;
+
+/**
+ * Overlay: `$data` is the received bytes, or null on error / no data.
+ */
+// @overlay-against: function socket_recv(\Socket $socket, mixed $data, int $length, int $flags): int|false
+function socket_recv(\Socket $socket, ?string &$data, int $length, int $flags): int|false;
+
+/**
+ * Overlay: `$data` / `$address` / `$port` are filled on success.
+ */
+// @overlay-against: function socket_recvfrom(\Socket $socket, mixed $data, int $length, int $flags, mixed $address, mixed $port): int|false
+function socket_recvfrom(\Socket $socket, ?string &$data, int $length, int $flags, string &$address, int &$port = 0): int|false;
+
+/**
+ * Overlay: fills `$message` (`name`, `iov`, `control`) from the kernel.
+ */
+// @overlay-against: function socket_recvmsg(\Socket $socket, array $message, int $flags): int|false
+function socket_recvmsg(\Socket $socket, SocketMessage &$message, int $flags = 0): int|false;
+
+/**
+ * Overlay: each fd set is a list of `\Socket` (or null to skip that set).
+ */
+// @overlay-against: function socket_select(?array $read, ?array $write, ?array $except, ?int $seconds, int $microseconds): int|false
+function socket_select(
+    ?array<int, \Socket> &$read,
+    ?array<int, \Socket> &$write,
+    ?array<int, \Socket> &$except,
+    ?int $seconds,
+    int $microseconds = 0
+): int|false;
+
+/**
+ * Overlay: `$message` is `name` / `iov` / `control` for `sendmsg`.
+ */
+// @overlay-against: function socket_sendmsg(\Socket $socket, array $message, int $flags): int|false
+function socket_sendmsg(\Socket $socket, SocketMessage $message, int $flags = 0): int|false;

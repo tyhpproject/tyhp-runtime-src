@@ -1,0 +1,457 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\ErrorHandler {
+    /**
+    * A buffering logger that stacks logs for later.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class BufferingLogger extends \Psr\Log\AbstractLogger {
+        public function log(mixed $level, mixed $message, array $context = []): void;
+        public function cleanLogs(): array;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        public function __destruct(): void;
+    }
+    /**
+    * Registers all the debug tools.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Debug {
+        public static function enable(): \Symfony\Component\ErrorHandler\ErrorHandler;
+    }
+    /**
+    * Autoloader checking if the class is really defined in the file found.
+    *
+    * The ClassLoader will wrap all registered autoloaders
+    * and will throw an exception if a file is found but does
+    * not declare the class.
+    * 
+    * It can also patch classes to turn docblocks into actual return types.
+    * This behavior is controlled by the SYMFONY_PATCH_TYPE_DECLARATIONS env var,
+    * which is a url-encoded array with the follow parameters:
+    *  - "force": any value enables deprecation notices - can be any of:
+    *      - "phpdoc" to patch only docblock annotations
+    *      - "2" to add all possible return types
+    *      - "1" to add return types but only to tests/final/internal/private methods
+    *  - "php": the target version of PHP - e.g. "7.1" doesn't generate "object" types
+    *  - "deprecations": "1" to trigger a deprecation notice when a child class misses a
+    *                    return type while the parent declares an "@return" annotation
+    * 
+    * Note that patching doesn't care about any coding style so you'd better to run
+    * php-cs-fixer after, with rules "phpdoc_trim_consecutive_blank_line_separation"
+    * and "no_superfluous_phpdoc_tags" enabled typically.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Christophe Coevoet <stof@notk.org>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Guilhem Niot <guilhem.niot@gmail.com>
+    * @generated
+    */
+    class DebugClassLoader {
+        public function __construct(callable $classLoader): void;
+        public function getClassLoader(): callable;
+        /**
+        * Wraps all autoloaders.
+        *
+        * @generated
+        */
+        public static function enable(): void;
+        /**
+        * Disables the wrapping.
+        *
+        * @generated
+        */
+        public static function disable(): void;
+        public static function checkClasses(): bool;
+        public function findFile(string $class): ?string;
+        /**
+        * Loads the given class or interface.
+        *
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function loadClass(string $class): void;
+        public function checkAnnotations(\ReflectionClass $refl, string $class): array;
+        public function checkCase(\ReflectionClass $refl, string $file, string $class): ?array;
+    }
+    /**
+    * A generic ErrorHandler for the PHP engine.
+    *
+    * Provides five bit fields that control how errors are handled:
+    * - thrownErrors: errors thrown as \ErrorException
+    * - loggedErrors: logged errors, when not @-silenced
+    * - scopedErrors: errors thrown or logged with their local context
+    * - tracedErrors: errors logged with their stack trace
+    * - screamedErrors: never @-silenced errors
+    * 
+    * Each error level can be logged by a dedicated PSR-3 logger object.
+    * Screaming only applies to logging.
+    * Throwing takes precedence over logging.
+    * Uncaught exceptions are logged as E_ERROR.
+    * E_DEPRECATED and E_USER_DEPRECATED levels never throw.
+    * E_RECOVERABLE_ERROR and E_USER_ERROR levels always throw.
+    * Non catchable errors that can be detected at shutdown time are logged when the scream bit field allows so.
+    * As errors have a performance cost, repeated errors are all logged, so that the developer
+    * can see them and weight them as more important to fix than others of the same level.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @final
+    * @generated
+    */
+    class ErrorHandler {
+        /**
+        * Registers the error handler.
+        *
+        * @generated
+        */
+        public static function register(?self $handler = null, bool $replace = true): self;
+        /**
+        * Calls a function and turns any PHP error into \ErrorException.
+        *
+        * @throws \ErrorException When $function(...$arguments) triggers a PHP error
+        * @generated
+        */
+        public static function call(callable $function, mixed ...$arguments): mixed;
+        public function __construct(?\Symfony\Component\ErrorHandler\BufferingLogger $bootstrappingLogger = null, bool $debug = false): void;
+        /**
+        * Sets a logger to non assigned errors levels.
+        *
+        * @param \Psr\Log\LoggerInterface $logger A PSR-3 logger to put as default for the given levels
+        * @param array|int|null $levels An array map of E_* to LogLevel::* or an integer bit field of E_* constants
+        * @param bool $replace Whether to replace or not any existing logger
+        * @generated
+        */
+        public function setDefaultLogger(\Psr\Log\LoggerInterface $logger, array|int|null $levels, bool $replace = false): void;
+        /**
+        * Sets a logger for each error level.
+        *
+        * @param array $loggers Error levels to [LoggerInterface|null, LogLevel::*] map
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function setLoggers(array $loggers): array;
+        public function setExceptionHandler(?callable $handler): ?callable;
+        /**
+        * Sets the PHP error levels that throw an exception when a PHP error occurs.
+        *
+        * @param int $levels A bit field of E_* constants for thrown errors
+        * @param bool $replace Replace or amend the previous value
+        * @generated
+        */
+        public function throwAt(int $levels, bool $replace = false): int;
+        /**
+        * Sets the PHP error levels for which local variables are preserved.
+        *
+        * @param int $levels A bit field of E_* constants for scoped errors
+        * @param bool $replace Replace or amend the previous value
+        * @generated
+        */
+        public function scopeAt(int $levels, bool $replace = false): int;
+        /**
+        * Sets the PHP error levels for which the stack trace is preserved.
+        *
+        * @param int $levels A bit field of E_* constants for traced errors
+        * @param bool $replace Replace or amend the previous value
+        * @generated
+        */
+        public function traceAt(int $levels, bool $replace = false): int;
+        /**
+        * Sets the error levels where the @-operator is ignored.
+        *
+        * @param int $levels A bit field of E_* constants for screamed errors
+        * @param bool $replace Replace or amend the previous value
+        * @generated
+        */
+        public function screamAt(int $levels, bool $replace = false): int;
+        public function enhanceError(\Throwable $exception): \Throwable;
+        /**
+        * Override this method if you want to define more error enhancers.
+        *
+        * @return array<int, \Symfony\Component\ErrorHandler\ErrorEnhancer\ErrorEnhancerInterface>
+        * @generated
+        */
+        protected function getErrorEnhancers(): array<int, \Symfony\Component\ErrorHandler\ErrorEnhancer\ErrorEnhancerInterface>;
+    }
+}
+namespace Symfony\Component\ErrorHandler\Command {
+    /**
+    * Dump error pages to plain HTML files that can be directly served by a web server.
+    *
+    * @author Loïck Piera <pyrech@gmail.com>
+    * @generated
+    */
+    final class ErrorDumpCommand extends \Symfony\Component\Console\Command\Command {
+        public function __construct(\Symfony\Component\Filesystem\Filesystem $filesystem, \Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface $errorRenderer, ?\Symfony\WebpackEncoreBundle\Asset\EntrypointLookupInterface $entrypointLookup = null): void;
+        protected function configure(): void;
+        protected function execute(\Symfony\Component\Console\Input\InputInterface $input, \Symfony\Component\Console\Output\OutputInterface $output): int;
+    }
+}
+namespace Symfony\Component\ErrorHandler\Error {
+    class ClassNotFoundError extends \Error {
+        public function __construct(string $message, \Throwable $previous): void;
+    }
+    class FatalError extends \Error {
+        /**
+        * @param array $error An array as returned by error_get_last()
+        * @generated
+        */
+        public function __construct(string $message, int $code, array $error, ?int $traceOffset = null, bool $traceArgs = true, ?array $trace = null): void;
+        public function getError(): array;
+    }
+    class OutOfMemoryError extends \Symfony\Component\ErrorHandler\Error\FatalError {
+    }
+    class UndefinedFunctionError extends \Error {
+        public function __construct(string $message, \Throwable $previous): void;
+    }
+    class UndefinedMethodError extends \Error {
+        public function __construct(string $message, \Throwable $previous): void;
+    }
+}
+namespace Symfony\Component\ErrorHandler\ErrorEnhancer {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ClassNotFoundErrorEnhancer implements \Symfony\Component\ErrorHandler\ErrorEnhancer\ErrorEnhancerInterface {
+        public function enhance(\Throwable $error): ?\Throwable;
+    }
+    interface ErrorEnhancerInterface {
+        /**
+        * Returns an \Throwable instance if the class is able to improve the error, null otherwise.
+        *
+        * @generated
+        */
+        public function enhance(\Throwable $error): ?\Throwable;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class UndefinedFunctionErrorEnhancer implements \Symfony\Component\ErrorHandler\ErrorEnhancer\ErrorEnhancerInterface {
+        public function enhance(\Throwable $error): ?\Throwable;
+    }
+    /**
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    class UndefinedMethodErrorEnhancer implements \Symfony\Component\ErrorHandler\ErrorEnhancer\ErrorEnhancerInterface {
+        public function enhance(\Throwable $error): ?\Throwable;
+    }
+}
+namespace Symfony\Component\ErrorHandler\ErrorRenderer {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class CliErrorRenderer implements \Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface {
+        public function render(\Throwable $exception): \Symfony\Component\ErrorHandler\Exception\FlattenException;
+    }
+    /**
+    * Formats an exception to be used as response content.
+    *
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @generated
+    */
+    interface ErrorRendererInterface {
+        public const array IDE_LINK_FORMATS ?? [];
+        /**
+        * Renders a Throwable as a FlattenException.
+        *
+        * @generated
+        */
+        public function render(\Throwable $exception): \Symfony\Component\ErrorHandler\Exception\FlattenException;
+    }
+    /**
+    * Formats debug file links.
+    *
+    * @author Jérémy Romey <jeremy@free-agent.fr>
+    * @final
+    * @generated
+    */
+    class FileLinkFormatter {
+        /**
+        * @param string|\Closure|null $urlFormat The URL format, or a closure that returns it on-demand
+        * @generated
+        */
+        public function __construct(string|array|null $fileLinkFormat = null, ?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null, ?string $baseDir = null, string|\Closure|null $urlFormat = null): void;
+        public function format(string $file, int $line): string|false;
+        public function __serialize(): array;
+    }
+    /**
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @generated
+    */
+    class HtmlErrorRenderer implements \Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface {
+        /**
+        * @param bool|callable $debug The debugging mode as a boolean or a callable that should return it
+        * @param string|callable $outputBuffer The output buffer as a string or a callable that should return it
+        * @generated
+        */
+        public function __construct(bool|callable $debug = false, ?string $charset = null, string|\Symfony\Component\ErrorHandler\ErrorRenderer\FileLinkFormatter|null $fileLinkFormat = null, ?string $projectDir = null, string|callable $outputBuffer = '', ?\Psr\Log\LoggerInterface $logger = null): void;
+        public function render(\Throwable $exception): \Symfony\Component\ErrorHandler\Exception\FlattenException;
+        /**
+        * Gets the HTML content associated with the given exception.
+        *
+        * @generated
+        */
+        public function getBody(\Symfony\Component\ErrorHandler\Exception\FlattenException $exception): string;
+        /**
+        * Gets the stylesheet associated with the given exception.
+        *
+        * @generated
+        */
+        public function getStylesheet(): string;
+        public static function isDebug(\Symfony\Component\HttpFoundation\RequestStack $requestStack, bool $debug): \Closure;
+        public static function getAndCleanOutputBuffer(\Symfony\Component\HttpFoundation\RequestStack $requestStack): \Closure;
+        /**
+        * Allows overriding the default non-debug template.
+        *
+        * @param string $template path to the custom template file to render
+        * @generated
+        */
+        public static function setTemplate(string $template): void;
+    }
+    /**
+    * Formats an exception using Serializer for rendering.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class SerializerErrorRenderer implements \Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface {
+        /**
+        * @param string|callable $format The format as a string or a callable that should return it
+        *  *                                                              formats not supported by Request::getMimeTypes() should be given as mime types
+        * @param bool|callable $debug The debugging mode as a boolean or a callable that should return it
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Serializer\SerializerInterface $serializer, string|callable $format, ?\Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface $fallbackErrorRenderer = null, bool|callable $debug = false): void;
+        public function render(\Throwable $exception): \Symfony\Component\ErrorHandler\Exception\FlattenException;
+        public static function getPreferredFormat(\Symfony\Component\HttpFoundation\RequestStack $requestStack): \Closure;
+    }
+}
+namespace Symfony\Component\ErrorHandler\Exception {
+    /**
+    * FlattenException wraps a PHP Error or Exception to be able to serialize it.
+    *
+    * Basically, this class removes all objects from the trace.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class FlattenException {
+        public static function create(\Exception $exception, ?int $statusCode = null, array $headers = []): static;
+        public static function createFromThrowable(\Throwable $exception, ?int $statusCode = null, array $headers = []): static;
+        public static function createWithDataRepresentation(\Throwable $throwable, ?int $statusCode = null, array $headers = [], ?\Symfony\Component\VarDumper\Cloner\VarCloner $cloner = null): static;
+        public function toArray(): array;
+        public function getStatusCode(): int;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setStatusCode(int $code): static;
+        public function getHeaders(): array;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setHeaders(array $headers): static;
+        public function getClass(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setClass(string $class): static;
+        public function getFile(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setFile(string $file): static;
+        public function getLine(): int;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setLine(int $line): static;
+        public function getStatusText(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setStatusText(string $statusText): static;
+        public function getMessage(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setMessage(string $message): static;
+        /**
+        * @return int|string int most of the time (might be a string with PDOException)
+        * @generated
+        */
+        public function getCode(): int|string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setCode(int|string $code): static;
+        public function getPrevious(): ?self;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setPrevious(?self $previous): static;
+        /**
+        * @return array<int, self>
+        * @generated
+        */
+        public function getAllPrevious(): array<int, self>;
+        public function getTrace(): array;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setTraceFromThrowable(\Throwable $throwable): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setTrace(array $trace, ?string $file, ?int $line): static;
+        public function getDataRepresentation(): ?\Symfony\Component\VarDumper\Cloner\Data;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setDataRepresentation(\Symfony\Component\VarDumper\Cloner\Data $data): static;
+        public function getTraceAsString(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setAsString(?string $asString): static;
+        public function getAsString(): string;
+    }
+    /**
+    * Data Object that represents a Silenced Error.
+    *
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    class SilencedErrorContext implements \JsonSerializable {
+        public int $count ?? 1;
+        public function __construct(int $severity, string $file, int $line, array $trace = [], int $count = 1): void;
+        public function getSeverity(): int;
+        public function getFile(): string;
+        public function getLine(): int;
+        public function getTrace(): array;
+        public function jsonSerialize(): array;
+    }
+}

@@ -1,0 +1,94 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * Nested `opcache_get_status()` / `opcache_get_configuration()` array-shapes.
+ * Keys match the PHP manual examples. `$scripts` is absent when
+ * `$include_scripts` is false. `$jit` is absent when JIT is not built.
+ */
+
+type OpcacheConfiguration = struct {
+    array<string, string|int|bool> $directives;
+    OpcacheVersion $version;
+    array<int, string> $blacklist;
+};
+
+type OpcacheInternedStringsUsage = struct {
+    int $buffer_size;
+    int $used_memory;
+    int $free_memory;
+    int $number_of_strings;
+};
+
+type OpcacheJitStatus = struct {
+    bool $enabled;
+    bool $on;
+    int $kind;
+    int $opt_level;
+    int $opt_flags;
+    int $buffer_size;
+    int $buffer_free;
+};
+
+type OpcacheMemoryUsage = struct {
+    int $used_memory;
+    int $free_memory;
+    int $wasted_memory;
+    float $current_wasted_percentage;
+};
+
+/**
+ * Overlay: one `opcache_get_status()` `$scripts` entry.
+ */
+type OpcacheScript = struct {
+    string $full_path;
+    int $hits;
+    string $last_used;
+    int $last_used_timestamp;
+    int $memory_consumption;
+    int $timestamp;
+};
+
+type OpcacheStatistics = struct {
+    int $num_cached_scripts;
+    int $num_cached_keys;
+    int $max_cached_keys;
+    int $hits;
+    int $start_time;
+    int $last_restart_time;
+    int $oom_restarts;
+    int $hash_restarts;
+    int $manual_restarts;
+    int $misses;
+    int $blacklist_misses;
+    float $blacklist_miss_ratio;
+    float $opcache_hit_rate;
+};
+
+type OpcacheStatus = struct {
+    bool $opcache_enabled;
+    bool $cache_full;
+    bool $restart_pending;
+    bool $restart_in_progress;
+    OpcacheMemoryUsage $memory_usage;
+    OpcacheInternedStringsUsage $interned_strings_usage;
+    OpcacheStatistics $opcache_statistics;
+    ?array<string, OpcacheScript> $scripts;
+    ?OpcacheJitStatus $jit;
+};
+
+type OpcacheVersion = struct {
+    string $version;
+    string $opcache_product_name;
+};
+
+// @overlay-against: function opcache_get_configuration(): array|false
+function opcache_get_configuration(): OpcacheConfiguration|false;
+
+// @overlay-against: function opcache_get_status(bool $include_scripts): array|false
+function opcache_get_status(false $include_scripts): OpcacheStatus|false;
+// @overlay-against: function opcache_get_status(bool $include_scripts): array|false
+function opcache_get_status(true $include_scripts = true): OpcacheStatus|false;
+// @overlay-against: function opcache_get_status(bool $include_scripts): array|false
+function opcache_get_status(bool $include_scripts = true): OpcacheStatus|false;

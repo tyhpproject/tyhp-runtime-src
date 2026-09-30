@@ -1,0 +1,99 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Harvest missed metadata keys, callback PHPDoc unions, and tag-list generics.
+ */
+
+namespace Symfony\Contracts\Cache {
+    /**
+     * Metadata saved with a cached item (`ItemInterface::METADATA_*` keys).
+     * Harvest left `getMetadata(): array`; PHPDoc names `expiry` / `ctime` / `tags`.
+     */
+    type CacheItemMetadata = struct {
+        float $expiry;
+        int $ctime;
+        array<int|string, string> $tags;
+    };
+
+    /**
+     * Compute-on-miss callback from `CacheInterface::get()` `@param`
+     * `(callable(CacheItemInterface,bool):T)|(callable(ItemInterface,bool):T)|CallbackInterface<T>`.
+     */
+    type CacheCallback<T = mixed> = (callable(\Psr\Cache\CacheItemInterface, bool): T)|(callable(\Symfony\Contracts\Cache\ItemInterface, bool): T)|\Symfony\Contracts\Cache\CallbackInterface<T>;
+
+    /**
+     * Overlay: harvest typed `$callback` as a bare `callable|CallbackInterface` and `$metadata` as `array`.
+     */
+    // @overlay-against: interface CacheInterface
+    partial interface CacheInterface {
+        /**
+         * @param string $key The key of the item to retrieve from the cache.
+         * @param \Symfony\Contracts\Cache\CacheCallback<T> $callback Computes the missing value.
+         * @param ?float $beta Probabilistic early expiration control.
+         * @param ?\Symfony\Contracts\Cache\CacheItemMetadata $metadata Metadata of the cached item.
+         * @return T
+         * @throws \InvalidArgumentException When `$key` is not valid or when `$beta` is negative
+         */
+        // @overlay-against: function get(string $key, callable|\Symfony\Contracts\Cache\CallbackInterface $callback, ?float $beta, ?array $metadata): T
+        public function get<T>(string $key, \Symfony\Contracts\Cache\CacheCallback<T> $callback, ?float $beta = null, ?\Symfony\Contracts\Cache\CacheItemMetadata &$metadata = null): T;
+    }
+
+    /**
+     * Overlay: trait `get()` has no PHPDoc; align callback/metadata with `CacheInterface`.
+     */
+    // @overlay-against: trait CacheTrait
+    partial trait CacheTrait {
+        /**
+         * @param \Symfony\Contracts\Cache\CacheCallback<T> $callback Computes the missing value.
+         * @return T
+         */
+        // @overlay-against: function get(string $key, callable $callback, ?float $beta, ?array $metadata): mixed
+        public function get<T>(string $key, \Symfony\Contracts\Cache\CacheCallback<T> $callback, ?float $beta = null, ?\Symfony\Contracts\Cache\CacheItemMetadata &$metadata = null): T;
+    }
+
+    /**
+     * Overlay: PHPDoc `@param CacheItemInterface|ItemInterface`; native is CacheItemInterface only.
+     */
+    // @overlay-against: interface CallbackInterface
+    partial interface CallbackInterface {
+        /**
+         * @param \Psr\Cache\CacheItemInterface|\Symfony\Contracts\Cache\ItemInterface $item The item to compute the value for
+         * @param bool &$save Should be set to false when the value should not be saved in the pool
+         * @return T
+         */
+        // @overlay-against: function __invoke(\Psr\Cache\CacheItemInterface $item, bool $save): T
+        public function __invoke(\Psr\Cache\CacheItemInterface|\Symfony\Contracts\Cache\ItemInterface $item, bool &$save): T;
+    }
+
+    /**
+     * Overlay: PHPDoc `@param string|string[]` / metadata keys; harvest left `iterable` and `array`.
+     */
+    // @overlay-against: interface ItemInterface
+    partial interface ItemInterface {
+        /**
+         * @param string|iterable<string> $tags A tag or iterable of tags.
+         */
+        // @overlay-against: function tag(string|iterable $tags): static
+        public function tag(string|iterable<string> $tags): static;
+
+        /**
+         * @return \Symfony\Contracts\Cache\CacheItemMetadata Metadata keyed by `METADATA_*` constants.
+         */
+        // @overlay-against: function getMetadata(): array
+        public function getMetadata(): \Symfony\Contracts\Cache\CacheItemMetadata;
+    }
+
+    /**
+     * Overlay: Tyhp list-literal encoding of PHPDoc `string[]` (`array<int|string, string>`).
+     * Harvest already had `array<int, string>`.
+     */
+    // @overlay-against: interface TagAwareCacheInterface
+    partial interface TagAwareCacheInterface {
+        /**
+         * @param array<int|string, string> $tags An array of tags to invalidate.
+         */
+        // @overlay-against: function invalidateTags(array $tags): bool
+        public function invalidateTags(array<int|string, string> $tags): bool;
+    }
+}

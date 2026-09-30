@@ -1,0 +1,65 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * Signal callable shape, wait status by-ref int, waitid siginfo struct.
+ */
+
+/**
+ * Overlay: `pcntl_waitid()` `$info` / signal-handler `$siginfo` keys from PHP docs.
+ */
+type PcntlSiginfo = struct {
+    ?int $signo;
+    ?int $errno;
+    ?int $code;
+    ?int $status;
+    ?int $pid;
+    ?int $uid;
+    ?int $utime;
+    ?int $stime;
+};
+
+type PcntlSignalHandler = (callable(int): void)&(callable(int, PcntlSiginfo): void);
+
+// @overlay-against: function pcntl_signal(int $signal, mixed $handler, bool $restart_syscalls): bool
+function pcntl_signal(int $signal, PcntlSignalHandler|int $handler, bool $restart_syscalls = true): bool;
+
+// @overlay-against: function pcntl_signal_get_handler(int $signal)
+function pcntl_signal_get_handler(int $signal): PcntlSignalHandler|int;
+
+// @overlay-against: function pcntl_sigprocmask(int $mode, array $signals, mixed $old_signals): bool
+function pcntl_sigprocmask(int $mode, array<int, int> $signals, array<int, int> &$old_signals = null): bool;
+
+// @overlay-against: function pcntl_wait(mixed $status, int $flags, mixed $resource_usage): int
+function pcntl_wait(int &$status, int $flags = 0, Rusage &$resource_usage = []): int;
+
+// @overlay-against: function pcntl_waitpid(int $process_id, mixed $status, int $flags, mixed $resource_usage): int
+function pcntl_waitpid(int $process_id, int &$status, int $flags = 0, Rusage &$resource_usage = []): int;
+
+declare(php="<8.5") {
+    // @overlay-against: function pcntl_exec(string $path, array $args, array $env_vars): bool
+    function pcntl_exec(string $path, array<int, string> $args = [], array<string, string> $env_vars = []): bool;
+}
+
+declare(php=">=8.4 <8.5") {
+    // @overlay-against: function pcntl_waitid(int $idtype, ?int $id, mixed $info, int $flags): bool
+    function pcntl_waitid(int $idtype = P_ALL, ?int $id = null, PcntlSiginfo &$info = [], int $flags = WEXITED): bool;
+}
+
+declare(php=">=8.5") {
+    // @overlay-against: function pcntl_exec(string $path, array $args, array $env_vars): false
+    function pcntl_exec(string $path, array<int, string> $args = [], array<string, string> $env_vars = []): false;
+    // @overlay-against: function pcntl_waitid(int $idtype, ?int $id, mixed $info, int $flags, mixed $resource_usage): bool
+    function pcntl_waitid(int $idtype = P_ALL, ?int $id = null, PcntlSiginfo &$info = [], int $flags = WEXITED, Rusage &$resource_usage = []): bool;
+}
+
+declare(php=">=8.4") {
+    namespace Pcntl {
+        // @overlay-against: enum QosClass implements \UnitEnum
+        partial enum QosClass {
+            // @overlay-against: function cases(): array
+            static public function cases(): array<int, QosClass>;
+        }
+    }
+}

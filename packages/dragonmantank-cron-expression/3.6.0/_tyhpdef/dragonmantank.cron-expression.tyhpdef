@@ -1,0 +1,579 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Cron {
+    /**
+    * Abstract CRON expression field.
+    *
+    * @generated
+    */
+    abstract class AbstractField implements \Cron\FieldInterface {
+        /**
+        * Full range of values that are allowed for this field type.
+        *
+        * @var array<int, int>
+        * @generated
+        */
+        protected array<int, int> $fullRange ?? [];
+        /**
+        * Literal values we need to convert to integers.
+        *
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $literals ?? [];
+        /**
+        * Start value of the full range.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $rangeStart;
+        /**
+        * End value of the full range.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $rangeEnd;
+        /**
+        * Constructor
+        *
+        * @generated
+        */
+        public function __construct(): void;
+        /**
+        * Returns a range of values for the given cron expression.
+        *
+        * @param string $expression The expression to evaluate
+        * @param int $max Maximum offset for range
+        * @return array<int, int>
+        * @generated
+        */
+        public function getRangeForExpression(string $expression, int $max): array<int, int>;
+        /**
+        * Convert literal.
+        *
+        * @param string $value
+        * @return string
+        * @generated
+        */
+        protected function convertLiterals(string $value): string;
+        /**
+        * Checks to see if a value is valid for the field.
+        *
+        * @param string $value
+        * @return bool
+        * @generated
+        */
+        public function validate(string $value): bool;
+        protected function timezoneSafeModify(\DateTimeInterface $dt, string $modification): \DateTimeInterface;
+        protected function setTimeHour(\DateTimeInterface $date, bool $invert, int $originalTimestamp): \DateTimeInterface;
+    }
+    /**
+    * CRON expression parser that can determine whether or not a CRON expression is
+    *
+    * due to run, the next run date and previous run date of a CRON expression.
+    * The determinations made by this class are accurate if checked run once per
+    * minute (seconds are dropped from date time comparisons).
+    * 
+    * Schedule parts must map to:
+    * minute [0-59], hour [0-23], day of month, month [1-12|JAN-DEC], day of week
+    * [1-7|MON-SUN], and an optional year.
+    *
+    * @see http://en.wikipedia.org/wiki/Cron
+    * @generated
+    */
+    class CronExpression {
+        public const int MINUTE ?? 0;
+        public const int HOUR ?? 1;
+        public const int DAY ?? 2;
+        public const int MONTH ?? 3;
+        public const int WEEKDAY ?? 4;
+        /**
+        * @deprecated
+        * @generated
+        */
+        deprecated public const int YEAR ?? 5;
+        public const array MAPPINGS ?? [];
+        /**
+        * @var array<int, string> CRON expression parts
+        * @generated
+        */
+        protected array<int, string> $cronParts;
+        /**
+        * @var FieldFactoryInterface CRON field factory
+        * @generated
+        */
+        protected \Cron\FieldFactoryInterface $fieldFactory;
+        /**
+        * @var int Max iteration count when searching for next run date
+        * @generated
+        */
+        protected int $maxIterationCount ?? 1000;
+        /**
+        * @var array<int, int> Order in which to test of cron parts
+        * @generated
+        */
+        protected static array<int, int> $order ?? [];
+        /**
+        * Registered a user defined CRON Expression Alias.
+        *
+        * @throws LogicException If the expression or the alias name are invalid
+        *                         or if the alias is already registered.
+        * @generated
+        */
+        public static function registerAlias(string $alias, string $expression): void;
+        /**
+        * Unregistered a user defined CRON Expression Alias.
+        *
+        * @throws LogicException If the user tries to unregister a built-in alias
+        * @generated
+        */
+        public static function unregisterAlias(string $alias): bool;
+        /**
+        * Tells whether a CRON Expression alias is registered.
+        *
+        * @generated
+        */
+        public static function supportsAlias(string $alias): bool;
+        /**
+        * Returns all registered aliases as an associated array where the aliases are the key
+        *
+        * and their associated expressions are the values.
+        *
+        * @return array<string, string>
+        * @generated
+        */
+        public static function getAliases(): array<string, string>;
+        /**
+        * @deprecated since version 3.0.2, use __construct instead.
+        * @generated
+        */
+        deprecated public static function factory(string $expression, ?\Cron\FieldFactoryInterface $fieldFactory = null): \Cron\CronExpression;
+        /**
+        * Validate a CronExpression.
+        *
+        * @param string $expression the CRON expression to validate
+        * @return bool True if a valid CRON expression was passed. False if not.
+        * @generated
+        */
+        public static function isValidExpression(string $expression): bool;
+        /**
+        * Parse a CRON expression.
+        *
+        * @param string $expression CRON expression (e.g. '8 * * * *')
+        * @param ?\Cron\FieldFactoryInterface $fieldFactory Factory to create cron fields
+        * @throws InvalidArgumentException
+        * @generated
+        */
+        public function __construct(string $expression, ?\Cron\FieldFactoryInterface $fieldFactory = null): void;
+        /**
+        * Set or change the CRON expression.
+        *
+        * @param string $value CRON expression (e.g. 8 * * * *)
+        * @throws \InvalidArgumentException if not a valid CRON expression
+        * @return \Cron\CronExpression
+        * @generated
+        */
+        public function setExpression(string $value): \Cron\CronExpression;
+        /**
+        * Set part of the CRON expression.
+        *
+        * @param int $position The position of the CRON expression to set
+        * @param string $value The value to set
+        * @throws \InvalidArgumentException if the value is not valid for the part
+        * @return \Cron\CronExpression
+        * @generated
+        */
+        public function setPart(int $position, string $value): \Cron\CronExpression;
+        /**
+        * Set max iteration count for searching next run dates.
+        *
+        * @param int $maxIterationCount Max iteration count when searching for next run date
+        * @return \Cron\CronExpression
+        * @generated
+        */
+        public function setMaxIterationCount(int $maxIterationCount): \Cron\CronExpression;
+        /**
+        * Get a next run date relative to the current date or a specific date
+        *
+        * @param string|\DateTimeInterface $currentTime Relative calculation date
+        * @param int $nth Number of matches to skip before returning a
+        *  *                                                        matching next run date.  0, the default, will return the
+        *  *                                                        current date and time if the next run date falls on the
+        *  *                                                        current date and time.  Setting this value to 1 will
+        *  *                                                        skip the first match and go to the second match.
+        *  *                                                        Setting this value to 2 will skip the first 2
+        *  *                                                        matches and so on.
+        * @param bool $allowCurrentDate Set to TRUE to return the current date if
+        *  *                                                        it matches the cron expression.
+        * @param null|string $timeZone TimeZone to use instead of the system default
+        * @throws \RuntimeException on too many iterations
+        * @throws \Exception
+        * @return \DateTime
+        * @generated
+        */
+        public function getNextRunDate(string|\DateTimeInterface $currentTime = 'now', int $nth = 0, bool $allowCurrentDate = false, null|string $timeZone = null): \DateTime;
+        /**
+        * Get a previous run date relative to the current date or a specific date.
+        *
+        * @param string|\DateTimeInterface $currentTime Relative calculation date
+        * @param int $nth Number of matches to skip before returning
+        * @param bool $allowCurrentDate Set to TRUE to return the
+        *  *                                                        current date if it matches the cron expression
+        * @param null|string $timeZone TimeZone to use instead of the system default
+        * @throws \RuntimeException on too many iterations
+        * @throws \Exception
+        * @return \DateTime
+        * @see \Cron\CronExpression::getNextRunDate
+        * @generated
+        */
+        public function getPreviousRunDate(string|\DateTimeInterface $currentTime = 'now', int $nth = 0, bool $allowCurrentDate = false, null|string $timeZone = null): \DateTime;
+        /**
+        * Get multiple run dates starting at the current date or a specific date.
+        *
+        * @param int $total Set the total number of dates to calculate
+        * @param string|\DateTimeInterface|null $currentTime Relative calculation date
+        * @param bool $invert Set to TRUE to retrieve previous dates
+        * @param bool $allowCurrentDate Set to TRUE to return the
+        *  *                                   current date if it matches the cron expression
+        * @param null|string $timeZone TimeZone to use instead of the system default
+        * @return array<int, \DateTime> Returns an array of run dates
+        * @generated
+        */
+        public function getMultipleRunDates(int $total, string|\DateTimeInterface|null $currentTime = 'now', bool $invert = false, bool $allowCurrentDate = false, null|string $timeZone = null): array<int, \DateTime>;
+        /**
+        * Get all or part of the CRON expression.
+        *
+        * @param int|string|null $part specify the part to retrieve or NULL to get the full
+        *  *                         cron schedule string
+        * @return ?string Returns the CRON expression, a part of the
+        *  *                         CRON expression, or NULL if the part was specified but not found
+        * @generated
+        */
+        public function getExpression(int|string|null $part = null): ?string;
+        /**
+        * Gets the parts of the cron expression as an array.
+        *
+        * @return array<int, string> The array of parts that make up this expression.
+        * @generated
+        */
+        public function getParts(): array<int, string>;
+        /**
+        * Helper method to output the full expression.
+        *
+        * @return string Full CRON expression
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Determine if the cron is due to run based on the current date or a
+        *
+        * specific date.  This method assumes that the current number of
+        * seconds are irrelevant, and should be called once per minute.
+        *
+        * @param string|\DateTimeInterface $currentTime Relative calculation date
+        * @param null|string $timeZone TimeZone to use instead of the system default
+        * @return bool Returns TRUE if the cron is due to run or FALSE if not
+        * @generated
+        */
+        public function isDue(string|\DateTimeInterface $currentTime = 'now', null|string $timeZone = null): bool;
+        /**
+        * Get the next or previous run date of the expression relative to a date.
+        *
+        * @param string|\DateTimeInterface|null $currentTime Relative calculation date
+        * @param int $nth Number of matches to skip before returning
+        * @param bool $invert Set to TRUE to go backwards in time
+        * @param bool $allowCurrentDate Set to TRUE to return the
+        *  *                                   current date if it matches the cron expression
+        * @param string|null $timeZone TimeZone to use instead of the system default
+        * @throws \RuntimeException on too many iterations
+        * @throws Exception
+        * @return \DateTime
+        * @generated
+        */
+        protected function getRunDate(string|\DateTimeInterface|null $currentTime = null, int $nth = 0, bool $invert = false, bool $allowCurrentDate = false, string|null $timeZone = null): \DateTime;
+        /**
+        * Workout what timeZone should be used.
+        *
+        * @param string|\DateTimeInterface|null $currentTime Relative calculation date
+        * @param ?string $timeZone TimeZone to use instead of the system default
+        * @return string
+        * @generated
+        */
+        protected function determineTimeZone(string|\DateTimeInterface|null $currentTime, ?string $timeZone): string;
+    }
+    /**
+    * Day of month field.  Allows: * , / - ? L W.
+    *
+    * 'L' stands for "last" and specifies the last day of the month.
+    * 
+    * The 'W' character is used to specify the weekday (Monday-Friday) nearest the
+    * given day. As an example, if you were to specify "15W" as the value for the
+    * day-of-month field, the meaning is: "the nearest weekday to the 15th of the
+    * month". So if the 15th is a Saturday, the trigger will fire on Friday the
+    * 14th. If the 15th is a Sunday, the trigger will fire on Monday the 16th. If
+    * the 15th is a Tuesday, then it will fire on Tuesday the 15th. However if you
+    * specify "1W" as the value for day-of-month, and the 1st is a Saturday, the
+    * trigger will fire on Monday the 3rd, as it will not 'jump' over the boundary
+    * of a month's days. The 'W' character can only be specified when the
+    * day-of-month is a single day, not a range or list of days.
+    *
+    * @author Michael Dowling <mtdowling@gmail.com>
+    * @generated
+    */
+    class DayOfMonthField extends \Cron\AbstractField {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeStart ?? 1;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeEnd ?? 31;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function isSatisfiedBy(\DateTimeInterface $date, mixed $value, bool $invert): bool;
+        /**
+        * @inheritdoc
+        * @param \DateTimeInterface $date
+        * @generated
+        */
+        public function increment(\DateTimeInterface &$date, mixed $invert = false, mixed $parts = null): \Cron\FieldInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function validate(string $value): bool;
+    }
+    /**
+    * Day of week field.  Allows: * / , - ? L #.
+    *
+    * Days of the week can be represented as a number 0-7 (0|7 = Sunday)
+    * or as a three letter string: SUN, MON, TUE, WED, THU, FRI, SAT.
+    * 
+    * 'L' stands for "last". It allows you to specify constructs such as
+    * "the last Friday" of a given month.
+    * 
+    * '#' is allowed for the day-of-week field, and must be followed by a
+    * number between one and five. It allows you to specify constructs such as
+    * "the second Friday" of a given month.
+    *
+    * @generated
+    */
+    class DayOfWeekField extends \Cron\AbstractField {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeStart ?? 0;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeEnd ?? 7;
+        /**
+        * @var array<int, int> Weekday range
+        * @generated
+        */
+        protected array<int, int> $nthRange;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $literals ?? [];
+        /**
+        * Constructor
+        *
+        * @generated
+        */
+        public function __construct(): void;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function isSatisfiedBy(\DateTimeInterface $date, mixed $value, bool $invert): bool;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function increment(\DateTimeInterface &$date, mixed $invert = false, mixed $parts = null): \Cron\FieldInterface;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function validate(string $value): bool;
+    }
+    /**
+    * CRON field factory implementing a flyweight factory.
+    *
+    * @see http://en.wikipedia.org/wiki/Cron
+    * @generated
+    */
+    class FieldFactory implements \Cron\FieldFactoryInterface {
+        /**
+        * Get an instance of a field object for a cron expression position.
+        *
+        * @param int $position CRON expression position value to retrieve
+        * @throws InvalidArgumentException if a position is not valid
+        * @generated
+        */
+        public function getField(int $position): \Cron\FieldInterface;
+    }
+    interface FieldFactoryInterface {
+        public function getField(int $position): \Cron\FieldInterface;
+    }
+    /**
+    * CRON field interface.
+    *
+    * @generated
+    */
+    interface FieldInterface {
+        /**
+        * Validates a CRON expression for a given field.
+        *
+        * @param string $value CRON expression value to validate
+        * @return bool Returns TRUE if valid, FALSE otherwise
+        * @generated
+        */
+        public function validate(string $value): bool;
+    }
+    /**
+    * Hours field.  Allows: * , / -.
+    *
+    * @generated
+    */
+    class HoursField extends \Cron\AbstractField {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeStart ?? 0;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeEnd ?? 23;
+        /**
+        * @var array<int, array<string, bool|int|string>>|null Transitions returned by DateTimeZone::getTransitions()
+        * @generated
+        */
+        protected array<int, array<string, bool|int|string>>|null $transitions ?? [];
+        /**
+        * @var int|null Timestamp of the start of the transitions range
+        * @generated
+        */
+        protected int|null $transitionsStart ?? null;
+        /**
+        * @var int|null Timestamp of the end of the transitions range
+        * @generated
+        */
+        protected int|null $transitionsEnd ?? null;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function isSatisfiedBy(\DateTimeInterface $date, mixed $value, bool $invert): bool;
+        /**
+        * @return ?array
+        * @generated
+        */
+        public function getPastTransition(\DateTimeInterface $date): ?array;
+        /**
+        * {@inheritdoc}
+        *
+        * @param string|null $parts
+        * @generated
+        */
+        public function increment(\DateTimeInterface &$date, mixed $invert = false, string|null $parts = null): \Cron\FieldInterface;
+    }
+    /**
+    * Minutes field.  Allows: * , / -.
+    *
+    * @generated
+    */
+    class MinutesField extends \Cron\AbstractField {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeStart ?? 0;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeEnd ?? 59;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function isSatisfiedBy(\DateTimeInterface $date, mixed $value, bool $invert): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * {@inheritDoc}
+        *
+        * @param string|null $parts
+        * @generated
+        */
+        public function increment(\DateTimeInterface &$date, mixed $invert = false, string|null $parts = null): \Cron\FieldInterface;
+    }
+    /**
+    * Month field.  Allows: * , / -.
+    *
+    * @generated
+    */
+    class MonthField extends \Cron\AbstractField {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeStart ?? 1;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $rangeEnd ?? 12;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected mixed $literals ?? [];
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function isSatisfiedBy(\DateTimeInterface $date, mixed $value, bool $invert): bool;
+        /**
+        * @inheritdoc
+        * @param \DateTimeInterface $date
+        * @generated
+        */
+        public function increment(\DateTimeInterface &$date, mixed $invert = false, mixed $parts = null): \Cron\FieldInterface;
+    }
+}

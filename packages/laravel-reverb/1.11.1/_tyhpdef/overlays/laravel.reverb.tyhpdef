@@ -1,0 +1,162 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Pulse Livewire cards stay on Layer 1 now that
+ * `tyhpdef/livewire-livewire` provides `\Livewire\Component` and
+ * `tyhpdef/laravel-pulse` provides `\Laravel\Pulse\Livewire\Card`.
+ * Recorders stay omitted: they name `\Laravel\Pulse\Pulse`, which the
+ * pulse wrapper does not declare (only `\Laravel\Pulse\Facades\Pulse`).
+ * Omit the Evenement-backed WebSocket connection (cannot extend extern).
+ * Name-only externs for unwrapped Ratchet / React loop-socket / Clue Redis.
+ */
+
+namespace Laravel\Reverb\Protocols\Pusher\Concerns {
+    /**
+     * Overlay: `SerializesChannels::__serialize()` returns the channel name.
+     */
+    type SerializesChannelsSerializeResult = struct {
+        string $name;
+    };
+
+    // @overlay-against: trait SerializesChannels
+    partial trait SerializesChannels {
+        /**
+         * Overlay: `__serialize()` returns the channel name.
+         */
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): SerializesChannelsSerializeResult;
+
+        /**
+         * Overlay: `__unserialize()` reads the channel name.
+         */
+        // @overlay-against: function __unserialize(array $values): void
+        public function __unserialize(SerializesChannelsSerializeResult $values): void;
+    }
+}
+
+namespace Laravel\Reverb\Protocols\Pusher\Exceptions {
+    /**
+     * Overlay: `PusherException::payload()` returns this shape.
+     */
+    type PusherExceptionPayload = struct {
+        string|false $data;
+        string $event;
+    };
+
+    // @overlay-against: class PusherException extends \Exception
+    partial class PusherException {
+        /**
+         * Overlay: `payload()` returns the Pusher error event and encoded data.
+         */
+        // @overlay-against: function payload(): array
+        public function payload(): PusherExceptionPayload;
+    }
+}
+
+namespace Laravel\Reverb\Protocols\Pusher\Http\Controllers {
+    // @overlay-against: class PusherController
+    omit class PusherController {};
+}
+
+namespace Laravel\Reverb\Protocols\Pusher\Managers {
+    // @overlay-against: class ArrayChannelManager implements \Laravel\Reverb\Protocols\Pusher\Contracts\ChannelManager, \Laravel\Reverb\Concerns\InteractsWithApplications
+    partial class ArrayChannelManager {
+        /**
+         * Overlay: `ArrayChannelManager::channels()` uses `all()`'s channel map.
+         */
+        // @overlay-against: function channels(?string $channel): \Laravel\Reverb\Protocols\Pusher\Channels\Channel|array|null
+        public function channels(?string $channel = null): \Laravel\Reverb\Protocols\Pusher\Channels\Channel|array<string, \Laravel\Reverb\Protocols\Pusher\Channels\Channel>|null;
+    }
+}
+
+namespace Laravel\Reverb\Pulse\Recorders {
+    // @overlay-against: class ReverbConnections implements \Laravel\Pulse\Recorders\Concerns\Sampling
+    omit class ReverbConnections {};
+    // @overlay-against: class ReverbMessages implements \Laravel\Pulse\Recorders\Concerns\Sampling
+    omit class ReverbMessages {};
+}
+
+namespace Laravel\Reverb\Servers\Reverb {
+    // @overlay-against: class Connection extends \Evenement\EventEmitter implements \Laravel\Reverb\Contracts\WebSocketConnection
+    omit class Connection {};
+}
+
+namespace Laravel\Reverb\Servers\Reverb\Console\Commands {
+    // @overlay-against: class StartServer extends \Illuminate\Console\Command implements \Symfony\Component\Console\Command\SignalableCommandInterface
+    partial class StartServer {
+        /**
+         * Overlay: `getSubscribedSignals()` returns signal numbers.
+         */
+        // @overlay-against: function getSubscribedSignals(): array
+        public function getSubscribedSignals(): array<int, int>;
+    }
+}
+
+namespace Laravel\Reverb\Servers\Reverb\Http {
+    // @overlay-against: class Router implements \Laravel\Reverb\Servers\Reverb\Concerns\ClosesConnections
+    partial class Router {
+        // @overlay-against: function attemptUpgrade(\Psr\Http\Message\RequestInterface $request, \Laravel\Reverb\Servers\Reverb\Http\Connection $connection): \Laravel\Reverb\Servers\Reverb\Connection
+        omit function attemptUpgrade();
+    }
+
+    /**
+     * Overlay: documented array shape.
+     */
+    type RouterParametersResult = struct {
+        string $name;
+        int $position;
+        string $type;
+    };
+
+    // @overlay-against: class Router implements \Laravel\Reverb\Servers\Reverb\Concerns\ClosesConnections
+    partial class Router {
+        /**
+         * Overlay: `Router::parameters()` uses the documented types.
+         */
+        // @overlay-against: function parameters(mixed $controller): array
+        protected function parameters(mixed $controller): array<int, RouterParametersResult>;
+    }
+}
+
+namespace Laravel\Reverb {
+    /**
+     * Overlay: `Application::toArray()` returns these keys.
+     */
+    type ApplicationToArrayResult = struct {
+        int $activity_timeout;
+        array<int|string, mixed> $allowed_origins;
+        string $app_id;
+        string $key;
+        int $max_message_size;
+        array<int|string, mixed> $options;
+        int $ping_interval;
+        string $secret;
+    };
+
+    // @overlay-against: class Application
+    partial class Application {
+        /**
+         * Overlay: `toArray()` returns the application fields.
+         */
+        // @overlay-against: function toArray(): array
+        public function toArray(): ApplicationToArrayResult;
+    }
+
+    // @overlay-against: class ApplicationManagerServiceProvider extends \Illuminate\Support\ServiceProvider implements \Illuminate\Contracts\Support\DeferrableProvider
+    partial class ApplicationManagerServiceProvider {
+        /**
+         * Overlay: `ApplicationManagerServiceProvider::provides()` uses the documented types.
+         */
+        // @overlay-against: function provides(): array
+        public function provides(): array<int, __ClassName>;
+    }
+}
+extern class \Clue\React\Redis\Client;
+extern class \Ratchet\RFC6455\Handshake\ServerNegotiator;
+extern class \Ratchet\RFC6455\Messaging\Frame;
+extern interface \Ratchet\RFC6455\Messaging\FrameInterface;
+extern class \Ratchet\RFC6455\Messaging\MessageBuffer;
+extern interface \React\EventLoop\LoopInterface;
+extern interface \React\Socket\ConnectionInterface;
+extern interface \React\Socket\ServerInterface;

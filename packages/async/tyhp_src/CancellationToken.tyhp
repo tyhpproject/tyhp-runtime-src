@@ -6,7 +6,7 @@ use Tyhp\Exceptions\OperationCancelledException;
 
 final class CancellationToken {
     private bool $cancelled = false;
-    private array<int, callable> $callbacks = [];
+    private array<int, callable(): void> $callbacks = [];
     private static ?CancellationToken $none = null;
 
     public function __construct() {}
@@ -26,7 +26,7 @@ final class CancellationToken {
      * If already cancelled, the callback fires immediately.
      * Returns a closure that deregisters the callback when called.
      */
-    public function register(callable $callback): \Closure {
+    public function register(callable(): void $callback): \Closure {
         if ($this->cancelled) {
             $callback();
             return static fn() => null;
@@ -60,7 +60,7 @@ final class CancellationToken {
             return;
         }
         $this->cancelled = true;
-        array<int, callable> $callbacks = $this->callbacks;
+        array<int, callable(): void> $callbacks = $this->callbacks;
         $this->callbacks = [];
         ?\Throwable $firstException = null;
         foreach ($callbacks as $callback) {

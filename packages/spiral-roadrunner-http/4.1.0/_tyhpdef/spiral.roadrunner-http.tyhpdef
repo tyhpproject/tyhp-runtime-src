@@ -1,0 +1,187 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Spiral\RoadRunner\Http {
+    type RequestHeadersList = array<mixed, array<mixed, string>>;
+    type RequestAttributesList = array<string, mixed>;
+    type RequestQueryArgumentsList = array;
+    type RequestCookiesList = array<string, string>;
+    type RequestUploadedFilesList = array<mixed, \Spiral\RoadRunner\Http\RequestUploadedFile>;
+    final class GlobalState {
+        /**
+        * Cache superglobal $_SERVER to avoid state leaks between requests.
+        *
+        * @generated
+        */
+        public static function cacheServerVars(): void;
+        /**
+        * Enrich cached $_SERVER with data from the request.
+        *
+        * @return array Cached $_SERVER data enriched with request data.
+        * @generated
+        */
+        public static function enrichServerVars(\Spiral\RoadRunner\Http\Request $request): array;
+    }
+    type HttpWorkerRequestContext = struct {
+        mixed $remoteAddr;
+        mixed $protocol;
+        mixed $method;
+        string $uri;
+        \Spiral\RoadRunner\Http\RequestAttributesList $attributes;
+        \Spiral\RoadRunner\Http\RequestHeadersList $headers;
+        \Spiral\RoadRunner\Http\RequestCookiesList $cookies;
+        \Spiral\RoadRunner\Http\RequestUploadedFilesList|null $uploads;
+        string $rawQuery;
+        bool $parsed;
+    };
+    /**
+    * @see Request
+    * @api
+    * @generated
+    */
+    class HttpWorker implements \Spiral\RoadRunner\Http\HttpWorkerInterface {
+        public function __construct(\Spiral\RoadRunner\WorkerInterface $worker): void;
+        public function getWorker(): \Spiral\RoadRunner\WorkerInterface;
+        /**
+        * @throws \JsonException
+        * @generated
+        */
+        public function waitRequest(): ?\Spiral\RoadRunner\Http\Request;
+        /**
+        * @param array<mixed, array<mixed, string>> $headers
+        * @throws \JsonException
+        * @generated
+        */
+        public function respond(int $status, string|\Generator $body = '', array<mixed, array<mixed, string>> $headers = [], bool $endOfStream = true): void;
+    }
+    /**
+    * @generated
+    */
+    interface HttpWorkerInterface extends \Spiral\RoadRunner\WorkerAwareInterface {
+        /**
+        * Wait for incoming http request.
+        *
+        * @generated
+        */
+        public function waitRequest(): ?\Spiral\RoadRunner\Http\Request;
+        /**
+        * Send response to the application server.
+        *
+        * @param int $status Http status code
+        * @param string|\Generator $body Body of response.
+        *  *            If the body is a generator, then each yielded value will be sent as a separated stream chunk.
+        *  *            Returned value will be sent as a last stream package.
+        *  *            Note: Stream response is supported by RoadRunner since version 2023.3
+        * @param RequestHeadersList|array<mixed, array<mixed, string>> $headers $headers An associative array of the
+        *  *            message's headers. Each key MUST be a header name, and each value MUST be an array of strings for
+        *  *            that header.
+        * @param bool $endOfStream End of stream.
+        *  *            The {@see true} value means the Payload block is last in the stream.
+        * @generated
+        */
+        public function respond(int $status, string|\Generator $body, \Spiral\RoadRunner\Http\RequestHeadersList|array<mixed, array<mixed, string>> $headers = [], bool $endOfStream = true): void;
+    }
+    /**
+    * Manages PSR-7 request and response.
+    *
+    * @api
+    * @generated
+    */
+    class PSR7Worker implements \Spiral\RoadRunner\Http\PSR7WorkerInterface {
+        public function __construct(\Spiral\RoadRunner\WorkerInterface $worker, \Psr\Http\Message\ServerRequestFactoryInterface $requestFactory, \Psr\Http\Message\StreamFactoryInterface $streamFactory, \Psr\Http\Message\UploadedFileFactoryInterface $uploadsFactory): void;
+        public function getWorker(): \Spiral\RoadRunner\WorkerInterface;
+        public function getHttpWorker(): \Spiral\RoadRunner\Http\HttpWorker;
+        /**
+        * @param bool $populateServer Whether to populate $_SERVER superglobal.
+        * @throws \JsonException
+        * @generated
+        */
+        public function waitRequest(bool $populateServer = true): ?\Psr\Http\Message\ServerRequestInterface;
+        /**
+        * Send response to the application server.
+        *
+        * @throws \JsonException
+        * @generated
+        */
+        public function respond(\Psr\Http\Message\ResponseInterface $response): void;
+        /**
+        * Returns altered copy of _SERVER variable. Sets ip-address,
+        *
+        * request-time and other values.
+        *
+        * @return array
+        * @generated
+        */
+        protected function configureServer(\Spiral\RoadRunner\Http\Request $request): array;
+        /**
+        * @throws \JsonException
+        * @generated
+        */
+        protected function mapRequest(\Spiral\RoadRunner\Http\Request $httpRequest, array $server): \Psr\Http\Message\ServerRequestInterface;
+        /**
+        * Wraps all uploaded files with UploadedFile.
+        *
+        * @param RequestUploadedFilesList $files
+        * @return array<int, \Psr\Http\Message\UploadedFileInterface>|array<int, mixed>
+        * @generated
+        */
+        protected function wrapUploads(\Spiral\RoadRunner\Http\RequestUploadedFilesList $files): array<int, \Psr\Http\Message\UploadedFileInterface>|array<int, mixed>;
+    }
+    interface PSR7WorkerInterface extends \Spiral\RoadRunner\WorkerAwareInterface {
+        public function waitRequest(): ?\Psr\Http\Message\ServerRequestInterface;
+        /**
+        * Send response to the application server.
+        *
+        * @generated
+        */
+        public function respond(\Psr\Http\Message\ResponseInterface $response): void;
+    }
+    type RequestUploadedFile = struct {
+        mixed $name;
+        mixed $error;
+        mixed $tmpName;
+        mixed $size;
+        string $mime;
+    };
+    /**
+    * @psalm-immutable
+    * @psalm-immutable
+    * @generated
+    */
+    final class Request {
+        public const string PARSED_BODY_ATTRIBUTE_NAME ?? 'rr_parsed_body';
+        public readonly string $remoteAddr ?? '127.0.0.1';
+        public readonly string $protocol ?? 'HTTP/1.0';
+        public readonly string $method ?? 'GET';
+        public readonly string $uri ?? 'http://localhost';
+        public readonly \Spiral\RoadRunner\Http\RequestHeadersList $headers ?? [];
+        public readonly \Spiral\RoadRunner\Http\RequestCookiesList $cookies ?? [];
+        public readonly \Spiral\RoadRunner\Http\RequestUploadedFilesList $uploads ?? [];
+        public readonly \Spiral\RoadRunner\Http\RequestAttributesList $attributes ?? [];
+        public readonly \Spiral\RoadRunner\Http\RequestQueryArgumentsList $query ?? [];
+        public readonly string $body ?? '';
+        public readonly bool $parsed ?? false;
+        /**
+        * @param RequestHeadersList $headers
+        * @param RequestCookiesList $cookies
+        * @param RequestUploadedFilesList $uploads
+        * @param RequestAttributesList $attributes
+        * @param RequestQueryArgumentsList $query
+        * @generated
+        */
+        public function __construct(string $remoteAddr = '127.0.0.1', string $protocol = 'HTTP/1.0', string $method = 'GET', string $uri = 'http://localhost', \Spiral\RoadRunner\Http\RequestHeadersList $headers = [], \Spiral\RoadRunner\Http\RequestCookiesList $cookies = [], \Spiral\RoadRunner\Http\RequestUploadedFilesList $uploads = [], \Spiral\RoadRunner\Http\RequestAttributesList $attributes = [], \Spiral\RoadRunner\Http\RequestQueryArgumentsList $query = [], string $body = '', bool $parsed = false): void;
+        public function getRemoteAddr(): string;
+        /**
+        * @throws \JsonException
+        * @generated
+        */
+        public function getParsedBody(): ?array;
+    }
+}
+namespace Spiral\RoadRunner\Http\Exception {
+    final class StreamStoppedException extends \RuntimeException {
+        public function __construct(): void;
+    }
+}

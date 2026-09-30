@@ -1,0 +1,30 @@
+<?tyhp
+
+function test_mbstring_length_and_case(): int
+{
+    int $length = mb_strlen('café');
+    string $upper = mb_strtoupper('café');
+    string $lower = mb_strtolower($upper);
+    int|false $pos = mb_strpos($lower, 'é');
+    if ($pos === false) {
+        return $length;
+    }
+    return $length + $pos;
+}
+
+// `mb_str_pad` (PHP >= 8.3) and `mb_ucfirst` / `mb_lcfirst` (PHP >= 8.4) are only
+// in scope when compiling for a high enough `output.phpVersion` — see
+// tyhp-php8.4.json. All three carry `#[\Tyhp\Optimize\Pure]` in Layer 1.
+declare(php=">=8.3") {
+    function test_mbstring_str_pad(): string
+    {
+        return mb_str_pad('café', 8, '.');
+    }
+}
+
+declare(php=">=8.4") {
+    function test_mbstring_ucfirst_lcfirst(): string
+    {
+        return mb_lcfirst(mb_ucfirst('café'));
+    }
+}

@@ -1,0 +1,167 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Lexer tokens are `[value, type, line?]` triples.
+ */
+
+namespace PHPStan\PhpDocParser {
+    /**
+     * Overlay: attribute flags are a string-keyed bool map.
+     */
+    // @overlay-against: class ParserConfig
+    partial class ParserConfig {
+        /**
+         * @param array<string, bool> $usedAttributes
+         */
+        // @overlay-against: function __construct(array $usedAttributes): void
+        public function __construct(array<string, bool> $usedAttributes);
+    }
+}
+
+namespace PHPStan\PhpDocParser\Lexer {
+    /**
+     * Overlay: tokenize() returns token triples.
+     */
+    // @overlay-against: class Lexer
+    partial class Lexer {
+        /**
+         * @return array<int, array<int, string|int>>
+         */
+        // @overlay-against: function tokenize(string $s): array
+        public function tokenize(string $s): array<int, array<int, string|int>>;
+    }
+}
+
+namespace PHPStan\PhpDocParser\Parser {
+    /**
+     * Overlay: TokenIterator stores the same token triples.
+     */
+    // @overlay-against: class TokenIterator
+    partial class TokenIterator {
+        /**
+         * @param array<int, array<int, string|int>> $tokens
+         */
+        // @overlay-against: function __construct(array $tokens, int $index): void
+        public function __construct(array<int, array<int, string|int>> $tokens, int $index = 0);
+
+        /**
+         * @return array<int, array<int, string|int>>
+         */
+        // @overlay-against: function getTokens(): array
+        public function getTokens(): array<int, array<int, string|int>>;
+    }
+}
+
+namespace PHPStan\PhpDocParser\Ast {
+    /**
+     * List of PHPDoc AST nodes.
+     */
+    type NodeList = array<int|string, \PHPStan\PhpDocParser\Ast\Node>;
+
+    /**
+     * Generic variance keyword.
+     */
+    type Variance = 'invariant'|'covariant'|'contravariant'|'bivariant';
+
+    /**
+     * `enterNode()` replacement: a node, a node list, or a traverser signal.
+     * Signals are `DONT_TRAVERSE_CHILDREN` (1), `STOP_TRAVERSAL` (2), `REMOVE_NODE` (3), `DONT_TRAVERSE_CURRENT_AND_CHILDREN` (4).
+     */
+    type EnterNodeResult = \PHPStan\PhpDocParser\Ast\Node|\PHPStan\PhpDocParser\Ast\NodeList|1|2|3|4|null;
+
+    /**
+     * `leaveNode()` replacement. Signals are `STOP_TRAVERSAL` (2) and `REMOVE_NODE` (3).
+     */
+    type LeaveNodeResult = \PHPStan\PhpDocParser\Ast\Node|\PHPStan\PhpDocParser\Ast\NodeList|2|3|null;
+
+    /**
+     * One generic argument: the type node and its variance.
+     */
+    type GenericTypeArgument = struct {
+        \PHPStan\PhpDocParser\Ast\Type\TypeNode 0 as $_1;
+        \PHPStan\PhpDocParser\Ast\Variance 1 as $_2;
+    };
+
+    /**
+     * Overlay: visitor hooks use node lists and traverser signals.
+     */
+    // @overlay-against: interface NodeVisitor
+    partial interface NodeVisitor {
+        /**
+         * @param \PHPStan\PhpDocParser\Ast\NodeList $nodes
+         * @return \PHPStan\PhpDocParser\Ast\NodeList|null
+         */
+        // @overlay-against: function beforeTraverse(array $nodes): array|null
+        public function beforeTraverse(\PHPStan\PhpDocParser\Ast\NodeList $nodes): \PHPStan\PhpDocParser\Ast\NodeList|null;
+
+        // @overlay-against: function enterNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed
+        public function enterNode(\PHPStan\PhpDocParser\Ast\Node $node): \PHPStan\PhpDocParser\Ast\EnterNodeResult;
+
+        // @overlay-against: function leaveNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed
+        public function leaveNode(\PHPStan\PhpDocParser\Ast\Node $node): \PHPStan\PhpDocParser\Ast\LeaveNodeResult;
+
+        /**
+         * @param \PHPStan\PhpDocParser\Ast\NodeList $nodes
+         * @return \PHPStan\PhpDocParser\Ast\NodeList|null
+         */
+        // @overlay-against: function afterTraverse(array $nodes): array|null
+        public function afterTraverse(\PHPStan\PhpDocParser\Ast\NodeList $nodes): \PHPStan\PhpDocParser\Ast\NodeList|null;
+    }
+
+    /**
+     * Overlay: the abstract visitor matches `NodeVisitor`.
+     */
+    // @overlay-against: class AbstractNodeVisitor implements \PHPStan\PhpDocParser\Ast\NodeVisitor
+    partial class AbstractNodeVisitor {
+        // @overlay-against: function beforeTraverse(array $nodes): ?array
+        public function beforeTraverse(\PHPStan\PhpDocParser\Ast\NodeList $nodes): \PHPStan\PhpDocParser\Ast\NodeList|null;
+
+        // @overlay-against: function enterNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed
+        public function enterNode(\PHPStan\PhpDocParser\Ast\Node $node): \PHPStan\PhpDocParser\Ast\EnterNodeResult;
+
+        // @overlay-against: function leaveNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed
+        public function leaveNode(\PHPStan\PhpDocParser\Ast\Node $node): \PHPStan\PhpDocParser\Ast\LeaveNodeResult;
+
+        // @overlay-against: function afterTraverse(array $nodes): ?array
+        public function afterTraverse(\PHPStan\PhpDocParser\Ast\NodeList $nodes): \PHPStan\PhpDocParser\Ast\NodeList|null;
+    }
+}
+
+namespace PHPStan\PhpDocParser\Ast\Type {
+    /**
+     * Overlay: variance flags are the four generic keywords.
+     */
+    // @overlay-against: class GenericTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode, \PHPStan\PhpDocParser\Ast\NodeAttributes
+    partial class GenericTypeNode {
+        /**
+         * @var array<int|string, \PHPStan\PhpDocParser\Ast\Variance>
+         */
+        // @overlay-against: array $variances
+        public array<int|string, \PHPStan\PhpDocParser\Ast\Variance> $variances;
+
+        /**
+         * @param array<int|string, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $genericTypes
+         * @param array<int|string, \PHPStan\PhpDocParser\Ast\Variance> $variances
+         */
+        // @overlay-against: function __construct(\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $type, array $genericTypes, array $variances): void
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $type, array<int|string, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $genericTypes, array<int|string, \PHPStan\PhpDocParser\Ast\Variance> $variances = []);
+    }
+}
+
+namespace PHPStan\PhpDocParser\Parser {
+    /**
+     * Overlay: a generic argument is a type plus a variance keyword. Description callbacks read the token stream.
+     */
+    // @overlay-against: class TypeParser
+    partial class TypeParser {
+        // @overlay-against: function parseGenericTypeArgument(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): array
+        public function parseGenericTypeArgument(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): \PHPStan\PhpDocParser\Ast\GenericTypeArgument;
+
+        /**
+         * @param (callable(\PHPStan\PhpDocParser\Parser\TokenIterator): string)|null $parseDescription
+         */
+        // @overlay-against: function parseTemplateTagValue(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens, ?callable $parseDescription): \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode
+        public function parseTemplateTagValue(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens, ?callable(\PHPStan\PhpDocParser\Parser\TokenIterator): string $parseDescription = null): \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode;
+    }
+}

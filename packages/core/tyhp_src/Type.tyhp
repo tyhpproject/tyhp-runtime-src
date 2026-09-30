@@ -12,6 +12,10 @@ class Type implements \Stringable
         private readonly array<self|NamedType> $typeArgs = [],
         private readonly bool $isReadOnly = false,
         private readonly bool $isNullable = false,
+        private readonly array<int|string, self> $structFields = [],
+        private readonly array<int, int|string> $structRequiredKeys = [],
+        private readonly array<int, string> $objectShapeMethods = [],
+        private readonly array<int, string> $objectShapeProperties = [],
     ): void {}
 
     public static fn string(): self => self::$singletons['string'] ??= new self('scalar', 'string');
@@ -120,17 +124,69 @@ class Type implements \Stringable
             $type->typeArgs,
             $type->isReadOnly,
             true,
+            $type->structFields,
+            $type->structRequiredKeys,
+            $type->objectShapeMethods,
+            $type->objectShapeProperties,
         );
     }
 
     public static fn generic(string $className, NamedType ...$params): self => new self('generic', $className, $params);
+
+    /**
+     * A Tyhp struct shape: an associative array with named (or aliased) keys.
+     * `$fields` is PHP-key → field type. `$requiredKeys` must all be present on a value.
+     * Extra keys on a value are ignored.
+     */
+    public static function struct(
+        string $name,
+        array<int|string, self> $fields,
+        array<int, int|string> $requiredKeys = [],
+    ): self {
+        return new self('struct', $name, [], false, false, $fields, $requiredKeys);
+    }
+
+    /**
+     * A Tyhp object shape: an instance type matched by public member existence (v1).
+     * `$methods` / `$properties` are required public names. Extra members on a value
+     * are ignored. `__construct` is constructability-only and must not be listed.
+     * This descriptor is for guards / matching; it does not construct instances.
+     */
+    public static function objectShape(
+        string $name,
+        array<int, string> $methods = [],
+        array<int, string> $properties = [],
+    ): self {
+        return new self(
+            'objectShape',
+            $name,
+            [],
+            false,
+            false,
+            [],
+            [],
+            $methods,
+            $properties,
+        );
+    }
+
+    /**
+     * A Tyhp callable shape: an invokable type matched by existence (v1).
+     * `$name` is the alias (or `callable` for an inline shape). Extra callable
+     * forms are ignored. Signatures are not compared — `\is_callable` is enough.
+     * This descriptor is for `is` guards / matching; it does not construct values.
+     */
+    public static function callableShape(string $name): self
+    {
+        return new self('callableShape', $name);
+    }
 
     public static fn fromClassName(string $className): self => self::$singletons["class:$className"] ??= new self('class', $className);
 
     /**
      * Build a Type from a callable's reflected return type, or null when the callable has no
      * return type (or cannot be reflected). Used by Mechanism D wrappers to infer a method
-     * generic from a `callable<…, T>` / `Closure<…, T>` value argument when the call site
+     * generic from a `callable(...): T` / `\Closure<callable(...): T>` value argument when the call site
      * omitted `<T>`.
      */
     public static function fromCallableReturn(callable $callable): ?self
@@ -155,11 +211,15 @@ class Type implements \Stringable
             } elseif (\is_string($callable)) {
                 $ref = \str_contains($callable, '::')
                     ? new \ReflectionMethod($callable)
-                    : new \ReflectionFunction($callable);
+                    : (\function_exists($callable)
+                        ? new \ReflectionFunction($callable)
+                        : throw new \ReflectionException("Function \"{$callable}\" does not exist or is inaccessible.")
+                    );
             } elseif (\is_object($callable)) {
                 $ref = new \ReflectionMethod($callable, '__invoke');
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            (void)$e;
             return null;
         }
 
@@ -334,6 +394,70 @@ class Type implements \Stringable
         return $objectType instanceof self ? $objectType : null;
     }
 
+    /// Whether `$value` is an instance of the class or interface named by `$className`.
+    ///
+    /// `\is_a` on an object does not autoload `$className` and returns false when the
+    /// name is unknown or empty. A loaded class (or enum) name is a `__ClassName` and
+    /// is passed to `\is_a`. A loaded interface is not a class name; `instanceof`
+    /// matches `\is_a` for that name and also returns false when it is not loaded.
+    private static function objectIsNamedType(object $value, string $className): bool
+    {
+        if (\class_exists($className, false)) {
+            return \is_a($value, $className);
+        }
+
+        return \interface_exists($className, false) && $value instanceof $className;
+    }
+
+    /// Whether `$narrowName` is `$broadName` or a subtype of it.
+    ///
+    /// `\is_a` with a string subject autoloads only that subject, then looks the other
+    /// name up among symbols that are already loaded. An unknown or empty name is
+    /// false. A loaded class name is passed to `\is_a`. A loaded interface name is
+    /// not a `__ClassName`: a class subject uses `\is_subclass_of`, and an interface
+    /// subject uses reflection, which reports the same relation. A loaded trait is
+    /// the same type only when both names resolve to that trait.
+    private static function namedTypeIsA(string $narrowName, string $broadName): bool
+    {
+        if (\class_exists($narrowName)) {
+            if (\class_exists($broadName, false)) {
+                return \is_a($narrowName, $broadName, true);
+            }
+
+            return \interface_exists($broadName, false)
+                && \is_subclass_of($narrowName, $broadName, true);
+        }
+
+        if (\interface_exists($narrowName, false)) {
+            if (\class_exists($broadName, false)) {
+                return \is_a($narrowName, $broadName, true);
+            }
+
+            if (!\interface_exists($broadName, false)) {
+                return false;
+            }
+
+            \ReflectionClass $narrow = new \ReflectionClass($narrowName);
+            \ReflectionClass $broad = new \ReflectionClass($broadName);
+
+            return $narrow->getName() === $broad->getName()
+                || $narrow->isSubclassOf($broadName);
+        }
+
+        if (!\trait_exists($narrowName, false)) {
+            return false;
+        }
+
+        if (!\trait_exists($broadName, false)) {
+            return false;
+        }
+
+        \ReflectionClass $narrowTrait = new \ReflectionClass($narrowName);
+        \ReflectionClass $broadTrait = new \ReflectionClass($broadName);
+
+        return $narrowTrait->getName() === $broadTrait->getName();
+    }
+
     public static function isType<TTarget>(mixed $value): $value is TTarget
     {
         return self::is($value, typeof(TTarget));
@@ -351,10 +475,13 @@ class Type implements \Stringable
 
         return match ($type->kind) {
             'scalar' => self::isScalar($value, $type),
-            'class' => \is_object($value) && \is_a($value, $type->name ?? ''),
+            'class' => \is_object($value) && self::objectIsNamedType($value, $type->name ?? ''),
             'union' => self::isUnion($value, $type),
             'intersection' => self::isIntersection($value, $type),
             'generic' => self::isGeneric($value, $type),
+            'struct' => self::isStruct($value, $type),
+            'objectShape' => self::isObjectShape($value, $type),
+            'callableShape' => self::isCallableShape($value, $type),
             default => false,
         };
     }
@@ -372,6 +499,7 @@ class Type implements \Stringable
      * A nullable type defaults to `null` rather than to its inner type's zero value, matching
      * `default(?int)`. Types with no meaningful zero (`void`, `never`, `mixed`, `resource`,
      * unions, intersections) and object types without a declared default also yield `null`.
+     * For `void`, that `null` is accepted by {@see is()} so `Type::is(null, Type::void())` is true.
      */
     public function defaultValue(): mixed
     {
@@ -388,6 +516,7 @@ class Type implements \Stringable
                 'array', 'iterable' => [],
                 default => null,
             },
+            'struct' => [],
             default => null,
         };
     }
@@ -400,7 +529,9 @@ class Type implements \Stringable
             'float' => \is_float($value) || \is_int($value),
             'bool' => \is_bool($value),
             'null' => $value === null,
-            'void' => false,
+            // `null` is the runtime stand-in for void (what `default(void)` produces).
+            // Void is not nullable: only null matches, not every other value.
+            'void' => $value === null,
             'mixed' => true,
             'never' => false,
             'array' => \is_array($value),
@@ -436,11 +567,15 @@ class Type implements \Stringable
 
     private static function isGeneric(mixed $value, self $type): bool
     {
+        if ($type->name === 'array' || $type->name === 'iterable') {
+            return self::isArrayOf($value, $type);
+        }
+
         if (!\is_object($value)) {
             return false;
         }
 
-        if (!\is_a($value, $type->name ?? '')) {
+        if (!self::objectIsNamedType($value, $type->name ?? '')) {
             return false;
         }
 
@@ -450,6 +585,146 @@ class Type implements \Stringable
         }
 
         return true;
+    }
+
+    private static function isArrayOf(mixed $value, self $type): bool
+    {
+        if ($type->name === 'array') {
+            if (!\is_array($value)) {
+                return false;
+            }
+        } elseif (!\is_iterable($value)) {
+            return false;
+        }
+
+        int $argc = \count($type->typeArgs);
+        if ($argc === 0) {
+            return true;
+        }
+
+        ?self $keyType = null;
+        self $valueType;
+        if ($argc === 1) {
+            $valueType = self::unwrapNamed($type->typeArgs[0]);
+        } else {
+            $keyType = self::unwrapNamed($type->typeArgs[0]);
+            $valueType = self::unwrapNamed($type->typeArgs[1]);
+        }
+
+        foreach ($value as $k => $v) {
+            if ($keyType !== null && !self::is($k, $keyType)) {
+                return false;
+            }
+
+            if (!self::is($v, $valueType)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function isStruct(mixed $value, self $type): bool
+    {
+        if (!\is_array($value)) {
+            return false;
+        }
+
+        foreach ($type->structRequiredKeys as $key) {
+            if (!\array_key_exists($key, $value)) {
+                return false;
+            }
+        }
+
+        foreach ($type->structFields as $key => $fieldType) {
+            if (!\array_key_exists($key, $value)) {
+                continue;
+            }
+
+            mixed $fieldValue = null;
+            foreach ($value as $k => $v) {
+                if ($k === $key) {
+                    $fieldValue = $v;
+                    break;
+                }
+            }
+
+            if (!self::is($fieldValue, $fieldType)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Existence-only v1: the value is an object that declares each listed public
+     * method and property. Signatures are not compared. Extra members are ignored.
+     */
+    private static function isObjectShape(mixed $value, self $type): bool
+    {
+        if (!\is_object($value)) {
+            return false;
+        }
+
+        try {
+            \ReflectionObject $ref = new \ReflectionObject($value);
+        } catch (\Throwable $e) {
+            (void)$e;
+            return false;
+        }
+
+        foreach ($type->objectShapeMethods as $methodName) {
+            if (!self::objectHasPublicMethod($ref, $methodName)) {
+                return false;
+            }
+        }
+
+        foreach ($type->objectShapeProperties as $propertyName) {
+            if (!self::objectHasPublicProperty($ref, $propertyName)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Existence-only v1: the value is invokable. Signatures are not compared.
+     */
+    private static function isCallableShape(mixed $value, self $type): bool
+    {
+        (void)$type;
+        return \is_callable($value);
+    }
+
+    private static function objectHasPublicMethod(\ReflectionObject $ref, string $name): bool
+    {
+        try {
+            \ReflectionMethod $method = $ref->getMethod($name);
+        } catch (\Throwable $e) {
+            (void)$e;
+            return false;
+        }
+
+        return $method->isPublic() && !$method->isConstructor();
+    }
+
+    private static function objectHasPublicProperty(\ReflectionObject $ref, string $name): bool
+    {
+        try {
+            \ReflectionProperty $property = $ref->getProperty($name);
+        } catch (\Throwable $e) {
+            (void)$e;
+            return false;
+        }
+
+        return $property->isPublic();
+    }
+
+    private static function unwrapNamed(self|NamedType $type): self
+    {
+        return $type instanceof NamedType ? $type->getUnderlyingType() : $type;
     }
 
     public static function compatible(self $broad, self $narrow): bool
@@ -491,7 +766,7 @@ class Type implements \Stringable
         }
 
         if ($broad->kind === 'class' && $narrow->kind === 'class') {
-            return \is_a($narrow->name ?? '', $broad->name ?? '', true);
+            return self::namedTypeIsA($narrow->name ?? '', $broad->name ?? '');
         }
 
         return false;
@@ -585,6 +860,10 @@ class Type implements \Stringable
             $this->typeArgs,
             true,
             $this->isNullable,
+            $this->structFields,
+            $this->structRequiredKeys,
+            $this->objectShapeMethods,
+            $this->objectShapeProperties,
         );
     }
 
@@ -602,6 +881,10 @@ class Type implements \Stringable
             $this->typeArgs,
             $this->isReadOnly,
             false,
+            $this->structFields,
+            $this->structRequiredKeys,
+            $this->objectShapeMethods,
+            $this->objectShapeProperties,
         );
     }
 
@@ -633,6 +916,9 @@ class Type implements \Stringable
                 . '<' . \implode(', ', \array_map(\strval(...), $this->typeArgs)) . '>',
             'union' => \implode('|', \array_map(\strval(...), $this->typeArgs)),
             'intersection' => \implode('&', \array_map(\strval(...), $this->typeArgs)),
+            'struct' => 'struct ' . ($this->name ?? 'anonymous'),
+            'objectShape' => 'object ' . ($this->name ?? '{…}'),
+            'callableShape' => 'callable ' . ($this->name ?? '{…}'),
             default => 'unknown',
         };
 

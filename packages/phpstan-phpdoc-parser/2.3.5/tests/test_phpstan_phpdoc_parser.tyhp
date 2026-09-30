@@ -1,0 +1,19 @@
+<?tyhp
+
+function test_phpdoc_tokenize(): array<int, array<int, string|int>>
+{
+    $lexer = new \PHPStan\PhpDocParser\Lexer\Lexer(new \PHPStan\PhpDocParser\ParserConfig([]));
+    return $lexer->tokenize('/** @var string */');
+}
+
+function test_phpdoc_parse(): \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode
+{
+    $config = new \PHPStan\PhpDocParser\ParserConfig([]);
+    $const = new \PHPStan\PhpDocParser\Parser\ConstExprParser($config);
+    $types = new \PHPStan\PhpDocParser\Parser\TypeParser($config, $const);
+    $parser = new \PHPStan\PhpDocParser\Parser\PhpDocParser($config, $types, $const);
+    $tokens = new \PHPStan\PhpDocParser\Parser\TokenIterator(
+        (new \PHPStan\PhpDocParser\Lexer\Lexer($config))->tokenize('/** @var int $n */')
+    );
+    return $parser->parse($tokens);
+}

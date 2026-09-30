@@ -1,0 +1,1370 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace League\Fractal {
+    /**
+    * Manager
+    *
+    * Not a wildly creative name, but the manager is what a Fractal user will interact
+    * with the most. The manager has various configurable options, and allows users
+    * to create the "root scope" easily.
+    *
+    * @generated
+    */
+    class Manager {
+        /**
+        * Array of scope identifiers for resources to include.
+        *
+        * @generated
+        */
+        protected array $requestedIncludes ?? [];
+        /**
+        * Array of scope identifiers for resources to exclude.
+        *
+        * @generated
+        */
+        protected array $requestedExcludes ?? [];
+        /**
+        * Array of requested fieldsets.
+        *
+        * @generated
+        */
+        protected array $requestedFieldsets ?? [];
+        /**
+        * Array containing modifiers as keys and an array value of params.
+        *
+        * @generated
+        */
+        protected array $includeParams ?? [];
+        /**
+        * The character used to separate modifier parameters.
+        *
+        * @generated
+        */
+        protected string $paramDelimiter ?? '|';
+        /**
+        * Upper limit to how many levels of included data are allowed.
+        *
+        * @generated
+        */
+        protected int $recursionLimit ?? 10;
+        protected ?\League\Fractal\Serializer\Serializer $serializer ?? null;
+        public function __construct(?\League\Fractal\ScopeFactoryInterface $scopeFactory = null): void;
+        /**
+        * Main method to kick this all off. Make a resource then pass it over, and use toArray()
+        *
+        * @generated
+        */
+        public function createData(\League\Fractal\Resource\ResourceInterface $resource, ?string $scopeIdentifier = null, ?\League\Fractal\Scope $parentScopeInstance = null): \League\Fractal\Scope;
+        public function getIncludeParams(string $include): \League\Fractal\ParamBag;
+        public function getRequestedIncludes(): array;
+        public function getRequestedExcludes(): array;
+        public function getSerializer(): \League\Fractal\Serializer\Serializer;
+        /**
+        * @param array|string $includes Array or csv string of resources to include
+        * @generated
+        */
+        public function parseIncludes(array|string $includes): self;
+        /**
+        * Parse field parameter.
+        *
+        * @param array $fieldsets Array of fields to include. It must be an array whose keys
+        *  *                             are resource types and values an array or a string
+        *  *                             of the fields to return, separated by a comma
+        * @generated
+        */
+        public function parseFieldsets(array $fieldsets): self;
+        public function getRequestedFieldsets(): array;
+        /**
+        * Get fieldset params for the specified type.
+        *
+        * @generated
+        */
+        public function getFieldset(string $type): ?\League\Fractal\ParamBag;
+        /**
+        * @param array|string $excludes Array or csv string of resources to exclude
+        * @generated
+        */
+        public function parseExcludes(array|string $excludes): self;
+        public function setRecursionLimit(int $recursionLimit): self;
+        public function setSerializer(\League\Fractal\Serializer\Serializer $serializer): self;
+    }
+    /**
+    * A handy interface for getting at include parameters.
+    *
+    * @generated
+    */
+    class ParamBag implements \ArrayAccess, \IteratorAggregate {
+        protected array $params ?? [];
+        /**
+        * Create a new parameter bag instance.
+        *
+        * @generated
+        */
+        public function __construct(array $params): void;
+        /**
+        * Get parameter values out of the bag.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Get parameter values out of the bag via the property access magic method.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+        /**
+        * Check if a param exists in the bag via an isset() check on the property.
+        *
+        * @generated
+        */
+        public function __isset(string $key): bool;
+        /**
+        * Disallow changing the value of params in the data bag via property access.
+        *
+        * @param mixed $value
+        * @throws \LogicException
+        * @generated
+        */
+        public function __set(string $key, mixed $value): void;
+        /**
+        * Disallow unsetting params in the data bag via property access.
+        *
+        * @throws \LogicException
+        * @return void
+        * @generated
+        */
+        public function __unset(string $key): void;
+        /**
+        * Check if a param exists in the bag via an isset() and array access.
+        *
+        * @param string $key
+        * @generated
+        */
+        public function offsetExists(string $key): bool;
+        /**
+        * Get parameter values out of the bag via array access.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function offsetGet(string $key): mixed;
+        /**
+        * Disallow changing the value of params in the data bag via array access.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @throws \LogicException
+        * @generated
+        */
+        public function offsetSet(string $key, mixed $value): void;
+        /**
+        * Disallow unsetting params in the data bag via array access.
+        *
+        * @param string $key
+        * @throws \LogicException
+        * @generated
+        */
+        public function offsetUnset(string $key): void;
+        /**
+        * IteratorAggregate for iterating over the object like an array.
+        *
+        * @generated
+        */
+        public function getIterator(): \ArrayIterator;
+    }
+    /**
+    * Scope
+    *
+    * The scope class acts as a tracker, relating a specific resource in a specific
+    * context. For example, the same resource could be attached to multiple scopes.
+    * There are root scopes, parent scopes and child scopes.
+    *
+    * @generated
+    */
+    class Scope implements \JsonSerializable {
+        protected array $availableIncludes ?? [];
+        protected ?string $scopeIdentifier;
+        protected \League\Fractal\Manager $manager;
+        protected \League\Fractal\Resource\ResourceInterface $resource;
+        protected array $parentScopes ?? [];
+        public function __construct(\League\Fractal\Manager $manager, \League\Fractal\Resource\ResourceInterface $resource, ?string $scopeIdentifier = null): void;
+        /**
+        * Get the current identifier.
+        *
+        * @generated
+        */
+        public function getScopeIdentifier(): ?string;
+        /**
+        * Get the unique identifier for this scope.
+        *
+        * @generated
+        */
+        public function getIdentifier(?string $appendIdentifier = null): string;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getParentScopes(): mixed;
+        public function getResource(): \League\Fractal\Resource\ResourceInterface;
+        public function getManager(): \League\Fractal\Manager;
+        /**
+        * Convert the current data for this scope to an array.
+        *
+        * @generated
+        */
+        public function toArray(): ?array;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function jsonSerialize(): mixed;
+        /**
+        * Convert the current data for this scope to JSON.
+        *
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Transformer a primitive resource
+        *
+        * @return mixed
+        * @generated
+        */
+        public function transformPrimitiveResource(): mixed;
+        /**
+        * Check, if this is the root scope.
+        *
+        * @generated
+        */
+        protected function isRootScope(): bool;
+        protected function setScope(mixed $transformer): void;
+        protected function unsetScope(mixed $transformer): void;
+    }
+    class ScopeFactory implements \League\Fractal\ScopeFactoryInterface {
+        public function createScopeFor(\League\Fractal\Manager $manager, \League\Fractal\Resource\ResourceInterface $resource, ?string $scopeIdentifier = null): \League\Fractal\Scope;
+        public function createChildScopeFor(\League\Fractal\Manager $manager, \League\Fractal\Scope $parentScope, \League\Fractal\Resource\ResourceInterface $resource, ?string $scopeIdentifier = null): \League\Fractal\Scope;
+    }
+    /**
+    * Creates Scope Instances for resources
+    *
+    * @generated
+    */
+    interface ScopeFactoryInterface {
+        public function createScopeFor(\League\Fractal\Manager $manager, \League\Fractal\Resource\ResourceInterface $resource, ?string $scopeIdentifier = null): \League\Fractal\Scope;
+        public function createChildScopeFor(\League\Fractal\Manager $manager, \League\Fractal\Scope $parentScope, \League\Fractal\Resource\ResourceInterface $resource, ?string $scopeIdentifier = null): \League\Fractal\Scope;
+    }
+    /**
+    * All Transformer classes should extend this to utilize the convenience methods
+    *
+    * collection() and item(), and make the self::$availableIncludes property available.
+    * Extend it and add a `transform()` method to transform any default or included data
+    * into a basic array.
+    *
+    * @generated
+    */
+    abstract class TransformerAbstract {
+        /**
+        * Resources that can be included if requested.
+        *
+        * @generated
+        */
+        protected array $availableIncludes ?? [];
+        /**
+        * Include resources without needing it to be requested.
+        *
+        * @generated
+        */
+        protected array $defaultIncludes ?? [];
+        /**
+        * The transformer should know about the current scope, so we can fetch relevant params.
+        *
+        * @generated
+        */
+        protected ?\League\Fractal\Scope $currentScope ?? null;
+        /**
+        * Getter for availableIncludes.
+        *
+        * @generated
+        */
+        public function getAvailableIncludes(): array;
+        /**
+        * Getter for defaultIncludes.
+        *
+        * @generated
+        */
+        public function getDefaultIncludes(): array;
+        /**
+        * Getter for currentScope.
+        *
+        * @generated
+        */
+        public function getCurrentScope(): ?\League\Fractal\Scope;
+        /**
+        * Setter for availableIncludes.
+        *
+        * @generated
+        */
+        public function setAvailableIncludes(array $availableIncludes): self;
+        /**
+        * Setter for defaultIncludes.
+        *
+        * @generated
+        */
+        public function setDefaultIncludes(array $defaultIncludes): self;
+        /**
+        * Setter for currentScope.
+        *
+        * @generated
+        */
+        public function setCurrentScope(\League\Fractal\Scope $currentScope): self;
+        public function unsetCurrentScope(): self;
+        /**
+        * Create a new primitive resource object.
+        *
+        * @param mixed $data
+        * @param callable|null $transformer
+        * @generated
+        */
+        protected function primitive(mixed $data, callable|null $transformer = null, ?string $resourceKey = null): \League\Fractal\Resource\Primitive;
+        /**
+        * Create a new item resource object.
+        *
+        * @param mixed $data
+        * @param TransformerAbstract|callable $transformer
+        * @generated
+        */
+        protected function item(mixed $data, \League\Fractal\TransformerAbstract|callable $transformer, ?string $resourceKey = null): \League\Fractal\Resource\Item;
+        /**
+        * Create a new collection resource object.
+        *
+        * @param mixed $data
+        * @param TransformerAbstract|callable $transformer
+        * @generated
+        */
+        protected function collection(mixed $data, \League\Fractal\TransformerAbstract|callable $transformer, ?string $resourceKey = null): \League\Fractal\Resource\Collection;
+        /**
+        * Create a new null resource object.
+        *
+        * @generated
+        */
+        protected function null(): \League\Fractal\Resource\NullResource;
+    }
+}
+namespace League\Fractal\Pagination {
+    /**
+    * A generic cursor adapter.
+    *
+    * @author Isern Palaus <ipalaus@ipalaus.com>
+    * @author Michele Massari <michele@michelemassari.net>
+    * @generated
+    */
+    class Cursor implements \League\Fractal\Pagination\CursorInterface {
+        /**
+        * Current cursor value.
+        *
+        * @var mixed
+        * @generated
+        */
+        protected mixed $current;
+        /**
+        * Previous cursor value.
+        *
+        * @var mixed
+        * @generated
+        */
+        protected mixed $prev;
+        /**
+        * Next cursor value.
+        *
+        * @var mixed
+        * @generated
+        */
+        protected mixed $next;
+        /**
+        * Items being held for the current cursor position.
+        *
+        * @generated
+        */
+        protected ?int $count;
+        /**
+        * Create a new Cursor instance.
+        *
+        * @param mixed $current
+        * @param mixed $prev
+        * @param mixed $next
+        * @generated
+        */
+        public function __construct(mixed $current = null, mixed $prev = null, mixed $next = null, ?int $count = null): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCurrent(): mixed;
+        /**
+        * Set the current cursor value.
+        *
+        * @param mixed $current
+        * @generated
+        */
+        public function setCurrent(mixed $current): self;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPrev(): mixed;
+        /**
+        * Set the prev cursor value.
+        *
+        * @param mixed $prev
+        * @generated
+        */
+        public function setPrev(mixed $prev): self;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getNext(): mixed;
+        /**
+        * Set the next cursor value.
+        *
+        * @param mixed $next
+        * @generated
+        */
+        public function setNext(mixed $next): self;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCount(): ?int;
+        /**
+        * Set the total items in the current cursor.
+        *
+        * @generated
+        */
+        public function setCount(int $count): self;
+    }
+    /**
+    * A common interface for cursors to use.
+    *
+    * @author Isern Palaus <ipalaus@ipalaus.com>
+    * @generated
+    */
+    interface CursorInterface {
+        /**
+        * Get the current cursor value.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function getCurrent(): mixed;
+        /**
+        * Get the prev cursor value.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function getPrev(): mixed;
+        /**
+        * Get the next cursor value.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function getNext(): mixed;
+        /**
+        * Returns the total items in the current cursor.
+        *
+        * @generated
+        */
+        public function getCount(): ?int;
+    }
+    /**
+    * A paginator adapter for doctrine pagination.
+    *
+    * @author Fraser Stockley <fraser.stockley@gmail.com>
+    * @generated
+    */
+    class DoctrinePaginatorAdapter implements \League\Fractal\Pagination\PaginatorInterface {
+        use \League\Fractal\Pagination\PaginatorCountTrait;
+        /**
+        * Create a new DoctrinePaginatorAdapter.
+        *
+        * @param \Doctrine\ORM\Tools\Pagination\Paginator $paginator
+        * @param callable $routeGenerator
+        * @generated
+        */
+        public function __construct(\Doctrine\ORM\Tools\Pagination\Paginator $paginator, callable $routeGenerator): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCurrentPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLastPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getTotal(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCount(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPerPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUrl(int $page): string;
+    }
+    /**
+    * A paginator adapter for illuminate/pagination.
+    *
+    * @author Maxime Beaudoin <firalabs@gmail.com>
+    * @author Marc Addeo <marcaddeo@gmail.com>
+    * @generated
+    */
+    class IlluminatePaginatorAdapter implements \League\Fractal\Pagination\PaginatorInterface {
+        protected \Illuminate\Contracts\Pagination\LengthAwarePaginator $paginator;
+        /**
+        * Create a new illuminate pagination adapter.
+        *
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Pagination\LengthAwarePaginator $paginator): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCurrentPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLastPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getTotal(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCount(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPerPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUrl(int $page): string;
+        /**
+        * Get the paginator instance.
+        *
+        * @generated
+        */
+        public function getPaginator(): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
+    }
+    /**
+    * A paginator adapter for laminas/laminas-paginator.
+    *
+    * @author Abdul Malik Ikhsan <samsonasik@gmail.com>
+    * @generated
+    */
+    class LaminasPaginatorAdapter implements \League\Fractal\Pagination\PaginatorInterface {
+        protected \Laminas\Paginator\Paginator $paginator;
+        /**
+        * The route generator.
+        *
+        * @var callable
+        * @generated
+        */
+        protected callable $routeGenerator;
+        public function __construct(\Laminas\Paginator\Paginator $paginator, callable $routeGenerator): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCurrentPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLastPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getTotal(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCount(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPerPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUrl(int $page): string;
+        public function getPaginator(): \Laminas\Paginator\Paginator;
+        public function getRouteGenerator(): callable;
+    }
+    /**
+    * A paginator adapter for pagerfanta/pagerfanta.
+    *
+    * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
+    * @generated
+    */
+    class PagerfantaPaginatorAdapter implements \League\Fractal\Pagination\PaginatorInterface {
+        use \League\Fractal\Pagination\PaginatorCountTrait;
+        protected \Pagerfanta\Pagerfanta $paginator;
+        /**
+        * The route generator.
+        *
+        * @var callable
+        * @generated
+        */
+        protected callable $routeGenerator;
+        public function __construct(\Pagerfanta\Pagerfanta $paginator, callable $routeGenerator): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCurrentPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLastPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getTotal(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCount(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPerPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUrl(int $page): string;
+        public function getPaginator(): \Pagerfanta\Pagerfanta;
+        public function getRouteGenerator(): callable;
+    }
+    trait PaginatorCountTrait {
+    }
+    /**
+    * A common interface for paginators to use
+    *
+    * @author Marc Addeo <marcaddeo@gmail.com>
+    * @generated
+    */
+    interface PaginatorInterface {
+        /**
+        * Get the current page.
+        *
+        * @generated
+        */
+        public function getCurrentPage(): int;
+        /**
+        * Get the last page.
+        *
+        * @generated
+        */
+        public function getLastPage(): int;
+        /**
+        * Get the total.
+        *
+        * @generated
+        */
+        public function getTotal(): int;
+        /**
+        * Get the count.
+        *
+        * @generated
+        */
+        public function getCount(): int;
+        /**
+        * Get the number per page.
+        *
+        * @generated
+        */
+        public function getPerPage(): int;
+        /**
+        * Get the url for the given page.
+        *
+        * @generated
+        */
+        public function getUrl(int $page): string;
+    }
+    /**
+    * A paginator adapter for PhalconPHP/pagination.
+    *
+    * @author Thien Tran <fcduythien@gmail.com>
+    * @author Nikolaos Dimopoulos <nikos@phalconphp.com>
+    * @generated
+    */
+    class PhalconFrameworkPaginatorAdapter implements \League\Fractal\Pagination\PaginatorInterface {
+        public function __construct(\stdClass $paginator): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCurrentPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLastPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getTotal(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCount(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPerPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getNext(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUrl(int $page): string;
+    }
+    /**
+    * A paginator adapter for zendframework/zend-paginator.
+    *
+    * @author Abdul Malik Ikhsan <samsonasik@gmail.com>
+    * @generated
+    */
+    class ZendFrameworkPaginatorAdapter implements \League\Fractal\Pagination\PaginatorInterface {
+        protected \Zend\Paginator\Paginator $paginator;
+        /**
+        * The route generator.
+        *
+        * @var callable
+        * @generated
+        */
+        protected callable $routeGenerator;
+        public function __construct(\Zend\Paginator\Paginator $paginator, callable $routeGenerator): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCurrentPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getLastPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getTotal(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getCount(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getPerPage(): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getUrl(int $page): string;
+        public function getPaginator(): \Zend\Paginator\Paginator;
+        public function getRouteGenerator(): callable;
+    }
+}
+namespace League\Fractal\Resource {
+    /**
+    * Resource Collection
+    *
+    * The data can be a collection of any sort of data, as long as the
+    * "collection" is either array or an object implementing ArrayIterator.
+    *
+    * @generated
+    */
+    class Collection extends \League\Fractal\Resource\ResourceAbstract {
+        /**
+        * A collection of data.
+        *
+        * @var array|\ArrayIterator
+        * @generated
+        */
+        protected array|\ArrayIterator $data;
+        protected ?\League\Fractal\Pagination\PaginatorInterface $paginator ?? null;
+        protected ?\League\Fractal\Pagination\CursorInterface $cursor ?? null;
+        public function getPaginator(): ?\League\Fractal\Pagination\PaginatorInterface;
+        /**
+        * Determine if the resource has a paginator implementation.
+        *
+        * @generated
+        */
+        public function hasPaginator(): bool;
+        /**
+        * Get the cursor instance.
+        *
+        * @generated
+        */
+        public function getCursor(): ?\League\Fractal\Pagination\CursorInterface;
+        /**
+        * Determine if the resource has a cursor implementation.
+        *
+        * @generated
+        */
+        public function hasCursor(): bool;
+        public function setPaginator(\League\Fractal\Pagination\PaginatorInterface $paginator): self;
+        public function setCursor(\League\Fractal\Pagination\CursorInterface $cursor): self;
+    }
+    /**
+    * The Item Resource can store any mixed data, usually an ORM, ODM or
+    *
+    * other sort of intelligent result, DataMapper model, etc but could
+    * be a basic array, object, or whatever you like.
+    *
+    * @generated
+    */
+    class Item extends \League\Fractal\Resource\ResourceAbstract {
+    }
+    /**
+    * The Null Resource represents a resource that doesn't exist. This can be
+    *
+    * useful to indicate that a certain relationship is null in some output
+    * formats (e.g. JSON API), which require even a relationship that is null at
+    * the moment to be listed.
+    *
+    * @generated
+    */
+    class NullResource extends \League\Fractal\Resource\ResourceAbstract {
+        /**
+        * Get the data.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function getData(): mixed;
+    }
+    /**
+    * Primitive Resource
+    *
+    * The Primitive Resource can store any primitive data, like a string, integer,
+    * float, double etc.
+    *
+    * @generated
+    */
+    class Primitive extends \League\Fractal\Resource\ResourceAbstract {
+    }
+    abstract class ResourceAbstract implements \League\Fractal\Resource\ResourceInterface {
+        /**
+        * Any item to process.
+        *
+        * @var mixed
+        * @generated
+        */
+        protected mixed $data;
+        /**
+        * Array of meta data.
+        *
+        * @generated
+        */
+        protected array $meta ?? [];
+        /**
+        * The resource key.
+        *
+        * @generated
+        */
+        protected ?string $resourceKey;
+        /**
+        * A callable to process the data attached to this resource.
+        *
+        * @var callable|\League\Fractal\TransformerAbstract|null
+        * @generated
+        */
+        protected callable|\League\Fractal\TransformerAbstract|null $transformer;
+        /**
+        * @param mixed $data
+        * @param callable|\League\Fractal\TransformerAbstract|null $transformer
+        * @generated
+        */
+        public function __construct(mixed $data = null, callable|\League\Fractal\TransformerAbstract|null $transformer = null, ?string $resourceKey = null): void;
+        /**
+        * Get the data.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function getData(): mixed;
+        /**
+        * Set the data.
+        *
+        * @param mixed $data
+        * @generated
+        */
+        public function setData(mixed $data): self;
+        /**
+        * Get the meta data.
+        *
+        * @generated
+        */
+        public function getMeta(): array;
+        /**
+        * Get the meta data.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function getMetaValue(string $metaKey): mixed;
+        public function getResourceKey(): string;
+        /**
+        * Get the transformer.
+        *
+        * @return callable|\League\Fractal\TransformerAbstract|null
+        * @generated
+        */
+        public function getTransformer(): callable|\League\Fractal\TransformerAbstract|null;
+        /**
+        * Set the transformer.
+        *
+        * @param callable|\League\Fractal\TransformerAbstract $transformer
+        * @generated
+        */
+        public function setTransformer(callable|\League\Fractal\TransformerAbstract $transformer): self;
+        /**
+        * Set the meta data.
+        *
+        * @generated
+        */
+        public function setMeta(array $meta): self;
+        /**
+        * Set one meta data value.
+        *
+        * @param mixed $metaValue
+        * @generated
+        */
+        public function setMetaValue(string $metaKey, mixed $metaValue): self;
+        public function setResourceKey(string $resourceKey): self;
+    }
+    interface ResourceInterface {
+        /**
+        * Get the resource key.
+        *
+        * @generated
+        */
+        public function getResourceKey(): string;
+        /**
+        * Get the data.
+        *
+        * @return mixed
+        * @generated
+        */
+        public function getData(): mixed;
+        /**
+        * Get the transformer.
+        *
+        * @return callable|\League\Fractal\TransformerAbstract|null
+        * @generated
+        */
+        public function getTransformer(): callable|\League\Fractal\TransformerAbstract|null;
+        /**
+        * Set the data.
+        *
+        * @param mixed $data
+        * @generated
+        */
+        public function setData(mixed $data): self;
+        /**
+        * Set the transformer.
+        *
+        * @param callable|\League\Fractal\TransformerAbstract $transformer
+        * @generated
+        */
+        public function setTransformer(callable|\League\Fractal\TransformerAbstract $transformer): self;
+        /**
+        * Get the meta data.
+        *
+        * @generated
+        */
+        public function getMeta(): array;
+    }
+}
+namespace League\Fractal\Serializer {
+    class ArraySerializer extends \League\Fractal\Serializer\SerializerAbstract {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function collection(?string $resourceKey, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function item(?string $resourceKey, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function null(): ?array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function includedData(\League\Fractal\Resource\ResourceInterface $resource, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function meta(array $meta): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function paginator(\League\Fractal\Pagination\PaginatorInterface $paginator): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function cursor(\League\Fractal\Pagination\CursorInterface $cursor): array;
+    }
+    class DataArraySerializer extends \League\Fractal\Serializer\ArraySerializer {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function collection(?string $resourceKey, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function item(?string $resourceKey, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function null(): ?array;
+    }
+    class JsonApiSerializer extends \League\Fractal\Serializer\ArraySerializer {
+        protected ?string $baseUrl ?? null;
+        protected array $rootObjects ?? [];
+        public function __construct(?string $baseUrl = null): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function collection(?string $resourceKey, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function item(?string $resourceKey, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function paginator(\League\Fractal\Pagination\PaginatorInterface $paginator): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function meta(array $meta): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function null(): ?array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function includedData(\League\Fractal\Resource\ResourceInterface $resource, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function sideloadIncludes(): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function injectData(array $data, array $rawIncludedData): array;
+        /**
+        * {@inheritDoc}
+        *
+        * Hook to manipulate the final sideloaded includes.
+        * The JSON API specification does not allow the root object to be included
+        * into the sideloaded `included`-array. We have to make sure it is
+        * filtered out, in case some object links to the root object in a
+        * relationship.
+        *
+        * @generated
+        */
+        public function filterIncludes(array $includedData, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getMandatoryFields(): array;
+        /**
+        * Filter function to delete root objects from array.
+        *
+        * @generated
+        */
+        protected function filterRootObject(array $object): bool;
+        /**
+        * Set the root objects of the JSON API tree.
+        *
+        * @generated
+        */
+        protected function setRootObjects(array $objects = []): void;
+        /**
+        * Determines whether an object is a root object of the JSON API tree.
+        *
+        * @generated
+        */
+        protected function isRootObject(array $object): bool;
+        protected function isCollection(array $data): bool;
+        protected function isNull(array $data): bool;
+        protected function isEmpty(array $data): bool;
+        protected function fillRelationships(array $data, array $relationships): array;
+        protected function parseRelationships(array $includedData): array;
+        /**
+        * @return mixed
+        * @generated
+        */
+        protected function getIdFromData(array $data): mixed;
+        /**
+        * Keep all sideloaded inclusion data on the top level.
+        *
+        * @generated
+        */
+        protected function pullOutNestedIncludedData(array $data): array;
+        /**
+        * Whether or not the serializer should include `links` for resource objects.
+        *
+        * @generated
+        */
+        protected function shouldIncludeLinks(): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function injectAvailableIncludeData(array $data, array $availableIncludes): array;
+    }
+    interface Serializer {
+        /**
+        * Serialize a collection.
+        *
+        * @generated
+        */
+        public function collection(?string $resourceKey, array $data): array;
+        /**
+        * Serialize an item.
+        *
+        * @generated
+        */
+        public function item(?string $resourceKey, array $data): array;
+        /**
+        * Serialize null resource.
+        *
+        * @generated
+        */
+        public function null(): ?array;
+        /**
+        * Serialize the included data.
+        *
+        * @generated
+        */
+        public function includedData(\League\Fractal\Resource\ResourceInterface $resource, array $data): array;
+        /**
+        * Serialize the meta.
+        *
+        * @generated
+        */
+        public function meta(array $meta): array;
+        /**
+        * Serialize the paginator.
+        *
+        * @generated
+        */
+        public function paginator(\League\Fractal\Pagination\PaginatorInterface $paginator): array;
+        /**
+        * Serialize the cursor.
+        *
+        * @generated
+        */
+        public function cursor(\League\Fractal\Pagination\CursorInterface $cursor): array;
+        public function mergeIncludes(array $transformedData, array $includedData): array;
+        public function injectAvailableIncludeData(array $data, array $availableIncludes): array;
+        /**
+        * Indicates if includes should be side-loaded.
+        *
+        * @generated
+        */
+        public function sideloadIncludes(): bool;
+        /**
+        * Hook for the serializer to inject custom data based on the relationships of the resource.
+        *
+        * @generated
+        */
+        public function injectData(array $data, array $rawIncludedData): array;
+        /**
+        * Hook for the serializer to modify the final list of includes.
+        *
+        * @generated
+        */
+        public function filterIncludes(array $includedData, array $data): array;
+        /**
+        * Get the mandatory fields for the serializer
+        *
+        * @generated
+        */
+        public function getMandatoryFields(): array;
+    }
+    abstract class SerializerAbstract implements \League\Fractal\Serializer\Serializer {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function mergeIncludes(array $transformedData, array $includedData): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function sideloadIncludes(): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function injectData(array $data, array $rawIncludedData): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function injectAvailableIncludeData(array $data, array $availableIncludes): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function filterIncludes(array $includedData, array $data): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getMandatoryFields(): array;
+    }
+}

@@ -1,0 +1,42 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * Follows TYHPDEF_ORDERING.md.
+ * Array-shape returns for iconv encoding queries and MIME header decode.
+ * Not Pure (see Pure.Iconv.tyhpdef).
+ */
+
+/**
+ * Overlay: `iconv_get_encoding('all')` array-shape.
+ */
+type IconvEncodings = struct {
+    string $input_encoding;
+    string $output_encoding;
+    string $internal_encoding;
+};
+
+/**
+ * Overlay: `iconv_mime_encode()` `$options`. Item names are case-sensitive.
+ * `$scheme` is `"B"` (base64) or `"Q"` (quoted-printable).
+ */
+type IconvMimeEncodeOptions = struct {
+    ?string 'input-charset' as $inputCharset;
+    ?string 'line-break-chars' as $lineBreakChars;
+    ?int 'line-length' as $lineLength;
+    ?string 'output-charset' as $outputCharset;
+    ?("B"|"Q") $scheme;
+};
+
+// @overlay-against: function iconv_get_encoding(string $type): array|string|false
+function iconv_get_encoding('all' $type = 'all'): IconvEncodings|false;
+// @overlay-against: function iconv_get_encoding(string $type): array|string|false
+function iconv_get_encoding(string $type): string|false;
+// @overlay-against: function iconv_get_encoding(string $type): array|string|false
+function iconv_get_encoding(string $type = 'all'): IconvEncodings|string|false;
+
+// @overlay-against: function iconv_mime_decode_headers(string $headers, int $mode, ?string $encoding): array|false
+function iconv_mime_decode_headers(string $headers, int $mode = 0, ?string $encoding = null): array<string, string|array<int, string>>|false;
+
+// @overlay-against: function iconv_mime_encode(string $field_name, string $field_value, array $options): string|false
+function iconv_mime_encode(string $field_name, string $field_value, IconvMimeEncodeOptions $options = []): string|false;

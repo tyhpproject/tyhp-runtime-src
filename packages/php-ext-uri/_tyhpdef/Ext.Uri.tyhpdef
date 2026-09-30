@@ -1,0 +1,149 @@
+<?tyhpdef
+/**
+ * Hand-written Layer 1 for uri.
+ * Managed PHP 8.5 reflects the extension, but `generate_tyhpdef` parse-check
+ * refuses the dump (`static` return types) and writes no Layer 1 file.
+ * Signatures follow PHP 8.5.8 Reflection. File is gated so 8.2–8.4 skip it.
+ *
+ * @link https://www.php.net/manual/en/book.uri.php
+ */
+declare(php=">=8.5");
+
+namespace Uri {
+    enum UriComparisonMode {
+        case IncludeFragment;
+        case ExcludeFragment;
+    }
+
+    class UriException extends \Exception {
+    }
+
+    class UriError extends \Error {
+    }
+
+    class InvalidUriException extends UriException {
+    }
+}
+
+namespace Uri\Rfc3986 {
+    /**
+     * RFC 3986 URI.
+     *
+     * @link https://www.php.net/manual/en/class.uri-rfc3986-uri.php
+     */
+    final readonly class Uri {
+        public static function parse(string $uri, ?\Uri\Rfc3986\Uri $baseUrl = null): ?\Uri\Rfc3986\Uri;
+        public function __construct(string $uri, ?\Uri\Rfc3986\Uri $baseUrl = null);
+        public function getScheme(): ?string;
+        public function getRawScheme(): ?string;
+        public function withScheme(?string $scheme): \Uri\Rfc3986\Uri;
+        public function getUserInfo(): ?string;
+        public function getRawUserInfo(): ?string;
+        public function withUserInfo(?string $userinfo): \Uri\Rfc3986\Uri;
+        public function getUsername(): ?string;
+        public function getRawUsername(): ?string;
+        public function getPassword(): ?string;
+        public function getRawPassword(): ?string;
+        public function getHost(): ?string;
+        public function getRawHost(): ?string;
+        public function withHost(?string $host): \Uri\Rfc3986\Uri;
+        public function getPort(): ?int;
+        public function withPort(?int $port): \Uri\Rfc3986\Uri;
+        public function getPath(): string;
+        public function getRawPath(): string;
+        public function withPath(string $path): \Uri\Rfc3986\Uri;
+        public function getQuery(): ?string;
+        public function getRawQuery(): ?string;
+        public function withQuery(?string $query): \Uri\Rfc3986\Uri;
+        public function getFragment(): ?string;
+        public function getRawFragment(): ?string;
+        public function withFragment(?string $fragment): \Uri\Rfc3986\Uri;
+        public function equals(\Uri\Rfc3986\Uri $uri, \Uri\UriComparisonMode $comparisonMode = \Uri\UriComparisonMode::ExcludeFragment): bool;
+        public function toString(): string;
+        public function toRawString(): string;
+        public function resolve(string $uri): \Uri\Rfc3986\Uri;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        public function __debugInfo(): array;
+    }
+}
+
+namespace Uri\WhatWg {
+    /**
+     * WHATWG URL.
+     *
+     * @link https://www.php.net/manual/en/class.uri-whatwg-url.php
+     */
+    final readonly class Url {
+        public static function parse(string $uri, ?\Uri\WhatWg\Url $baseUrl = null, ?array &$errors = null): ?\Uri\WhatWg\Url;
+        public function __construct(string $uri, ?\Uri\WhatWg\Url $baseUrl = null, ?array &$softErrors = null);
+        public function getScheme(): string;
+        public function withScheme(string $scheme): \Uri\WhatWg\Url;
+        public function getUsername(): ?string;
+        public function withUsername(?string $username): \Uri\WhatWg\Url;
+        public function getPassword(): ?string;
+        public function withPassword(?string $password): \Uri\WhatWg\Url;
+        public function getAsciiHost(): ?string;
+        public function getUnicodeHost(): ?string;
+        public function withHost(?string $host): \Uri\WhatWg\Url;
+        public function getPort(): ?int;
+        public function withPort(?int $port): \Uri\WhatWg\Url;
+        public function getPath(): string;
+        public function withPath(string $path): \Uri\WhatWg\Url;
+        public function getQuery(): ?string;
+        public function withQuery(?string $query): \Uri\WhatWg\Url;
+        public function getFragment(): ?string;
+        public function withFragment(?string $fragment): \Uri\WhatWg\Url;
+        public function equals(\Uri\WhatWg\Url $url, \Uri\UriComparisonMode $comparisonMode = \Uri\UriComparisonMode::ExcludeFragment): bool;
+        public function toAsciiString(): string;
+        public function toUnicodeString(): string;
+        public function resolve(string $uri, ?array &$softErrors = null): \Uri\WhatWg\Url;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        public function __debugInfo(): array;
+    }
+
+    class InvalidUrlException extends \Uri\InvalidUriException {
+        public readonly array $errors;
+        public function __construct(string $message = "", array $errors = [], int $code = 0, ?\Throwable $previous = null);
+    }
+
+    final readonly class UrlValidationError {
+        public readonly string $context;
+        public readonly UrlValidationErrorType $type;
+        public readonly bool $failure;
+        public function __construct(string $context, UrlValidationErrorType $type, bool $failure);
+    }
+
+    enum UrlValidationErrorType {
+        case DomainToAscii;
+        case DomainToUnicode;
+        case DomainInvalidCodePoint;
+        case HostInvalidCodePoint;
+        case Ipv4EmptyPart;
+        case Ipv4TooManyParts;
+        case Ipv4NonNumericPart;
+        case Ipv4NonDecimalPart;
+        case Ipv4OutOfRangePart;
+        case Ipv6Unclosed;
+        case Ipv6InvalidCompression;
+        case Ipv6TooManyPieces;
+        case Ipv6MultipleCompression;
+        case Ipv6InvalidCodePoint;
+        case Ipv6TooFewPieces;
+        case Ipv4InIpv6TooManyPieces;
+        case Ipv4InIpv6InvalidCodePoint;
+        case Ipv4InIpv6OutOfRangePart;
+        case Ipv4InIpv6TooFewParts;
+        case InvalidUrlUnit;
+        case SpecialSchemeMissingFollowingSolidus;
+        case MissingSchemeNonRelativeUrl;
+        case InvalidReverseSoldius;
+        case InvalidCredentials;
+        case HostMissing;
+        case PortOutOfRange;
+        case PortInvalid;
+        case FileInvalidWindowsDriveLetter;
+        case FileInvalidWindowsDriveLetterHost;
+    }
+}

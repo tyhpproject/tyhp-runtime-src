@@ -8,43 +8,41 @@ use Tyhp\Expression\ExpressionSerializer;
 /**
  * Runtime expression tree produced by the Tyhp compiler or by {@see Expression::of()} fluent builders.
  *
- * @template TSource
- * @template TReturn
+ * @template TCallableShape of callable
  *
- * Type-system spellings follow the callable return-last convention even though this class
- * declares two parameters: `Expression<R>` (zero args), `Expression<T, R>` (one arg),
- * `Expression<T1, T2, R>` (two args). `TReturn` is always the last type argument;
- * `TSource` is the first parameter type (or mixed when there are none).
+ * The type argument is the callable shape of the captured lambda:
+ * `Expression<callable(User): string>` takes `User` and returns `string`.
+ * Zero-parameter lambdas are `Expression<callable(): R>`.
  */
-class Expression<TSource, TReturn> {
+class Expression<TCallableShape extends callable> {
     public readonly array<Expression\ParameterExpression> $parameters;
     public mixed $lastResult = null;
 
     public function __construct(
         public readonly Expression\ExpressionNode $body,
         array<Expression\ParameterExpression> $parameters,
-        public readonly \Closure $callable,
+        public readonly \Closure<TCallableShape> $callable,
         public readonly string $returnType,
     ) {
         $this->parameters = $parameters;
     }
 
-    public function __invoke(mixed ...$args): TReturn {
+    public function __invoke(__CallableParametersRest<TCallableShape> ...$args): __CallableReturnType<TCallableShape> {
         mixed $result = ($this->callable)(...$args);
         // Always stash first so callers who catch can inspect the mismatched value.
         $this->lastResult = $result;
-        if ($result is TReturn) {
+        if ($result is __CallableReturnType<TCallableShape>) {
             return $result;
         }
 
         throw new Exceptions\IncompatibleTypeException(
-            typeof(TReturn),
+            typeof(__CallableReturnType<TCallableShape>),
             Type::of($result),
             nameof($this->lastResult),
         );
     }
 
-    public function compile(): \Closure {
+    public function compile(): \Closure<TCallableShape> {
         return $this->callable;
     }
 
@@ -90,12 +88,12 @@ class Expression<TSource, TReturn> {
      * When `$other` is omitted, the returned builder mixes in the source type `T` (via
      * {@see ExpressionBuilder} `@mixin T`) so RHS property access has IDE autocomplete.
      *
-     * @return ExpressionBuilder<TSource>&TSource
+     * @return Expression
      *
-     * @phpstan-return ExpressionBuilder<TSource>&TSource
-     * @psalm-return ExpressionBuilder<TSource>&TSource
+     * @phpstan-return ExpressionBuilder<object>&object
+     * @psalm-return ExpressionBuilder<object>&object
      */
-    public function and(?Expression<TSource, mixed> $other = null): ExpressionBuilder<TSource> {
+    public function and(?Expression<TCallableShape> $other = null): Expression {
         return $this->combineOrContinue('&&', $other);
     }
 
@@ -105,12 +103,12 @@ class Expression<TSource, TReturn> {
      * When `$other` is omitted, the returned builder mixes in the source type `T` (via
      * {@see ExpressionBuilder} `@mixin T`) so RHS property access has IDE autocomplete.
      *
-     * @return ExpressionBuilder<TSource>&TSource
+     * @return Expression
      *
-     * @phpstan-return ExpressionBuilder<TSource>&TSource
-     * @psalm-return ExpressionBuilder<TSource>&TSource
+     * @phpstan-return ExpressionBuilder<object>&object
+     * @psalm-return ExpressionBuilder<object>&object
      */
-    public function or(?Expression<TSource, mixed> $other = null): ExpressionBuilder<TSource> {
+    public function or(?Expression<TCallableShape> $other = null): Expression {
         return $this->combineOrContinue('||', $other);
     }
 
@@ -120,10 +118,10 @@ class Expression<TSource, TReturn> {
      * Named `andAll` because PHP cannot declare both instance and static methods as `and`.
      */
     public static function andAll(
-        Expression<mixed, bool> $first,
-        Expression<mixed, bool> $second,
-        Expression<mixed, bool> ...$rest,
-    ): Expression<mixed, bool> {
+        Expression<callable(mixed): bool> $first,
+        Expression<callable(mixed): bool> $second,
+        Expression<callable(mixed): bool> ...$rest,
+    ): Expression<callable(mixed): bool> {
         return FluentSupport::combineAll([$first, $second, ...$rest], '&&');
     }
 
@@ -133,22 +131,22 @@ class Expression<TSource, TReturn> {
      * Named `orAll` because PHP cannot declare both instance and static methods as `or`.
      */
     public static function orAll(
-        Expression<mixed, bool> $first,
-        Expression<mixed, bool> $second,
-        Expression<mixed, bool> ...$rest,
-    ): Expression<mixed, bool> {
+        Expression<callable(mixed): bool> $first,
+        Expression<callable(mixed): bool> $second,
+        Expression<callable(mixed): bool> ...$rest,
+    ): Expression<callable(mixed): bool> {
         return FluentSupport::combineAll([$first, $second, ...$rest], '||');
     }
 
     private function combineOrContinue(
         string $combinator,
-        ?Expression<TSource, mixed> $other,
-    ): ExpressionBuilder<TSource> {
+        ?Expression<TCallableShape> $other,
+    ): Expression {
         string $sourceType = $this->parameters[0]->paramType ?? 'mixed';
 
         if ($other !== null) {
-            Expression<mixed, bool> $combined = FluentSupport::combine($this, $other, $combinator);
-            return new ExpressionBuilder<TSource>(
+            Expression<callable(mixed): bool> $combined = FluentSupport::combine($this, $other, $combinator);
+            return new ExpressionBuilder<object>(
                 $sourceType,
                 $combined->body,
                 $combined->parameters,
@@ -157,6 +155,6 @@ class Expression<TSource, TReturn> {
             );
         }
 
-        return ExpressionBuilder::continueFrom<TSource>($this, $combinator, $sourceType);
+        return ExpressionBuilder::continueFrom<object>($this, $combinator, $sourceType);
     }
 }

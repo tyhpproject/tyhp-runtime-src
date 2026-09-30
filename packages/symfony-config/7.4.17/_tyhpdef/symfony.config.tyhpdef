@@ -1,0 +1,2859 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Config {
+    /**
+    * ConfigCache caches arbitrary content in files on disk.
+    *
+    * When in debug mode, those metadata resources that implement
+    * \Symfony\Component\Config\Resource\SelfCheckingResourceInterface will
+    * be used to check cache freshness.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    class ConfigCache extends \Symfony\Component\Config\ResourceCheckerConfigCache {
+        /**
+        * @param string $file The absolute cache path
+        * @param bool $debug Whether debugging is enabled or not
+        * @param ?string $metaFile The absolute path to the meta file
+        * @param array<int, string>|null $skippedResourceTypes
+        * @generated
+        */
+        public function __construct(string $file, bool $debug, ?string $metaFile = null, array<int, string>|null $skippedResourceTypes = null): void;
+        /**
+        * Checks if the cache is still fresh.
+        *
+        * This implementation always returns true when debug is off and the
+        * cache file exists.
+        *
+        * @generated
+        */
+        public function isFresh(): bool;
+    }
+    /**
+    * Basic implementation of ConfigCacheFactoryInterface that
+    *
+    * creates an instance of the default ConfigCache.
+    * 
+    * This factory and/or cache <em>do not</em> support cache validation
+    * by means of ResourceChecker instances (that is, service-based).
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    class ConfigCacheFactory implements \Symfony\Component\Config\ConfigCacheFactoryInterface {
+        /**
+        * @param bool $debug The debug flag to pass to ConfigCache
+        * @generated
+        */
+        public function __construct(bool $debug): void;
+        public function cache(string $file, callable $callback): \Symfony\Component\Config\ConfigCacheInterface;
+    }
+    /**
+    * Interface for a ConfigCache factory. This factory creates
+    *
+    * an instance of ConfigCacheInterface and initializes the
+    * cache if necessary.
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    interface ConfigCacheFactoryInterface {
+        /**
+        * Creates a cache instance and (re-)initializes it if necessary.
+        *
+        * @param string $file The absolute cache file path
+        * @param callable $callable The callable to be executed when the cache needs to be filled (i. e. is not fresh). The cache will be passed as the only parameter to this callback
+        * @generated
+        */
+        public function cache(string $file, callable $callable): \Symfony\Component\Config\ConfigCacheInterface;
+    }
+    /**
+    * Interface for ConfigCache.
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    interface ConfigCacheInterface {
+        /**
+        * Gets the cache file path.
+        *
+        * @generated
+        */
+        public function getPath(): string;
+        /**
+        * Checks if the cache is still fresh.
+        *
+        * This check should take the metadata passed to the write() method into consideration.
+        *
+        * @generated
+        */
+        public function isFresh(): bool;
+        /**
+        * Writes the given content into the cache file. Metadata will be stored
+        *
+        * independently and can be used to check cache freshness at a later time.
+        *
+        * @param string $content The content to write into the cache
+        * @param array<int, \Symfony\Component\Config\Resource\ResourceInterface>|null $metadata An array of ResourceInterface instances
+        * @throws \RuntimeException When the cache file cannot be written
+        * @generated
+        */
+        public function write(string $content, array<int, \Symfony\Component\Config\Resource\ResourceInterface>|null $metadata = null): void;
+    }
+    /**
+    * FileLocator uses an array of pre-defined paths to find files.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class FileLocator implements \Symfony\Component\Config\FileLocatorInterface {
+        protected array $paths;
+        /**
+        * @param string|array $paths A path or an array of paths where to look for resources
+        * @generated
+        */
+        public function __construct(string|array $paths = []): void;
+        /**
+        * @return string|array
+        * @generated
+        */
+        public function locate(string $name, ?string $currentPath = null, bool $first = true): string|array;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface FileLocatorInterface {
+        /**
+        * Returns a full path for a given file name.
+        *
+        * @param string $name The file name to locate
+        * @param ?string $currentPath The current path
+        * @param bool $first Whether to return the first occurrence or an array of filenames
+        * @return string|array The full path to the file or an array of file paths
+        * @throws \InvalidArgumentException        If $name is empty
+        * @throws FileLocatorFileNotFoundException If a file is not found
+        * @generated
+        */
+        public function locate(string $name, ?string $currentPath = null, bool $first = true): string|array;
+    }
+    /**
+    * ResourceCheckerConfigCache uses instances of ResourceCheckerInterface
+    *
+    * to check whether cached data is still fresh.
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    class ResourceCheckerConfigCache implements \Symfony\Component\Config\ConfigCacheInterface {
+        /**
+        * @param string $file The absolute cache path
+        * @param iterable<mixed, ResourceCheckerInterface> $resourceCheckers The ResourceCheckers to use for the freshness check
+        * @param ?string $metaFile The absolute path to the meta file, defaults to $file.meta if null
+        * @generated
+        */
+        public function __construct(string $file, iterable<mixed, \Symfony\Component\Config\ResourceCheckerInterface> $resourceCheckers = [], ?string $metaFile = null): void;
+        public function getPath(): string;
+        /**
+        * Checks if the cache is still fresh.
+        *
+        * This implementation will make a decision solely based on the ResourceCheckers
+        * passed in the constructor.
+        * 
+        * The first ResourceChecker that supports a given resource is considered authoritative.
+        * Resources with no matching ResourceChecker will silently be ignored and considered fresh.
+        *
+        * @generated
+        */
+        public function isFresh(): bool;
+        /**
+        * Writes cache.
+        *
+        * @param string $content The content to write in the cache
+        * @param array<int, \Symfony\Component\Config\Resource\ResourceInterface> $metadata An array of metadata
+        * @throws \RuntimeException When cache file can't be written
+        * @generated
+        */
+        public function write(string $content, array<int, \Symfony\Component\Config\Resource\ResourceInterface> $metadata = null): void;
+    }
+    /**
+    * A ConfigCacheFactory implementation that validates the
+    *
+    * cache with an arbitrary set of ResourceCheckers.
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    class ResourceCheckerConfigCacheFactory implements \Symfony\Component\Config\ConfigCacheFactoryInterface {
+        /**
+        * @param iterable<int, ResourceCheckerInterface> $resourceCheckers
+        * @generated
+        */
+        public function __construct(iterable<int, \Symfony\Component\Config\ResourceCheckerInterface> $resourceCheckers = []): void;
+        public function cache(string $file, callable $callable): \Symfony\Component\Config\ConfigCacheInterface;
+    }
+    /**
+    * Interface for ResourceCheckers.
+    *
+    * When a ResourceCheckerConfigCache instance is checked for freshness, all its associated
+    * metadata resources are passed to ResourceCheckers. The ResourceCheckers
+    * can then inspect the resources and decide whether the cache can be considered
+    * fresh or not.
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @author Benjamin Klotz <bk@webfactory.de>
+    * @generated
+    */
+    interface ResourceCheckerInterface {
+        /**
+        * Queries the ResourceChecker whether it can validate a given
+        *
+        * resource or not.
+        *
+        * @generated
+        */
+        public function supports(\Symfony\Component\Config\Resource\ResourceInterface $metadata): bool;
+        /**
+        * Validates the resource.
+        *
+        * @param int $timestamp The timestamp at which the cache associated with this resource was created
+        * @generated
+        */
+        public function isFresh(\Symfony\Component\Config\Resource\ResourceInterface $resource, int $timestamp): bool;
+    }
+}
+namespace Symfony\Component\Config\Builder {
+    /**
+    * Generate ConfigBuilders to help create valid config.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @deprecated since Symfony 7.4
+    * @generated
+    */
+    deprecated class ConfigBuilderGenerator implements \Symfony\Component\Config\Builder\ConfigBuilderGeneratorInterface {
+        public function __construct(string $outputDir): void;
+        /**
+        * @return \Closure that will return the root config class
+        * @generated
+        */
+        public function build(\Symfony\Component\Config\Definition\ConfigurationInterface $configuration): \Closure;
+    }
+    /**
+    * Generates ConfigBuilders to help create valid config.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @deprecated since Symfony 7.4
+    * @generated
+    */
+    deprecated interface ConfigBuilderGeneratorInterface {
+        /**
+        * @return \Closure that will return the root config class
+        * @generated
+        */
+        public function build(\Symfony\Component\Config\Definition\ConfigurationInterface $configuration): \Closure;
+    }
+    /**
+    * A ConfigBuilder provides helper methods to build a large complex array.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @deprecated since Symfony 7.4
+    * @generated
+    */
+    deprecated interface ConfigBuilderInterface {
+        /**
+        * Gets all configuration represented as an array.
+        *
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Gets the alias for the extension which config we are building.
+        *
+        * @generated
+        */
+        public function getExtensionAlias(): string;
+    }
+}
+namespace Symfony\Component\Config\Definition {
+    /**
+    * Represents an Array node in the config tree.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ArrayNode extends \Symfony\Component\Config\Definition\BaseNode implements \Symfony\Component\Config\Definition\PrototypeNodeInterface {
+        protected array $xmlRemappings ?? [];
+        protected array $children ?? [];
+        protected bool $allowFalse ?? false;
+        protected bool $allowNewKeys ?? true;
+        protected bool $addIfNotSet ?? false;
+        protected bool $performDeepMerging ?? true;
+        protected bool $ignoreExtraKeys ?? false;
+        protected bool $removeExtraKeys ?? true;
+        protected bool $normalizeKeys ?? true;
+        public function setNormalizeKeys(bool $normalizeKeys): void;
+        /**
+        * Namely, you mostly have foo_bar in YAML while you have foo-bar in XML.
+        *
+        * After running this method, all keys are normalized to foo_bar.
+        * 
+        * If you have a mixed key like foo-bar_moo, it will not be altered.
+        * The key will also not be altered if the target key already exists.
+        *
+        * @generated
+        */
+        protected function preNormalize(mixed $value): mixed;
+        /**
+        * Retrieves the children of this node.
+        *
+        * @return array<string, NodeInterface>
+        * @generated
+        */
+        public function getChildren(): array<string, \Symfony\Component\Config\Definition\NodeInterface>;
+        /**
+        * Sets the xml remappings that should be performed.
+        *
+        * @param array $remappings An array of the form [[string, string]]
+        * @generated
+        */
+        public function setXmlRemappings(array $remappings): void;
+        /**
+        * Gets the xml remappings that should be performed.
+        *
+        * @return array an array of the form [[string, string]]
+        * @generated
+        */
+        public function getXmlRemappings(): array;
+        /**
+        * Sets whether to add default values for this array if it has not been
+        *
+        * defined in any of the configuration files.
+        *
+        * @generated
+        */
+        public function setAddIfNotSet(bool $boolean): void;
+        /**
+        * Sets whether false is allowed as value indicating that the array should be unset.
+        *
+        * @generated
+        */
+        public function setAllowFalse(bool $allow): void;
+        /**
+        * Sets whether new keys can be defined in subsequent configurations.
+        *
+        * @generated
+        */
+        public function setAllowNewKeys(bool $allow): void;
+        /**
+        * Sets if deep merging should occur.
+        *
+        * @generated
+        */
+        public function setPerformDeepMerging(bool $boolean): void;
+        /**
+        * Whether deep merging should occur.
+        *
+        * @generated
+        */
+        public function shouldPerformDeepMerging(): bool;
+        /**
+        * Whether extra keys should just be ignored without an exception.
+        *
+        * @param bool $boolean To allow extra keys
+        * @param bool $remove To remove extra keys
+        * @generated
+        */
+        public function setIgnoreExtraKeys(bool $boolean, bool $remove = true): void;
+        /**
+        * Returns true when extra keys should be ignored without an exception.
+        *
+        * @generated
+        */
+        public function shouldIgnoreExtraKeys(): bool;
+        public function setName(string $name): void;
+        public function hasDefaultValue(): bool;
+        public function getDefaultValue(): mixed;
+        /**
+        * Adds a child node.
+        *
+        * @throws \InvalidArgumentException when the child node has no name
+        * @throws \InvalidArgumentException when the child node's name is not unique
+        * @generated
+        */
+        public function addChild(\Symfony\Component\Config\Definition\NodeInterface $node): void;
+        /**
+        * @throws UnsetKeyException
+        * @throws InvalidConfigurationException if the node doesn't have enough children
+        * @generated
+        */
+        protected function finalizeValue(mixed $value): mixed;
+        protected function validateType(mixed $value): void;
+        /**
+        * @throws InvalidConfigurationException
+        * @generated
+        */
+        protected function normalizeValue(mixed $value): mixed;
+        /**
+        * Remaps multiple singular values to a single plural value.
+        *
+        * @generated
+        */
+        protected function remapXml(array $value): array;
+        /**
+        * @throws InvalidConfigurationException
+        * @throws \RuntimeException
+        * @generated
+        */
+        protected function mergeValues(mixed $leftSide, mixed $rightSide): mixed;
+        protected function allowPlaceholders(): bool;
+    }
+    /**
+    * @author Alexandre Daubois <alex.daubois@gmail.com>
+    * @generated
+    */
+    final class ArrayShapeGenerator {
+        public static function generate(\Symfony\Component\Config\Definition\NodeInterface $node): string;
+    }
+    /**
+    * The base node class.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    abstract class BaseNode implements \Symfony\Component\Config\Definition\NodeInterface {
+        public const string DEFAULT_PATH_SEPARATOR ?? '.';
+        protected string $name;
+        protected array $normalizationClosures ?? [];
+        protected array $normalizedTypes ?? [];
+        protected array $finalValidationClosures ?? [];
+        protected bool $allowOverwrite ?? true;
+        protected bool $required ?? false;
+        protected array $deprecation ?? [];
+        protected array $equivalentValues ?? [];
+        protected array $attributes ?? [];
+        protected ?\Symfony\Component\Config\Definition\NodeInterface $parent ?? null;
+        protected string $pathSeparator ?? self::DEFAULT_PATH_SEPARATOR;
+        /**
+        * @throws \InvalidArgumentException if the name contains a period
+        * @generated
+        */
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\NodeInterface $parent = null, string $pathSeparator = self::DEFAULT_PATH_SEPARATOR): void;
+        public function setAttribute(string $key, mixed $value): void;
+        public function getAttribute(string $key, mixed $default = null): mixed;
+        public function hasAttribute(string $key): bool;
+        public function getAttributes(): array;
+        public function setAttributes(array $attributes): void;
+        public function removeAttribute(string $key): void;
+        /**
+        * Sets an info message.
+        *
+        * @generated
+        */
+        public function setInfo(string $info): void;
+        /**
+        * Returns info message.
+        *
+        * @generated
+        */
+        public function getInfo(): ?string;
+        /**
+        * Sets the example configuration for this node.
+        *
+        * @generated
+        */
+        public function setExample(string|array $example): void;
+        /**
+        * Retrieves the example configuration for this node.
+        *
+        * @generated
+        */
+        public function getExample(): string|array|null;
+        /**
+        * Adds an equivalent value.
+        *
+        * @generated
+        */
+        public function addEquivalentValue(mixed $originalValue, mixed $equivalentValue): void;
+        /**
+        * Set this node as required.
+        *
+        * @generated
+        */
+        public function setRequired(bool $boolean): void;
+        /**
+        * Sets this node as deprecated.
+        *
+        * You can use %node% and %path% placeholders in your message to display,
+        * respectively, the node name and its complete path.
+        *
+        * @param string $package The name of the composer package that is triggering the deprecation
+        * @param string $version The version of the package that introduced the deprecation
+        * @param string $message the deprecation message to use
+        * @generated
+        */
+        public function setDeprecated(string $package, string $version, string $message = 'The child node "%node%" at path "%path%" is deprecated.'): void;
+        /**
+        * Sets if this node can be overridden.
+        *
+        * @generated
+        */
+        public function setAllowOverwrite(bool $allow): void;
+        /**
+        * Sets the closures used for normalization.
+        *
+        * @param array<int, \Closure> $closures An array of Closures used for normalization
+        * @generated
+        */
+        public function setNormalizationClosures(array<int, \Closure> $closures): void;
+        /**
+        * Sets the list of types supported by normalization.
+        *
+        * @param array $types
+        * @generated
+        */
+        public function setNormalizedTypes(array $types): void;
+        /**
+        * Gets the list of types supported by normalization.
+        *
+        * @return array list<ExprBuilder::TYPE_*>
+        * @generated
+        */
+        public function getNormalizedTypes(): array;
+        /**
+        * Sets the closures used for final validation.
+        *
+        * @param array<int, \Closure> $closures An array of Closures used for final validation
+        * @generated
+        */
+        public function setFinalValidationClosures(array<int, \Closure> $closures): void;
+        public function isRequired(): bool;
+        /**
+        * Checks if this node is deprecated.
+        *
+        * @generated
+        */
+        public function isDeprecated(): bool;
+        /**
+        * @param string $node The configuration node name
+        * @param string $path The path of the node
+        * @return array
+        * @generated
+        */
+        public function getDeprecation(string $node, string $path): array;
+        public function getName(): string;
+        public function getPath(): string;
+        public final function merge(mixed $leftSide, mixed $rightSide): mixed;
+        public final function normalize(mixed $value): mixed;
+        /**
+        * Normalizes the value before any other normalization is applied.
+        *
+        * @generated
+        */
+        protected function preNormalize(mixed $value): mixed;
+        /**
+        * Returns parent node for this node.
+        *
+        * @generated
+        */
+        public function getParent(): ?\Symfony\Component\Config\Definition\NodeInterface;
+        public final function finalize(mixed $value): mixed;
+        /**
+        * Validates the type of a Node.
+        *
+        * @throws InvalidTypeException when the value is invalid
+        * @generated
+        */
+        protected abstract function validateType(mixed $value): void;
+        /**
+        * Normalizes the value.
+        *
+        * @generated
+        */
+        protected abstract function normalizeValue(mixed $value): mixed;
+        /**
+        * Merges two values together.
+        *
+        * @generated
+        */
+        protected abstract function mergeValues(mixed $leftSide, mixed $rightSide): mixed;
+        /**
+        * Finalizes a value.
+        *
+        * @generated
+        */
+        protected abstract function finalizeValue(mixed $value): mixed;
+        /**
+        * Tests if placeholder values are allowed for this node.
+        *
+        * @generated
+        */
+        protected function allowPlaceholders(): bool;
+        /**
+        * Tests if a placeholder is being handled currently.
+        *
+        * @generated
+        */
+        protected function isHandlingPlaceholder(): bool;
+        /**
+        * Gets allowed dynamic types for this node.
+        *
+        * @generated
+        */
+        protected function getValidPlaceholderTypes(): array;
+    }
+    /**
+    * This node represents a Boolean value in the config tree.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class BooleanNode extends \Symfony\Component\Config\Definition\ScalarNode {
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\NodeInterface $parent = null, string $pathSeparator = self::DEFAULT_PATH_SEPARATOR, bool $nullable = false): void;
+        protected function validateType(mixed $value): void;
+        protected function isValueEmpty(mixed $value): bool;
+        protected function getValidPlaceholderTypes(): array;
+    }
+    /**
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @generated
+    */
+    interface ConfigurableInterface {
+        /**
+        * Generates the configuration tree builder.
+        *
+        * @generated
+        */
+        public function configure(\Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator $definition): void;
+    }
+    /**
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @final
+    * @generated
+    */
+    class Configuration implements \Symfony\Component\Config\Definition\ConfigurationInterface {
+        public function __construct(\Symfony\Component\Config\Definition\ConfigurableInterface $subject, ?\Symfony\Component\DependencyInjection\ContainerBuilder $container, string $alias): void;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\TreeBuilder
+        * @generated
+        */
+        public function getConfigTreeBuilder(): \Symfony\Component\Config\Definition\Builder\TreeBuilder;
+    }
+    /**
+    * Configuration interface.
+    *
+    * @author Victor Berchet <victor@suumit.com>
+    * @generated
+    */
+    interface ConfigurationInterface {
+        /**
+        * Generates the configuration tree builder.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\TreeBuilder
+        * @generated
+        */
+        public function getConfigTreeBuilder(): \Symfony\Component\Config\Definition\Builder\TreeBuilder;
+    }
+    /**
+    * Node which only allows a finite set of values.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class EnumNode extends \Symfony\Component\Config\Definition\ScalarNode {
+        /**
+        * @param ?string $enumFqcn
+        * @generated
+        */
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\NodeInterface $parent = null, array $values = [], string $pathSeparator = \Symfony\Component\Config\Definition\BaseNode::DEFAULT_PATH_SEPARATOR, ?string $enumFqcn = null): void;
+        public function getValues(): array;
+        public function getEnumFqcn(): ?string;
+        protected function validateType(mixed $value): void;
+        protected function finalizeValue(mixed $value): mixed;
+    }
+    /**
+    * This node represents a float value in the config tree.
+    *
+    * @author Jeanmonod David <david.jeanmonod@gmail.com>
+    * @generated
+    */
+    class FloatNode extends \Symfony\Component\Config\Definition\NumericNode {
+        protected function validateType(mixed $value): void;
+        protected function getValidPlaceholderTypes(): array;
+    }
+    /**
+    * This node represents an integer value in the config tree.
+    *
+    * @author Jeanmonod David <david.jeanmonod@gmail.com>
+    * @generated
+    */
+    class IntegerNode extends \Symfony\Component\Config\Definition\NumericNode {
+        protected function validateType(mixed $value): void;
+        protected function getValidPlaceholderTypes(): array;
+    }
+    /**
+    * Common Interface among all nodes.
+    *
+    * In most cases, it is better to inherit from BaseNode instead of implementing
+    * this interface yourself.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface NodeInterface {
+        /**
+        * Returns the name of the node.
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Returns the path of the node.
+        *
+        * @generated
+        */
+        public function getPath(): string;
+        /**
+        * Returns true when the node is required.
+        *
+        * @generated
+        */
+        public function isRequired(): bool;
+        /**
+        * Returns true when the node has a default value.
+        *
+        * @generated
+        */
+        public function hasDefaultValue(): bool;
+        /**
+        * Returns the default value of the node.
+        *
+        * @throws \RuntimeException if the node has no default value
+        * @generated
+        */
+        public function getDefaultValue(): mixed;
+        /**
+        * Normalizes a value.
+        *
+        * @throws InvalidTypeException if the value type is invalid
+        * @generated
+        */
+        public function normalize(mixed $value): mixed;
+        /**
+        * Merges two values together.
+        *
+        * @throws ForbiddenOverwriteException if the configuration path cannot be overwritten
+        * @throws InvalidTypeException        if the value type is invalid
+        * @generated
+        */
+        public function merge(mixed $leftSide, mixed $rightSide): mixed;
+        /**
+        * Finalizes a value.
+        *
+        * @throws InvalidTypeException          if the value type is invalid
+        * @throws InvalidConfigurationException if the value is invalid configuration
+        * @generated
+        */
+        public function finalize(mixed $value): mixed;
+    }
+    /**
+    * This node represents a numeric value in the config tree.
+    *
+    * @author David Jeanmonod <david.jeanmonod@gmail.com>
+    * @generated
+    */
+    class NumericNode extends \Symfony\Component\Config\Definition\ScalarNode {
+        protected int|float|null $min ?? null;
+        protected int|float|null $max ?? null;
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\NodeInterface $parent = null, int|float|null $min = null, int|float|null $max = null, string $pathSeparator = \Symfony\Component\Config\Definition\BaseNode::DEFAULT_PATH_SEPARATOR): void;
+        protected function finalizeValue(mixed $value): mixed;
+        public function getMin(): float|int|null;
+        public function getMax(): float|int|null;
+        protected function isValueEmpty(mixed $value): bool;
+    }
+    /**
+    * This class is the entry point for config normalization/merging/finalization.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @final
+    * @generated
+    */
+    class Processor {
+        /**
+        * Processes an array of configurations.
+        *
+        * @param array $configs An array of configuration items to process
+        * @generated
+        */
+        public function process(\Symfony\Component\Config\Definition\NodeInterface $configTree, array $configs): array;
+        /**
+        * Processes an array of configurations.
+        *
+        * @param array $configs An array of configuration items to process
+        * @generated
+        */
+        public function processConfiguration(\Symfony\Component\Config\Definition\ConfigurationInterface $configuration, array $configs): array;
+        /**
+        * Normalizes a configuration entry.
+        *
+        * This method returns a normalize configuration array for a given key
+        * to remove the differences due to the original format (YAML and XML mainly).
+        * 
+        * Here is an example.
+        * 
+        * The configuration in XML:
+        * 
+        * <twig:extension>twig.extension.foo</twig:extension>
+        * <twig:extension>twig.extension.bar</twig:extension>
+        * 
+        * And the same configuration in YAML:
+        * 
+        * extensions: ['twig.extension.foo', 'twig.extension.bar']
+        *
+        * @param array $config A config array
+        * @param string $key The key to normalize
+        * @param ?string $plural The plural form of the key if it is irregular
+        * @generated
+        */
+        public static function normalizeConfig(array $config, string $key, ?string $plural = null): array;
+    }
+    /**
+    * Represents a prototyped Array node in the config tree.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class PrototypedArrayNode extends \Symfony\Component\Config\Definition\ArrayNode {
+        protected \Symfony\Component\Config\Definition\PrototypeNodeInterface $prototype;
+        protected ?string $keyAttribute ?? null;
+        protected bool $removeKeyAttribute ?? false;
+        protected int $minNumberOfElements ?? 0;
+        protected array $defaultValue ?? [];
+        protected ?array $defaultChildren ?? null;
+        /**
+        * Sets the minimum number of elements that a prototype based node must
+        *
+        * contain. By default this is zero, meaning no elements.
+        *
+        * @generated
+        */
+        public function setMinNumberOfElements(int $number): void;
+        /**
+        * Sets the attribute which value is to be used as key.
+        *
+        * This is useful when you have an indexed array that should be an
+        * associative array. You can select an item from within the array
+        * to be the key of the particular item. For example, if "id" is the
+        * "key", then:
+        * 
+        *     [
+        *         ['id' => 'my_name', 'foo' => 'bar'],
+        *     ];
+        * 
+        *  becomes
+        * 
+        *      [
+        *          'my_name' => ['foo' => 'bar'],
+        *      ];
+        * 
+        * If you'd like "'id' => 'my_name'" to still be present in the resulting
+        * array, then you can set the second argument of this method to false.
+        *
+        * @param string $attribute The name of the attribute which value is to be used as a key
+        * @param bool $remove Whether or not to remove the key
+        * @generated
+        */
+        public function setKeyAttribute(string $attribute, bool $remove = true): void;
+        /**
+        * Retrieves the name of the attribute which value should be used as key.
+        *
+        * @generated
+        */
+        public function getKeyAttribute(): ?string;
+        /**
+        * Sets the default value of this node.
+        *
+        * @generated
+        */
+        public function setDefaultValue(array $value): void;
+        public function setNullAsDefault(): void;
+        public function hasDefaultValue(): bool;
+        /**
+        * Adds default children when none are set.
+        *
+        * @param int|string|array|null $children The number of children|The child name|The children names to be added
+        * @generated
+        */
+        public function setAddChildrenIfNoneSet(int|string|array|null $children = []): void;
+        /**
+        * The default value could be either explicit or derived from the prototype
+        *
+        * default value.
+        *
+        * @generated
+        */
+        public function getDefaultValue(): mixed;
+        /**
+        * Sets the node prototype.
+        *
+        * @generated
+        */
+        public function setPrototype(\Symfony\Component\Config\Definition\PrototypeNodeInterface $node): void;
+        /**
+        * Retrieves the prototype.
+        *
+        * @generated
+        */
+        public function getPrototype(): \Symfony\Component\Config\Definition\PrototypeNodeInterface;
+        /**
+        * Disable adding concrete children for prototyped nodes.
+        *
+        * @throws Exception
+        * @generated
+        */
+        public function addChild(\Symfony\Component\Config\Definition\NodeInterface $node): never;
+        protected function finalizeValue(mixed $value): mixed;
+        /**
+        * @throws DuplicateKeyException
+        * @generated
+        */
+        protected function normalizeValue(mixed $value): mixed;
+        protected function mergeValues(mixed $leftSide, mixed $rightSide): mixed;
+    }
+    /**
+    * This interface must be implemented by nodes which can be used as prototypes.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface PrototypeNodeInterface extends \Symfony\Component\Config\Definition\NodeInterface {
+        /**
+        * Sets the name of the node.
+        *
+        * @generated
+        */
+        public function setName(string $name): void;
+    }
+    /**
+    * This node represents a scalar value in the config tree.
+    *
+    * The following values are considered scalars:
+    *   * booleans
+    *   * strings
+    *   * null
+    *   * integers
+    *   * floats
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ScalarNode extends \Symfony\Component\Config\Definition\VariableNode {
+        protected function validateType(mixed $value): void;
+        protected function isValueEmpty(mixed $value): bool;
+        protected function getValidPlaceholderTypes(): array;
+    }
+    /**
+    * This node represents a String value in the config tree.
+    *
+    * @author Raffaele Carelle <raffaele.carelle@gmail.com>
+    * @generated
+    */
+    class StringNode extends \Symfony\Component\Config\Definition\ScalarNode {
+        protected function validateType(mixed $value): void;
+        protected function getValidPlaceholderTypes(): array;
+    }
+    /**
+    * This node represents a value of variable type in the config tree.
+    *
+    * This node is intended for values of arbitrary type.
+    * Any PHP type is accepted as a value.
+    *
+    * @author Jeremy Mikola <jmikola@gmail.com>
+    * @generated
+    */
+    class VariableNode extends \Symfony\Component\Config\Definition\BaseNode implements \Symfony\Component\Config\Definition\PrototypeNodeInterface {
+        protected bool $defaultValueSet ?? false;
+        protected mixed $defaultValue ?? null;
+        protected bool $allowEmptyValue ?? true;
+        public function setDefaultValue(mixed $value): void;
+        public function hasDefaultValue(): bool;
+        public function getDefaultValue(): mixed;
+        /**
+        * Sets if this node is allowed to have an empty value.
+        *
+        * @param bool $boolean True if this entity will accept empty values
+        * @generated
+        */
+        public function setAllowEmptyValue(bool $boolean): void;
+        public function setName(string $name): void;
+        protected function validateType(mixed $value): void;
+        protected function finalizeValue(mixed $value): mixed;
+        protected function normalizeValue(mixed $value): mixed;
+        protected function mergeValues(mixed $leftSide, mixed $rightSide): mixed;
+        /**
+        * Evaluates if the given value is to be treated as empty.
+        *
+        * By default, PHP's empty() function is used to test for emptiness. This
+        * method may be overridden by subtypes to better match their understanding
+        * of empty data.
+        *
+        * @see finalizeValue()
+        * @generated
+        */
+        protected function isValueEmpty(mixed $value): bool;
+    }
+}
+namespace Symfony\Component\Config\Definition\Builder {
+    /**
+    * This class provides a fluent interface for defining an array node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends NodeDefinition<TParent>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ArrayNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\NodeDefinition implements \Symfony\Component\Config\Definition\Builder\ParentNodeDefinitionInterface {
+        protected bool $performDeepMerging ?? true;
+        protected bool $ignoreExtraKeys ?? false;
+        protected bool $removeExtraKeys ?? true;
+        /**
+        * @var array<int, NodeDefinition<static>>
+        * @generated
+        */
+        protected array<int, \Symfony\Component\Config\Definition\Builder\NodeDefinition<static>> $children ?? [];
+        /**
+        * @var \Symfony\Component\Config\Definition\Builder\NodeDefinition
+        * @generated
+        */
+        protected \Symfony\Component\Config\Definition\Builder\NodeDefinition $prototype;
+        protected bool $atLeastOne ?? false;
+        protected bool $allowNewKeys ?? true;
+        protected ?string $key ?? null;
+        protected bool $removeKeyItem ?? false;
+        protected bool $addDefaults ?? false;
+        protected int|string|array|false|null $addDefaultChildren ?? false;
+        /**
+        * @var \Symfony\Component\Config\Definition\Builder\NodeBuilder
+        * @generated
+        */
+        protected \Symfony\Component\Config\Definition\Builder\NodeBuilder $nodeBuilder;
+        protected bool $normalizeKeys ?? true;
+        /**
+        * @var ?array list<ExprBuilder::TYPE_*>|null
+        * @generated
+        */
+        protected ?array $allowedTypes ?? null;
+        /**
+        * @param ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent
+        * @generated
+        */
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent = null): void;
+        /**
+        * @return static
+        * @generated
+        */
+        public function defaultValue(mixed $value): static;
+        /**
+        * @param \Symfony\Component\Config\Definition\Builder\NodeBuilder $builder
+        * @generated
+        */
+        public function setBuilder(\Symfony\Component\Config\Definition\Builder\NodeBuilder $builder): void;
+        /**
+        * Allows alternative types and wraps them into arrays.
+        *
+        * @param array<int, mixed> $allowedTypes
+        * @param ?string $key The key to wrap the value in
+        * @return static
+        * @generated
+        */
+        public function acceptAndWrap(array<int, mixed> $allowedTypes, ?string $key = null): static;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\NodeBuilder
+        * @generated
+        */
+        public function children(): \Symfony\Component\Config\Definition\Builder\NodeBuilder;
+        /**
+        * Sets a prototype for child nodes.
+        *
+        * @template T of string
+        * @param string $type
+        * @return \Symfony\Component\Config\Definition\Builder\NodeDefinition (
+        *  *        T is 'array' ? ArrayNodeDefinition<$this>
+        *  *        : (T is 'variable' ? VariableNodeDefinition<$this>
+        *  *        : (T is 'scalar' ? ScalarNodeDefinition<$this>
+        *  *        : (T is 'string' ? StringNodeDefinition<$this>
+        *  *        : (T is 'boolean' ? BooleanNodeDefinition<$this>
+        *  *        : (T is 'integer' ? IntegerNodeDefinition<$this>
+        *  *        : (T is 'float' ? FloatNodeDefinition<$this>
+        *  *        : (T is 'enum' ? EnumNodeDefinition<$this>
+        *  *        : NodeDefinition<$this>)))))))
+        *  *     )
+        * @generated
+        */
+        public function prototype<T extends string>(string $type): \Symfony\Component\Config\Definition\Builder\NodeDefinition;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\VariableNodeDefinition
+        * @generated
+        */
+        public function variablePrototype(): \Symfony\Component\Config\Definition\Builder\VariableNodeDefinition;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition
+        * @generated
+        */
+        public function scalarPrototype(): \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\StringNodeDefinition
+        * @generated
+        */
+        public function stringPrototype(): \Symfony\Component\Config\Definition\Builder\StringNodeDefinition;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\BooleanNodeDefinition
+        * @generated
+        */
+        public function booleanPrototype(): \Symfony\Component\Config\Definition\Builder\BooleanNodeDefinition;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\IntegerNodeDefinition
+        * @generated
+        */
+        public function integerPrototype(): \Symfony\Component\Config\Definition\Builder\IntegerNodeDefinition;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\FloatNodeDefinition
+        * @generated
+        */
+        public function floatPrototype(): \Symfony\Component\Config\Definition\Builder\FloatNodeDefinition;
+        /**
+        * @return self
+        * @generated
+        */
+        public function arrayPrototype(): self;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\EnumNodeDefinition
+        * @generated
+        */
+        public function enumPrototype(): \Symfony\Component\Config\Definition\Builder\EnumNodeDefinition;
+        /**
+        * Adds the default value if the node is not set in the configuration.
+        *
+        * This method is applicable to concrete nodes only (not to prototype nodes).
+        * If this function has been called and the node is not set during the finalization
+        * phase, it's default value will be derived from its children default values.
+        *
+        * @return static
+        * @generated
+        */
+        public function addDefaultsIfNotSet(): static;
+        /**
+        * Adds children with a default value when none are defined.
+        *
+        * This method is applicable to prototype nodes only.
+        *
+        * @param int|string|array|null $children The number of children|The child name|The children names to be added
+        * @return static
+        * @generated
+        */
+        public function addDefaultChildrenIfNoneSet(int|string|array|null $children = null): static;
+        /**
+        * Requires the node to have at least one element.
+        *
+        * This method is applicable to prototype nodes only.
+        *
+        * @return static
+        * @generated
+        */
+        public function requiresAtLeastOneElement(): static;
+        /**
+        * Disallows adding news keys in a subsequent configuration.
+        *
+        * If used all keys have to be defined in the same configuration file.
+        *
+        * @return static
+        * @generated
+        */
+        public function disallowNewKeysInSubsequentConfigs(): static;
+        /**
+        * Sets a normalization rule for XML configurations.
+        *
+        * @param string $singular The key to remap
+        * @param ?string $plural The plural of the key for irregular plurals
+        * @return static
+        * @generated
+        */
+        public function fixXmlConfig(string $singular, ?string $plural = null): static;
+        /**
+        * Sets the attribute which value is to be used as key.
+        *
+        * This is useful when you have an indexed array that should be an
+        * associative array. You can select an item from within the array
+        * to be the key of the particular item. For example, if "id" is the
+        * "key", then:
+        * 
+        *     [
+        *         ['id' => 'my_name', 'foo' => 'bar'],
+        *     ];
+        * 
+        *   becomes
+        * 
+        *     [
+        *         'my_name' => ['foo' => 'bar'],
+        *     ];
+        * 
+        * If you'd like "'id' => 'my_name'" to still be present in the resulting
+        * array, then you can set the second argument of this method to false.
+        * 
+        * This method is applicable to prototype nodes only.
+        *
+        * @param string $name The name of the key
+        * @param bool $removeKeyItem Whether or not the key item should be removed
+        * @return static
+        * @generated
+        */
+        public function useAttributeAsKey(string $name, bool $removeKeyItem = true): static;
+        /**
+        * Sets whether the node can be unset.
+        *
+        * @return static
+        * @generated
+        */
+        public function canBeUnset(bool $allow = true): static;
+        /**
+        * Adds an "enabled" boolean to enable the current section.
+        *
+        * By default, the section is disabled. If any configuration is specified then
+        * the node will be automatically enabled:
+        * 
+        * enableableArrayNode: {enabled: true, ...}   # The config is enabled & default values get overridden
+        * enableableArrayNode: ~                      # The config is enabled & use the default values
+        * enableableArrayNode: true                   # The config is enabled & use the default values
+        * enableableArrayNode: {other: value, ...}    # The config is enabled & default values get overridden
+        * enableableArrayNode: {enabled: false, ...}  # The config is disabled
+        * enableableArrayNode: false                  # The config is disabled
+        *
+        * @param string|null $info A description of what happens when the node is enabled or disabled
+        * @return static
+        * @generated
+        */
+        public function canBeEnabled(): static;
+        /**
+        * Adds an "enabled" boolean to enable the current section.
+        *
+        * By default, the section is enabled.
+        *
+        * @param string|null $info A description of what happens when the node is enabled or disabled
+        * @return static
+        * @generated
+        */
+        public function canBeDisabled(): static;
+        /**
+        * Disables the deep merging of the node.
+        *
+        * @return static
+        * @generated
+        */
+        public function performNoDeepMerging(): static;
+        /**
+        * Allows extra config keys to be specified under an array without
+        *
+        * throwing an exception.
+        * 
+        * Those config values are ignored and removed from the resulting
+        * array. This should be used only in special cases where you want
+        * to send an entire configuration array through a special tree that
+        * processes only part of the array.
+        *
+        * @param bool $remove Whether to remove the extra keys
+        * @return static
+        * @generated
+        */
+        public function ignoreExtraKeys(bool $remove = true): static;
+        /**
+        * Sets whether to enable key normalization.
+        *
+        * @return static
+        * @generated
+        */
+        public function normalizeKeys(bool $bool): static;
+        public function append(\Symfony\Component\Config\Definition\Builder\NodeDefinition $node): static;
+        /**
+        * Returns a node builder to be used to add children and prototype.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\NodeBuilder
+        * @generated
+        */
+        protected function getNodeBuilder(): \Symfony\Component\Config\Definition\Builder\NodeBuilder;
+        protected function createNode(): \Symfony\Component\Config\Definition\NodeInterface;
+        /**
+        * Validate the configuration of a concrete node.
+        *
+        * @throws InvalidDefinitionException
+        * @generated
+        */
+        protected function validateConcreteNode(\Symfony\Component\Config\Definition\ArrayNode $node): void;
+        /**
+        * Validate the configuration of a prototype node.
+        *
+        * @throws InvalidDefinitionException
+        * @generated
+        */
+        protected function validatePrototypeNode(\Symfony\Component\Config\Definition\PrototypedArrayNode $node): void;
+        /**
+        * @return array<int, NodeDefinition<static>>
+        * @generated
+        */
+        public function getChildNodeDefinitions(): array<int, \Symfony\Component\Config\Definition\Builder\NodeDefinition<static>>;
+        /**
+        * Finds a node defined by the given $nodePath.
+        *
+        * @param string $nodePath The path of the node to find. e.g "doctrine.orm.mappings"
+        * @generated
+        */
+        public function find(string $nodePath): \Symfony\Component\Config\Definition\Builder\NodeDefinition;
+    }
+    /**
+    * This class provides a fluent interface for defining a node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends ScalarNodeDefinition<TParent>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class BooleanNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition {
+        /**
+        * @param ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent
+        * @generated
+        */
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent = null): void;
+        protected function instantiateNode(): \Symfony\Component\Config\Definition\BooleanNode;
+        /**
+        * @throws InvalidDefinitionException
+        * @generated
+        */
+        public function cannotBeEmpty(): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function defaultValue(mixed $value): static;
+    }
+    /**
+    * An interface that can be implemented by nodes which build other nodes.
+    *
+    * @author Roland Franssen <franssen.roland@gmail.com>
+    * @generated
+    */
+    interface BuilderAwareInterface {
+        /**
+        * Sets a custom children builder.
+        *
+        * @param \Symfony\Component\Config\Definition\Builder\NodeBuilder $builder
+        * @generated
+        */
+        public function setBuilder(\Symfony\Component\Config\Definition\Builder\NodeBuilder $builder): void;
+    }
+    /**
+    * Enum Node Definition.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends ScalarNodeDefinition<TParent>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class EnumNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition {
+        /**
+        * @return static
+        * @generated
+        */
+        public function values(array $values): static;
+        /**
+        * @param string $enumFqcn
+        * @return static
+        * @generated
+        */
+        public function enumFqcn(string $enumFqcn): static;
+        /**
+        * @throws \RuntimeException when no values or enumFqcn is set
+        * @generated
+        */
+        protected function instantiateNode(): \Symfony\Component\Config\Definition\EnumNode;
+    }
+    /**
+    * This class builds an if expression.
+    *
+    * @template T of NodeDefinition
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Christophe Coevoet <stof@notk.org>
+    * @generated
+    */
+    class ExprBuilder<T extends \Symfony\Component\Config\Definition\Builder\NodeDefinition> {
+        public const string TYPE_ANY ?? 'any';
+        public const string TYPE_STRING ?? 'string';
+        public const string TYPE_NULL ?? 'null';
+        public const string TYPE_ARRAY ?? 'array';
+        public const string TYPE_BOOL ?? 'bool';
+        public const string TYPE_INT ?? 'int';
+        public const string TYPE_BACKED_ENUM ?? 'backed-enum';
+        public string $allowedTypes;
+        public ?\Closure $ifPart ?? null;
+        public ?\Closure $thenPart ?? null;
+        protected \Symfony\Component\Config\Definition\Builder\NodeDefinition $node;
+        /**
+        * @param \Symfony\Component\Config\Definition\Builder\NodeDefinition $node
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Config\Definition\Builder\NodeDefinition $node): void;
+        /**
+        * Marks the expression as being always used.
+        *
+        * @return static
+        * @generated
+        */
+        public function always(?\Closure $then = null): static;
+        /**
+        * Sets a closure to use as tests.
+        *
+        * The default one tests if the value is true.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifTrue(?\Closure $closure = null): static;
+        /**
+        * Sets a closure to use as tests.
+        *
+        * The default one tests if the value is false.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifFalse(?\Closure $closure = null): static;
+        /**
+        * Tests if the value is a string.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifString(): static;
+        /**
+        * Tests if the value is null.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifNull(): static;
+        /**
+        * Tests if the value is empty.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifEmpty(): static;
+        /**
+        * Tests if the value is an array.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifArray(): static;
+        /**
+        * Tests if the value is in an array.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifInArray(array $array): static;
+        /**
+        * Tests if the value is not in an array.
+        *
+        * @return static
+        * @generated
+        */
+        public function ifNotInArray(array $array): static;
+        /**
+        * Transforms variables of any type into an array.
+        *
+        * @return static
+        * @generated
+        */
+        public function castToArray(): static;
+        /**
+        * Sets the closure to run if the test pass.
+        *
+        * @return static
+        * @generated
+        */
+        public function then(\Closure $closure): static;
+        /**
+        * Sets a closure returning an empty array.
+        *
+        * @return static
+        * @generated
+        */
+        public function thenEmptyArray(): static;
+        /**
+        * Sets a closure marking the value as invalid at processing time.
+        *
+        * if you want to add the value of the node in your message just use a %s placeholder.
+        *
+        * @return static
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function thenInvalid(string $message): static;
+        /**
+        * Sets a closure unsetting this key of the array at processing time.
+        *
+        * @return static
+        * @throws UnsetKeyException
+        * @generated
+        */
+        public function thenUnset(): static;
+        /**
+        * Returns the related node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\NodeDefinition
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function end(): \Symfony\Component\Config\Definition\Builder\NodeDefinition;
+        /**
+        * Builds the expressions.
+        *
+        * @param array<int, ExprBuilder|\Closure> $expressions
+        * @return array<int, \Closure>
+        * @generated
+        */
+        public static function buildExpressions(array<int, \Symfony\Component\Config\Definition\Builder\ExprBuilder|\Closure> $expressions): array<int, \Closure>;
+    }
+    /**
+    * This class provides a fluent interface for defining a float node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends NumericNodeDefinition<TParent>
+    * @author Jeanmonod David <david.jeanmonod@gmail.com>
+    * @generated
+    */
+    class FloatNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\NumericNodeDefinition {
+        protected function instantiateNode(): \Symfony\Component\Config\Definition\FloatNode;
+    }
+    /**
+    * This class provides a fluent interface for defining an integer node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends NumericNodeDefinition<TParent>
+    * @author Jeanmonod David <david.jeanmonod@gmail.com>
+    * @generated
+    */
+    class IntegerNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\NumericNodeDefinition {
+        protected function instantiateNode(): \Symfony\Component\Config\Definition\IntegerNode;
+    }
+    /**
+    * This class builds merge conditions.
+    *
+    * @template T of NodeDefinition
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class MergeBuilder<T extends \Symfony\Component\Config\Definition\Builder\NodeDefinition> {
+        public bool $allowFalse ?? false;
+        public bool $allowOverwrite ?? true;
+        protected \Symfony\Component\Config\Definition\Builder\NodeDefinition $node;
+        /**
+        * @param \Symfony\Component\Config\Definition\Builder\NodeDefinition $node
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Config\Definition\Builder\NodeDefinition $node): void;
+        /**
+        * Sets whether the node can be unset.
+        *
+        * @return static
+        * @generated
+        */
+        public function allowUnset(bool $allow = true): static;
+        /**
+        * Sets whether the node can be overwritten.
+        *
+        * @return static
+        * @generated
+        */
+        public function denyOverwrite(bool $deny = true): static;
+        /**
+        * Returns the related node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\NodeDefinition
+        * @generated
+        */
+        public function end(): \Symfony\Component\Config\Definition\Builder\NodeDefinition;
+    }
+    /**
+    * This class provides a fluent interface for building a node.
+    *
+    * @template TParent of (NodeDefinition&ParentNodeDefinitionInterface)|null
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class NodeBuilder<TParent extends (NodeDefinition&ParentNodeDefinitionInterface)|null> implements \Symfony\Component\Config\Definition\Builder\NodeParentInterface {
+        /**
+        * @var (\Symfony\Component\Config\Definition\Builder\NodeDefinition&\Symfony\Component\Config\Definition\Builder\ParentNodeDefinitionInterface)|null
+        * @generated
+        */
+        protected (\Symfony\Component\Config\Definition\Builder\NodeDefinition&\Symfony\Component\Config\Definition\Builder\ParentNodeDefinitionInterface)|null $parent ?? null;
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected array<string, string> $nodeMapping;
+        public function __construct(): void;
+        /**
+        * Set the parent node.
+        *
+        * @template TNewParent of (NodeDefinition&ParentNodeDefinitionInterface)|null
+        * @psalm-this-out static<TNewParent>
+        * @return static
+        * @generated
+        */
+        public function setParent<TNewParent extends (NodeDefinition&ParentNodeDefinitionInterface)|null>((\Symfony\Component\Config\Definition\Builder\NodeDefinition&\Symfony\Component\Config\Definition\Builder\ParentNodeDefinitionInterface)|null $parent): static;
+        /**
+        * Creates a child array node.
+        *
+        * @param string|null $singular The singular name of the node when $name is plural
+        * @return \Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition
+        * @generated
+        */
+        public function arrayNode(string $name): \Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
+        /**
+        * Creates a child scalar node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition
+        * @generated
+        */
+        public function scalarNode(string $name): \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition;
+        /**
+        * Creates a child Boolean node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\BooleanNodeDefinition
+        * @generated
+        */
+        public function booleanNode(string $name): \Symfony\Component\Config\Definition\Builder\BooleanNodeDefinition;
+        /**
+        * Creates a child integer node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\IntegerNodeDefinition
+        * @generated
+        */
+        public function integerNode(string $name): \Symfony\Component\Config\Definition\Builder\IntegerNodeDefinition;
+        /**
+        * Creates a child float node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\FloatNodeDefinition
+        * @generated
+        */
+        public function floatNode(string $name): \Symfony\Component\Config\Definition\Builder\FloatNodeDefinition;
+        /**
+        * Creates a child EnumNode.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\EnumNodeDefinition
+        * @generated
+        */
+        public function enumNode(string $name): \Symfony\Component\Config\Definition\Builder\EnumNodeDefinition;
+        /**
+        * Creates a child variable node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\VariableNodeDefinition
+        * @generated
+        */
+        public function variableNode(string $name): \Symfony\Component\Config\Definition\Builder\VariableNodeDefinition;
+        /**
+        * Creates a child string node.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\StringNodeDefinition
+        * @generated
+        */
+        public function stringNode(string $name): \Symfony\Component\Config\Definition\Builder\StringNodeDefinition;
+        /**
+        * Returns the parent node.
+        *
+        * @return (\Symfony\Component\Config\Definition\Builder\NodeDefinition&\Symfony\Component\Config\Definition\Builder\ParentNodeDefinitionInterface)|null
+        * @generated
+        */
+        public function end(): (\Symfony\Component\Config\Definition\Builder\NodeDefinition&\Symfony\Component\Config\Definition\Builder\ParentNodeDefinitionInterface)|null;
+        /**
+        * Creates a child node.
+        *
+        * @template T of string
+        * @return \Symfony\Component\Config\Definition\Builder\NodeDefinition (
+        *  *        T is 'array' ? ArrayNodeDefinition<$this>
+        *  *        : (T is 'variable' ? VariableNodeDefinition<$this>
+        *  *        : (T is 'scalar' ? ScalarNodeDefinition<$this>
+        *  *        : (T is 'string' ? StringNodeDefinition<$this>
+        *  *        : (T is 'boolean' ? BooleanNodeDefinition<$this>
+        *  *        : (T is 'integer' ? IntegerNodeDefinition<$this>
+        *  *        : (T is 'float' ? FloatNodeDefinition<$this>
+        *  *        : (T is 'enum' ? EnumNodeDefinition<$this>
+        *  *        : NodeDefinition<$this>)))))))
+        *  *     )
+        * @throws \RuntimeException When the node type is not registered
+        * @throws \RuntimeException When the node class is not found
+        * @generated
+        */
+        public function node<T extends string>(?string $name, string $type): \Symfony\Component\Config\Definition\Builder\NodeDefinition;
+        /**
+        * Appends a node definition.
+        *
+        * Usage:
+        * 
+        *     $node = new ArrayNodeDefinition('name')
+        *         ->children()
+        *             ->scalarNode('foo')->end()
+        *             ->scalarNode('baz')->end()
+        *             ->append($this->getBarNodeDefinition())
+        *         ->end()
+        *     ;
+        *
+        * @return static
+        * @generated
+        */
+        public function append(\Symfony\Component\Config\Definition\Builder\NodeDefinition $node): static;
+        /**
+        * Adds or overrides a node Type.
+        *
+        * @param string $type The name of the type
+        * @param string $class The fully qualified name the node definition class
+        * @return static
+        * @generated
+        */
+        public function setNodeClass(string $type, string $class): static;
+        /**
+        * Returns the class name of the node definition.
+        *
+        * @throws \RuntimeException When the node type is not registered
+        * @throws \RuntimeException When the node class is not found
+        * @generated
+        */
+        protected function getNodeClass(string $type): string;
+    }
+    /**
+    * This class provides a fluent interface for defining a node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    abstract class NodeDefinition<TParent extends NodeParentInterface|null> implements \Symfony\Component\Config\Definition\Builder\NodeParentInterface {
+        protected ?string $name ?? null;
+        /**
+        * @var \Symfony\Component\Config\Definition\Builder\NormalizationBuilder
+        * @generated
+        */
+        protected \Symfony\Component\Config\Definition\Builder\NormalizationBuilder $normalization;
+        /**
+        * @var \Symfony\Component\Config\Definition\Builder\ValidationBuilder
+        * @generated
+        */
+        protected \Symfony\Component\Config\Definition\Builder\ValidationBuilder $validation;
+        protected mixed $defaultValue;
+        protected bool $default ?? false;
+        protected bool $required ?? false;
+        protected array $deprecation ?? [];
+        /**
+        * @var \Symfony\Component\Config\Definition\Builder\MergeBuilder
+        * @generated
+        */
+        protected \Symfony\Component\Config\Definition\Builder\MergeBuilder $merge;
+        protected bool $allowEmptyValue ?? true;
+        protected mixed $nullEquivalent ?? null;
+        protected mixed $trueEquivalent ?? true;
+        protected mixed $falseEquivalent ?? false;
+        protected string $pathSeparator ?? \Symfony\Component\Config\Definition\BaseNode::DEFAULT_PATH_SEPARATOR;
+        /**
+        * @var \Symfony\Component\Config\Definition\Builder\NodeParentInterface|\Symfony\Component\Config\Definition\NodeInterface|null
+        * @generated
+        */
+        protected \Symfony\Component\Config\Definition\Builder\NodeParentInterface|\Symfony\Component\Config\Definition\NodeInterface|null $parent;
+        protected array $attributes ?? [];
+        /**
+        * @param ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent
+        * @generated
+        */
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent = null): void;
+        /**
+        * Sets the parent node.
+        *
+        * @template TNewParent of NodeParentInterface
+        * @psalm-this-out static<TNewParent>
+        * @return static
+        * @generated
+        */
+        public function setParent<TNewParent extends \Symfony\Component\Config\Definition\Builder\NodeParentInterface>(\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent): static;
+        /**
+        * Sets info message.
+        *
+        * @return static
+        * @generated
+        */
+        public function info(string $info): static;
+        /**
+        * Sets example configuration.
+        *
+        * @return static
+        * @generated
+        */
+        public function example(string|array $example): static;
+        /**
+        * Sets the documentation URI, as usually put in the "@see" tag of a doc block. This
+        *
+        * can either be a URL or a file path. You can use the placeholders {package},
+        * {version:major} and {version:minor} in the URI.
+        *
+        * @return static
+        * @generated
+        */
+        public function docUrl(string $uri, ?string $package = null): static;
+        /**
+        * Sets an attribute on the node.
+        *
+        * @return static
+        * @generated
+        */
+        public function attribute(string $key, mixed $value): static;
+        /**
+        * Returns the parent node.
+        *
+        * @return ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface
+        * @generated
+        */
+        public function end(): ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface;
+        /**
+        * Creates the node.
+        *
+        * @generated
+        */
+        public function getNode(bool $forceRootNode = false): \Symfony\Component\Config\Definition\NodeInterface;
+        /**
+        * Sets the default value.
+        *
+        * @return static
+        * @generated
+        */
+        public function defaultValue(mixed $value): static;
+        /**
+        * Sets the node as required.
+        *
+        * @return static
+        * @generated
+        */
+        public function isRequired(): static;
+        /**
+        * Sets the node as deprecated.
+        *
+        * @param string $package The name of the composer package that is triggering the deprecation
+        * @param string $version The version of the package that introduced the deprecation
+        * @param string $message the deprecation message to use
+        *  *     
+        *  *     You can use %node% and %path% placeholders in your message to display,
+        *  *     respectively, the node name and its complete path
+        * @return static
+        * @generated
+        */
+        public function setDeprecated(string $package, string $version, string $message = 'The child node "%node%" at path "%path%" is deprecated.'): static;
+        /**
+        * Sets the equivalent value used when the node contains null.
+        *
+        * @return static
+        * @generated
+        */
+        public function treatNullLike(mixed $value): static;
+        /**
+        * Sets the equivalent value used when the node contains true.
+        *
+        * @return static
+        * @generated
+        */
+        public function treatTrueLike(mixed $value): static;
+        /**
+        * Sets the equivalent value used when the node contains false.
+        *
+        * @return static
+        * @generated
+        */
+        public function treatFalseLike(mixed $value): static;
+        /**
+        * Sets null as the default value.
+        *
+        * @return static
+        * @generated
+        */
+        public function defaultNull(): static;
+        /**
+        * Sets true as the default value.
+        *
+        * @return static
+        * @generated
+        */
+        public function defaultTrue(): static;
+        /**
+        * Sets false as the default value.
+        *
+        * @return static
+        * @generated
+        */
+        public function defaultFalse(): static;
+        /**
+        * Sets an expression to run before the normalization.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\ExprBuilder
+        * @generated
+        */
+        public function beforeNormalization(): \Symfony\Component\Config\Definition\Builder\ExprBuilder;
+        /**
+        * Denies the node value being empty.
+        *
+        * @return static
+        * @generated
+        */
+        public function cannotBeEmpty(): static;
+        /**
+        * Sets an expression to run for the validation.
+        *
+        * The expression receives the value of the node and must return it. It can
+        * modify it.
+        * An exception should be thrown when the node is not valid.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\ExprBuilder
+        * @generated
+        */
+        public function validate(): \Symfony\Component\Config\Definition\Builder\ExprBuilder;
+        /**
+        * Sets whether the node can be overwritten.
+        *
+        * @return static
+        * @generated
+        */
+        public function cannotBeOverwritten(bool $deny = true): static;
+        /**
+        * Gets the builder for validation rules.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\ValidationBuilder
+        * @generated
+        */
+        protected function validation(): \Symfony\Component\Config\Definition\Builder\ValidationBuilder;
+        /**
+        * Gets the builder for merging rules.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\MergeBuilder
+        * @generated
+        */
+        protected function merge(): \Symfony\Component\Config\Definition\Builder\MergeBuilder;
+        /**
+        * Gets the builder for normalization rules.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\NormalizationBuilder
+        * @generated
+        */
+        protected function normalization(): \Symfony\Component\Config\Definition\Builder\NormalizationBuilder;
+        /**
+        * Instantiate and configure the node according to this definition.
+        *
+        * @throws InvalidDefinitionException When the definition is invalid
+        * @generated
+        */
+        protected abstract function createNode(): \Symfony\Component\Config\Definition\NodeInterface;
+        /**
+        * Set PathSeparator to use.
+        *
+        * @return static
+        * @generated
+        */
+        public function setPathSeparator(string $separator): static;
+    }
+    /**
+    * An interface that must be implemented by all node parents.
+    *
+    * @author Victor Berchet <victor@suumit.com>
+    * @generated
+    */
+    interface NodeParentInterface {
+    }
+    /**
+    * This class builds normalization conditions.
+    *
+    * @template T of NodeDefinition
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class NormalizationBuilder<T extends \Symfony\Component\Config\Definition\Builder\NodeDefinition> {
+        /**
+        * @var array<int, ExprBuilder<T>|\Closure>
+        * @generated
+        */
+        public array<int, \Symfony\Component\Config\Definition\Builder\ExprBuilder<T>|\Closure> $before ?? [];
+        public array $declaredTypes ?? [];
+        public array $remappings ?? [];
+        protected \Symfony\Component\Config\Definition\Builder\NodeDefinition $node;
+        /**
+        * @param \Symfony\Component\Config\Definition\Builder\NodeDefinition $node
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Config\Definition\Builder\NodeDefinition $node): void;
+        /**
+        * Registers a key to remap to its plural form.
+        *
+        * @param string $key The key to remap
+        * @param ?string $plural The plural of the key in case of irregular plural
+        * @return static
+        * @generated
+        */
+        public function remap(string $key, ?string $plural = null): static;
+        /**
+        * Registers a closure to run before the normalization or an expression builder to build it if null is provided.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\ExprBuilder|static ($closure is \Closure ? $this : ExprBuilder<T>)
+        * @generated
+        */
+        public function before(?\Closure $closure = null): \Symfony\Component\Config\Definition\Builder\ExprBuilder|static;
+    }
+    /**
+    * Abstract class that contains common code of integer and float node definitions.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends ScalarNodeDefinition<TParent>
+    * @author David Jeanmonod <david.jeanmonod@gmail.com>
+    * @generated
+    */
+    abstract class NumericNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition {
+        protected int|float|null $min ?? null;
+        protected int|float|null $max ?? null;
+        /**
+        * Ensures that the value is smaller than the given reference.
+        *
+        * @return static
+        * @throws \InvalidArgumentException when the constraint is inconsistent
+        * @generated
+        */
+        public function max(int|float $max): static;
+        /**
+        * Ensures that the value is bigger than the given reference.
+        *
+        * @return static
+        * @throws \InvalidArgumentException when the constraint is inconsistent
+        * @generated
+        */
+        public function min(int|float $min): static;
+        /**
+        * @throws InvalidDefinitionException
+        * @generated
+        */
+        public function cannotBeEmpty(): static;
+    }
+    /**
+    * An interface that must be implemented by nodes which can have children.
+    *
+    * @author Victor Berchet <victor@suumit.com>
+    * @generated
+    */
+    interface ParentNodeDefinitionInterface extends \Symfony\Component\Config\Definition\Builder\BuilderAwareInterface {
+        /**
+        * Returns a builder to add children nodes.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\NodeBuilder
+        * @generated
+        */
+        public function children(): \Symfony\Component\Config\Definition\Builder\NodeBuilder;
+        /**
+        * Appends a node definition.
+        *
+        * Usage:
+        * 
+        *     $node = $parentNode
+        *         ->children()
+        *             ->scalarNode('foo')->end()
+        *             ->scalarNode('baz')->end()
+        *             ->append($this->getBarNodeDefinition())
+        *         ->end()
+        *     ;
+        *
+        * @return static
+        * @generated
+        */
+        public function append(\Symfony\Component\Config\Definition\Builder\NodeDefinition $node): static;
+        /**
+        * Gets the child node definitions.
+        *
+        * @return array<int, NodeDefinition<static>>
+        * @generated
+        */
+        public function getChildNodeDefinitions(): array<int, \Symfony\Component\Config\Definition\Builder\NodeDefinition<static>>;
+    }
+    /**
+    * This class provides a fluent interface for defining a node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends VariableNodeDefinition<TParent>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ScalarNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\VariableNodeDefinition {
+        protected function instantiateNode(): \Symfony\Component\Config\Definition\ScalarNode;
+    }
+    /**
+    * This class provides a fluent interface for defining a node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends ScalarNodeDefinition<TParent>
+    * @author Raffaele Carelle <raffaele.carelle@gmail.com>
+    * @generated
+    */
+    class StringNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition {
+        /**
+        * @param ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent
+        * @generated
+        */
+        public function __construct(?string $name, ?\Symfony\Component\Config\Definition\Builder\NodeParentInterface $parent = null): void;
+        protected function instantiateNode(): \Symfony\Component\Config\Definition\StringNode;
+    }
+    /**
+    * This is the entry class for building a config tree.
+    *
+    * @template T of string
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class TreeBuilder<T extends string> implements \Symfony\Component\Config\Definition\Builder\NodeParentInterface {
+        protected ?\Symfony\Component\Config\Definition\NodeInterface $tree ?? null;
+        /**
+        * @var ?\Symfony\Component\Config\Definition\Builder\NodeDefinition
+        * @generated
+        */
+        protected ?\Symfony\Component\Config\Definition\Builder\NodeDefinition $root ?? null;
+        /**
+        * @param string $type
+        * @generated
+        */
+        public function __construct(string $name, string $type = 'array', ?\Symfony\Component\Config\Definition\Builder\NodeBuilder $builder = null): void;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\NodeDefinition (
+        *  *        T is 'array' ? ArrayNodeDefinition<$this>
+        *  *        : (T is 'variable' ? VariableNodeDefinition<$this>
+        *  *        : (T is 'scalar' ? ScalarNodeDefinition<$this>
+        *  *        : (T is 'string' ? StringNodeDefinition<$this>
+        *  *        : (T is 'boolean' ? BooleanNodeDefinition<$this>
+        *  *        : (T is 'integer' ? IntegerNodeDefinition<$this>
+        *  *        : (T is 'float' ? FloatNodeDefinition<$this>
+        *  *        : (T is 'enum' ? EnumNodeDefinition<$this>
+        *  *        : NodeDefinition<$this>)))))))
+        *  *     )
+        * @generated
+        */
+        public function getRootNode(): \Symfony\Component\Config\Definition\Builder\NodeDefinition;
+        public function buildTree(): \Symfony\Component\Config\Definition\NodeInterface;
+        public function setPathSeparator(string $separator): void;
+    }
+    /**
+    * This class builds validation conditions.
+    *
+    * @template T of NodeDefinition
+    * @author Christophe Coevoet <stof@notk.org>
+    * @generated
+    */
+    class ValidationBuilder<T extends \Symfony\Component\Config\Definition\Builder\NodeDefinition> {
+        /**
+        * @var array<int, ExprBuilder<T>|\Closure>
+        * @generated
+        */
+        public array<int, \Symfony\Component\Config\Definition\Builder\ExprBuilder<T>|\Closure> $rules ?? [];
+        protected \Symfony\Component\Config\Definition\Builder\NodeDefinition $node;
+        /**
+        * @param \Symfony\Component\Config\Definition\Builder\NodeDefinition $node
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Config\Definition\Builder\NodeDefinition $node): void;
+        /**
+        * Registers a closure to run as normalization or an expression builder to build it if null is provided.
+        *
+        * @return \Symfony\Component\Config\Definition\Builder\ExprBuilder|static ($closure is \Closure ? $this : ExprBuilder<T>)
+        * @generated
+        */
+        public function rule(?\Closure $closure = null): \Symfony\Component\Config\Definition\Builder\ExprBuilder|static;
+    }
+    /**
+    * This class provides a fluent interface for defining a node.
+    *
+    * @template TParent of NodeParentInterface|null
+    * @extends NodeDefinition<TParent>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class VariableNodeDefinition<TParent extends NodeParentInterface|null> extends \Symfony\Component\Config\Definition\Builder\NodeDefinition {
+        protected function instantiateNode(): \Symfony\Component\Config\Definition\VariableNode;
+        protected function createNode(): \Symfony\Component\Config\Definition\NodeInterface;
+    }
+}
+namespace Symfony\Component\Config\Definition\Configurator {
+    /**
+    * @template T of string
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @generated
+    */
+    class DefinitionConfigurator<T extends string> {
+        /**
+        * @param \Symfony\Component\Config\Definition\Builder\TreeBuilder $treeBuilder
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Config\Definition\Builder\TreeBuilder $treeBuilder, \Symfony\Component\Config\Definition\Loader\DefinitionFileLoader $loader, string $path, string $file): void;
+        public function import(string $resource, ?string $type = null, bool $ignoreErrors = false): void;
+        /**
+        * @return \Symfony\Component\Config\Definition\Builder\NodeDefinition (
+        *  *        T is 'array' ? ArrayNodeDefinition<TreeBuilder<T>>
+        *  *        : (T is 'variable' ? VariableNodeDefinition<TreeBuilder<T>>
+        *  *        : (T is 'scalar' ? ScalarNodeDefinition<TreeBuilder<T>>
+        *  *        : (T is 'string' ? StringNodeDefinition<TreeBuilder<T>>
+        *  *        : (T is 'boolean' ? BooleanNodeDefinition<TreeBuilder<T>>
+        *  *        : (T is 'integer' ? IntegerNodeDefinition<TreeBuilder<T>>
+        *  *        : (T is 'float' ? FloatNodeDefinition<TreeBuilder<T>>
+        *  *        : (T is 'enum' ? EnumNodeDefinition<TreeBuilder<T>>
+        *  *        : NodeDefinition<TreeBuilder<T>>)))))))
+        *  *     )
+        * @generated
+        */
+        public function rootNode(): \Symfony\Component\Config\Definition\Builder\NodeDefinition;
+        public function setPathSeparator(string $separator): void;
+    }
+}
+namespace Symfony\Component\Config\Definition\Dumper {
+    /**
+    * Dumps an XML reference configuration for the given configuration/node instance.
+    *
+    * @author Wouter J <waldio.webdesign@gmail.com>
+    * @generated
+    */
+    class XmlReferenceDumper {
+        public function dump(\Symfony\Component\Config\Definition\ConfigurationInterface $configuration, ?string $namespace = null): string;
+        public function dumpNode(\Symfony\Component\Config\Definition\NodeInterface $node, ?string $namespace = null): string;
+    }
+    /**
+    * Dumps a Yaml reference configuration for the given configuration/node instance.
+    *
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    class YamlReferenceDumper {
+        public function dump(\Symfony\Component\Config\Definition\ConfigurationInterface $configuration): string;
+        public function dumpAtPath(\Symfony\Component\Config\Definition\ConfigurationInterface $configuration, string $path): string;
+        /**
+        * @var NodeInterface[] $children
+        * @generated
+        */
+        public function dumpNode(\Symfony\Component\Config\Definition\NodeInterface $node): string;
+    }
+}
+namespace Symfony\Component\Config\Definition\Exception {
+    /**
+    * This exception is thrown whenever the key of an array is not unique. This can
+    *
+    * only be the case if the configuration is coming from an XML file.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class DuplicateKeyException extends \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException {
+    }
+    /**
+    * Base exception for all configuration exceptions.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class Exception extends \RuntimeException {
+    }
+    /**
+    * This exception is thrown when a configuration path is overwritten from a
+    *
+    * subsequent configuration file, but the entry node specifically forbids this.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ForbiddenOverwriteException extends \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException {
+    }
+    /**
+    * A very general exception which can be thrown whenever non of the more specific
+    *
+    * exceptions is suitable.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class InvalidConfigurationException extends \Symfony\Component\Config\Definition\Exception\Exception {
+        public function setPath(string $path): void;
+        public function getPath(): ?string;
+        /**
+        * Adds extra information that is suffixed to the original exception message.
+        *
+        * @generated
+        */
+        public function addHint(string $hint): void;
+    }
+    /**
+    * Thrown when an error is detected in a node Definition.
+    *
+    * @author Victor Berchet <victor.berchet@suumit.com>
+    * @generated
+    */
+    class InvalidDefinitionException extends \Symfony\Component\Config\Definition\Exception\Exception {
+    }
+    /**
+    * This exception is thrown if an invalid type is encountered.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class InvalidTypeException extends \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException {
+    }
+    /**
+    * This exception is usually not encountered by the end-user, but only used
+    *
+    * internally to signal the parent scope to unset a key.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class UnsetKeyException extends \Symfony\Component\Config\Definition\Exception\Exception {
+    }
+}
+namespace Symfony\Component\Config\Definition\Loader {
+    /**
+    * DefinitionFileLoader loads config definitions from a PHP file.
+    *
+    * The PHP file is required.
+    *
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @generated
+    */
+    class DefinitionFileLoader extends \Symfony\Component\Config\Loader\FileLoader {
+        public function __construct(\Symfony\Component\Config\Definition\Builder\TreeBuilder $treeBuilder, \Symfony\Component\Config\FileLocatorInterface $locator, ?\Symfony\Component\DependencyInjection\ContainerBuilder $container = null): void;
+        public function load(mixed $resource, ?string $type = null): mixed;
+        public function supports(mixed $resource, ?string $type = null): bool;
+    }
+}
+namespace Symfony\Component\Config\Exception {
+    /**
+    * Exception class for when a circular reference is detected when importing resources.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class FileLoaderImportCircularReferenceException extends \Symfony\Component\Config\Exception\LoaderLoadException {
+        public function __construct(array $resources, int $code = 0, ?\Throwable $previous = null): void;
+    }
+    /**
+    * File locator exception if a file does not exist.
+    *
+    * @author Leo Feyer <https://github.com/leofeyer>
+    * @generated
+    */
+    class FileLocatorFileNotFoundException extends \InvalidArgumentException {
+        public function __construct(string $message = '', int $code = 0, ?\Throwable $previous = null, array $paths = []): void;
+        public function getPaths(): array;
+    }
+    /**
+    * Exception class for when a resource cannot be loaded or imported.
+    *
+    * @author Ryan Weaver <ryan@thatsquality.com>
+    * @generated
+    */
+    class LoaderLoadException extends \Exception {
+        /**
+        * @param mixed $resource The resource that could not be imported
+        * @param ?string $sourceResource The original resource importing the new resource
+        * @param int $code The error code
+        * @param ?\Throwable $previous A previous exception
+        * @param ?string $type The type of resource
+        * @generated
+        */
+        public function __construct(mixed $resource, ?string $sourceResource = null, int $code = 0, ?\Throwable $previous = null, ?string $type = null): void;
+        protected function varToString(mixed $var): string;
+    }
+    class LogicException extends \LogicException {
+    }
+}
+namespace Symfony\Component\Config\Loader {
+    /**
+    * DelegatingLoader delegates loading to other loaders using a loader resolver.
+    *
+    * This loader acts as an array of LoaderInterface objects - each having
+    * a chance to load a given resource (handled by the resolver)
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class DelegatingLoader extends \Symfony\Component\Config\Loader\Loader {
+        public function __construct(\Symfony\Component\Config\Loader\LoaderResolverInterface $resolver): void;
+        public function load(mixed $resource, ?string $type = null): mixed;
+        public function supports(mixed $resource, ?string $type = null): bool;
+    }
+    /**
+    * A loader that can be scoped to a given filesystem directory.
+    *
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    interface DirectoryAwareLoaderInterface {
+        public function forDirectory(string $currentDirectory): static;
+    }
+    /**
+    * FileLoader is the abstract class used by all built-in loaders that are file based.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class FileLoader extends \Symfony\Component\Config\Loader\Loader {
+        protected static array $loading ?? [];
+        protected \Symfony\Component\Config\FileLocatorInterface $locator;
+        public function __construct(\Symfony\Component\Config\FileLocatorInterface $locator, ?string $env = null): void;
+        /**
+        * Sets the current directory.
+        *
+        * @generated
+        */
+        public function setCurrentDir(string $dir): void;
+        /**
+        * Returns the file locator used by this loader.
+        *
+        * @generated
+        */
+        public function getLocator(): \Symfony\Component\Config\FileLocatorInterface;
+        /**
+        * Imports a resource.
+        *
+        * @param mixed $resource A Resource
+        * @param ?string $type The resource type or null if unknown
+        * @param bool $ignoreErrors Whether to ignore import errors or not
+        * @param ?string $sourceResource The original resource importing the new resource
+        * @param string|array|null $exclude Glob patterns to exclude from the import
+        * @throws LoaderLoadException
+        * @throws FileLoaderImportCircularReferenceException
+        * @throws FileLocatorFileNotFoundException
+        * @generated
+        */
+        public function import(mixed $resource, ?string $type = null, bool $ignoreErrors = false, ?string $sourceResource = null, string|array|null $exclude = null): mixed;
+    }
+    /**
+    * GlobFileLoader loads files from a glob pattern.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class GlobFileLoader extends \Symfony\Component\Config\Loader\FileLoader {
+        public function load(mixed $resource, ?string $type = null): mixed;
+        public function supports(mixed $resource, ?string $type = null): bool;
+    }
+    /**
+    * Loader is the abstract class used by all built-in loaders.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class Loader implements \Symfony\Component\Config\Loader\LoaderInterface {
+        protected ?\Symfony\Component\Config\Loader\LoaderResolverInterface $resolver ?? null;
+        protected ?string $env ?? null;
+        public function __construct(?string $env = null): void;
+        public function getResolver(): \Symfony\Component\Config\Loader\LoaderResolverInterface;
+        public function setResolver(\Symfony\Component\Config\Loader\LoaderResolverInterface $resolver): void;
+        /**
+        * Imports a resource.
+        *
+        * @generated
+        */
+        public function import(mixed $resource, ?string $type = null): mixed;
+        /**
+        * Finds a loader able to load an imported resource.
+        *
+        * @throws LoaderLoadException If no loader is found
+        * @generated
+        */
+        public function resolve(mixed $resource, ?string $type = null): \Symfony\Component\Config\Loader\LoaderInterface;
+    }
+    /**
+    * LoaderInterface is the interface implemented by all loader classes.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface LoaderInterface {
+        /**
+        * Loads a resource.
+        *
+        * @throws \Exception If something went wrong
+        * @generated
+        */
+        public function load(mixed $resource, ?string $type = null): mixed;
+        /**
+        * Returns whether this class supports the given resource.
+        *
+        * @param mixed $resource A resource
+        * @generated
+        */
+        public function supports(mixed $resource, ?string $type = null): bool;
+        /**
+        * Gets the loader resolver.
+        *
+        * @generated
+        */
+        public function getResolver(): \Symfony\Component\Config\Loader\LoaderResolverInterface;
+        /**
+        * Sets the loader resolver.
+        *
+        * @generated
+        */
+        public function setResolver(\Symfony\Component\Config\Loader\LoaderResolverInterface $resolver): void;
+    }
+    /**
+    * LoaderResolver selects a loader for a given resource.
+    *
+    * A resource can be anything (e.g. a full path to a config file or a Closure).
+    * Each loader determines whether it can load a resource and how.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class LoaderResolver implements \Symfony\Component\Config\Loader\LoaderResolverInterface {
+        /**
+        * @param array<int, LoaderInterface> $loaders An array of loaders
+        * @generated
+        */
+        public function __construct(array<int, \Symfony\Component\Config\Loader\LoaderInterface> $loaders = []): void;
+        public function resolve(mixed $resource, ?string $type = null): \Symfony\Component\Config\Loader\LoaderInterface|false;
+        public function addLoader(\Symfony\Component\Config\Loader\LoaderInterface $loader): void;
+        /**
+        * Returns the registered loaders.
+        *
+        * @return array<int, LoaderInterface>
+        * @generated
+        */
+        public function getLoaders(): array<int, \Symfony\Component\Config\Loader\LoaderInterface>;
+    }
+    /**
+    * LoaderResolverInterface selects a loader for a given resource.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface LoaderResolverInterface {
+        /**
+        * Returns a loader able to load the resource.
+        *
+        * @param ?string $type The resource type or null if unknown
+        * @generated
+        */
+        public function resolve(mixed $resource, ?string $type = null): \Symfony\Component\Config\Loader\LoaderInterface|false;
+    }
+    /**
+    * Placeholder for a parameter.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    class ParamConfigurator {
+        public function __construct(string $name): void;
+        public function __toString(): string;
+    }
+}
+namespace Symfony\Component\Config\Resource {
+    /**
+    * ClassExistenceResource represents a class existence.
+    *
+    * Freshness is only evaluated against resource existence.
+    * 
+    * The resource must be a fully-qualified class name.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class ClassExistenceResource implements \Symfony\Component\Config\Resource\SelfCheckingResourceInterface {
+        /**
+        * @param string $resource The fully-qualified class name
+        * @param ?bool $exists Boolean when the existence check has already been done
+        * @generated
+        */
+        public function __construct(string $resource, ?bool $exists = null): void;
+        public function __toString(): string;
+        public function getResource(): string;
+        /**
+        * @throws \ReflectionException when a parent class/interface/trait is not found
+        * @generated
+        */
+        public function isFresh(int $timestamp): bool;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * ComposerResource tracks the PHP version and Composer dependencies.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @final
+    * @generated
+    */
+    class ComposerResource implements \Symfony\Component\Config\Resource\SelfCheckingResourceInterface {
+        public function __construct(): void;
+        public function getVendors(): array;
+        public function __toString(): string;
+        public function isFresh(int $timestamp): bool;
+        public function __serialize(): array;
+    }
+    /**
+    * DirectoryResource represents a resources stored in a subdirectory tree.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class DirectoryResource implements \Symfony\Component\Config\Resource\SelfCheckingResourceInterface {
+        /**
+        * @param string $resource The file path to the resource
+        * @param ?string $pattern A pattern to restrict monitored files
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(string $resource, ?string $pattern = null): void;
+        public function __toString(): string;
+        public function getResource(): string;
+        public function getPattern(): ?string;
+        public function isFresh(int $timestamp): bool;
+        public function __serialize(): array;
+    }
+    /**
+    * FileExistenceResource represents a resource stored on the filesystem.
+    *
+    * Freshness is only evaluated against resource creation or deletion.
+    * 
+    * The resource can be a file or a directory.
+    *
+    * @author Charles-Henri Bruyand <charleshenri.bruyand@gmail.com>
+    * @final
+    * @generated
+    */
+    class FileExistenceResource implements \Symfony\Component\Config\Resource\SelfCheckingResourceInterface {
+        /**
+        * @param string $resource The file path to the resource
+        * @generated
+        */
+        public function __construct(string $resource): void;
+        public function __toString(): string;
+        public function getResource(): string;
+        public function isFresh(int $timestamp): bool;
+        public function __serialize(): array;
+    }
+    /**
+    * FileResource represents a resource stored on the filesystem.
+    *
+    * The resource can be a file or a directory.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class FileResource implements \Symfony\Component\Config\Resource\SelfCheckingResourceInterface {
+        /**
+        * @param string $resource The file path to the resource
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(string $resource): void;
+        public function __toString(): string;
+        /**
+        * Returns the canonicalized, absolute path to the resource.
+        *
+        * @generated
+        */
+        public function getResource(): string;
+        public function isFresh(int $timestamp): bool;
+        public function __serialize(): array;
+    }
+    /**
+    * GlobResource represents a set of resources stored on the filesystem.
+    *
+    * Only existence/removal is tracked (not mtimes.)
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @final
+    * @implements \IteratorAggregate<string, \SplFileInfo>
+    * @generated
+    */
+    class GlobResource implements \IteratorAggregate, \Symfony\Component\Config\Resource\SelfCheckingResourceInterface {
+        /**
+        * @param string $prefix A directory prefix
+        * @param string $pattern A glob pattern
+        * @param bool $recursive Whether directories should be scanned recursively or not
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(string $prefix, string $pattern, bool $recursive, bool $forExclusion = false, array $excludedPrefixes = []): void;
+        public function getPrefix(): string;
+        public function __toString(): string;
+        public function isFresh(int $timestamp): bool;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        public function getIterator(): \Traversable;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @final
+    * @generated
+    */
+    class ReflectionClassResource implements \Symfony\Component\Config\Resource\SelfCheckingResourceInterface {
+        public function __construct(\ReflectionClass $classReflector, array $excludedVendors = []): void;
+        public function isFresh(int $timestamp): bool;
+        public function __toString(): string;
+        public function __serialize(): array;
+    }
+    /**
+    * ResourceInterface is the interface that must be implemented by all Resource classes.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ResourceInterface extends \Stringable {
+        /**
+        * Returns a string representation of the Resource.
+        *
+        * This method is necessary to allow for resource de-duplication, for example by means
+        * of array_unique(). The string returned need not have a particular meaning, but has
+        * to be identical for different ResourceInterface instances referring to the same
+        * resource; and it should be unlikely to collide with that of other, unrelated
+        * resource instances.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+    }
+    /**
+    * Resource checker for instances of SelfCheckingResourceInterface.
+    *
+    * As these resources perform the actual check themselves, we can provide
+    * this class as a standard way of validating them.
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    class SelfCheckingResourceChecker implements \Symfony\Component\Config\ResourceCheckerInterface {
+        public function supports(\Symfony\Component\Config\Resource\ResourceInterface $metadata): bool;
+        /**
+        * @param \Symfony\Component\Config\Resource\ResourceInterface $resource
+        * @generated
+        */
+        public function isFresh(\Symfony\Component\Config\Resource\ResourceInterface $resource, int $timestamp): bool;
+    }
+    /**
+    * Interface for Resources that can check for freshness autonomously,
+    *
+    * without special support from external services.
+    *
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    interface SelfCheckingResourceInterface extends \Symfony\Component\Config\Resource\ResourceInterface {
+        /**
+        * Returns true if the resource has not been updated since the given timestamp.
+        *
+        * @param int $timestamp The last time the resource was loaded
+        * @generated
+        */
+        public function isFresh(int $timestamp): bool;
+    }
+    class SkippingResourceChecker implements \Symfony\Component\Config\ResourceCheckerInterface {
+        /**
+        * @param array<int, string> $skippedResourceTypes
+        * @generated
+        */
+        public function __construct(array<int, string> $skippedResourceTypes = []): void;
+        public function supports(\Symfony\Component\Config\Resource\ResourceInterface $metadata): bool;
+        public function isFresh(\Symfony\Component\Config\Resource\ResourceInterface $resource, int $timestamp): bool;
+        public function __serialize(): array;
+    }
+}
+namespace Symfony\Component\Config\Util {
+    /**
+    * XMLUtils is a bunch of utility methods to XML operations.
+    *
+    * This class contains static methods only and is not meant to be instantiated.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Martin Hasoň <martin.hason@gmail.com>
+    * @author Ole Rößner <ole@roessner.it>
+    * @generated
+    */
+    class XmlUtils {
+        /**
+        * Parses an XML string.
+        *
+        * @param string $content An XML string
+        * @param string|callable|null $schemaOrCallable An XSD schema file path, a callable, or null to disable validation
+        * @throws XmlParsingException When parsing of XML file returns error
+        * @throws InvalidXmlException When parsing of XML with schema or callable produces any errors unrelated to the XML parsing itself
+        * @throws \RuntimeException   When DOM extension is missing
+        * @generated
+        */
+        public static function parse(string $content, string|callable|null $schemaOrCallable = null): \DOMDocument;
+        /**
+        * Loads an XML file.
+        *
+        * @param string $file An XML file path
+        * @param string|callable|null $schemaOrCallable An XSD schema file path, a callable, or null to disable validation
+        * @throws \InvalidArgumentException When loading of XML file returns error
+        * @throws XmlParsingException       When XML parsing returns any errors
+        * @throws \RuntimeException         When DOM extension is missing
+        * @generated
+        */
+        public static function loadFile(string $file, string|callable|null $schemaOrCallable = null): \DOMDocument;
+        /**
+        * Converts a \DOMElement object to a PHP array.
+        *
+        * The following rules applies during the conversion:
+        * 
+        *  * Each tag is converted to a key value or an array
+        *    if there is more than one "value"
+        * 
+        *  * The content of a tag is set under a "value" key (<foo>bar</foo>)
+        *    if the tag also has some nested tags
+        * 
+        *  * The attributes are converted to keys (<foo foo="bar"/>)
+        * 
+        *  * The nested-tags are converted to keys (<foo><foo>bar</foo></foo>)
+        *
+        * @param \DOMElement $element A \DOMElement instance
+        * @param bool $checkPrefix Check prefix in an element or an attribute name
+        * @generated
+        */
+        public static function convertDomElementToArray(\DOMElement $element, bool $checkPrefix = true): mixed;
+        /**
+        * Converts an xml value to a PHP type.
+        *
+        * @generated
+        */
+        public static function phpize(string|\Stringable $value): mixed;
+        protected static function getXmlErrors(bool $internalErrors): array;
+    }
+}
+namespace Symfony\Component\Config\Util\Exception {
+    /**
+    * Exception class for when XML parsing with an XSD schema file path or a callable validator produces errors unrelated
+    *
+    * to the actual XML parsing.
+    *
+    * @author Ole Rößner <ole@roessner.it>
+    * @generated
+    */
+    class InvalidXmlException extends \Symfony\Component\Config\Util\Exception\XmlParsingException {
+    }
+    /**
+    * Exception class for when XML cannot be parsed properly.
+    *
+    * @author Ole Rößner <ole@roessner.it>
+    * @generated
+    */
+    class XmlParsingException extends \InvalidArgumentException {
+    }
+}

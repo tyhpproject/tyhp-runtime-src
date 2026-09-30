@@ -1,0 +1,234 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Contracts\Service {
+    /**
+    * @deprecated use ContainerProviderInterface instead
+    * @generated
+    */
+    deprecated interface ContainerAwareInterface extends \Symfony\Contracts\Service\ContainerProviderInterface {
+    }
+    /**
+    * Implemented by objects that expose a service container.
+    *
+    * @generated
+    */
+    interface ContainerProviderInterface {
+        public function getContainer(): \Psr\Container\ContainerInterface;
+    }
+    /**
+    * Provides a way to reset an object to its initial state.
+    *
+    * When calling the "reset()" method on an object, it should be put back to its
+    * initial state. This usually means clearing any internal buffers and forwarding
+    * the call to internal dependencies. All properties of the object should be put
+    * back to the same state it had when it was first ready to use.
+    * 
+    * This method could be called, for example, to recycle objects that are used as
+    * services, so that they can be used to handle several requests in the same
+    * process loop (note that we advise making your services stateless instead of
+    * implementing this interface when possible.)
+    *
+    * @generated
+    */
+    interface ResetInterface {
+        /**
+        * @return void
+        * @generated
+        */
+        public function reset(): void;
+    }
+    /**
+    * A ServiceProviderInterface that is also countable and iterable.
+    *
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @template T of mixed
+    * @extends ServiceProviderInterface<T>
+    * @extends \IteratorAggregate<string, T>
+    * @generated
+    */
+    interface ServiceCollectionInterface<T extends mixed> extends \Symfony\Contracts\Service\ServiceProviderInterface, \Countable, \IteratorAggregate {
+    }
+    /**
+    * A trait to help implement ServiceProviderInterface.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    trait ServiceLocatorTrait {
+        /**
+        * @param array<string, callable> $factories
+        * @generated
+        */
+        public function __construct(array<string, callable> $factories): void;
+        public function has(string $id): bool;
+        public function get(string $id): mixed;
+        public function getProvidedServices(): array;
+    }
+    /**
+    * Implementation of ServiceSubscriberInterface that determines subscribed services
+    *
+    * from methods that have the #[SubscribedService] attribute.
+    * 
+    * Service ids are available as "ClassName::methodName" so that the implementation
+    * of subscriber methods can be just `return $this->container->get(__METHOD__);`.
+    *
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    trait ServiceMethodsSubscriberTrait {
+        protected \Psr\Container\ContainerInterface $container;
+        public static function getSubscribedServices(): array;
+        public function setContainer(\Psr\Container\ContainerInterface $container): ?\Psr\Container\ContainerInterface;
+    }
+    /**
+    * A ServiceProviderInterface exposes the identifiers and the types of services provided by a container.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Mateusz Sip <mateusz.sip@gmail.com>
+    * @template T of mixed
+    * @generated
+    */
+    interface ServiceProviderInterface<T extends mixed> extends \Psr\Container\ContainerInterface {
+        /**
+        * @return T
+        * @generated
+        */
+        public function get(string $id): T;
+        public function has(string $id): bool;
+        /**
+        * Returns an associative array of service types keyed by the identifiers provided by the current container.
+        *
+        * Examples:
+        * 
+        *  * ['logger' => 'Psr\Log\LoggerInterface'] means the object provides a service named "logger" that implements Psr\Log\LoggerInterface
+        *  * ['foo' => '?'] means the container provides service name "foo" of unspecified type
+        *  * ['bar' => '?Bar\Baz'] means the container provides a service "bar" of type Bar\Baz|null
+        *
+        * @return array<string, string> The provided service types, keyed by service names
+        * @generated
+        */
+        public function getProvidedServices(): array<string, string>;
+    }
+    /**
+    * A ServiceSubscriber exposes its dependencies via the static {@link getSubscribedServices} method.
+    *
+    * The getSubscribedServices method returns an array of service types required by such instances,
+    * optionally keyed by the service names used internally. Service types that start with an interrogation
+    * mark "?" are optional, while the other ones are mandatory service dependencies.
+    * 
+    * The injected service locators SHOULD NOT allow access to any other services not specified by the method.
+    * 
+    * It is expected that ServiceSubscriber instances consume PSR-11-based service locators internally.
+    * This interface does not dictate any injection method for these service locators, although constructor
+    * injection is recommended.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ServiceSubscriberInterface {
+        /**
+        * Returns an array of service types (or {@see SubscribedService} objects) required
+        *
+        * by such instances, optionally keyed by the service names used internally.
+        * 
+        * For mandatory dependencies:
+        * 
+        *  * ['logger' => 'Psr\Log\LoggerInterface'] means the objects use the "logger" name
+        *    internally to fetch a service which must implement Psr\Log\LoggerInterface.
+        *  * ['loggers' => 'Psr\Log\LoggerInterface[]'] means the objects use the "loggers" name
+        *    internally to fetch an iterable of Psr\Log\LoggerInterface instances.
+        *  * ['Psr\Log\LoggerInterface'] is a shortcut for
+        *  * ['Psr\Log\LoggerInterface' => 'Psr\Log\LoggerInterface']
+        * 
+        * otherwise:
+        * 
+        *  * ['logger' => '?Psr\Log\LoggerInterface'] denotes an optional dependency
+        *  * ['loggers' => '?Psr\Log\LoggerInterface[]'] denotes an optional iterable dependency
+        *  * ['?Psr\Log\LoggerInterface'] is a shortcut for
+        *  * ['Psr\Log\LoggerInterface' => '?Psr\Log\LoggerInterface']
+        * 
+        * additionally, an array of {@see SubscribedService}'s can be returned:
+        * 
+        *  * [new SubscribedService('logger', Psr\Log\LoggerInterface::class)]
+        *  * [new SubscribedService(type: Psr\Log\LoggerInterface::class, nullable: true)]
+        *  * [new SubscribedService('http_client', HttpClientInterface::class, attributes: new Target('githubApi'))]
+        *
+        * @return array<int, string>|array<int, \Symfony\Contracts\Service\Attribute\SubscribedService> The required service types, optionally keyed by service names
+        * @generated
+        */
+        public static function getSubscribedServices(): array<int, string>|array<int, \Symfony\Contracts\Service\Attribute\SubscribedService>;
+    }
+    /**
+    * Implementation of ServiceSubscriberInterface that determines subscribed services
+    *
+    * from methods that have the #[SubscribedService] attribute.
+    * 
+    * Service ids are available as "ClassName::methodName" so that the implementation
+    * of subscriber methods can be just `return $this->container->get(__METHOD__);`.
+    *
+    * @property ContainerInterface $container
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @deprecated since symfony/contracts v3.5, use ServiceMethodsSubscriberTrait instead
+    * @generated
+    */
+    deprecated trait ServiceSubscriberTrait {
+        public ContainerInterface $container;
+        public static function getSubscribedServices(): array;
+        /**
+        * @var SubscribedService $attribute
+        * @generated
+        */
+        public function setContainer(\Psr\Container\ContainerInterface $container): ?\Psr\Container\ContainerInterface;
+    }
+}
+namespace Symfony\Contracts\Service\Attribute {
+    /**
+    * A required dependency.
+    *
+    * This attribute indicates that a property holds a required dependency. The annotated property or method should be
+    * considered during the instantiation process of the containing class.
+    *
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    final class Required {
+        public int $priority ?? 0;
+        /**
+        * @param int $priority The priority of the method call when the class declares several required methods; the higher the sooner it's called
+        * @generated
+        */
+        public function __construct(int $priority = 0): void;
+    }
+    /**
+    * For use as the return value for {@see ServiceSubscriberInterface}.
+    *
+    * @example new SubscribedService('http_client', HttpClientInterface::class, false, new Target('githubApi'))
+    * 
+    * Use with {@see ServiceMethodsSubscriberTrait} to mark a method's return type
+    * as a subscribed service.
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    final class SubscribedService {
+        /**
+        * @var array<int, object>
+        * @generated
+        */
+        public array<int, object> $attributes;
+        public ?string $key ?? null;
+        public ?string $type ?? null;
+        public bool $nullable ?? false;
+        /**
+        * @param ?string $key The key to use for the service
+        * @param ?string $type The service type (a class name, "string", "iterable", etc.)
+        * @param bool $nullable Whether the service is optional
+        * @param array|object $attributes One or more dependency injection attributes to use
+        * @generated
+        */
+        public function __construct(?string $key = null, ?string $type = null, bool $nullable = false, array|object $attributes = []): void;
+    }
+}

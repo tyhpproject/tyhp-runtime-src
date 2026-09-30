@@ -1,0 +1,295 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Header maps, stream `seek` / `detach` / `getMetadata` / `write`, and ServerRequest maps.
+ */
+
+namespace Laminas\Diactoros {
+    /**
+     * Overlay: `$_FILES` specs are string-keyed.
+     */
+    // @overlay-against: function createUploadedFile(array $spec): \Laminas\Diactoros\UploadedFile
+    function createUploadedFile(array<string, mixed> $spec): \Laminas\Diactoros\UploadedFile;
+
+    /**
+     * Overlay: header names kept after the string-key filter.
+     */
+    // @overlay-against: function marshalHeadersFromSapi(array $server): array
+    function marshalHeadersFromSapi(array $server): array<string, mixed>;
+
+    /**
+     * Overlay: the Apache header callback is invoked with no arguments.
+     */
+    // @overlay-against: function normalizeServer(array $server, null|callable $apacheRequestHeaderCallback): array
+    function normalizeServer(array $server, null|(callable(): mixed) $apacheRequestHeaderCallback = null): array;
+
+    /**
+     * Overlay: uploaded-file trees use int and string keys.
+     */
+    // @overlay-against: function normalizeUploadedFiles(array $files): array
+    function normalizeUploadedFiles(array<int|string, mixed> $files): array<int, \Psr\Http\Message\UploadedFileInterface>;
+
+    /**
+     * Overlay: `seek()` default is `SEEK_SET`, matching PSR-7.
+     */
+    // @overlay-against: class Stream implements \Psr\Http\Message\StreamInterface, \Stringable
+    partial class Stream {
+        // @overlay-against: function detach(): mixed
+        public function detach(): resource|null;
+        /**
+         * @return \StreamMetadata Associative metadata when `$key` is omitted.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(null $key = null): \StreamMetadata;
+        /**
+         * @param string $key Specific metadata to retrieve.
+         * @return mixed Key value, or null if the key is not found.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(string $key): mixed;
+        /**
+         * @param int $whence `SEEK_SET`, `SEEK_CUR`, or `SEEK_END`.
+         */
+        // @overlay-against: function seek(int $offset, int $whence): void
+        public function seek(int $offset, int $whence = \SEEK_SET): void;
+        // @overlay-against: function write(mixed $string): int
+        public function write(string $string): int;
+    }
+
+    /**
+     * Overlay: header maps use `int|string` list keys.
+     */
+    // @overlay-against: class Request implements \Psr\Http\Message\RequestInterface, \Laminas\Diactoros\RequestTrait
+    partial class Request {
+        /**
+         * @param \Psr\Http\Message\HeaderMap $headers
+         */
+        // @overlay-against: function __construct(null|string|\Psr\Http\Message\UriInterface $uri, ?string $method, string|resource|\Psr\Http\Message\StreamInterface $body, array $headers): void
+        public function __construct(null|string|\Psr\Http\Message\UriInterface $uri = null, ?string $method = null, string|resource|\Psr\Http\Message\StreamInterface $body = 'php://temp', \Psr\Http\Message\HeaderMap $headers = []): void;
+        // @overlay-against: function getHeader(string $name): array
+        public function getHeader(string $name): array<int, string>;
+        /**
+         * @return \Psr\Http\Message\HeaderMap Header name => list of values.
+         */
+        // @overlay-against: function getHeaders(): array
+        public function getHeaders(): \Psr\Http\Message\HeaderMap;
+    }
+
+    /**
+     * Overlay: header maps use `int|string` list keys.
+     */
+    // @overlay-against: class Response implements \Psr\Http\Message\ResponseInterface, \Laminas\Diactoros\MessageTrait
+    partial class Response {
+        /**
+         * @param \Psr\Http\Message\HeaderMap $headers
+         */
+        // @overlay-against: function __construct(string|resource|\Psr\Http\Message\StreamInterface $body, int $status, array $headers): void
+        public function __construct(string|resource|\Psr\Http\Message\StreamInterface $body = 'php://memory', int $status = 200, \Psr\Http\Message\HeaderMap $headers = []): void;
+    }
+
+    /**
+     * Overlay: ServerRequest maps match PSR-7 overlays.
+     */
+    // @overlay-against: class ServerRequest implements \Psr\Http\Message\ServerRequestInterface, \Laminas\Diactoros\RequestTrait
+    partial class ServerRequest {
+        /**
+         * @param \Psr\Http\Message\ServerParams $serverParams
+         * @param \Psr\Http\Message\UploadedFileTree $uploadedFiles
+         * @param \Psr\Http\Message\HeaderMap $headers
+         * @param \Psr\Http\Message\CookieParams $cookieParams
+         * @param \Psr\Http\Message\QueryParams $queryParams
+         * @param \Psr\Http\Message\ParsedBody $parsedBody
+         */
+        // @overlay-against: function __construct(array $serverParams, array $uploadedFiles, null|string|\Psr\Http\Message\UriInterface $uri, ?string $method, string|resource|\Psr\Http\Message\StreamInterface $body, array $headers, array $cookieParams, array $queryParams, null|array|object $parsedBody, string $protocol): void
+        public function __construct(
+            \Psr\Http\Message\ServerParams $serverParams = [],
+            \Psr\Http\Message\UploadedFileTree $uploadedFiles = [],
+            null|string|\Psr\Http\Message\UriInterface $uri = null,
+            ?string $method = null,
+            string|resource|\Psr\Http\Message\StreamInterface $body = 'php://input',
+            \Psr\Http\Message\HeaderMap $headers = [],
+            \Psr\Http\Message\CookieParams $cookieParams = [],
+            \Psr\Http\Message\QueryParams $queryParams = [],
+            \Psr\Http\Message\ParsedBody $parsedBody = null,
+            string $protocol = '1.1'
+        ): void;
+        /**
+         * @param string $name The attribute name.
+         * @param T $default Default value to return if the attribute does not exist.
+         * @return T
+         */
+        // @overlay-against: function getAttribute(string $name, mixed $default): mixed
+        public function getAttribute<T = mixed>(string $name, T $default = null): T;
+        /**
+         * @return \Psr\Http\Message\RequestAttributes Attributes derived from the request.
+         */
+        // @overlay-against: function getAttributes(): array
+        public function getAttributes(): \Psr\Http\Message\RequestAttributes;
+        /**
+         * @return \Psr\Http\Message\CookieParams Compatible with `$_COOKIE`.
+         */
+        // @overlay-against: function getCookieParams(): array
+        public function getCookieParams(): \Psr\Http\Message\CookieParams;
+        /**
+         * @return \Psr\Http\Message\ParsedBody Deserialized body parameters.
+         */
+        // @overlay-against: function getParsedBody(): mixed
+        public function getParsedBody(): \Psr\Http\Message\ParsedBody;
+        /**
+         * @return \Psr\Http\Message\QueryParams Deserialized query string arguments.
+         */
+        // @overlay-against: function getQueryParams(): array
+        public function getQueryParams(): \Psr\Http\Message\QueryParams;
+        /**
+         * @return \Psr\Http\Message\ServerParams Typically `$_SERVER`.
+         */
+        // @overlay-against: function getServerParams(): array
+        public function getServerParams(): \Psr\Http\Message\ServerParams;
+        /**
+         * @return \Psr\Http\Message\UploadedFileTree Tree of uploaded files; empty array when none.
+         */
+        // @overlay-against: function getUploadedFiles(): array
+        public function getUploadedFiles(): \Psr\Http\Message\UploadedFileTree;
+        /**
+         * @param \Psr\Http\Message\CookieParams $cookies Key/value pairs representing cookies.
+         */
+        // @overlay-against: function withCookieParams(array $cookies): \Laminas\Diactoros\ServerRequest
+        public function withCookieParams(\Psr\Http\Message\CookieParams $cookies): \Laminas\Diactoros\ServerRequest;
+        /**
+         * @param \Psr\Http\Message\ParsedBody $data Deserialized body data.
+         */
+        // @overlay-against: function withParsedBody(mixed $data): \Laminas\Diactoros\ServerRequest
+        public function withParsedBody(\Psr\Http\Message\ParsedBody $data): \Laminas\Diactoros\ServerRequest;
+        /**
+         * @param \Psr\Http\Message\QueryParams $query Query string arguments, typically from `$_GET`.
+         */
+        // @overlay-against: function withQueryParams(array $query): \Laminas\Diactoros\ServerRequest
+        public function withQueryParams(\Psr\Http\Message\QueryParams $query): \Laminas\Diactoros\ServerRequest;
+        /**
+         * @param \Psr\Http\Message\UploadedFileTree $uploadedFiles Tree of `UploadedFileInterface` instances.
+         */
+        // @overlay-against: function withUploadedFiles(array $uploadedFiles): \Laminas\Diactoros\ServerRequest
+        public function withUploadedFiles(\Psr\Http\Message\UploadedFileTree $uploadedFiles): \Laminas\Diactoros\ServerRequest;
+    }
+
+    /**
+     * Overlay: `seek()` default is `SEEK_SET`; `detach` and `getMetadata` match PSR-7.
+     */
+    // @overlay-against: class CallbackStream implements \Psr\Http\Message\StreamInterface, \Stringable
+    partial class CallbackStream {
+        /**
+         * @param callable(): mixed $callback Invoked with no arguments from `getContents()`.
+         */
+        // @overlay-against: function __construct(callable $callback): void
+        public function __construct(callable(): mixed $callback): void;
+
+        /**
+         * @param callable(): mixed $callback Invoked with no arguments from `getContents()`.
+         */
+        // @overlay-against: function attach(callable $callback): void
+        public function attach(callable(): mixed $callback): void;
+
+        /**
+         * @return \StreamMetadata Associative metadata when `$key` is omitted.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(null $key = null): \StreamMetadata;
+        /**
+         * @param string $key Specific metadata to retrieve.
+         * @return mixed Key value, or null if the key is not found.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(string $key): mixed;
+        /**
+         * @param int $whence `SEEK_SET`, `SEEK_CUR`, or `SEEK_END`.
+         */
+        // @overlay-against: function seek(int $offset, int $whence): void
+        public function seek(int $offset, int $whence = \SEEK_SET): void;
+    }
+
+    /**
+     * Overlay: header values must be strings or numbers; names must be strings.
+     */
+    // @overlay-against: class HeaderSecurity
+    partial class HeaderSecurity {
+        // @overlay-against: function assertValid(mixed $value): void
+        public static function assertValid(string|int|float $value): void;
+
+        // @overlay-against: function assertValidName(mixed $name): void
+        public static function assertValidName(string $name): void;
+    }
+
+    /**
+     * Overlay: `seek()` default is `SEEK_SET`; `detach` and `getMetadata` match PSR-7.
+     */
+    // @overlay-against: class RelativeStream implements \Psr\Http\Message\StreamInterface, \Stringable
+    partial class RelativeStream {
+        // @overlay-against: function detach(): mixed
+        public function detach(): resource|null;
+        /**
+         * @return \StreamMetadata Associative metadata when `$key` is omitted.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(null $key = null): \StreamMetadata;
+        /**
+         * @param string $key Specific metadata to retrieve.
+         * @return mixed Key value, or null if the key is not found.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(string $key): mixed;
+        /**
+         * @param int $whence `SEEK_SET`, `SEEK_CUR`, or `SEEK_END`.
+         */
+        // @overlay-against: function seek(int $offset, int $whence): void
+        public function seek(int $offset, int $whence = \SEEK_SET): void;
+    }
+
+    /**
+     * Overlay: `createRequest()` matches `RequestFactoryInterface`.
+     */
+    // @overlay-against: class RequestFactory implements \Psr\Http\Message\RequestFactoryInterface
+    partial class RequestFactory {
+        /**
+         * @param \Psr\Http\Message\HttpMethod $method The HTTP method associated with the request.
+         * @param \Psr\Http\Message\UriInterface|string $uri Request URI.
+         */
+        // @overlay-against: function createRequest(string $method, mixed $uri): \Psr\Http\Message\RequestInterface
+        public function createRequest(\Psr\Http\Message\HttpMethod $method, \Psr\Http\Message\UriInterface|string $uri): \Psr\Http\Message\RequestInterface;
+    }
+
+    /**
+     * Overlay: `createServerRequest()` matches `ServerRequestFactoryInterface`.
+     */
+    // @overlay-against: class ServerRequestFactory implements \Psr\Http\Message\ServerRequestFactoryInterface
+    partial class ServerRequestFactory {
+        /**
+         * @param \Psr\Http\Message\HttpMethod $method The HTTP method associated with the request.
+         * @param \Psr\Http\Message\UriInterface|string $uri Request URI.
+         * @param \Psr\Http\Message\ServerParams $serverParams SAPI parameters.
+         */
+        // @overlay-against: function createServerRequest(string $method, mixed $uri, array $serverParams): \Psr\Http\Message\ServerRequestInterface
+        public function createServerRequest(\Psr\Http\Message\HttpMethod $method, \Psr\Http\Message\UriInterface|string $uri, \Psr\Http\Message\ServerParams $serverParams = []): \Psr\Http\Message\ServerRequestInterface;
+    }
+
+    /**
+     * Overlay: `createStreamFromResource()` takes a PHP `resource`.
+     */
+    // @overlay-against: class StreamFactory implements \Psr\Http\Message\StreamFactoryInterface
+    partial class StreamFactory {
+        // @overlay-against: function createStreamFromResource(mixed $resource): \Psr\Http\Message\StreamInterface
+        public function createStreamFromResource(resource $resource): \Psr\Http\Message\StreamInterface;
+    }
+
+    /**
+     * Overlay: restore `$error = \UPLOAD_ERR_OK` from `UploadedFileFactoryInterface`.
+     */
+    // @overlay-against: class UploadedFileFactory implements \Psr\Http\Message\UploadedFileFactoryInterface
+    partial class UploadedFileFactory {
+        /**
+         * @param int $error PHP `UPLOAD_ERR_*` code; default `UPLOAD_ERR_OK`.
+         */
+        // @overlay-against: function createUploadedFile(\Psr\Http\Message\StreamInterface $stream, ?int $size, int $error, ?string $clientFilename, ?string $clientMediaType): \Psr\Http\Message\UploadedFileInterface
+        public function createUploadedFile(\Psr\Http\Message\StreamInterface $stream, ?int $size = null, int $error = \UPLOAD_ERR_OK, ?string $clientFilename = null, ?string $clientMediaType = null): \Psr\Http\Message\UploadedFileInterface;
+    }
+}

@@ -1,0 +1,59 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * `fromNativeRoundingMode()` takes PHP 8.4 `\RoundingMode` (php Layer 3).
+ */
+
+namespace Brick\Math {
+    /**
+     * Overlay: `BigDecimal::quotientAndRemainder()` pair. Index 0 is the
+     * scale-0 quotient; index 1 is the remainder.
+     */
+    type BigDecimalQuotientAndRemainder = struct {
+        \Brick\Math\BigDecimal 0 as $quotient;
+        \Brick\Math\BigDecimal 1 as $remainder;
+    };
+
+    /**
+     * Overlay: `BigInteger::quotientAndRemainder()` pair.
+     */
+    type BigIntegerQuotientAndRemainder = struct {
+        \Brick\Math\BigInteger 0 as $quotient;
+        \Brick\Math\BigInteger 1 as $remainder;
+    };
+
+    /**
+     * Overlay: quotient at index 0 (scale 0) and remainder at index 1.
+     */
+    // @overlay-against: class BigDecimal extends \Brick\Math\BigNumber
+    partial class BigDecimal {
+        // @overlay-against: function quotientAndRemainder(\Brick\Math\BigNumber|int|string $that): array
+        public function quotientAndRemainder(\Brick\Math\BigNumber|int|string $that): BigDecimalQuotientAndRemainder;
+    }
+
+    /**
+     * Overlay: random-bytes callback is `random_bytes`'s shape, and
+     * `quotientAndRemainder()` is a two-integer pair.
+     */
+    // @overlay-against: class BigInteger extends \Brick\Math\BigNumber
+    partial class BigInteger {
+        // @overlay-against: function randomBits(int $bitCount, callable|null $randomBytesGenerator): \Brick\Math\BigInteger
+        public static function randomBits(int $bitCount, (callable(int): string)|null $randomBytesGenerator = null): \Brick\Math\BigInteger;
+
+        // @overlay-against: function randomRange(\Brick\Math\BigNumber|int|string $min, \Brick\Math\BigNumber|int|string $max, callable|null $randomBytesGenerator): \Brick\Math\BigInteger
+        public static function randomRange(\Brick\Math\BigNumber|int|string $min, \Brick\Math\BigNumber|int|string $max, (callable(int): string)|null $randomBytesGenerator = null): \Brick\Math\BigInteger;
+
+        // @overlay-against: function quotientAndRemainder(\Brick\Math\BigNumber|int|string $that): array
+        public function quotientAndRemainder(\Brick\Math\BigNumber|int|string $that): BigIntegerQuotientAndRemainder;
+    }
+
+    /**
+     * Overlay: native PHP 8.4 rounding mode maps onto this package's enum.
+     */
+    // @overlay-against: enum RoundingMode
+    partial enum RoundingMode {
+        // @overlay-against: function fromNativeRoundingMode(\RoundingMode $roundingMode): self
+        public static function fromNativeRoundingMode(\RoundingMode $roundingMode): \Brick\Math\RoundingMode;
+    }
+}

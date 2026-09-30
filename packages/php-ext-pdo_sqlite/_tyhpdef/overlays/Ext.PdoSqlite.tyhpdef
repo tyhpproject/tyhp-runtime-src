@@ -1,0 +1,83 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Callable shapes for sqliteCreate* / Pdo\Sqlite::create*. Managed PHP
+ * cannot reflect this extension (TYHP7511).
+ */
+
+namespace Pdo {
+    #[\Tyhp\Php(">=8.4")]
+    // @overlay-against: class Sqlite extends \PDO
+    partial class Sqlite {
+        // @overlay-against: function createAggregate(string $name, callable $step, callable $finalize, int $numArgs): bool
+        public function createAggregate(string $name, PdoSqliteAggregateStepCallback $step, PdoSqliteAggregateFinalCallback $finalize, int $numArgs = -1): bool;
+        // @overlay-against: function createCollation(string $name, callable $callback): bool
+        public function createCollation(string $name, PdoSqliteCollationCallback $callback): bool;
+        // @overlay-against: function createFunction(string $functionName, callable $callback, int $numArgs, int $flags): bool
+        public function createFunction(string $functionName, PdoSqliteFunctionCallback $callback, int $numArgs = -1, int $flags = 0): bool;
+    }
+}
+
+/**
+ * SQLite collating callback: two values, `strcmp`-style return.
+ */
+type PdoSqliteCollationCallback = callable(mixed, mixed): int;
+
+/**
+ * Scalar SQL function. Intersection covers 0–2 SQL arguments; further
+ * arities still type-check as `callable`.
+ */
+type PdoSqliteFunctionCallback = (callable(): mixed)&(callable(mixed): mixed)&(callable(mixed, mixed): mixed);
+
+/**
+ * Aggregate step: aggregation context, row number, then SQL arguments.
+ */
+type PdoSqliteAggregateStepCallback = (callable(mixed, int): mixed)&(callable(mixed, int, mixed): mixed);
+
+/**
+ * Aggregate finalize: last step context and row number (always `0`).
+ */
+type PdoSqliteAggregateFinalCallback = callable(mixed, int): mixed;
+
+// @overlay-against: class PDO
+partial class PDO {
+    public const int SQLITE_ATTR_BUSY_TIMEOUT;
+    #[\Tyhp\Php("<8.5")]
+    public const int SQLITE_ATTR_EXTENDED_RESULT_CODES ?? 1002;
+    #[\Tyhp\Php(">=8.5")]
+    deprecated public const int SQLITE_ATTR_EXTENDED_RESULT_CODES ?? 1002;
+    #[\Tyhp\Php("<8.5")]
+    public const int SQLITE_ATTR_OPEN_FLAGS ?? 1000;
+    #[\Tyhp\Php(">=8.5")]
+    deprecated public const int SQLITE_ATTR_OPEN_FLAGS ?? 1000;
+    #[\Tyhp\Php("<8.5")]
+    public const int SQLITE_ATTR_READONLY_STATEMENT ?? 1001;
+    #[\Tyhp\Php(">=8.5")]
+    deprecated public const int SQLITE_ATTR_READONLY_STATEMENT ?? 1001;
+    #[\Tyhp\Php("<8.5")]
+    /**
+    * @link https://www.php.net/manual/en/pdo.constants.sqlite-deterministic.php
+    */
+    public const int SQLITE_DETERMINISTIC ?? 2048;
+    #[\Tyhp\Php(">=8.5")]
+    /**
+    * @link https://www.php.net/manual/en/pdo.constants.sqlite-deterministic.php
+    */
+    deprecated public const int SQLITE_DETERMINISTIC ?? 2048;
+    #[\Tyhp\Php("<8.5")]
+    public const int SQLITE_OPEN_CREATE ?? 4;
+    #[\Tyhp\Php(">=8.5")]
+    deprecated public const int SQLITE_OPEN_CREATE ?? 4;
+    #[\Tyhp\Php("<8.5")]
+    public const int SQLITE_OPEN_READONLY ?? 1;
+    #[\Tyhp\Php(">=8.5")]
+    deprecated public const int SQLITE_OPEN_READONLY ?? 1;
+    #[\Tyhp\Php("<8.5")]
+    public const int SQLITE_OPEN_READWRITE ?? 2;
+    #[\Tyhp\Php(">=8.5")]
+    deprecated public const int SQLITE_OPEN_READWRITE ?? 2;
+    public function sqliteCreateAggregate(string $functionName, PdoSqliteAggregateStepCallback $step, PdoSqliteAggregateFinalCallback $finalize, int $numArgs = -1): bool;
+    public function sqliteCreateCollation(string $name, PdoSqliteCollationCallback $callback): bool;
+    public function sqliteCreateFunction(string $functionName, PdoSqliteFunctionCallback $callback, int $numArgs = -1, int $flags = 0): bool;
+}

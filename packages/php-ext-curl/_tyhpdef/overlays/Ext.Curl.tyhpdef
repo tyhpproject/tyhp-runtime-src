@@ -1,0 +1,434 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Curl signature enrichments Layer 2 harvest does not cover: `curl_version()` /
+ * `curl_getinfo()` array-shape structs, `CURLINFO_*` / `CURLOPT_*` integer-literal
+ * overloads, and restoring `curl_share_setopt()` `$value` to `mixed`.
+ * Layer 2 already narrows `curl_file_create` nullability, `curl_multi_exec`
+ * by-ref, and `CURLFile` / `CURLStringFile` constructors — those are not restated.
+ *
+ * Option overloads use integer literals (`const int NAME ?? N` is literal `N` at
+ * the call site). Bitwise `|` of `CURL*` constants is not folded, so those calls
+ * use the `int $option, mixed $value` catch-all.
+ */
+
+/**
+ * Overlay: `curl_getinfo($handle)` with no option — documented transfer info keys.
+ * Extra keys from newer libcurl are allowed (structural).
+ */
+type CurlGetInfo = struct {
+    ?array<int, mixed> $certinfo;
+    float $connect_time;
+    ?string $content_type;
+    ?float $download_content_length;
+    int $filetime;
+    int $header_size;
+    int $http_code;
+    int $http_version;
+    string $local_ip;
+    int $local_port;
+    float $namelookup_time;
+    float $pretransfer_time;
+    string $primary_ip;
+    int $primary_port;
+    int $protocol;
+    int $redirect_count;
+    float $redirect_time;
+    string $redirect_url;
+    int $request_size;
+    string $scheme;
+    float $size_download;
+    float $size_upload;
+    float $speed_download;
+    float $speed_upload;
+    int $ssl_verify_result;
+    float $starttransfer_time;
+    float $total_time;
+    ?float $upload_content_length;
+    string $url;
+};
+
+/**
+ * Overlay: `curl_multi_info_read()` message on success.
+ */
+type CurlMultiInfo = struct {
+    \CurlHandle $handle;
+    int $msg;
+    int $result;
+};
+
+/**
+ * Overlay: `curl_version()` keys before PHP 8.4 (`feature_list` is 8.4+).
+ */
+declare(php="<8.4") {
+    type CurlVersion = struct {
+        int $age;
+        int $features;
+        string $host;
+        string $libz_version;
+        array<int, string> $protocols;
+        string $ssl_version;
+        int $ssl_version_number;
+        string $version;
+        int $version_number;
+    };
+}
+
+/**
+ * Overlay: `curl_version()` keys on PHP 8.4+ (`feature_list` is name => supported).
+ */
+declare(php=">=8.4") {
+    type CurlVersion = struct {
+        int $age;
+        array<string, bool> $feature_list;
+        int $features;
+        string $host;
+        string $libz_version;
+        array<int, string> $protocols;
+        string $ssl_version;
+        int $ssl_version_number;
+        string $version;
+        int $version_number;
+    };
+}
+
+/**
+ * Overlay: no `$option` — full transfer info array (or false on failure).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, null $option = null): CurlGetInfo|false;
+
+/**
+ * Overlay: `CURLINFO_HEADER_OUT` (`2`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_EFFECTIVE_URL` (`1048577`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048577 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_CONTENT_TYPE` (`1048594`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048594 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_PRIVATE` (`1048597`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048597 $option): mixed;
+
+/**
+ * Overlay: `CURLINFO_FTP_ENTRY_PATH` (`1048606`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048606 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_REDIRECT_URL` (`1048607`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048607 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_PRIMARY_IP` (`1048608`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048608 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_RTSP_SESSION_ID` (`1048612`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048612 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_LOCAL_IP` (`1048617`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048617 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_SCHEME` (`1048625`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048625 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_EFFECTIVE_METHOD` (`1048634`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048634 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_REFERER` (`1048636`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048636 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_CAINFO` (`1048637`). Constant is PHP 8.3+; the integer
+ * literal is still valid as a `curl_getinfo` option id.
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048637 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_CAPATH` (`1048638`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 1048638 $option): string|false;
+
+/**
+ * Overlay: `CURLINFO_HTTP_CODE` / `CURLINFO_RESPONSE_CODE` (`2097154`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097154 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_HEADER_SIZE` (`2097163`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097163 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_REQUEST_SIZE` (`2097164`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097164 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_SSL_VERIFYRESULT` (`2097165`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097165 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_FILETIME` (`2097166`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097166 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_REDIRECT_COUNT` (`2097172`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097172 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_NUM_CONNECTS` (`2097178`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097178 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_PRIMARY_PORT` (`2097192`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097192 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_LOCAL_PORT` (`2097194`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097194 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_HTTP_VERSION` (`2097198`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097198 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_PROTOCOL` (`2097200`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 2097200 $option): int|false;
+
+/**
+ * Overlay: `CURLINFO_TOTAL_TIME` (`3145731`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145731 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_NAMELOOKUP_TIME` (`3145732`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145732 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_CONNECT_TIME` (`3145733`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145733 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_PRETRANSFER_TIME` (`3145734`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145734 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_SIZE_UPLOAD` (`3145735`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145735 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_SIZE_DOWNLOAD` (`3145736`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145736 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_SPEED_DOWNLOAD` (`3145737`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145737 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_SPEED_UPLOAD` (`3145738`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145738 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_STARTTRANSFER_TIME` (`3145745`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145745 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_REDIRECT_TIME` (`3145747`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145747 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_APPCONNECT_TIME` (`3145761`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 3145761 $option): float|false;
+
+/**
+ * Overlay: `CURLINFO_SSL_ENGINES` (`4194331`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 4194331 $option): array<int, string>|false;
+
+/**
+ * Overlay: `CURLINFO_COOKIELIST` (`4194332`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 4194332 $option): array<int, string>|false;
+
+/**
+ * Overlay: `CURLINFO_CERTINFO` (`4194338`).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, 4194338 $option): array<int, mixed>|false;
+
+/**
+ * Overlay: runtime `int $option` (including unfolded `CURLINFO_*` values).
+ */
+// @overlay-against: function curl_getinfo(\CurlHandle $handle, ?int $option): mixed
+function curl_getinfo(\CurlHandle $handle, int $option): mixed;
+
+/**
+ * Overlay: `$still_running` is the count of running transfers.
+ */
+// @overlay-against: function curl_multi_exec(\CurlMultiHandle $multi_handle, mixed $still_running): int
+function curl_multi_exec(\CurlMultiHandle $multi_handle, int &$still_running): int;
+
+/**
+ * Overlay: documented `msg` / `result` / `handle` message; `$queued_messages` is a count.
+ */
+// @overlay-against: function curl_multi_info_read(\CurlMultiHandle $multi_handle, mixed $queued_messages): array|false
+function curl_multi_info_read(\CurlMultiHandle $multi_handle, int &$queued_messages = 0): CurlMultiInfo|false;
+
+/**
+ * Overlay: `CURLMOPT_PUSHFUNCTION` (`20014`).
+ */
+// @overlay-against: function curl_multi_setopt(\CurlMultiHandle $multi_handle, int $option, mixed $value): bool
+function curl_multi_setopt(\CurlMultiHandle $multi_handle, 20014 $option, callable(\CurlHandle, \CurlHandle, array<int, string>): int $value): bool;
+
+/**
+ * Overlay: runtime `int $option` catch-all.
+ */
+// @overlay-against: function curl_multi_setopt(\CurlMultiHandle $multi_handle, int $option, mixed $value): bool
+function curl_multi_setopt(\CurlMultiHandle $multi_handle, int $option, mixed $value): bool;
+
+/**
+ * Overlay: `CURLOPT_WRITEFUNCTION` (`20011`). Return bytes written.
+ */
+// @overlay-against: function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool
+function curl_setopt(\CurlHandle $handle, 20011 $option, callable(\CurlHandle, string): int $value): bool;
+
+/**
+ * Overlay: `CURLOPT_READFUNCTION` (`20012`). Return the next chunk, or `''` for EOF.
+ */
+// @overlay-against: function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool
+function curl_setopt(\CurlHandle $handle, 20012 $option, callable(\CurlHandle, resource, int): string $value): bool;
+
+/**
+ * Overlay: `CURLOPT_PROGRESSFUNCTION` (`20056`). Return `0` to continue.
+ */
+// @overlay-against: function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool
+function curl_setopt(\CurlHandle $handle, 20056 $option, callable(\CurlHandle, int, int, int, int): int $value): bool;
+
+/**
+ * Overlay: `CURLOPT_HEADERFUNCTION` (`20079`). Return bytes written.
+ */
+// @overlay-against: function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool
+function curl_setopt(\CurlHandle $handle, 20079 $option, callable(\CurlHandle, string): int $value): bool;
+
+/**
+ * Overlay: `CURLOPT_XFERINFOFUNCTION` (`20219`). Same arity as `CURLOPT_PROGRESSFUNCTION`.
+ */
+// @overlay-against: function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool
+function curl_setopt(\CurlHandle $handle, 20219 $option, callable(\CurlHandle, int, int, int, int): int $value): bool;
+
+/**
+ * Overlay: runtime `int $option` catch-all (including unfolded `CURLOPT_* | CURLOPT_*`).
+ */
+// @overlay-against: function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool
+function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool;
+
+/**
+ * Overlay: option map keys are `CURLOPT_*` integers.
+ */
+// @overlay-against: function curl_setopt_array(\CurlHandle $handle, array $options): bool
+function curl_setopt_array(\CurlHandle $handle, array<int, mixed> $options): bool;
+
+/**
+ * Overlay: Layer 2 harvested `string $value`; PHP takes `CURL_LOCK_DATA_*` ints
+ * (and share-lock callbacks). Restore `mixed`.
+ */
+// @overlay-against: function curl_share_setopt(\CurlShareHandle $share_handle, int $option, mixed $value): bool
+function curl_share_setopt(\CurlShareHandle $share_handle, int $option, mixed $value): bool;
+
+/**
+ * Overlay: version info struct, or false on failure.
+ */
+// @overlay-against: function curl_version(): array|false
+function curl_version(): CurlVersion|false;
+
+declare(php=">=8.5") {
+    /**
+     * Overlay: handles currently attached to the multi handle.
+     */
+    // @overlay-against: function curl_multi_get_handles(\CurlMultiHandle $multi_handle): array
+    function curl_multi_get_handles(\CurlMultiHandle $multi_handle): array<int, \CurlHandle>;
+
+    /**
+     * Overlay: non-empty list of `CURL_LOCK_DATA_*` integers.
+     */
+    // @overlay-against: function curl_share_init_persistent(array $share_options): \CurlSharePersistentHandle
+    function curl_share_init_persistent(array<int, int> $share_options): \CurlSharePersistentHandle;
+}

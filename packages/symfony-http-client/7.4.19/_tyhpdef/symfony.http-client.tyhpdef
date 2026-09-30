@@ -1,0 +1,839 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\HttpClient {
+    /**
+    * Eases with processing responses while streaming them.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    trait AsyncDecoratorTrait {
+        use \Symfony\Component\HttpClient\DecoratorTrait;
+        /**
+        * @return \Symfony\Contracts\HttpClient\ResponseInterface
+        * @generated
+        */
+        public abstract function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+    }
+    /**
+    * Adds caching on top of an HTTP client (per RFC 9111).
+    *
+    * Known omissions / partially supported features per RFC 9111:
+    *   1. Range requests:
+    *     - All range requests ("partial content") are passed through and never cached.
+    *   2. stale-while-revalidate:
+    *     - There's no actual "background revalidation" for stale responses, they will
+    *       always be revalidated.
+    *   3. min-fresh, max-stale:
+    *     - These request directives are not parsed; the client ignores them.
+    *
+    * @see https://www.rfc-editor.org/rfc/rfc9111
+    * @generated
+    */
+    class CachingHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\AsyncDecoratorTrait, \Symfony\Component\HttpClient\HttpClientTrait;
+        /**
+        * @param bool $sharedCache Indicates whether this cache is shared or private. When true, responses
+        *  *                                  may be skipped from caching in presence of certain headers
+        *  *                                  (e.g. Authorization) unless explicitly marked as public.
+        * @param ?int $maxTtl The maximum time-to-live (in seconds) for cached responses.
+        *  *                                  If a server-provided TTL exceeds this value, it will be capped
+        *  *                                  to this maximum.
+        * @generated
+        */
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, \Symfony\Contracts\Cache\TagAwareCacheInterface|\Symfony\Component\HttpKernel\HttpCache\StoreInterface $cache, array $defaultOptions = [], bool $sharedCache = true, ?int $maxTtl = null): void;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+    }
+    /**
+    * A performant implementation of the HttpClientInterface contracts based on the curl extension.
+    *
+    * This provides fully concurrent HTTP requests, with transparent
+    * HTTP/2 push when a curl version that supports it is installed.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class CurlHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\HttpClientTrait;
+        public const mixed OPTIONS_DEFAULTS;
+        /**
+        * @param array $defaultOptions Default request's options
+        * @param int $maxHostConnections The maximum number of connections to a single host
+        * @param int $maxPendingPushes The maximum number of pushed responses to accept in the queue
+        * @see HttpClientInterface::OPTIONS_DEFAULTS for available options
+        * @generated
+        */
+        public function __construct(array $defaultOptions = [], int $maxHostConnections = 6, int $maxPendingPushes = 0): void;
+        public function setLogger(\Psr\Log\LoggerInterface $logger): void;
+        /**
+        * @see HttpClientInterface::OPTIONS_DEFAULTS for available options
+        * @generated
+        */
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+        public function reset(): void;
+    }
+    /**
+    * Eases with writing decorators.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    trait DecoratorTrait {
+        public function __construct(?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null): void;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+        public function withOptions(array $options): static;
+        public function reset(): void;
+    }
+    /**
+    * @author Antoine Bluchet <soyuka@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class EventSourceHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\AsyncDecoratorTrait, \Symfony\Component\HttpClient\HttpClientTrait;
+        public function __construct(?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null, float $reconnectionTime = 10.0): void;
+        public function connect(string $url, array $options = [], string $method = 'GET'): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+    }
+    /**
+    * A factory to instantiate the best possible HTTP client for the runtime.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class HttpClient {
+        /**
+        * @param array $defaultOptions Default request's options
+        * @param int $maxHostConnections The maximum number of connections to a single host
+        * @param int $maxPendingPushes The maximum number of pushed responses to accept in the queue
+        * @see HttpClientInterface::OPTIONS_DEFAULTS for available options
+        * @generated
+        */
+        public static function create(array $defaultOptions = [], int $maxHostConnections = 6, int $maxPendingPushes = 50): \Symfony\Contracts\HttpClient\HttpClientInterface;
+        /**
+        * Creates a client that adds options (e.g. authentication headers) only when the request URL matches the provided base URI.
+        *
+        * @generated
+        */
+        public static function createForBaseUri(string $baseUri, array $defaultOptions = [], int $maxHostConnections = 6, int $maxPendingPushes = 50): \Symfony\Contracts\HttpClient\HttpClientInterface;
+    }
+    /**
+    * Provides the common logic from writing HttpClientInterface implementations.
+    *
+    * All private methods are static to prevent implementers from creating memory leaks via circular references.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    trait HttpClientTrait {
+        public function withOptions(array $options): static;
+    }
+    /**
+    * A helper providing autocompletion for available options.
+    *
+    * @see HttpClientInterface for a description of each options.
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class HttpOptions {
+        public function toArray(): array;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setAuthBasic(string $user, string $password = ''): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setAuthBearer(string $token): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setQuery(array $query): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setHeader(string $key, string $value): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setHeaders(iterable $headers): static;
+        /**
+        * @param array|string|resource|\Traversable|\Closure $body
+        * @return static
+        * @generated
+        */
+        public function setBody(array|string|resource|\Traversable|\Closure $body): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setJson(mixed $json): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setUserData(mixed $data): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setMaxRedirects(int $max): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setHttpVersion(string $version): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setBaseUri(string $uri): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setVars(array $vars): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function buffer(bool $buffer): static;
+        /**
+        * @param callable $callback
+        * @return static
+        * @generated
+        */
+        public function setOnProgress(callable $callback): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function resolve(array $hostIps): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setProxy(string $proxy): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setNoProxy(string $noProxy): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setTimeout(float $timeout): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setMaxDuration(float $maxDuration): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function bindTo(string $bindto): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function verifyPeer(bool $verify): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function verifyHost(bool $verify): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setCaFile(string $cafile): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setCaPath(string $capath): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setLocalCert(string $cert): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setLocalPk(string $pk): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setPassphrase(string $passphrase): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setCiphers(string $ciphers): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setPeerFingerprint(string|array $fingerprint): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function capturePeerCertChain(bool $capture): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setExtra(string $name, mixed $value): static;
+    }
+    /**
+    * A test-friendly HttpClient that doesn't make actual HTTP requests.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class MockHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\HttpClientTrait;
+        /**
+        * @param callable|iterable|\Symfony\Contracts\HttpClient\ResponseInterface|null $responseFactory
+        * @generated
+        */
+        public function __construct(callable|iterable|\Symfony\Contracts\HttpClient\ResponseInterface|null $responseFactory = null, ?string $baseUri = 'https://example.com'): void;
+        /**
+        * @param callable|array<int, callable>|\Symfony\Contracts\HttpClient\ResponseInterface|array<int, \Symfony\Contracts\HttpClient\ResponseInterface>|iterable|null $responseFactory
+        * @generated
+        */
+        public function setResponseFactory(callable|array<int, callable>|\Symfony\Contracts\HttpClient\ResponseInterface|array<int, \Symfony\Contracts\HttpClient\ResponseInterface>|iterable|null $responseFactory): void;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+        public function getRequestsCount(): int;
+        public function withOptions(array $options): static;
+        public function reset(): void;
+    }
+    /**
+    * A portable implementation of the HttpClientInterface contracts based on PHP stream wrappers.
+    *
+    * PHP stream wrappers are able to fetch response bodies concurrently,
+    * but each request is opened synchronously.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class NativeHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\HttpClientTrait, \Psr\Log\LoggerAwareTrait;
+        public const mixed OPTIONS_DEFAULTS;
+        /**
+        * @param array $defaultOptions Default request's options
+        * @param int $maxHostConnections The maximum number of connections to open
+        * @see HttpClientInterface::OPTIONS_DEFAULTS for available options
+        * @generated
+        */
+        public function __construct(array $defaultOptions = [], int $maxHostConnections = 6): void;
+        /**
+        * @see HttpClientInterface::OPTIONS_DEFAULTS for available options
+        * @generated
+        */
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+        public function reset(): void;
+    }
+    /**
+    * Decorator that blocks requests to private networks by default.
+    *
+    * @author Hallison Boaventura <hallisonboaventura@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class NoPrivateNetworkHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\AsyncDecoratorTrait, \Symfony\Component\HttpClient\HttpClientTrait;
+        /**
+        * @param string|array|null $subnets String or array of subnets using CIDR notation that should be considered private.
+        *  *                                       If null is passed, the standard private subnets will be used.
+        * @generated
+        */
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string|array|null $subnets = null): void;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        /**
+        * @deprecated since Symfony 7.1, configure the logger on the wrapped HTTP client directly instead
+        * @generated
+        */
+        deprecated public function setLogger(\Psr\Log\LoggerInterface $logger): void;
+        public function withOptions(array $options): static;
+        public function reset(): void;
+    }
+    /**
+    * Automatically retries failing HTTP requests.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class RetryableHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\AsyncDecoratorTrait;
+        /**
+        * @param int $maxRetries The maximum number of times to retry
+        * @generated
+        */
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, ?\Symfony\Component\HttpClient\Retry\RetryStrategyInterface $strategy = null, int $maxRetries = 3, ?\Psr\Log\LoggerInterface $logger = null): void;
+        public function withOptions(array $options): static;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+    }
+    /**
+    * Auto-configure the default options based on the requested URL.
+    *
+    * @author Anthony Martin <anthony.martin@sensiolabs.com>
+    * @generated
+    */
+    class ScopingHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Psr\Log\LoggerAwareInterface {
+        use \Symfony\Component\HttpClient\HttpClientTrait;
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, array $defaultOptionsByRegexp, ?string $defaultRegexp = null): void;
+        public static function forBaseUri(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string $baseUri, array $defaultOptions = [], ?string $regexp = null): self;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+        public function reset(): void;
+        /**
+        * @deprecated since Symfony 7.1, configure the logger on the wrapped HTTP client directly instead
+        * @generated
+        */
+        deprecated public function setLogger(\Psr\Log\LoggerInterface $logger): void;
+        public function withOptions(array $options): static;
+    }
+    /**
+    * Limits the number of requests within a certain period.
+    *
+    * @generated
+    */
+    class ThrottlingHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\DecoratorTrait;
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, \Symfony\Component\RateLimiter\LimiterInterface $rateLimiter): void;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function reset(): void;
+    }
+    /**
+    * @author Jérémy Romey <jeremy@free-agent.fr>
+    * @generated
+    */
+    final class TraceableHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Psr\Log\LoggerAwareInterface {
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, ?\Symfony\Component\Stopwatch\Stopwatch $stopwatch = null, ?\Closure $disabled = null): void;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+        public function getTracedRequests(): array;
+        public function reset(): void;
+        /**
+        * @deprecated since Symfony 7.1, configure the logger on the wrapped HTTP client directly instead
+        * @generated
+        */
+        deprecated public function setLogger(\Psr\Log\LoggerInterface $logger): void;
+        public function withOptions(array $options): static;
+    }
+    class UriTemplateHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface {
+        use \Symfony\Component\HttpClient\DecoratorTrait;
+        /**
+        * @param ?\Closure $expander
+        * @generated
+        */
+        public function __construct(?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null, ?\Closure $expander = null, array $defaultVars = []): void;
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function withOptions(array $options): static;
+    }
+}
+namespace Symfony\Component\HttpClient\Chunk {
+    /**
+    * @author Antoine Bluchet <soyuka@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class ServerSentEvent extends \Symfony\Component\HttpClient\Chunk\DataChunk implements \Symfony\Contracts\HttpClient\ChunkInterface {
+        public function __construct(string $content): void;
+        public function getId(): string;
+        public function getType(): string;
+        public function getData(): string;
+        public function getRetry(): float;
+        /**
+        * Gets the SSE data decoded as an array when it's a JSON payload.
+        *
+        * @generated
+        */
+        public function getArrayData(): array;
+    }
+}
+namespace Symfony\Component\HttpClient\DataCollector {
+}
+namespace Symfony\Component\HttpClient\DependencyInjection {
+}
+namespace Symfony\Component\HttpClient\Exception {
+    final class ChunkCacheItemNotFoundException extends \Symfony\Component\HttpClient\Exception\TransportException {
+    }
+    /**
+    * Represents a 4xx response.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class ClientException extends \RuntimeException implements \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface {
+        use \Symfony\Component\HttpClient\Exception\HttpExceptionTrait;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class EventSourceException extends \RuntimeException implements \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface {
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class InvalidArgumentException extends \InvalidArgumentException implements \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface {
+    }
+    /**
+    * Thrown by responses' toArray() method when their content cannot be JSON-decoded.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class JsonException extends \JsonException implements \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface {
+    }
+    /**
+    * Represents a 3xx response.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class RedirectionException extends \RuntimeException implements \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface {
+        use \Symfony\Component\HttpClient\Exception\HttpExceptionTrait;
+    }
+    /**
+    * Represents a 5xx response.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class ServerException extends \RuntimeException implements \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface {
+        use \Symfony\Component\HttpClient\Exception\HttpExceptionTrait;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class TimeoutException extends \Symfony\Component\HttpClient\Exception\TransportException implements \Symfony\Contracts\HttpClient\Exception\TimeoutExceptionInterface {
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class TransportException extends \RuntimeException implements \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface {
+    }
+}
+namespace Symfony\Component\HttpClient\Messenger {
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    final class PingWebhookMessage implements \Stringable {
+        public readonly string $method;
+        public readonly string $url;
+        public readonly array $options ?? [];
+        public readonly bool $throw ?? true;
+        public function __construct(string $method, string $url, array $options = [], bool $throw = true): void;
+        public function __toString(): string;
+    }
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    class PingWebhookMessageHandler {
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient): void;
+        public function __invoke(\Symfony\Component\HttpClient\Messenger\PingWebhookMessage $message): \Symfony\Contracts\HttpClient\ResponseInterface;
+    }
+}
+namespace Symfony\Component\HttpClient\Response {
+    /**
+    * A DTO to work with AsyncResponse.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class AsyncContext {
+        /**
+        * @param resource|null $content
+        * @generated
+        */
+        public function __construct(?callable &$passthru, \Symfony\Contracts\HttpClient\HttpClientInterface $client, \Symfony\Contracts\HttpClient\ResponseInterface &$response, array &$info, resource|null $content, int $offset): void;
+        /**
+        * Returns the HTTP status without consuming the response.
+        *
+        * @generated
+        */
+        public function getStatusCode(): int;
+        /**
+        * Returns the headers without consuming the response.
+        *
+        * @generated
+        */
+        public function getHeaders(): array;
+        /**
+        * @return resource|null The PHP stream resource where the content is buffered, if it is
+        * @generated
+        */
+        public function getContent(): resource|null;
+        /**
+        * Creates a new chunk of content.
+        *
+        * @generated
+        */
+        public function createChunk(string $data): \Symfony\Contracts\HttpClient\ChunkInterface;
+        /**
+        * Pauses the request for the given number of seconds.
+        *
+        * @generated
+        */
+        public function pause(float $duration): void;
+        /**
+        * Cancels the request and returns the last chunk to yield.
+        *
+        * @generated
+        */
+        public function cancel(): \Symfony\Contracts\HttpClient\ChunkInterface;
+        /**
+        * Returns the current info of the response.
+        *
+        * @generated
+        */
+        public function getInfo(?string $type = null): mixed;
+        /**
+        * Attaches an info to the response.
+        *
+        * @return static
+        * @generated
+        */
+        public function setInfo(string $type, mixed $value): static;
+        /**
+        * Returns the currently processed response.
+        *
+        * @generated
+        */
+        public function getResponse(): \Symfony\Contracts\HttpClient\ResponseInterface;
+        /**
+        * Replaces the currently processed response by doing a new request.
+        *
+        * @generated
+        */
+        public function replaceRequest(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        /**
+        * Replaces the currently processed response by another one.
+        *
+        * @generated
+        */
+        public function replaceResponse(\Symfony\Contracts\HttpClient\ResponseInterface $response): \Symfony\Contracts\HttpClient\ResponseInterface;
+        /**
+        * Replaces or removes the chunk filter iterator.
+        *
+        * @param ?callable $passthru
+        * @generated
+        */
+        public function passthru(?callable $passthru = null): void;
+    }
+    /**
+    * Provides a single extension point to process a response's content stream.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class AsyncResponse implements \Symfony\Contracts\HttpClient\ResponseInterface, \Symfony\Component\HttpClient\Response\StreamableInterface {
+        use \Symfony\Component\HttpClient\Response\CommonResponseTrait;
+        /**
+        * @param ?callable $passthru
+        * @generated
+        */
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string $method, string $url, array $options, ?callable $passthru = null): void;
+        public function getStatusCode(): int;
+        public function getHeaders(bool $throw = true): array;
+        public function getInfo(?string $type = null): mixed;
+        /**
+        * @return resource
+        * @generated
+        */
+        public function toStream(bool $throw = true): resource;
+        public function cancel(): void;
+        public function __destruct(): void;
+    }
+    class JsonMockResponse extends \Symfony\Component\HttpClient\Response\MockResponse {
+        /**
+        * @param mixed $body Any value that `json_encode()` can serialize
+        * @generated
+        */
+        public function __construct(mixed $body = [], array $info = []): void;
+        public static function fromFile(string $path, array $info = []): static;
+    }
+    /**
+    * A test-friendly response.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class MockResponse implements \Symfony\Contracts\HttpClient\ResponseInterface, \Symfony\Component\HttpClient\Response\StreamableInterface {
+        use \Symfony\Component\HttpClient\Response\CommonResponseTrait, \Symfony\Component\HttpClient\Response\TransportResponseTrait;
+        /**
+        * @param string|iterable $body The response body as a string or an iterable of strings,
+        *  *                                                     yielding an empty string simulates an idle timeout,
+        *  *                                                     throwing or yielding an exception yields an ErrorChunk
+        * @see ResponseInterface::getInfo() for possible info, e.g. "response_headers"
+        * @generated
+        */
+        public function __construct(string|iterable $body = '', array $info = []): void;
+        public static function fromFile(string $path, array $info = []): static;
+        /**
+        * Returns the options used when doing the request.
+        *
+        * @generated
+        */
+        public function getRequestOptions(): array;
+        /**
+        * Returns the URL used when doing the request.
+        *
+        * @generated
+        */
+        public function getRequestUrl(): string;
+        /**
+        * Returns the method used when doing the request.
+        *
+        * @generated
+        */
+        public function getRequestMethod(): string;
+        public function getInfo(?string $type = null): mixed;
+        public function cancel(): void;
+        public function __destruct(): void;
+        protected function close(): void;
+        protected static function schedule(self $response, array &$runningResponses): void;
+        protected static function perform(\Symfony\Component\HttpClient\Internal\ClientState $multi, array $responses): void;
+        protected static function select(\Symfony\Component\HttpClient\Internal\ClientState $multi, float $timeout): int;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class ResponseStream implements \Symfony\Contracts\HttpClient\ResponseStreamInterface {
+        public function __construct(\Generator $generator): void;
+        public function key(): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function current(): \Symfony\Contracts\HttpClient\ChunkInterface;
+        public function next(): void;
+        public function rewind(): void;
+        public function valid(): bool;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface StreamableInterface {
+        /**
+        * Casts the response to a PHP stream resource.
+        *
+        * @return resource
+        * @throws TransportExceptionInterface   When a network error occurs
+        * @throws RedirectionExceptionInterface On a 3xx when $throw is true and the "max_redirects" option has been reached
+        * @throws ClientExceptionInterface      On a 4xx when $throw is true
+        * @throws ServerExceptionInterface      On a 5xx when $throw is true
+        * @generated
+        */
+        public function toStream(bool $throw = true): resource;
+    }
+    /**
+    * Allows turning ResponseInterface instances to PHP streams.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class StreamWrapper {
+        /**
+        * @var resource|null
+        * @generated
+        */
+        public resource|null $context;
+        /**
+        * Creates a PHP stream resource from a ResponseInterface.
+        *
+        * @return resource
+        * @generated
+        */
+        public static function createResource(\Symfony\Contracts\HttpClient\ResponseInterface $response, ?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null): resource;
+        public function getResponse(): \Symfony\Contracts\HttpClient\ResponseInterface;
+        /**
+        * @param resource|callable|null $handle The resource handle that should be monitored when
+        *  *                                            stream_select() is used on the created stream
+        * @param resource|null $content The seekable resource where the response body is buffered
+        * @generated
+        */
+        public function bindHandles(resource|callable|null &$handle, resource|null &$content): void;
+        public function stream_open(string $path, string $mode, int $options): bool;
+        public function stream_read(int $count): string|false;
+        public function stream_set_option(int $option, int $arg1, ?int $arg2): bool;
+        public function stream_tell(): int;
+        public function stream_eof(): bool;
+        public function stream_seek(int $offset, int $whence): bool;
+        /**
+        * @return resource|false
+        * @generated
+        */
+        public function stream_cast(int $castAs): resource|false;
+        public function stream_stat(): array;
+    }
+}
+namespace Symfony\Component\HttpClient\Retry {
+    /**
+    * Decides to retry the request when HTTP status codes belong to the given list of codes.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class GenericRetryStrategy implements \Symfony\Component\HttpClient\Retry\RetryStrategyInterface {
+        public const array IDEMPOTENT_METHODS ?? [];
+        public const array DEFAULT_RETRY_STATUS_CODES ?? [];
+        /**
+        * @param array $statusCodes List of HTTP status codes that trigger a retry
+        * @param int $delayMs Amount of time to delay (or the initial value when multiplier is used)
+        * @param float $multiplier Multiplier to apply to the delay each time a retry occurs
+        * @param int $maxDelayMs Maximum delay to allow (0 means no maximum)
+        * @param float $jitter Probability of randomness int delay (0 = none, 1 = 100% random)
+        * @generated
+        */
+        public function __construct(array $statusCodes = self::DEFAULT_RETRY_STATUS_CODES, int $delayMs = 1000, float $multiplier = 2.0, int $maxDelayMs = 0, float $jitter = 0.1): void;
+        public function shouldRetry(\Symfony\Component\HttpClient\Response\AsyncContext $context, ?string $responseContent, ?\Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface $exception): ?bool;
+        public function getDelay(\Symfony\Component\HttpClient\Response\AsyncContext $context, ?string $responseContent, ?\Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface $exception): int;
+    }
+    /**
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface RetryStrategyInterface {
+        /**
+        * Returns whether the request should be retried.
+        *
+        * @param ?string $responseContent Null is passed when the body did not arrive yet
+        * @return ?bool Returns null to signal that the body is required to take a decision
+        * @generated
+        */
+        public function shouldRetry(\Symfony\Component\HttpClient\Response\AsyncContext $context, ?string $responseContent, ?\Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface $exception): ?bool;
+        /**
+        * Returns the time to wait in milliseconds.
+        *
+        * @generated
+        */
+        public function getDelay(\Symfony\Component\HttpClient\Response\AsyncContext $context, ?string $responseContent, ?\Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface $exception): int;
+    }
+}

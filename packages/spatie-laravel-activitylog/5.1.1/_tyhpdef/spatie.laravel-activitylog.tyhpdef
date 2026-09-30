@@ -1,0 +1,472 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Spatie\Activitylog {
+    class ActivitylogServiceProvider extends \Spatie\LaravelPackageTools\PackageServiceProvider {
+        public function configurePackage(\Spatie\LaravelPackageTools\Package $package): void;
+        public function registeringPackage(): void;
+        public function packageBooted(): void;
+        protected function registerActivityBufferFlushing(): void;
+    }
+}
+namespace Spatie\Activitylog\Actions {
+    class CleanActivityLogAction {
+        public function execute(int $maxAgeInDays, ?string $logName = null): int;
+        protected function getCutOffDate(int $maxAgeInDays): string;
+        protected function deleteOldActivities(string $cutOffDate, ?string $logName): int;
+    }
+    class LogActivityAction {
+        /**
+        * @var array<callable>
+        * @generated
+        */
+        protected static array<callable> $beforeLoggingCallbacks ?? [];
+        /**
+        * @param \Closure $callback
+        * @generated
+        */
+        public static function beforeLogging(\Closure $callback): void;
+        public static function clearBeforeLoggingCallbacks(): void;
+        public function execute(\Illuminate\Database\Eloquent\Model $activity, string $description): \Illuminate\Database\Eloquent\Model;
+        protected function resolveDescription(\Illuminate\Database\Eloquent\Model $activity, string $description): string;
+        protected function transformChanges(\Illuminate\Database\Eloquent\Model $activity): void;
+        protected function beforeActivityLogged(\Illuminate\Database\Eloquent\Model $activity): void;
+        protected function save(\Illuminate\Database\Eloquent\Model $activity): void;
+        protected function shouldBuffer(): bool;
+        protected function replacePlaceholders(string $description, \Illuminate\Database\Eloquent\Model $activity): string;
+    }
+}
+namespace Spatie\Activitylog\Commands {
+    class CleanActivitylogCommand extends \Illuminate\Console\Command {
+        use \Illuminate\Console\ConfirmableTrait;
+        protected mixed $signature;
+        protected mixed $description ?? 'Clean up old records from the activity log.';
+        public function handle(): int;
+    }
+}
+namespace Spatie\Activitylog\Contracts {
+    interface Activity {
+        public function subject(): \Illuminate\Database\Eloquent\Relations\MorphTo;
+        public function causer(): \Illuminate\Database\Eloquent\Relations\MorphTo;
+        public function getProperty(string $propertyName, mixed $defaultValue = null): mixed;
+    }
+}
+namespace Spatie\Activitylog\Enums {
+    enum ActivityEvent: string {
+        case Created = 'created';
+        case Updated = 'updated';
+        case Deleted = 'deleted';
+        case Restored = 'restored';
+    }
+}
+namespace Spatie\Activitylog\Exceptions {
+    class CouldNotLogActivity extends \Exception {
+        public static function couldNotDetermineUser(mixed $id): self;
+    }
+    class InvalidConfiguration extends \Exception {
+        public static function modelIsNotValid(string $className): self;
+        public static function actionIsNotValid(string $className, string $expectedBaseClass): self;
+    }
+}
+namespace Spatie\Activitylog\Facades {
+    /**
+    * @method static \Spatie\Activitylog\Support\ActivityLogger setLogStatus(\Spatie\Activitylog\Support\ActivityLogStatus $logStatus)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger performedOn(\Illuminate\Database\Eloquent\Model $model)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger on(\Illuminate\Database\Eloquent\Model $model)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger causedBy(\Illuminate\Database\Eloquent\Model|string|int|null $modelOrId)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger by(\Illuminate\Database\Eloquent\Model|string|int|null $modelOrId)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger causedByAnonymous()
+    * @method static \Spatie\Activitylog\Support\ActivityLogger byAnonymous()
+    * @method static \Spatie\Activitylog\Support\ActivityLogger event(string|\Spatie\Activitylog\Enums\ActivityEvent $event)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger setEvent(string|\Spatie\Activitylog\Enums\ActivityEvent $event)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger withProperties(array<string, mixed>|\Illuminate\Support\Collection<string, mixed> $properties)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger withProperty(string $key, mixed $value)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger createdAt(\DateTimeInterface $dateTime)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger useLog(\BackedEnum|string|null $logName)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger inLog(\BackedEnum|string|null $logName)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger tap(callable $callback, string|null $eventName = null)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger enableLogging()
+    * @method static \Spatie\Activitylog\Support\ActivityLogger disableLogging()
+    * @method static \Spatie\Activitylog\Contracts\Activity|null log(string $description)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger withChanges(array<string, mixed>|\Illuminate\Support\Collection<string, mixed> $changes)
+    * @method static mixed withoutLogging(\Closure $callback)
+    * @method static void beforeLogging(\Closure $callback)
+    * @method static mixed defaultCauser(\Illuminate\Database\Eloquent\Model|null $causer, \Closure|null $callback = null)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger|mixed when(\Closure|mixed|null $value = null, callable|null $callback = null, callable|null $default = null)
+    * @method static \Spatie\Activitylog\Support\ActivityLogger|mixed unless(\Closure|mixed|null $value = null, callable|null $callback = null, callable|null $default = null)
+    * @method static void macro(string $name, object|callable $macro)
+    * @method static void mixin(object $mixin, bool $replace = true)
+    * @method static bool hasMacro(string $name)
+    * @method static void flushMacros()
+    * @see PendingActivityLog
+    * @generated
+    */
+    class Activity extends \Illuminate\Support\Facades\Facade {
+        protected static mixed $cached ?? false;
+        protected static function getFacadeAccessor(): string;
+        public static function setLogStatus(\Spatie\Activitylog\Support\ActivityLogStatus $logStatus): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function performedOn(\Illuminate\Database\Eloquent\Model $model): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function on(\Illuminate\Database\Eloquent\Model $model): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function causedBy(\Illuminate\Database\Eloquent\Model|string|int|null $modelOrId): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function by(\Illuminate\Database\Eloquent\Model|string|int|null $modelOrId): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function causedByAnonymous(): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function byAnonymous(): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function event(string|\Spatie\Activitylog\Enums\ActivityEvent $event): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function setEvent(string|\Spatie\Activitylog\Enums\ActivityEvent $event): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function withProperties(array<string, mixed>|\Illuminate\Support\Collection<string, mixed> $properties): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function withProperty(string $key, mixed $value): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function createdAt(\DateTimeInterface $dateTime): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function useLog(\BackedEnum|string|null $logName): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function inLog(\BackedEnum|string|null $logName): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function tap(callable $callback, string|null $eventName): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function enableLogging(): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function disableLogging(): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function log(string $description): \Spatie\Activitylog\Contracts\Activity|null;
+        public static function withChanges(array<string, mixed>|\Illuminate\Support\Collection<string, mixed> $changes): \Spatie\Activitylog\Support\ActivityLogger;
+        public static function withoutLogging(\Closure $callback): mixed;
+        public static function beforeLogging(\Closure $callback): void;
+        public static function defaultCauser(\Illuminate\Database\Eloquent\Model|null $causer, \Closure|null $callback): mixed;
+        public static function when(mixed $value, callable|null $callback, callable|null $default): mixed;
+        public static function unless(mixed $value, callable|null $callback, callable|null $default): mixed;
+        public static function macro(string $name, object|callable $macro): void;
+        public static function mixin(object $mixin, bool $replace): void;
+        public static function hasMacro(string $name): bool;
+        public static function flushMacros(): void;
+    }
+}
+namespace Spatie\Activitylog\Models {
+    /**
+    * @property int $id
+    * @property string|null $log_name
+    * @property string $description
+    * @property string|null $subject_type
+    * @property int|null $subject_id
+    * @property string|null $causer_type
+    * @property int|null $causer_id
+    * @property string|null $event
+    * @property Collection|null $attribute_changes
+    * @property Collection|null $properties
+    * @property Carbon|null $created_at
+    * @property Carbon|null $updated_at
+    * @property-read Model|null $causer
+    * @property-read Model|null $subject
+    * @generated
+    */
+    class Activity extends \Illuminate\Database\Eloquent\Model implements \Spatie\Activitylog\Contracts\Activity {
+        public mixed $guarded ?? [];
+        protected mixed $table ?? 'activity_log';
+        public int $id;
+        public string|null $log_name;
+        public string $description;
+        public string|null $subject_type;
+        public int|null $subject_id;
+        public string|null $causer_type;
+        public int|null $causer_id;
+        public string|null $event;
+        public Collection|null $attribute_changes;
+        public Collection|null $properties;
+        public Carbon|null $created_at;
+        public Carbon|null $updated_at;
+        public Model|null $causer;
+        public Model|null $subject;
+        protected function casts(): array;
+        /**
+        * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+        * @generated
+        */
+        public function subject(): \Illuminate\Database\Eloquent\Relations\MorphTo;
+        /**
+        * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+        * @generated
+        */
+        public function causer(): \Illuminate\Database\Eloquent\Relations\MorphTo;
+        public function getProperty(string $propertyName, mixed $defaultValue = null): mixed;
+        /**
+        * @param BackedEnum|string|array<BackedEnum|string> $ ...$logNames
+        * @generated
+        */
+        public function scopeInLog(\Illuminate\Database\Eloquent\Builder $query, \BackedEnum|string|array ...$logNames): \Illuminate\Database\Eloquent\Builder;
+        public function scopeCausedBy(\Illuminate\Database\Eloquent\Builder $query, \Illuminate\Database\Eloquent\Model $causer): \Illuminate\Database\Eloquent\Builder;
+        public function scopeForSubject(\Illuminate\Database\Eloquent\Builder $query, \Illuminate\Database\Eloquent\Model $subject): \Illuminate\Database\Eloquent\Builder;
+        public function scopeForEvent(\Illuminate\Database\Eloquent\Builder $query, string|\Spatie\Activitylog\Enums\ActivityEvent $event): \Illuminate\Database\Eloquent\Builder;
+    }
+}
+namespace Spatie\Activitylog\Models\Concerns {
+    trait CausesActivity {
+        /**
+        * @return \Illuminate\Database\Eloquent\Relations\MorphMany
+        * @generated
+        */
+        public function activitiesAsCauser(): \Illuminate\Database\Eloquent\Relations\MorphMany;
+    }
+    trait HasActivity {
+        use \Spatie\Activitylog\Models\Concerns\CausesActivity, \Spatie\Activitylog\Models\Concerns\LogsActivity;
+        /**
+        * @return \Illuminate\Database\Eloquent\Relations\MorphMany
+        * @generated
+        */
+        public function activities(): \Illuminate\Database\Eloquent\Relations\MorphMany;
+    }
+    trait LogsActivity {
+        protected array $oldAttributes ?? [];
+        protected ?\Spatie\Activitylog\Support\LogOptions $activitylogOptions;
+        public bool $enableLoggingModelsEvents ?? true;
+        public function getActivitylogOptions(): \Spatie\Activitylog\Support\LogOptions;
+        protected static function bootLogsActivity(): void;
+        public function disableLogging(): self;
+        public function enableLogging(): self;
+        /**
+        * @return \Illuminate\Database\Eloquent\Relations\MorphMany
+        * @generated
+        */
+        public function activitiesAsSubject(): \Illuminate\Database\Eloquent\Relations\MorphMany;
+        public function getDescriptionForEvent(string $eventName): string;
+        public function getLogNameToUse(): ?string;
+        protected static function eventsToBeRecorded(): \Illuminate\Support\Collection;
+        protected function shouldLogEvent(string $eventName): bool;
+        protected function isRestoring(): bool;
+        protected function hasChangedAttributesBeyondIgnored(): bool;
+        public function attributesToBeLogged(): array;
+        protected function fillableAttributes(): array;
+        protected function unguardedAttributes(): array;
+        protected function explicitAttributes(): array;
+        protected function excludedAttributes(): array;
+        protected function buildChanges(string $processingEvent): array;
+        protected function resolveModelForLogging(string $processingEvent): static;
+        protected function shouldSkipEmptyLog(array $changes): bool;
+        protected function isUpdatedEvent(string $processingEvent): bool;
+        protected function isDeletedEvent(string $processingEvent): bool;
+        public static function extractChanges(\Illuminate\Database\Eloquent\Model $model): array;
+        protected static function resolveAttributeValue(\Illuminate\Database\Eloquent\Model $model, string $attribute, \Spatie\Activitylog\Support\LogOptions $options): array;
+        protected static function formatAttributeValue(\Illuminate\Database\Eloquent\Model $model, string $attribute, mixed $value): mixed;
+    }
+}
+namespace Spatie\Activitylog\Support {
+    class ActivityBuffer {
+        /**
+        * @var array<int, array<string, mixed>>
+        * @generated
+        */
+        protected array<int, array<string, mixed>> $pending ?? [];
+        public function add(\Illuminate\Database\Eloquent\Model $activity): void;
+        public function flush(): void;
+        public function hasPending(): bool;
+        public function count(): int;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        protected function prepareForInsert(\Illuminate\Database\Eloquent\Model $activity): array<string, mixed>;
+    }
+    class ActivityLogger {
+        use \Illuminate\Support\Traits\Conditionable, \Illuminate\Support\Traits\Macroable;
+        protected ?string $defaultLogName ?? null;
+        protected \Spatie\Activitylog\Support\CauserResolver $causerResolver;
+        protected \Spatie\Activitylog\Support\ActivityLogStatus $logStatus;
+        protected ?\Spatie\Activitylog\Contracts\Activity $activity ?? null;
+        public function __construct(\Illuminate\Contracts\Config\Repository $config, \Spatie\Activitylog\Support\ActivityLogStatus $logStatus, \Spatie\Activitylog\Support\CauserResolver $causerResolver): void;
+        public function setLogStatus(\Spatie\Activitylog\Support\ActivityLogStatus $logStatus): static;
+        public function performedOn(\Illuminate\Database\Eloquent\Model $model): static;
+        public function on(\Illuminate\Database\Eloquent\Model $model): static;
+        public function causedBy(\Illuminate\Database\Eloquent\Model|int|string|null $modelOrId): static;
+        public function by(\Illuminate\Database\Eloquent\Model|int|string|null $modelOrId): static;
+        public function causedByAnonymous(): static;
+        public function byAnonymous(): static;
+        public function event(string|\Spatie\Activitylog\Enums\ActivityEvent $event): static;
+        public function setEvent(string|\Spatie\Activitylog\Enums\ActivityEvent $event): static;
+        /**
+        * @param array|\Illuminate\Support\Collection $changes
+        * @generated
+        */
+        public function withChanges(array|\Illuminate\Support\Collection $changes): static;
+        /**
+        * @param array|\Illuminate\Support\Collection $properties
+        * @generated
+        */
+        public function withProperties(array|\Illuminate\Support\Collection $properties): static;
+        public function withProperty(string $key, mixed $value): static;
+        public function createdAt(\DateTimeInterface $dateTime): static;
+        public function useLog(\BackedEnum|string|null $logName): static;
+        public function inLog(\BackedEnum|string|null $logName): static;
+        public function tap(callable $callback, ?string $eventName = null): static;
+        public function enableLogging(): static;
+        public function disableLogging(): static;
+        public function log(string $description): ?\Spatie\Activitylog\Contracts\Activity;
+        public function withoutLogging(\Closure $callback): mixed;
+        protected function getActivity(): \Spatie\Activitylog\Contracts\Activity;
+    }
+    class ActivityLogStatus {
+        protected bool $enabled ?? true;
+        public function __construct(\Illuminate\Contracts\Config\Repository $config): void;
+        public function enable(): bool;
+        public function disable(): bool;
+        public function disabled(): bool;
+    }
+    class CauserResolver {
+        protected \Illuminate\Auth\AuthManager $authManager;
+        protected ?string $authDriver;
+        protected ?\Closure $resolverOverride ?? null;
+        protected ?\Illuminate\Database\Eloquent\Model $causerOverride ?? null;
+        public function __construct(\Illuminate\Contracts\Config\Repository $config, \Illuminate\Auth\AuthManager $authManager): void;
+        public function resolve(\Illuminate\Database\Eloquent\Model|int|string|null $subject = null): ?\Illuminate\Database\Eloquent\Model;
+        protected function resolveUsingId(int|string $subject): \Illuminate\Database\Eloquent\Model;
+        protected function getCauser(\Illuminate\Database\Eloquent\Model|int|string|null $subject = null): ?\Illuminate\Database\Eloquent\Model;
+        /**
+        * Override the resolver using callback.
+        *
+        * @generated
+        */
+        public function resolveUsing(\Closure $callback): static;
+        /**
+        * Override default causer.
+        *
+        * @generated
+        */
+        public function setCauser(?\Illuminate\Database\Eloquent\Model $causer): static;
+        /**
+        * Execute a callback with a specific causer, then restore the previous causer.
+        *
+        * @generated
+        */
+        public function withCauser(?\Illuminate\Database\Eloquent\Model $causer, \Closure $callback): mixed;
+        protected function isResolvable(mixed $model): bool;
+        protected function getDefaultCauser(): ?\Illuminate\Database\Eloquent\Model;
+    }
+    class ChangeDetector {
+        public static function resolveRelatedAttribute(\Illuminate\Database\Eloquent\Model $model, string $attribute): array;
+        public static function resolveRelationName(\Illuminate\Database\Eloquent\Model $model, string $relation): string;
+        public static function resolveJsonAttribute(\Illuminate\Database\Eloquent\Model $model, string $attribute): mixed;
+        public static function filterDirty(array $newAttributes, array $oldAttributes): array;
+        protected static function compareValues(mixed $new, mixed $old): int;
+    }
+    class Config {
+        public static function activityModel(): string;
+        public static function activityModelInstance(): \Spatie\Activitylog\Contracts\Activity;
+        public static function logActivityAction(): \Spatie\Activitylog\Actions\LogActivityAction;
+        public static function cleanActivityLogAction(): \Spatie\Activitylog\Actions\CleanActivityLogAction;
+        protected static function resolveAction(string $configKey, string $defaultClass): mixed;
+    }
+    class LogOptions {
+        public ?string $logName ?? null;
+        public bool $logEmptyChanges ?? true;
+        public bool $logFillable ?? false;
+        public bool $logOnlyDirty ?? false;
+        public bool $logUnguarded ?? false;
+        public array $logAttributes ?? [];
+        public array $logExceptAttributes ?? [];
+        public array $dontLogIfAttributesChangedOnly ?? [];
+        public array $attributeRawValues ?? [];
+        public ?\Closure $descriptionForEvent ?? null;
+        /**
+        * Start configuring model with the default options.
+        *
+        * @generated
+        */
+        public static function defaults(): self;
+        /**
+        * Log all attributes on the model.
+        *
+        * @generated
+        */
+        public function logAll(): self;
+        /**
+        * Log all attributes that are not listed in $guarded.
+        *
+        * @generated
+        */
+        public function logUnguarded(): self;
+        /**
+        * log changes to all the $fillable attributes of the model.
+        *
+        * @generated
+        */
+        public function logFillable(): self;
+        /**
+        * Stop logging $fillable attributes of the model.
+        *
+        * @generated
+        */
+        public function dontLogFillable(): self;
+        /**
+        * Log changes that has actually changed after the update.
+        *
+        * @generated
+        */
+        public function logOnlyDirty(): self;
+        /**
+        * Only log changes to these specific attributes.
+        *
+        * @param array<int, string> $attributes
+        * @generated
+        */
+        public function logOnly(array<int, string> $attributes): self;
+        /**
+        * Exclude these attributes from being logged.
+        *
+        * @param array<int, string> $attributes
+        * @generated
+        */
+        public function logExcept(array<int, string> $attributes): self;
+        /**
+        * Don't trigger an activity if only these attributes changed.
+        *
+        * @param array<int, string> $attributes
+        * @generated
+        */
+        public function dontLogIfAttributesChangedOnly(array<int, string> $attributes): self;
+        /**
+        * Don't store empty logs. Empty logs can occur when you're tracking
+        *
+        * specific attributes but none of them actually changed.
+        *
+        * @generated
+        */
+        public function dontLogEmptyChanges(): self;
+        /**
+        * Allow storing empty logs.
+        *
+        * @generated
+        */
+        public function logEmptyChanges(): self;
+        /**
+        * Customize log name.
+        *
+        * @generated
+        */
+        public function useLogName(\BackedEnum|string|null $logName): self;
+        /**
+        * Customize log description using callback.
+        *
+        * @generated
+        */
+        public function setDescriptionForEvent(\Closure $callback): self;
+        /**
+        * Exclude these attributes from being casted.
+        *
+        * @param array<int, string> $attributes
+        * @generated
+        */
+        public function useAttributeRawValues(array<int, string> $attributes): self;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+    /**
+    * @mixin ActivityLogger
+    * @generated
+    */
+    class PendingActivityLog {
+        use \Illuminate\Support\Traits\ForwardsCalls;
+        protected \Spatie\Activitylog\Support\ActivityLogger $logger;
+        public function __construct(\Spatie\Activitylog\Support\ActivityLogger $logger, \Spatie\Activitylog\Support\ActivityLogStatus $status): void;
+        public function logger(): \Spatie\Activitylog\Support\ActivityLogger;
+        /**
+        * @param \Closure $callback
+        * @generated
+        */
+        public static function beforeLogging(\Closure $callback): void;
+        public function defaultCauser(?\Illuminate\Database\Eloquent\Model $causer, ?\Closure $callback = null): mixed;
+        public function __call(string $method, array $parameters): mixed;
+    }
+}

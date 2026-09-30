@@ -1,0 +1,26 @@
+name: Test tyhpdef packages
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download released tyhp CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/tyhp"
+          gh release download --repo tyhpproject/tyhp --pattern 'tyhp-linux-x64' --dir "$RUNNER_TEMP/tyhp"
+          chmod +x "$RUNNER_TEMP/tyhp/tyhp-linux-x64"
+      - name: Lint tyhpdef packages
+        env:
+          TYHP_BIN: ${{ runner.temp }}/tyhp/tyhp-linux-x64
+        run: ./packages/test-all-tyhpdef.sh

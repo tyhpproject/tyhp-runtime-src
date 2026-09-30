@@ -1,0 +1,42 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Layer 1 omitted `@internal` CommandInterface / command bases / StaticFactoryTrait.
+ */
+
+namespace Pheanstalk\Contract {
+    /**
+     * Internal command sent to beanstalkd.
+     */
+    interface CommandInterface {
+        public function getCommandLine(): string;
+
+        public function interpret(\Pheanstalk\Values\RawResponse $response): int|\Pheanstalk\Values\Job|\Pheanstalk\Values\JobId|\Pheanstalk\Values\TubeName|\Pheanstalk\Values\TubeList|\Pheanstalk\Values\Success|\Pheanstalk\Values\JobStats|\Pheanstalk\Values\TubeStats|\Pheanstalk\Values\ServerStats;
+    }
+}
+
+namespace Pheanstalk {
+    /**
+     * Shared create() factories for manager / publisher / subscriber.
+     */
+    trait StaticFactoryTrait {
+        public function __construct(\Pheanstalk\Connection $connection);
+
+        public static function create(string $host, int $port = 11300, ?\Pheanstalk\Values\Timeout $connectTimeout = null, ?\Pheanstalk\Values\Timeout $receiveTimeout = null): self;
+
+        public static function createWithFactory(\Pheanstalk\Contract\SocketFactoryInterface $factory): self;
+    }
+}
+
+namespace Pheanstalk\Command {
+    abstract class JobCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function __construct(\Pheanstalk\Contract\JobIdInterface $jobId);
+        public function getCommandLine(): string;
+    }
+
+    abstract class TubeCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function __construct(\Pheanstalk\Values\TubeName $tube);
+        public function getCommandLine(): string;
+    }
+}

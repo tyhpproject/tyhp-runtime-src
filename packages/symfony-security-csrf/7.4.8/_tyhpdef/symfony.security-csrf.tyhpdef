@@ -1,0 +1,299 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Security\Csrf {
+    /**
+    * A CSRF token.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class CsrfToken {
+        public function __construct(string $id, ?string $value): void;
+        /**
+        * Returns the ID of the CSRF token.
+        *
+        * @generated
+        */
+        public function getId(): string;
+        /**
+        * Returns the value of the CSRF token.
+        *
+        * @generated
+        */
+        public function getValue(): string;
+        /**
+        * Returns the value of the CSRF token.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+    }
+    /**
+    * Default implementation of {@link CsrfTokenManagerInterface}.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @author Kévin Dunglas <dunglas@gmail.com>
+    * @generated
+    */
+    class CsrfTokenManager implements \Symfony\Component\Security\Csrf\CsrfTokenManagerInterface {
+        /**
+        * @param string|\Symfony\Component\HttpFoundation\RequestStack|callable|null $namespace * null: generates a namespace using $_SERVER['HTTPS']
+        *  *                       * string: uses the given string
+        *  *                       * RequestStack: generates a namespace using the current main request
+        *  *                       * callable: uses the result of this callable (must return a string)
+        * @generated
+        */
+        public function __construct(?\Symfony\Component\Security\Csrf\TokenGenerator\TokenGeneratorInterface $generator = null, ?\Symfony\Component\Security\Csrf\TokenStorage\TokenStorageInterface $storage = null, string|\Symfony\Component\HttpFoundation\RequestStack|callable|null $namespace = null): void;
+        public function getToken(string $tokenId): \Symfony\Component\Security\Csrf\CsrfToken;
+        public function refreshToken(string $tokenId): \Symfony\Component\Security\Csrf\CsrfToken;
+        public function removeToken(string $tokenId): ?string;
+        public function isTokenValid(\Symfony\Component\Security\Csrf\CsrfToken $token): bool;
+    }
+    /**
+    * Manages CSRF tokens.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    interface CsrfTokenManagerInterface {
+        /**
+        * Returns a CSRF token for the given ID.
+        *
+        * If previously no token existed for the given ID, a new token is
+        * generated. Otherwise the existing token is returned (with the same value,
+        * not the same instance).
+        *
+        * @param string $tokenId The token ID. You may choose an arbitrary value
+        *  *                            for the ID
+        * @generated
+        */
+        public function getToken(string $tokenId): \Symfony\Component\Security\Csrf\CsrfToken;
+        /**
+        * Generates a new token value for the given ID.
+        *
+        * This method will generate a new token for the given token ID, independent
+        * of whether a token value previously existed or not. It can be used to
+        * enforce once-only tokens in environments with high security needs.
+        *
+        * @param string $tokenId The token ID. You may choose an arbitrary value
+        *  *                            for the ID
+        * @generated
+        */
+        public function refreshToken(string $tokenId): \Symfony\Component\Security\Csrf\CsrfToken;
+        /**
+        * Invalidates the CSRF token with the given ID, if one exists.
+        *
+        * @return ?string Returns the removed token value if one existed, NULL
+        *  *                         otherwise
+        * @generated
+        */
+        public function removeToken(string $tokenId): ?string;
+        /**
+        * Returns whether the given CSRF token is valid.
+        *
+        * @generated
+        */
+        public function isTokenValid(\Symfony\Component\Security\Csrf\CsrfToken $token): bool;
+    }
+    /**
+    * This CSRF token manager uses a combination of cookie and headers to validate non-persistent tokens.
+    *
+    * This manager is designed to be stateless and compatible with HTTP-caching.
+    * 
+    * Requests are considered secure when either:
+    * - the Sec-Fetch-Site header contains 'same-origin';
+    * - the Origin or Referer headers contain the same origin as the request;
+    * - a special token was double-submitted in the request payload and as a cookie and/or a header.
+    * 
+    * The check using the Origin/Referer headers relies on the app being able to know its own target
+    * origin. Don't miss configuring your reverse proxy to send the X-Forwarded-* / Forwarded headers
+    * if you're behind one.
+    * 
+    * The check relying on the double-submit requires a JavaScript snippet on the client side,
+    * responsible for generating a cryptographically-secure random token and attaching it to the request
+    * payload and as a cookie and/or a header. This check is meant to cover the case where neither
+    * Sec-Fetch-Site, nor Origin/Referer headers are present.
+    * 
+    * When a session is found, a behavioral check is added to ensure that the validation method does not
+    * downgrade from double-submit to origin checks, and vice versa. This prevents attackers from
+    * exploiting potentially less secure validation methods once a more secure method has been confirmed
+    * as functional.
+    * 
+    * On HTTPS connections, the cookie is prefixed with "__Host-" to prevent it from being forged on an
+    * HTTP channel. On the JS side, the cookie should be set with samesite=strict to strengthen the CSRF
+    * protection. The cookie is always cleared on the response to prevent any further use of the token.
+    * 
+    * The $checkHeader argument allows the token to be checked in a header instead of or in addition to a
+    * cookie. This makes it harder for an attacker to forge a request, though it may also pose challenges
+    * when setting the header depending on the client-side framework in use.
+    * 
+    * When a fallback CSRF token manager is provided, only tokens listed in the $tokenIds argument will
+    * be managed by this manager. All other tokens will be delegated to the fallback manager.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class SameOriginCsrfTokenManager implements \Symfony\Component\Security\Csrf\CsrfTokenManagerInterface {
+        public const int TOKEN_MIN_LENGTH ?? 24;
+        public const int CHECK_NO_HEADER ?? 0;
+        public const int CHECK_HEADER ?? 1;
+        public const int CHECK_ONLY_HEADER ?? 2;
+        /**
+        * @param self::CHECK_ $ * $checkHeader
+        * @param array<int, string> $tokenIds
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, ?\Psr\Log\LoggerInterface $logger = null, ?\Symfony\Component\Security\Csrf\CsrfTokenManagerInterface $fallbackCsrfTokenManager = null, array<int, string> $tokenIds = [], int $checkHeader = self::CHECK_NO_HEADER, string $cookieName = 'csrf-token'): void;
+        public function getToken(string $tokenId): \Symfony\Component\Security\Csrf\CsrfToken;
+        public function refreshToken(string $tokenId): \Symfony\Component\Security\Csrf\CsrfToken;
+        public function removeToken(string $tokenId): ?string;
+        public function isTokenValid(\Symfony\Component\Security\Csrf\CsrfToken $token): bool;
+        public function clearCookies(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+        public function persistStrategy(\Symfony\Component\HttpFoundation\Request $request): void;
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+    }
+}
+namespace Symfony\Component\Security\Csrf\Exception {
+    /**
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class TokenNotFoundException extends \Symfony\Component\Security\Core\Exception\RuntimeException {
+    }
+}
+namespace Symfony\Component\Security\Csrf\TokenGenerator {
+    /**
+    * Generates CSRF tokens.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    interface TokenGeneratorInterface {
+        /**
+        * Generates a CSRF token.
+        *
+        * @generated
+        */
+        public function generateToken(): string;
+    }
+    /**
+    * Generates CSRF tokens.
+    *
+    * @author Bernhard Schussek <bernhard.schussek@symfony.com>
+    * @generated
+    */
+    class UriSafeTokenGenerator implements \Symfony\Component\Security\Csrf\TokenGenerator\TokenGeneratorInterface {
+        /**
+        * Generates URI-safe CSRF tokens.
+        *
+        * @param int $entropy The amount of entropy collected for each token (in bits)
+        * @generated
+        */
+        public function __construct(int $entropy = 256): void;
+        public function generateToken(): string;
+    }
+}
+namespace Symfony\Component\Security\Csrf\TokenStorage {
+    /**
+    * @author Christian Flothmann <christian.flothmann@sensiolabs.de>
+    * @generated
+    */
+    interface ClearableTokenStorageInterface extends \Symfony\Component\Security\Csrf\TokenStorage\TokenStorageInterface {
+        /**
+        * Removes all CSRF tokens.
+        *
+        * @generated
+        */
+        public function clear(): void;
+    }
+    /**
+    * Token storage that uses PHP's native session handling.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class NativeSessionTokenStorage implements \Symfony\Component\Security\Csrf\TokenStorage\ClearableTokenStorageInterface {
+        /**
+        * The namespace used to store values in the session.
+        *
+        * @generated
+        */
+        public const string SESSION_NAMESPACE ?? '_csrf';
+        /**
+        * Initializes the storage with a session namespace.
+        *
+        * @param string $namespace The namespace under which the token is stored in the session
+        * @generated
+        */
+        public function __construct(string $namespace = self::SESSION_NAMESPACE): void;
+        public function getToken(string $tokenId): string;
+        public function setToken(string $tokenId, string $token): void;
+        public function hasToken(string $tokenId): bool;
+        public function removeToken(string $tokenId): ?string;
+        public function clear(): void;
+    }
+    /**
+    * Token storage that uses a Symfony Session object.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class SessionTokenStorage implements \Symfony\Component\Security\Csrf\TokenStorage\ClearableTokenStorageInterface {
+        /**
+        * The namespace used to store values in the session.
+        *
+        * @generated
+        */
+        public const string SESSION_NAMESPACE ?? '_csrf';
+        /**
+        * Initializes the storage with a RequestStack object and a session namespace.
+        *
+        * @param string $namespace The namespace under which the token is stored in the requestStack
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, string $namespace = self::SESSION_NAMESPACE): void;
+        public function getToken(string $tokenId): string;
+        public function setToken(string $tokenId, string $token): void;
+        public function hasToken(string $tokenId): bool;
+        public function removeToken(string $tokenId): ?string;
+        public function clear(): void;
+    }
+    /**
+    * Stores CSRF tokens.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    interface TokenStorageInterface {
+        /**
+        * Reads a stored CSRF token.
+        *
+        * @throws TokenNotFoundException If the token ID does not exist
+        * @generated
+        */
+        public function getToken(string $tokenId): string;
+        /**
+        * Stores a CSRF token.
+        *
+        * @generated
+        */
+        public function setToken(string $tokenId, string $token): void;
+        /**
+        * Removes a CSRF token.
+        *
+        * @return ?string Returns the removed token if one existed, NULL
+        *  *                         otherwise
+        * @generated
+        */
+        public function removeToken(string $tokenId): ?string;
+        /**
+        * Checks whether a token with the given token ID exists.
+        *
+        * @generated
+        */
+        public function hasToken(string $tokenId): bool;
+    }
+}

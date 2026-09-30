@@ -1,0 +1,430 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Header, cookie, and server-param shapes, PSR-7 parameter types Layer 1 left as `mixed`,
+ * and `seek($whence = SEEK_SET)` / default HTTP 200.
+ */
+
+namespace Slim\Psr7 {
+    /**
+     * `Set-Cookie` expiry: unix timestamp or a `strtotime` string.
+     */
+    type CookieExpires = string|int;
+
+    /**
+     * Response `Set-Cookie` properties (`Cookies::set` / `setDefaults`).
+     */
+    type CookieSettings = struct {
+        ?string $domain;
+        ?\Slim\Psr7\CookieExpires $expires;
+        ?bool $hostonly;
+        ?bool $httponly;
+        ?string $path;
+        ?string $samesite;
+        ?bool $secure;
+        ?string $value;
+    };
+
+    /**
+     * Overlay: request cookies are a string map; `Set-Cookie` output is a list of header lines.
+     */
+    // @overlay-against: class Cookies
+    partial class Cookies {
+        // @overlay-against: function parseHeader(string|array $header): array
+        public static function parseHeader(string|array<int|string, string> $header): array<string, string>;
+
+        // @overlay-against: function __construct(array $cookies): void
+        public function __construct(array<string, string> $cookies = []): void;
+
+        /**
+         * @param T $default Returned when `$name` is not present.
+         * @return string|T Stored cookie value, or `$default`.
+         */
+        // @overlay-against: function get(string $name, string|array|null $default): mixed
+        public function get<T = null>(string $name, T $default = null): string|T;
+
+        // @overlay-against: function set(string $name, string|array $value): self
+        public function set(string $name, string|\Slim\Psr7\CookieSettings $value): self;
+
+        // @overlay-against: function setDefaults(array $settings): self
+        public function setDefaults(\Slim\Psr7\CookieSettings $settings): self;
+
+        // @overlay-against: function toHeader(string $name, array $properties): string
+        protected function toHeader(string $name, \Slim\Psr7\CookieSettings $properties): string;
+
+        // @overlay-against: function toHeaders(): array
+        public function toHeaders(): array<int, string>;
+    }
+
+    /**
+     * Overlay: `mock()` merges a `$_SERVER`-shaped map.
+     */
+    // @overlay-against: class Environment
+    partial class Environment {
+        // @overlay-against: function mock(array $data): array
+        public static function mock(array<string, mixed> $data = []): array<string, mixed>;
+    }
+
+    /**
+     * Overlay: header values are a list of strings.
+     */
+    // @overlay-against: class Header
+    partial class Header {
+        // @overlay-against: function __construct(string $originalName, string $normalizedName, array $values): void
+        public function __construct(string $originalName, string $normalizedName, array<int|string, string> $values): void;
+
+        // @overlay-against: function addValues(array|string $values): self
+        public function addValues(array<int|string, string>|string $values): self;
+
+        // @overlay-against: function getValues(): array
+        public function getValues(): array<int, string>;
+    }
+
+    /**
+     * Overlay: header stack is name => `Header`; values match PSR `HeaderValue`.
+     */
+    // @overlay-against: class Headers implements \Slim\Psr7\Interfaces\HeadersInterface
+    partial class Headers {
+        /**
+         * @var array<string, mixed>
+         */
+        // @overlay-against: array $globals
+        protected array<string, mixed> $globals;
+
+        /**
+         * @var array<string, \Slim\Psr7\Header>
+         */
+        // @overlay-against: array $headers
+        protected array<string, \Slim\Psr7\Header> $headers;
+
+        // @overlay-against: function __construct(array $headers, array|null $globals): void
+        public function __construct(array<string, \Psr\Http\Message\HeaderValue> $headers = [], array<string, mixed>|null $globals = null): void;
+
+        // @overlay-against: function addHeader(mixed $name, mixed $value): \Slim\Psr7\Interfaces\HeadersInterface
+        public function addHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Slim\Psr7\Interfaces\HeadersInterface;
+
+        /**
+         * @param array<int|string, string> $default
+         * @return array<int|string, string>
+         */
+        // @overlay-against: function getHeader(string $name, mixed $default): array
+        public function getHeader(string $name, array<int|string, string> $default = []): array<int|string, string>;
+
+        // @overlay-against: function getHeaders(bool $originalCase): array
+        public function getHeaders(bool $originalCase = false): \Psr\Http\Message\HeaderMap;
+
+        // @overlay-against: function setHeader(mixed $name, mixed $value): \Slim\Psr7\Interfaces\HeadersInterface
+        public function setHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Slim\Psr7\Interfaces\HeadersInterface;
+
+        // @overlay-against: function setHeaders(array $headers): \Slim\Psr7\Interfaces\HeadersInterface
+        public function setHeaders(array<string, \Psr\Http\Message\HeaderValue> $headers): \Slim\Psr7\Interfaces\HeadersInterface;
+    }
+
+    /**
+     * Overlay: message header methods match PSR-7 (`HeaderMap` / `HeaderValue`).
+     */
+    // @overlay-against: class Message implements \Psr\Http\Message\MessageInterface
+    partial class Message {
+        // @overlay-against: array $validProtocolVersions
+        protected static array<string, bool> $validProtocolVersions ?? [
+            '1.0' => true,
+            '1.1' => true,
+            '2' => true,
+            '2.0' => true,
+        ];
+
+        // @overlay-against: function __set(string $name, mixed $value): void
+        public function __set(string $name, mixed $value): void;
+
+        // @overlay-against: function getHeader(mixed $name): array
+        public function getHeader(string $name): array<int, string>;
+
+        // @overlay-against: function getHeaderLine(mixed $name): string
+        public function getHeaderLine(string $name): string;
+
+        // @overlay-against: function getHeaders(): array
+        public function getHeaders(): \Psr\Http\Message\HeaderMap;
+
+        // @overlay-against: function hasHeader(mixed $name): bool
+        public function hasHeader(string $name): bool;
+
+        // @overlay-against: function withAddedHeader(mixed $name, mixed $value): \Psr\Http\Message\MessageInterface
+        public function withAddedHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Psr\Http\Message\MessageInterface;
+
+        // @overlay-against: function withHeader(mixed $name, mixed $value): \Psr\Http\Message\MessageInterface
+        public function withHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Psr\Http\Message\MessageInterface;
+
+        // @overlay-against: function withProtocolVersion(mixed $version): \Psr\Http\Message\MessageInterface
+        public function withProtocolVersion(string $version): \Psr\Http\Message\MessageInterface;
+
+        // @overlay-against: function withoutHeader(mixed $name): \Psr\Http\Message\MessageInterface
+        public function withoutHeader(string $name): \Psr\Http\Message\MessageInterface;
+    }
+
+    /**
+     * Overlay: stream primitives are `string` / `int`; `detach()` is null.
+     */
+    // @overlay-against: class NonBufferedBody implements \Psr\Http\Message\StreamInterface
+    partial class NonBufferedBody {
+        // @overlay-against: function detach(): mixed
+        public function detach(): null;
+
+        // @overlay-against: function getMetadata(mixed $key): ?array
+        public function getMetadata(null $key = null): null;
+
+        // @overlay-against: function getMetadata(mixed $key): ?array
+        public function getMetadata(string $key): null;
+
+        // @overlay-against: function read(mixed $length): string
+        public function read(int $length): string;
+
+        /**
+         * @param int $whence `SEEK_SET`, `SEEK_CUR`, or `SEEK_END`.
+         */
+        // @overlay-against: function seek(mixed $offset, mixed $whence): void
+        public function seek(int $offset, int $whence = \SEEK_SET): void;
+
+        // @overlay-against: function write(mixed $string): int
+        public function write(string $string): int;
+    }
+
+    /**
+     * Overlay: server-request maps match the PSR-7 overlay shapes.
+     */
+    // @overlay-against: class Request extends \Slim\Psr7\Message implements \Psr\Http\Message\ServerRequestInterface
+    partial class Request {
+        // @overlay-against: array $attributes
+        protected \Psr\Http\Message\RequestAttributes $attributes;
+
+        // @overlay-against: array $cookies
+        protected \Psr\Http\Message\CookieParams $cookies;
+
+        // @overlay-against: null|array|object $parsedBody
+        protected \Psr\Http\Message\ParsedBody $parsedBody;
+
+        // @overlay-against: ?array $queryParams
+        protected ?\Psr\Http\Message\QueryParams $queryParams;
+
+        // @overlay-against: array $serverParams
+        protected \Psr\Http\Message\ServerParams $serverParams;
+
+        // @overlay-against: array $uploadedFiles
+        protected \Psr\Http\Message\UploadedFileTree $uploadedFiles;
+
+        // @overlay-against: function __construct(string $method, \Psr\Http\Message\UriInterface $uri, \Slim\Psr7\Interfaces\HeadersInterface $headers, array $cookies, array $serverParams, \Psr\Http\Message\StreamInterface $body, array $uploadedFiles): void
+        public function __construct(string $method, \Psr\Http\Message\UriInterface $uri, \Slim\Psr7\Interfaces\HeadersInterface $headers, \Psr\Http\Message\CookieParams $cookies, \Psr\Http\Message\ServerParams $serverParams, \Psr\Http\Message\StreamInterface $body, \Psr\Http\Message\UploadedFileTree $uploadedFiles = []): void;
+
+        // @overlay-against: function __clone(): mixed
+        public function __clone(): void;
+
+        /**
+         * @param T $default
+         * @return T
+         */
+        // @overlay-against: function getAttribute(mixed $name, mixed $default): mixed
+        public function getAttribute<T = mixed>(string $name, T $default = null): T;
+
+        // @overlay-against: function getAttributes(): array
+        public function getAttributes(): \Psr\Http\Message\RequestAttributes;
+
+        // @overlay-against: function getCookieParams(): array
+        public function getCookieParams(): \Psr\Http\Message\CookieParams;
+
+        // @overlay-against: function getMethod(): string
+        public function getMethod(): \Psr\Http\Message\HttpMethod;
+
+        // @overlay-against: function getParsedBody(): mixed
+        public function getParsedBody(): \Psr\Http\Message\ParsedBody;
+
+        // @overlay-against: function getQueryParams(): array
+        public function getQueryParams(): \Psr\Http\Message\QueryParams;
+
+        // @overlay-against: function getServerParams(): array
+        public function getServerParams(): \Psr\Http\Message\ServerParams;
+
+        // @overlay-against: function getUploadedFiles(): array
+        public function getUploadedFiles(): \Psr\Http\Message\UploadedFileTree;
+
+        // @overlay-against: function withAttribute(mixed $name, mixed $value): \Psr\Http\Message\ServerRequestInterface
+        public function withAttribute(string $name, mixed $value): \Psr\Http\Message\ServerRequestInterface;
+
+        // @overlay-against: function withCookieParams(array $cookies): \Psr\Http\Message\ServerRequestInterface
+        public function withCookieParams(\Psr\Http\Message\CookieParams $cookies): \Psr\Http\Message\ServerRequestInterface;
+
+        // @overlay-against: function withMethod(mixed $method): \Psr\Http\Message\RequestInterface
+        public function withMethod(\Psr\Http\Message\HttpMethod $method): \Psr\Http\Message\RequestInterface;
+
+        // @overlay-against: function withParsedBody(mixed $data): \Psr\Http\Message\ServerRequestInterface
+        public function withParsedBody(\Psr\Http\Message\ParsedBody $data): \Psr\Http\Message\ServerRequestInterface;
+
+        // @overlay-against: function withQueryParams(array $query): \Psr\Http\Message\ServerRequestInterface
+        public function withQueryParams(\Psr\Http\Message\QueryParams $query): \Psr\Http\Message\ServerRequestInterface;
+
+        // @overlay-against: function withRequestTarget(mixed $requestTarget): \Psr\Http\Message\RequestInterface
+        public function withRequestTarget(string $requestTarget): \Psr\Http\Message\RequestInterface;
+
+        // @overlay-against: function withUploadedFiles(array $uploadedFiles): \Psr\Http\Message\ServerRequestInterface
+        public function withUploadedFiles(\Psr\Http\Message\UploadedFileTree $uploadedFiles): \Psr\Http\Message\ServerRequestInterface;
+
+        // @overlay-against: function withUri(\Psr\Http\Message\UriInterface $uri, mixed $preserveHost): \Psr\Http\Message\RequestInterface
+        public function withUri(\Psr\Http\Message\UriInterface $uri, bool $preserveHost = false): \Psr\Http\Message\RequestInterface;
+
+        // @overlay-against: function withoutAttribute(mixed $name): \Psr\Http\Message\ServerRequestInterface
+        public function withoutAttribute(string $name): \Psr\Http\Message\ServerRequestInterface;
+    }
+
+    /**
+     * Overlay: default status is HTTP 200; status code and reason are `int` and `string`.
+     */
+    // @overlay-against: class Response extends \Slim\Psr7\Message implements \Psr\Http\Message\ResponseInterface
+    partial class Response {
+        // @overlay-against: function __construct(int $status, ?\Slim\Psr7\Interfaces\HeadersInterface $headers, ?\Psr\Http\Message\StreamInterface $body): void
+        public function __construct(int $status = 200, ?\Slim\Psr7\Interfaces\HeadersInterface $headers = null, ?\Psr\Http\Message\StreamInterface $body = null): void;
+
+        // @overlay-against: function __clone(): mixed
+        public function __clone(): void;
+
+        // @overlay-against: function withStatus(mixed $code, mixed $reasonPhrase): \Psr\Http\Message\ResponseInterface
+        public function withStatus(int $code, string $reasonPhrase = ''): \Psr\Http\Message\ResponseInterface;
+    }
+
+    /**
+     * Overlay: `read` / `write` / `detach` / `getMetadata` match the stream.
+     */
+    // @overlay-against: class Stream implements \Psr\Http\Message\StreamInterface
+    partial class Stream {
+        // @overlay-against: function detach(): mixed
+        public function detach(): resource|null;
+
+        /**
+         * @return \StreamMetadata
+         */
+        // @overlay-against: function getMetadata(mixed $key): mixed
+        public function getMetadata(null $key = null): \StreamMetadata|null;
+
+        /**
+         * @return mixed Metadata entry, or null when `$key` is absent.
+         */
+        // @overlay-against: function getMetadata(mixed $key): mixed
+        public function getMetadata(string $key): mixed;
+
+        // @overlay-against: function read(mixed $length): string
+        public function read(int $length): string;
+
+        /**
+         * @param int $whence `SEEK_SET`, `SEEK_CUR`, or `SEEK_END`.
+         */
+        // @overlay-against: function seek(mixed $offset, mixed $whence): void
+        public function seek(int $offset, int $whence = \SEEK_SET): void;
+
+        // @overlay-against: function write(mixed $string): int
+        public function write(string $string): int;
+    }
+
+    /**
+     * Overlay: `moveTo` target is a path.
+     */
+    // @overlay-against: class UploadedFile implements \Psr\Http\Message\UploadedFileInterface
+    partial class UploadedFile {
+        // @overlay-against: function moveTo(mixed $targetPath): void
+        public function moveTo(string $targetPath): void;
+    }
+
+    /**
+     * Overlay: URI mutators are strings; `withPort` also accepts a numeric string.
+     * `SUPPORTED_SCHEMES` maps scheme to port (`''` has no port).
+     */
+    // @overlay-against: class Uri implements \Psr\Http\Message\UriInterface
+    partial class Uri {
+        // @overlay-against: const array SUPPORTED_SCHEMES ?? []
+        public const array<string, int|null> SUPPORTED_SCHEMES ?? [
+            '' => null,
+            'http' => 80,
+            'https' => 443,
+        ];
+
+        // @overlay-against: function filterFragment(mixed $fragment): string
+        protected function filterFragment(string|\Stringable $fragment): string;
+
+        // @overlay-against: function filterHost(mixed $host): string
+        protected function filterHost(string|\Stringable $host): string;
+
+        // @overlay-against: function filterQuery(mixed $query): string
+        protected function filterQuery(string|\Stringable $query): string;
+
+        // @overlay-against: function filterScheme(mixed $scheme): string
+        protected function filterScheme(string|\Stringable $scheme): string;
+
+        // @overlay-against: function withFragment(mixed $fragment): \Psr\Http\Message\UriInterface
+        public function withFragment(string $fragment): \Psr\Http\Message\UriInterface;
+
+        // @overlay-against: function withHost(mixed $host): \Psr\Http\Message\UriInterface
+        public function withHost(string $host): \Psr\Http\Message\UriInterface;
+
+        // @overlay-against: function withPath(mixed $path): \Psr\Http\Message\UriInterface
+        public function withPath(string $path): \Psr\Http\Message\UriInterface;
+
+        // @overlay-against: function withPort(mixed $port): \Psr\Http\Message\UriInterface
+        public function withPort(int|string|null $port): \Psr\Http\Message\UriInterface;
+
+        // @overlay-against: function withQuery(mixed $query): \Psr\Http\Message\UriInterface
+        public function withQuery(string $query): \Psr\Http\Message\UriInterface;
+
+        // @overlay-against: function withScheme(mixed $scheme): \Psr\Http\Message\UriInterface
+        public function withScheme(string $scheme): \Psr\Http\Message\UriInterface;
+
+        // @overlay-against: function withUserInfo(mixed $user, mixed $password): \Psr\Http\Message\UriInterface
+        public function withUserInfo(string $user, ?string $password = null): \Psr\Http\Message\UriInterface;
+    }
+}
+
+namespace Slim\Psr7\Factory {
+    /**
+     * Overlay: default status is HTTP 200; upload error defaults to `UPLOAD_ERR_OK`.
+     */
+    // @overlay-against: class ResponseFactory implements \Psr\Http\Message\ResponseFactoryInterface
+    partial class ResponseFactory {
+        // @overlay-against: function createResponse(int $code, string $reasonPhrase): \Psr\Http\Message\ResponseInterface
+        public function createResponse(int $code = 200, string $reasonPhrase = ''): \Psr\Http\Message\ResponseInterface;
+    }
+
+    /**
+     * Overlay: `createUploadedFile` default error is `UPLOAD_ERR_OK`.
+     */
+    // @overlay-against: class UploadedFileFactory implements \Psr\Http\Message\UploadedFileFactoryInterface
+    partial class UploadedFileFactory {
+        /**
+         * @param int $error One of the `UPLOAD_ERR_*` constants.
+         */
+        // @overlay-against: function createUploadedFile(\Psr\Http\Message\StreamInterface $stream, ?int $size, int $error, ?string $clientFilename, ?string $clientMediaType): \Psr\Http\Message\UploadedFileInterface
+        public function createUploadedFile(\Psr\Http\Message\StreamInterface $stream, ?int $size = null, int $error = \UPLOAD_ERR_OK, ?string $clientFilename = null, ?string $clientMediaType = null): \Psr\Http\Message\UploadedFileInterface;
+    }
+}
+
+namespace Slim\Psr7\Interfaces {
+    /**
+     * Overlay: header values are `HeaderValue`; `getHeaders()` is a `HeaderMap`.
+     */
+    // @overlay-against: interface HeadersInterface
+    partial interface HeadersInterface {
+        // @overlay-against: function addHeader(string $name, array|string $value): \Slim\Psr7\Interfaces\HeadersInterface
+        public function addHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Slim\Psr7\Interfaces\HeadersInterface;
+
+        /**
+         * @param array<int|string, string> $default
+         * @return array<int|string, string>
+         */
+        // @overlay-against: function getHeader(string $name, array $default): array
+        public function getHeader(string $name, array<int|string, string> $default = []): array<int|string, string>;
+
+        // @overlay-against: function getHeaders(bool $originalCase): array
+        public function getHeaders(bool $originalCase): \Psr\Http\Message\HeaderMap;
+
+        // @overlay-against: function setHeader(string $name, array|string $value): \Slim\Psr7\Interfaces\HeadersInterface
+        public function setHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Slim\Psr7\Interfaces\HeadersInterface;
+
+        // @overlay-against: function setHeaders(array $headers): \Slim\Psr7\Interfaces\HeadersInterface
+        public function setHeaders(array<string, \Psr\Http\Message\HeaderValue> $headers): \Slim\Psr7\Interfaces\HeadersInterface;
+    }
+}

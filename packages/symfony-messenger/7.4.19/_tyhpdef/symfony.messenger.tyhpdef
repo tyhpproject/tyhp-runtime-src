@@ -1,0 +1,1522 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Messenger {
+    /**
+    * A message wrapped in an envelope with stamps (configurations, markers, ...).
+    *
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    final class Envelope {
+        /**
+        * @param object|Envelope $message
+        * @param array<int, \Symfony\Component\Messenger\Stamp\StampInterface> $stamps
+        * @generated
+        */
+        public function __construct(object|\Symfony\Component\Messenger\Envelope $message, array<int, \Symfony\Component\Messenger\Stamp\StampInterface> $stamps = []): void;
+        /**
+        * Makes sure the message is in an Envelope and adds the given stamps.
+        *
+        * @param array<int, \Symfony\Component\Messenger\Stamp\StampInterface> $stamps
+        * @generated
+        */
+        public static function wrap(object $message, array<int, \Symfony\Component\Messenger\Stamp\StampInterface> $stamps = []): self;
+        /**
+        * Adds one or more stamps.
+        *
+        * @generated
+        */
+        public function with(\Symfony\Component\Messenger\Stamp\StampInterface ...$stamps): static;
+        /**
+        * Removes all stamps of the given class.
+        *
+        * @generated
+        */
+        public function withoutAll(string $stampFqcn): static;
+        /**
+        * Removes all stamps that implement the given type.
+        *
+        * @generated
+        */
+        public function withoutStampsOfType(string $type): self;
+        /**
+        * @template TStamp of StampInterface
+        * @param string $stampFqcn
+        * @return ?\Symfony\Component\Messenger\Stamp\StampInterface
+        * @generated
+        */
+        public function last<TStamp extends \Symfony\Component\Messenger\Stamp\StampInterface>(string $stampFqcn): ?\Symfony\Component\Messenger\Stamp\StampInterface;
+        /**
+        * @template TStamp of StampInterface
+        * @param ?string $stampFqcn
+        * @return array The stamps for the specified FQCN, or all stamps by their class name
+        * @generated
+        */
+        public function all<TStamp extends \Symfony\Component\Messenger\Stamp\StampInterface>(?string $stampFqcn = null): array;
+        public function getMessage(): object;
+    }
+    /**
+    * Leverages a message bus to expect a single, synchronous message handling and return its result.
+    *
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    trait HandleTrait {
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @author Matthias Noback <matthiasnoback@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class MessageBus implements \Symfony\Component\Messenger\MessageBusInterface {
+        /**
+        * @param iterable<mixed, \Symfony\Component\Messenger\Middleware\MiddlewareInterface> $middlewareHandlers
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\Messenger\Middleware\MiddlewareInterface> $middlewareHandlers = []): void;
+        public function dispatch(object $message, array $stamps = []): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    interface MessageBusInterface {
+        /**
+        * Dispatches the given message.
+        *
+        * @param object|Envelope $message The message or the message pre-wrapped in an envelope
+        * @param array<int, \Symfony\Component\Messenger\Stamp\StampInterface> $stamps Stamps set on the Envelope which are used to control middleware behavior
+        * @throws ExceptionInterface
+        * @generated
+        */
+        public function dispatch(object|\Symfony\Component\Messenger\Envelope $message, array<int, \Symfony\Component\Messenger\Stamp\StampInterface> $stamps = []): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Bus of buses that is routable using a BusNameStamp.
+    *
+    * This is useful when passed to Worker: messages received
+    * from the transport can be sent to the correct bus.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class RoutableMessageBus implements \Symfony\Component\Messenger\MessageBusInterface {
+        public function __construct(\Psr\Container\ContainerInterface $busLocator, ?\Symfony\Component\Messenger\MessageBusInterface $fallbackBus = null): void;
+        public function dispatch(object $envelope, array $stamps = []): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    class TraceableMessageBus implements \Symfony\Component\Messenger\MessageBusInterface {
+        protected readonly ?\Closure $disabled ?? null;
+        public function __construct(\Symfony\Component\Messenger\MessageBusInterface $decoratedBus, ?\Closure $disabled = null): void;
+        public function dispatch(object $message, array $stamps = []): \Symfony\Component\Messenger\Envelope;
+        public function getDispatchedMessages(): array;
+        public function reset(): void;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @author Tobias Schultze <http://tobion.de>
+    * @final
+    * @generated
+    */
+    class Worker {
+        /**
+        * @param array<int, \Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface> $receivers Where the key is the transport name
+        * @generated
+        */
+        public function __construct(array<int, \Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface> $receivers, \Symfony\Component\Messenger\MessageBusInterface $bus, ?\Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher = null, ?\Psr\Log\LoggerInterface $logger = null, ?array $rateLimiters = null, \Symfony\Component\Clock\ClockInterface $clock): void;
+        /**
+        * Receive the messages and dispatch them to the bus.
+        *
+        * Valid options are:
+        *  * sleep (default: 1000000): Time in microseconds to sleep after no messages are found
+        *  * time_limit: The time limit in seconds the worker can handle new messages
+        *  * queues: The queue names to consume from, instead of consuming from all queues. When this is used, all receivers must implement the QueueReceiverInterface
+        *
+        * @generated
+        */
+        public function run(array $options = []): void;
+        public function stop(): void;
+        public function keepalive(?int $seconds): void;
+        public function getMetadata(): \Symfony\Component\Messenger\WorkerMetadata;
+    }
+    /**
+    * @author Oleg Krasavin <okwinza@gmail.com>
+    * @generated
+    */
+    final class WorkerMetadata {
+        public function __construct(array $metadata): void;
+        public function set(array $newMetadata): void;
+        /**
+        * Returns the queue names the worker consumes from, if "--queues" option was used.
+        *
+        * Returns null otherwise.
+        *
+        * @generated
+        */
+        public function getQueueNames(): ?array;
+        /**
+        * Returns an array of unique identifiers for transport receivers the worker consumes from.
+        *
+        * @generated
+        */
+        public function getTransportNames(): array;
+    }
+}
+namespace Symfony\Component\Messenger\Attribute {
+    /**
+    * Attribute for configuring message routing.
+    *
+    * @author Pierre Rineau pierre.rineau@processus.org>
+    * @generated
+    */
+    class AsMessage {
+        public string|array|null $transport ?? null;
+        public function __construct(string|array|null $transport = null): void;
+    }
+    /**
+    * Service tag to autoconfigure message handlers.
+    *
+    * @author Alireza Mirsepassi <alirezamirsepassi@gmail.com>
+    * @generated
+    */
+    class AsMessageHandler {
+        public ?string $bus ?? null;
+        public ?string $fromTransport ?? null;
+        public ?string $handles ?? null;
+        public ?string $method ?? null;
+        public int $priority ?? 0;
+        public bool $sign ?? false;
+        public function __construct(?string $bus = null, ?string $fromTransport = null, ?string $handles = null, ?string $method = null, int $priority = 0, bool $sign = false): void;
+    }
+}
+namespace Symfony\Component\Messenger\Command {
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class FailedMessagesRemoveCommand extends \Symfony\Component\Messenger\Command\AbstractFailedMessagesCommand {
+        protected function configure(): void;
+        protected function execute(\Symfony\Component\Console\Input\InputInterface $input, \Symfony\Component\Console\Output\OutputInterface $output): int;
+    }
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class FailedMessagesShowCommand extends \Symfony\Component\Messenger\Command\AbstractFailedMessagesCommand {
+        protected function configure(): void;
+        protected function execute(\Symfony\Component\Console\Input\InputInterface $input, \Symfony\Component\Console\Output\OutputInterface $output): int;
+    }
+}
+namespace Symfony\Component\Messenger\DataCollector {
+}
+namespace Symfony\Component\Messenger\DependencyInjection {
+}
+namespace Symfony\Component\Messenger\Event {
+    abstract class AbstractWorkerMessageEvent {
+        public function __construct(\Symfony\Component\Messenger\Envelope $envelope, string $receiverName): void;
+        public function getEnvelope(): \Symfony\Component\Messenger\Envelope;
+        /**
+        * Returns a unique identifier for transport receiver this message was received from.
+        *
+        * @generated
+        */
+        public function getReceiverName(): string;
+        public function addStamps(\Symfony\Component\Messenger\Stamp\StampInterface ...$stamps): void;
+    }
+    /**
+    * Event is dispatched after a message is sent to the transport.
+    *
+    * The event is *only* dispatched if the message was actually
+    * sent to at least one transport. If the message was sent
+    * to multiple transports, the event is dispatched only once.
+    *
+    * @generated
+    */
+    final class MessageSentToTransportsEvent {
+        /**
+        * @param array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface> $senders
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Messenger\Envelope $envelope, array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface> $senders): void;
+        public function getEnvelope(): \Symfony\Component\Messenger\Envelope;
+        /**
+        * @return array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface>
+        * @generated
+        */
+        public function getSenders(): array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface>;
+    }
+    /**
+    * Event is dispatched before a message is sent to the transport.
+    *
+    * The event is *only* dispatched if the message will actually
+    * be sent to at least one transport. If the message is sent
+    * to multiple transports, the event is dispatched only once.
+    * This event is only dispatched the first time a message
+    * is sent to a transport, not also if it is retried.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    final class SendMessageToTransportsEvent {
+        /**
+        * @param array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface> $senders
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Messenger\Envelope $envelope, array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface> $senders): void;
+        public function getEnvelope(): \Symfony\Component\Messenger\Envelope;
+        public function setEnvelope(\Symfony\Component\Messenger\Envelope $envelope): void;
+        /**
+        * @return array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface>
+        * @generated
+        */
+        public function getSenders(): array<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface>;
+    }
+    /**
+    * Dispatched when a message was received from a transport and handling failed.
+    *
+    * The event name is the class name.
+    *
+    * @generated
+    */
+    final class WorkerMessageFailedEvent extends \Symfony\Component\Messenger\Event\AbstractWorkerMessageEvent {
+        public function __construct(\Symfony\Component\Messenger\Envelope $envelope, string $receiverName, \Throwable $error): void;
+        public function getThrowable(): \Throwable;
+        public function willRetry(): bool;
+        public function setForRetry(): void;
+    }
+    /**
+    * Dispatched after a message was received from a transport and successfully handled.
+    *
+    * The event name is the class name.
+    *
+    * @generated
+    */
+    final class WorkerMessageHandledEvent extends \Symfony\Component\Messenger\Event\AbstractWorkerMessageEvent {
+    }
+    /**
+    * Dispatched when a message was received from a transport but before sent to the bus.
+    *
+    * The event name is the class name.
+    *
+    * @generated
+    */
+    final class WorkerMessageReceivedEvent extends \Symfony\Component\Messenger\Event\AbstractWorkerMessageEvent {
+        public function shouldHandle(?bool $shouldHandle = null): bool;
+    }
+    /**
+    * Dispatched after a message has been sent for retry.
+    *
+    * The event name is the class name.
+    *
+    * @generated
+    */
+    final class WorkerMessageRetriedEvent extends \Symfony\Component\Messenger\Event\AbstractWorkerMessageEvent {
+    }
+    /**
+    * Dispatched when a message was skip.
+    *
+    * The event name is the class name.
+    *
+    * @generated
+    */
+    final class WorkerMessageSkipEvent extends \Symfony\Component\Messenger\Event\AbstractWorkerMessageEvent {
+    }
+    /**
+    * Dispatched after the worker has been blocked due to a configured rate limiter.
+    *
+    * Can be used to reset the rate limiter.
+    *
+    * @author Bob van de Vijver
+    * @generated
+    */
+    final class WorkerRateLimitedEvent {
+        public function __construct(\Symfony\Component\RateLimiter\LimiterInterface $limiter, string $transportName): void;
+        public function getLimiter(): \Symfony\Component\RateLimiter\LimiterInterface;
+        public function getTransportName(): string;
+    }
+    /**
+    * Dispatched after the worker processed a message or didn't receive a message at all.
+    *
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    final class WorkerRunningEvent {
+        public function __construct(\Symfony\Component\Messenger\Worker $worker, bool $isWorkerIdle): void;
+        public function getWorker(): \Symfony\Component\Messenger\Worker;
+        /**
+        * Returns true when no message has been received by the worker.
+        *
+        * @generated
+        */
+        public function isWorkerIdle(): bool;
+    }
+    /**
+    * Dispatched when a worker has been started.
+    *
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    final class WorkerStartedEvent {
+        public function __construct(\Symfony\Component\Messenger\Worker $worker): void;
+        public function getWorker(): \Symfony\Component\Messenger\Worker;
+    }
+    /**
+    * Dispatched when a worker has been stopped.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    final class WorkerStoppedEvent {
+        public function __construct(\Symfony\Component\Messenger\Worker $worker): void;
+        public function getWorker(): \Symfony\Component\Messenger\Worker;
+    }
+}
+namespace Symfony\Component\Messenger\EventListener {
+}
+namespace Symfony\Component\Messenger\Exception {
+    /**
+    * When handling queued messages from {@link DispatchAfterCurrentBusMiddleware},
+    *
+    * some handlers caused an exception. This exception contains all those handler exceptions.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    class DelayedMessageHandlingException extends \Symfony\Component\Messenger\Exception\RuntimeException implements \Symfony\Component\Messenger\Exception\WrappedExceptionsInterface, \Symfony\Component\Messenger\Exception\EnvelopeAwareExceptionInterface {
+        use \Symfony\Component\Messenger\Exception\EnvelopeAwareExceptionTrait, \Symfony\Component\Messenger\Exception\WrappedExceptionsTrait;
+        public function __construct(array $exceptions, ?\Symfony\Component\Messenger\Envelope $envelope = null): void;
+    }
+    interface EnvelopeAwareExceptionInterface {
+        public function getEnvelope(): ?\Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Base Messenger component's exception.
+    *
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    interface ExceptionInterface extends \Throwable {
+    }
+    class HandlerFailedException extends \Symfony\Component\Messenger\Exception\RuntimeException implements \Symfony\Component\Messenger\Exception\WrappedExceptionsInterface, \Symfony\Component\Messenger\Exception\EnvelopeAwareExceptionInterface {
+        use \Symfony\Component\Messenger\Exception\WrappedExceptionsTrait;
+        /**
+        * @param array<int, \Throwable> $exceptions The name of the handler should be given as key
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Messenger\Envelope $envelope, array<int, \Throwable> $exceptions): void;
+        public function getEnvelope(): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @generated
+    */
+    class InvalidArgumentException extends \InvalidArgumentException implements \Symfony\Component\Messenger\Exception\ExceptionInterface {
+    }
+    class InvalidMessageSignatureException extends \RuntimeException implements \Symfony\Component\Messenger\Exception\ExceptionInterface {
+    }
+    /**
+    * @author Roland Franssen <franssen.roland@gmail.com>
+    * @generated
+    */
+    class LogicException extends \LogicException implements \Symfony\Component\Messenger\Exception\ExceptionInterface {
+    }
+    /**
+    * Thrown when a message cannot be decoded in a serializer.
+    *
+    * @generated
+    */
+    class MessageDecodingFailedException extends \Symfony\Component\Messenger\Exception\InvalidArgumentException {
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    class NoHandlerForMessageException extends \Symfony\Component\Messenger\Exception\LogicException {
+    }
+    /**
+    * @author Jérémy Reynaud <jeremy@reynaud.io>
+    * @generated
+    */
+    class NoSenderForMessageException extends \Symfony\Component\Messenger\Exception\LogicException {
+    }
+    /**
+    * Marker interface for exceptions to indicate that handling a message should have worked.
+    *
+    * If something goes wrong while handling a message that's received from a transport
+    * and the message should be retried, a handler can throw such an exception.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @method int|null getRetryDelay() The time to wait in milliseconds
+    * @generated
+    */
+    interface RecoverableExceptionInterface extends \Throwable {
+        public function getRetryDelay(): int|null;
+    }
+    /**
+    * A concrete implementation of RecoverableExceptionInterface that can be used directly.
+    *
+    * @author Frederic Bouchery <frederic@bouchery.fr>
+    * @generated
+    */
+    class RecoverableMessageHandlingException extends \Symfony\Component\Messenger\Exception\RuntimeException implements \Symfony\Component\Messenger\Exception\RecoverableExceptionInterface {
+        public function __construct(string $message = '', int $code = 0, ?\Throwable $previous = null, ?int $retryDelay = null): void;
+        public function getRetryDelay(): ?int;
+    }
+    /**
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    class RejectRedeliveredMessageException extends \Symfony\Component\Messenger\Exception\RuntimeException {
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class RuntimeException extends \RuntimeException implements \Symfony\Component\Messenger\Exception\ExceptionInterface {
+    }
+    /**
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    class StopWorkerException extends \Symfony\Component\Messenger\Exception\RuntimeException implements \Symfony\Component\Messenger\Exception\StopWorkerExceptionInterface {
+        public function __construct(string $message = 'Worker should stop.', ?\Throwable $previous = null): void;
+    }
+    /**
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    interface StopWorkerExceptionInterface extends \Throwable {
+    }
+    /**
+    * @author Eric Masoero <em@studeal.fr>
+    * @generated
+    */
+    class TransportException extends \Symfony\Component\Messenger\Exception\RuntimeException {
+    }
+    /**
+    * Marker interface for exceptions to indicate that handling a message will continue to fail.
+    *
+    * If something goes wrong while handling a message that's received from a transport
+    * and the message should not be retried, a handler can throw such an exception.
+    *
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    interface UnrecoverableExceptionInterface extends \Throwable {
+    }
+    /**
+    * A concrete implementation of UnrecoverableExceptionInterface that can be used directly.
+    *
+    * @author Frederic Bouchery <frederic@bouchery.fr>
+    * @generated
+    */
+    class UnrecoverableMessageHandlingException extends \Symfony\Component\Messenger\Exception\RuntimeException implements \Symfony\Component\Messenger\Exception\UnrecoverableExceptionInterface {
+    }
+    /**
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    class ValidationFailedException extends \Symfony\Component\Messenger\Exception\RuntimeException implements \Symfony\Component\Messenger\Exception\EnvelopeAwareExceptionInterface {
+        use \Symfony\Component\Messenger\Exception\EnvelopeAwareExceptionTrait;
+        public function __construct(object $violatingMessage, \Symfony\Component\Validator\ConstraintViolationListInterface $violations, ?\Symfony\Component\Messenger\Envelope $envelope = null): void;
+        public function getViolatingMessage(): object;
+        public function getViolations(): \Symfony\Component\Validator\ConstraintViolationListInterface;
+    }
+    /**
+    * Exception that holds multiple exceptions thrown by one or more handlers and/or messages.
+    *
+    * @author Jeroen <https://github.com/Jeroeny>
+    * @generated
+    */
+    interface WrappedExceptionsInterface extends \Throwable {
+        /**
+        * @template TException of \Throwable
+        * @param ?string $class
+        * @return array
+        * @generated
+        */
+        public function getWrappedExceptions<TException extends \Throwable>(?string $class = null, bool $recursive = false): array;
+    }
+}
+namespace Symfony\Component\Messenger\Handler {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class Acknowledger {
+        /**
+        * @param ?\Closure $ack
+        * @generated
+        */
+        public function __construct(string $handlerClass, ?\Closure $ack = null): void;
+        /**
+        * @param mixed $result
+        * @generated
+        */
+        public function ack(mixed $result = null): void;
+        public function nack(\Throwable $error): void;
+        public function getError(): ?\Throwable;
+        public function getResult(): mixed;
+        public function isAcknowledged(): bool;
+        public function __destruct(): void;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface BatchHandlerInterface {
+        /**
+        * Flushes any pending buffers.
+        *
+        * @param bool $force Whether flushing is required; it can be skipped if not
+        * @generated
+        */
+        public function flush(bool $force): void;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    trait BatchHandlerTrait {
+        public function flush(bool $force): void;
+    }
+    /**
+    * Describes a handler and the possible associated options, such as `from_transport`, `bus`, etc.
+    *
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    final class HandlerDescriptor {
+        public function __construct(callable $handler, array $options = []): void;
+        public function getHandler(): \Closure;
+        public function getName(): string;
+        public function getBatchHandler(): ?\Symfony\Component\Messenger\Handler\BatchHandlerInterface;
+        public function getOption(string $option): mixed;
+        public function getOptions(): array;
+    }
+    /**
+    * Maps a message to a list of handlers.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    class HandlersLocator implements \Symfony\Component\Messenger\Handler\HandlersLocatorInterface {
+        /**
+        * @param array<int, array<int, HandlerDescriptor>>|array<int, array<int, callable>> $handlers
+        * @generated
+        */
+        public function __construct(array<int, array<int, \Symfony\Component\Messenger\Handler\HandlerDescriptor>>|array<int, array<int, callable>> $handlers): void;
+        public function getHandlers(\Symfony\Component\Messenger\Envelope $envelope): iterable;
+    }
+    /**
+    * Maps a message to a list of handlers.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface HandlersLocatorInterface {
+        /**
+        * Returns the handlers for the given message name.
+        *
+        * @return iterable<int, HandlerDescriptor>
+        * @generated
+        */
+        public function getHandlers(\Symfony\Component\Messenger\Envelope $envelope): iterable<int, \Symfony\Component\Messenger\Handler\HandlerDescriptor>;
+    }
+    final class RedispatchMessageHandler {
+        public function __construct(\Symfony\Component\Messenger\MessageBusInterface $bus): void;
+        public function __invoke(\Symfony\Component\Messenger\Message\RedispatchMessage $message): mixed;
+    }
+}
+namespace Symfony\Component\Messenger\Message {
+    interface DefaultStampsProviderInterface {
+        /**
+        * List of stamps which will be automatically added to the envelope,
+        *
+        * if there is no other stamp of the same class already set.
+        *
+        * @return array<\Symfony\Component\Messenger\Stamp\StampInterface>
+        * @generated
+        */
+        public function getDefaultStamps(): array<\Symfony\Component\Messenger\Stamp\StampInterface>;
+    }
+    final class RedispatchMessage implements \Stringable {
+        public readonly object|\Symfony\Component\Messenger\Envelope $envelope;
+        public readonly array|string $transportNames ?? [];
+        /**
+        * @param object|\Symfony\Component\Messenger\Envelope $envelope The message or the message pre-wrapped in an envelope
+        * @param array|string $transportNames Transport names to be used for the message
+        * @generated
+        */
+        public function __construct(object|\Symfony\Component\Messenger\Envelope $envelope, array|string $transportNames = []): void;
+        public function __toString(): string;
+    }
+}
+namespace Symfony\Component\Messenger\Middleware {
+    /**
+    * Execute the inner middleware according to an activation strategy.
+    *
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    class ActivationMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function __construct(\Symfony\Component\Messenger\Middleware\MiddlewareInterface $inner, bool|callable $activated): void;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Adds the BusNameStamp to the bus.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class AddBusNameStampMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function __construct(string $busName): void;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Automatically add stamps from the DefaultStampsProviderInterface.
+    *
+    * @generated
+    */
+    class AddDefaultStampsMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    final class DeduplicateMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function __construct(\Symfony\Component\Lock\LockFactory $lockFactory): void;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Allow to configure messages to be handled after the current bus is finished.
+    *
+    * I.e, messages dispatched from a handler with a DispatchAfterCurrentBus stamp
+    * will actually be handled once the current message being dispatched is fully
+    * handled.
+    * 
+    * For instance, using this middleware before the DoctrineTransactionMiddleware
+    * means sub-dispatched messages with a DispatchAfterCurrentBus stamp would be
+    * handled after the Doctrine transaction has been committed.
+    *
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    class DispatchAfterCurrentBusMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class FailedMessageProcessingMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    class HandleMessageMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        use \Psr\Log\LoggerAwareTrait;
+        public function __construct(\Symfony\Component\Messenger\Handler\HandlersLocatorInterface $handlersLocator, bool $allowNoHandlers = false): void;
+        /**
+        * @throws NoHandlerForMessageException When no handler is found and $allowNoHandlers is false
+        * @generated
+        */
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    interface MiddlewareInterface {
+        /**
+        * @throws ExceptionInterface
+        * @generated
+        */
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Middleware that throws a RejectRedeliveredMessageException when a message is detected that has been redelivered by AMQP.
+    *
+    * The middleware runs before the HandleMessageMiddleware and prevents redelivered messages from being handled directly.
+    * The thrown exception is caught by the worker and will trigger the retry logic according to the retry strategy.
+    * 
+    * AMQP redelivers messages when they do not get acknowledged or rejected. This can happen when the connection times out
+    * or an exception is thrown before acknowledging or rejecting. When such errors happen again while handling the
+    * redelivered message, the message would get redelivered again and again. The purpose of this middleware is to prevent
+    * infinite redelivery loops and to unblock the queue by republishing the redelivered messages as retries with a retry
+    * limit and potential delay.
+    *
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    class RejectRedeliveredMessageMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Restore the Router context when processing the message.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class RouterContextMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function __construct(\Symfony\Component\Routing\RequestContextAwareInterface $router): void;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    class SendMessageMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        use \Psr\Log\LoggerAwareTrait;
+        public function __construct(\Symfony\Component\Messenger\Transport\Sender\SendersLocatorInterface $sendersLocator, ?\Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher = null, bool $allowNoSenders = true): void;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * 
+    * Implementations must be cloneable, and each clone must unstack the stack independently.
+    * @generated
+    */
+    interface StackInterface {
+        /**
+        * Returns the next middleware to process a message.
+        *
+        * @generated
+        */
+        public function next(): \Symfony\Component\Messenger\Middleware\MiddlewareInterface;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class StackMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface, \Symfony\Component\Messenger\Middleware\StackInterface {
+        /**
+        * @param iterable|\Symfony\Component\Messenger\Middleware\MiddlewareInterface|null $middlewareIterator
+        * @generated
+        */
+        public function __construct(iterable|\Symfony\Component\Messenger\Middleware\MiddlewareInterface|null $middlewareIterator = null): void;
+        public function next(): \Symfony\Component\Messenger\Middleware\MiddlewareInterface;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Collects some data about a middleware.
+    *
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    class TraceableMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function __construct(\Symfony\Component\Stopwatch\Stopwatch $stopwatch, string $busName, string $eventCategory = 'messenger.middleware'): void;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    class ValidationMiddleware implements \Symfony\Component\Messenger\Middleware\MiddlewareInterface {
+        public function __construct(\Symfony\Component\Validator\Validator\ValidatorInterface $validator): void;
+        public function handle(\Symfony\Component\Messenger\Envelope $envelope, \Symfony\Component\Messenger\Middleware\StackInterface $stack): \Symfony\Component\Messenger\Envelope;
+    }
+}
+namespace Symfony\Component\Messenger\Retry {
+    /**
+    * A retry strategy with a constant or exponential retry delay.
+    *
+    * For example, if $delayMilliseconds=10000 & $multiplier=1 (default),
+    * each retry will wait exactly 10 seconds.
+    * 
+    * But if $delayMilliseconds=10000 & $multiplier=2:
+    *      * Retry 1: 10 second delay
+    *      * Retry 2: 20 second delay (10000 * 2 = 20000)
+    *      * Retry 3: 40 second delay (20000 * 2 = 40000)
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @final
+    * @generated
+    */
+    class MultiplierRetryStrategy implements \Symfony\Component\Messenger\Retry\RetryStrategyInterface {
+        /**
+        * @param int $maxRetries The maximum number of times to retry
+        * @param int $delayMilliseconds Amount of time to delay (or the initial value when multiplier is used)
+        * @param float $multiplier Multiplier to apply to the delay each time a retry occurs
+        * @param int $maxDelayMilliseconds Maximum delay to allow (0 means no maximum)
+        * @param float $jitter Randomness to apply to the delay (between 0 and 1)
+        * @generated
+        */
+        public function __construct(int $maxRetries = 3, int $delayMilliseconds = 1000, float $multiplier = 1, int $maxDelayMilliseconds = 0, float $jitter = 0.1): void;
+        /**
+        * @param ?\Throwable $throwable The cause of the failed handling
+        * @generated
+        */
+        public function isRetryable(\Symfony\Component\Messenger\Envelope $message, ?\Throwable $throwable = null): bool;
+        /**
+        * @param ?\Throwable $throwable The cause of the failed handling
+        * @generated
+        */
+        public function getWaitingTime(\Symfony\Component\Messenger\Envelope $message, ?\Throwable $throwable = null): int;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface RetryStrategyInterface {
+        /**
+        * @param ?\Throwable $throwable The cause of the failed handling
+        * @generated
+        */
+        public function isRetryable(\Symfony\Component\Messenger\Envelope $message, ?\Throwable $throwable = null): bool;
+        /**
+        * @param ?\Throwable $throwable The cause of the failed handling
+        * @return int The time to delay/wait in milliseconds
+        * @generated
+        */
+        public function getWaitingTime(\Symfony\Component\Messenger\Envelope $message, ?\Throwable $throwable = null): int;
+    }
+}
+namespace Symfony\Component\Messenger\Stamp {
+    /**
+    * Marker stamp for messages that can be ack/nack'ed.
+    *
+    * @generated
+    */
+    final class AckStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        /**
+        * @param \Closure $ack
+        * @generated
+        */
+        public function __construct(\Closure $ack): void;
+        public function ack(\Symfony\Component\Messenger\Envelope $envelope, ?\Throwable $e = null): void;
+    }
+    /**
+    * Stamp used to identify which bus it was passed to.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    final class BusNameStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(string $busName): void;
+        public function getBusName(): string;
+    }
+    /**
+    * A marker that this message was consumed by a worker process.
+    *
+    * @generated
+    */
+    class ConsumedByWorkerStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+    }
+    final class DeduplicateStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(string|\Symfony\Component\Lock\Key $key, ?float $ttl = 300.0, bool $onlyDeduplicateInQueue = false): void;
+        public function onlyDeduplicateInQueue(): bool;
+        public function getKey(): \Symfony\Component\Lock\Key;
+        public function getTtl(): ?float;
+    }
+    /**
+    * Apply this stamp to delay delivery of your message on a transport.
+    *
+    * @generated
+    */
+    final class DelayStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        /**
+        * @param int $delay The delay in milliseconds
+        * @generated
+        */
+        public function __construct(int $delay): void;
+        public function getDelay(): int;
+        public static function delayFor(\DateInterval $interval): self;
+        public static function delayUntil(\DateTimeInterface $dateTime): self;
+    }
+    /**
+    * Marker item to tell this message should be handled in after the current bus has finished.
+    *
+    * @see DispatchAfterCurrentBusMiddleware
+    * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+    * @generated
+    */
+    final class DispatchAfterCurrentBusStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+    }
+    /**
+    * Stamp applied when a messages fails due to an exception in the handler.
+    *
+    * @generated
+    */
+    final class ErrorDetailsStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(string $exceptionClass, int|string $exceptionCode, string $exceptionMessage, ?\Symfony\Component\ErrorHandler\Exception\FlattenException $flattenException = null): void;
+        public static function create(\Throwable $throwable): self;
+        public function getExceptionClass(): string;
+        public function getExceptionCode(): int|string;
+        public function getExceptionMessage(): string;
+        public function getFlattenException(): ?\Symfony\Component\ErrorHandler\Exception\FlattenException;
+        public function equals(?self $that): bool;
+    }
+    /**
+    * Marker telling that any batch handlers bound to the envelope should be flushed.
+    *
+    * @generated
+    */
+    final class FlushBatchHandlersStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        public function __construct(bool $force): void;
+        public function force(): bool;
+    }
+    /**
+    * Stamp identifying a message handled by the `HandleMessageMiddleware` middleware
+    *
+    * and storing the handler returned value.
+    * 
+    * This is used by synchronous command buses expecting a return value and the retry logic
+    * to only execute handlers that didn't succeed.
+    *
+    * @see HandleMessageMiddleware
+    * @see HandleTrait
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    final class HandledStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(mixed $result, string $handlerName): void;
+        public static function fromDescriptor(\Symfony\Component\Messenger\Handler\HandlerDescriptor $handler, mixed $result): self;
+        public function getResult(): mixed;
+        public function getHandlerName(): string;
+    }
+    /**
+    * @author Jáchym Toušek <enumag@gmail.com>
+    * @generated
+    */
+    final class HandlerArgumentsStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        public function __construct(array $additionalArguments): void;
+        public function getAdditionalArguments(): array;
+    }
+    /**
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    class MessageDecodingFailedStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+    }
+    /**
+    * Marker telling that ack should not be done automatically for this message.
+    *
+    * @generated
+    */
+    final class NoAutoAckStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        public function __construct(\Symfony\Component\Messenger\Handler\HandlerDescriptor $handlerDescriptor): void;
+        public function getHandlerDescriptor(): \Symfony\Component\Messenger\Handler\HandlerDescriptor;
+    }
+    /**
+    * A stamp that should not be included with the Envelope if sent to a transport.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface NonSendableStampInterface extends \Symfony\Component\Messenger\Stamp\StampInterface {
+    }
+    /**
+    * Marker stamp for a received message.
+    *
+    * This is mainly used by the `SendMessageMiddleware` middleware to identify
+    * a message should not be sent if it was just received.
+    *
+    * @see SendMessageMiddleware
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    final class ReceivedStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        public function __construct(string $transportName): void;
+        public function getTransportName(): string;
+    }
+    /**
+    * Stamp applied when a messages needs to be redelivered.
+    *
+    * @generated
+    */
+    final class RedeliveryStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(int $retryCount, ?\DateTimeInterface $redeliveredAt = null): void;
+        public static function getRetryCountFromEnvelope(\Symfony\Component\Messenger\Envelope $envelope): int;
+        /**
+        * @var self|null $retryMessageStamp
+        * @generated
+        */
+        public function getRetryCount(): int;
+        public function getRedeliveredAt(): \DateTimeInterface;
+    }
+    /**
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class RouterContextStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(string $baseUrl, string $method, string $host, string $scheme, int $httpPort, int $httpsPort, string $pathInfo, string $queryString): void;
+        public function getBaseUrl(): string;
+        public function getMethod(): string;
+        public function getHost(): string;
+        public function getScheme(): string;
+        public function getHttpPort(): int;
+        public function getHttpsPort(): int;
+        public function getPathInfo(): string;
+        public function getQueryString(): string;
+    }
+    /**
+    * Stamp indicating whether a failed message has been sent for retry.
+    *
+    * @generated
+    */
+    final class SentForRetryStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        public readonly bool $isSent;
+        public function __construct(bool $isSent): void;
+    }
+    /**
+    * Marker stamp identifying a message sent by the `SendMessageMiddleware`.
+    *
+    * @see SendMessageMiddleware
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    final class SentStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        public function __construct(string $senderClass, ?string $senderAlias = null): void;
+        public function getSenderClass(): string;
+        public function getSenderAlias(): ?string;
+    }
+    /**
+    * Stamp applied when a message is sent to the failure transport.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    final class SentToFailureTransportStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(string $originalReceiverName): void;
+        public function getOriginalReceiverName(): string;
+    }
+    final class SerializedMessageStamp implements \Symfony\Component\Messenger\Stamp\NonSendableStampInterface {
+        public function __construct(string $serializedMessage): void;
+        public function getSerializedMessage(): string;
+    }
+    /**
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    final class SerializerStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        public function __construct(array $context): void;
+        public function getContext(): array;
+    }
+    /**
+    * An envelope stamp related to a message.
+    *
+    * Stamps must be serializable value objects for transport.
+    *
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    interface StampInterface {
+    }
+    /**
+    * Added by a sender or receiver to indicate the id of this message in that transport.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    final class TransportMessageIdStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        /**
+        * @param mixed $id some "identifier" of the message in a transport
+        * @generated
+        */
+        public function __construct(mixed $id): void;
+        public function getId(): mixed;
+    }
+    /**
+    * Stamp used to override the transport names specified in the Messenger routing configuration file.
+    *
+    * @generated
+    */
+    final class TransportNamesStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        /**
+        * @param array|string $transportNames Transport names to be used for the message
+        * @generated
+        */
+        public function __construct(array|string $transportNames): void;
+        public function getTransportNames(): array;
+    }
+    /**
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    final class ValidationStamp implements \Symfony\Component\Messenger\Stamp\StampInterface {
+        /**
+        * @param array|\Symfony\Component\Validator\Constraints\GroupSequence $groups
+        * @generated
+        */
+        public function __construct(array|\Symfony\Component\Validator\Constraints\GroupSequence $groups): void;
+        /**
+        * @return array|\Symfony\Component\Validator\Constraints\GroupSequence
+        * @generated
+        */
+        public function getGroups(): array|\Symfony\Component\Validator\Constraints\GroupSequence;
+    }
+}
+namespace Symfony\Component\Messenger\Transport {
+    interface CloseableTransportInterface {
+        public function close(): void;
+    }
+    /**
+    * @author Vincent Touzet <vincent.touzet@gmail.com>
+    * @generated
+    */
+    interface SetupableTransportInterface {
+        /**
+        * Setup the transport.
+        *
+        * @generated
+        */
+        public function setup(): void;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @implements TransportFactoryInterface<TransportInterface>
+    * @generated
+    */
+    class TransportFactory implements \Symfony\Component\Messenger\Transport\TransportFactoryInterface {
+        /**
+        * @param iterable<mixed, TransportFactoryInterface> $factories
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\Messenger\Transport\TransportFactoryInterface> $factories): void;
+        public function createTransport(string $dsn, array $options, \Symfony\Component\Messenger\Transport\Serialization\SerializerInterface $serializer): \Symfony\Component\Messenger\Transport\TransportInterface;
+        public function supports(string $dsn, array $options): bool;
+    }
+    /**
+    * Creates a Messenger transport.
+    *
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @template TTransport of TransportInterface
+    * @generated
+    */
+    interface TransportFactoryInterface<TTransport extends \Symfony\Component\Messenger\Transport\TransportInterface> {
+        /**
+        * @return \Symfony\Component\Messenger\Transport\TransportInterface
+        * @generated
+        */
+        public function createTransport(string $dsn, array $options, \Symfony\Component\Messenger\Transport\Serialization\SerializerInterface $serializer): \Symfony\Component\Messenger\Transport\TransportInterface;
+        public function supports(string $dsn, array $options): bool;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface TransportInterface extends \Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface, \Symfony\Component\Messenger\Transport\Sender\SenderInterface {
+    }
+}
+namespace Symfony\Component\Messenger\Transport\InMemory {
+}
+namespace Symfony\Component\Messenger\Transport\Receiver {
+    interface KeepaliveReceiverInterface extends \Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface {
+        /**
+        * Informs the transport that the message is still being processed to avoid a timeout on the transport's side.
+        *
+        * @param ?int $seconds The minimum duration the message should be kept alive
+        * @throws TransportException If there is an issue communicating with the transport
+        * @generated
+        */
+        public function keepalive(\Symfony\Component\Messenger\Envelope $envelope, ?int $seconds = null): void;
+    }
+    /**
+    * Used when a receiver has the ability to list messages and find specific messages.
+    *
+    * A receiver that implements this should add the TransportMessageIdStamp
+    * to the Envelopes that it returns.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface ListableReceiverInterface extends \Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface {
+        /**
+        * Returns all the messages (up to the limit) in this receiver.
+        *
+        * Messages should be given the same stamps as when using ReceiverInterface::get().
+        *
+        * @return array<int, \Symfony\Component\Messenger\Envelope>|iterable
+        * @generated
+        */
+        public function all(?int $limit = null): array<int, \Symfony\Component\Messenger\Envelope>|iterable;
+        /**
+        * Returns the Envelope by id or none.
+        *
+        * Message should be given the same stamps as when using ReceiverInterface::get().
+        *
+        * @generated
+        */
+        public function find(mixed $id): ?\Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface MessageCountAwareInterface {
+        /**
+        * Returns the number of messages waiting to be handled.
+        *
+        * In some systems, this may be an approximate number.
+        *
+        * @generated
+        */
+        public function getMessageCount(): int;
+    }
+    /**
+    * Some transports may have multiple queues. This interface is used to read from only some queues.
+    *
+    * @author David Buchmann <mail@davidbu.ch>
+    * @generated
+    */
+    interface QueueReceiverInterface extends \Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface {
+        /**
+        * Get messages from the specified queue names instead of consuming from all queues.
+        *
+        * @param array<int, string> $queueNames
+        * @return array<int, \Symfony\Component\Messenger\Envelope>
+        * @generated
+        */
+        public function getFromQueues(array<int, string> $queueNames): array<int, \Symfony\Component\Messenger\Envelope>;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface ReceiverInterface {
+        /**
+        * Receives some messages.
+        *
+        * While this method could return an unlimited number of messages,
+        * the intention is that it returns only one, or a "small number"
+        * of messages each time. This gives the user more flexibility:
+        * they can finish processing the one (or "small number") of messages
+        * from this receiver and move on to check other receivers for messages.
+        * If this method returns too many messages, it could cause a
+        * blocking effect where handling the messages received from one
+        * call to get() takes a long time, blocking other receivers from
+        * being called.
+        * 
+        * If applicable, the Envelope should contain a TransportMessageIdStamp.
+        * 
+        * If a received message cannot be decoded, the message should not
+        * be retried again (e.g. if there's a queue, it should be removed)
+        * and a MessageDecodingFailedException should be thrown.
+        *
+        * @return iterable<\Symfony\Component\Messenger\Envelope>
+        * @throws TransportException If there is an issue communicating with the transport
+        * @generated
+        */
+        public function get(): iterable<\Symfony\Component\Messenger\Envelope>;
+        /**
+        * Acknowledges that the passed message was handled.
+        *
+        * @throws TransportException If there is an issue communicating with the transport
+        * @generated
+        */
+        public function ack(\Symfony\Component\Messenger\Envelope $envelope): void;
+        /**
+        * Called when handling the message failed and it should not be retried.
+        *
+        * @throws TransportException If there is an issue communicating with the transport
+        * @generated
+        */
+        public function reject(\Symfony\Component\Messenger\Envelope $envelope): void;
+    }
+}
+namespace Symfony\Component\Messenger\Transport\Sender {
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    interface SenderInterface {
+        /**
+        * Sends the given envelope.
+        *
+        * The sender can read different stamps for transport configuration,
+        * like delivery delay.
+        * 
+        * If applicable, the returned Envelope should contain a TransportMessageIdStamp.
+        *
+        * @throws ExceptionInterface
+        * @generated
+        */
+        public function send(\Symfony\Component\Messenger\Envelope $envelope): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * Maps a message to a list of senders.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class SendersLocator implements \Symfony\Component\Messenger\Transport\Sender\SendersLocatorInterface {
+        /**
+        * @param array<string, array<int, string>> $sendersMap An array, keyed by "type", set to an array of sender aliases
+        * @param \Psr\Container\ContainerInterface $sendersLocator Locator of senders, keyed by sender alias
+        * @generated
+        */
+        public function __construct(array<string, array<int, string>> $sendersMap, \Psr\Container\ContainerInterface $sendersLocator): void;
+        public function getSenders(\Symfony\Component\Messenger\Envelope $envelope): iterable;
+    }
+    /**
+    * Maps a message to a list of senders.
+    *
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    interface SendersLocatorInterface {
+        /**
+        * Gets the senders for the given message name.
+        *
+        * @return iterable<string, SenderInterface> Indexed by sender alias if available
+        * @generated
+        */
+        public function getSenders(\Symfony\Component\Messenger\Envelope $envelope): iterable<string, \Symfony\Component\Messenger\Transport\Sender\SenderInterface>;
+    }
+}
+namespace Symfony\Component\Messenger\Transport\Serialization {
+    /**
+    * Implemented by serializers that can tell the class of the carried message
+    *
+    * from the encoded envelope, without instantiating the payload.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface MessageTypeAwareSerializerInterface {
+        /**
+        * Returns the FQCN of the message carried by the encoded envelope.
+        *
+        * Implementations MUST determine the class from the encoded metadata only:
+        * they MUST NOT unserialize or otherwise instantiate the payload, and MUST
+        * be side-effect free.
+        * 
+        * Returning null signals that the envelope is not recognizable under these
+        * constraints; consumers may treat such an envelope as untrusted (e.g. refuse
+        * to decode it unless it carries a valid signature). Implementations SHOULD
+        * therefore return the actual class for every well-formed envelope they can
+        * produce, reserving null for malformed or unrecognized input.
+        *
+        * @param array $encodedEnvelope
+        * @return ?string
+        * @generated
+        */
+        public function getMessageType(array $encodedEnvelope): ?string;
+    }
+    /**
+    * @author Ryan Weaver<ryan@symfonycasts.com>
+    * @generated
+    */
+    class PhpSerializer implements \Symfony\Component\Messenger\Transport\Serialization\SerializerInterface, \Symfony\Component\Messenger\Transport\Serialization\MessageTypeAwareSerializerInterface {
+        public function decode(array $encodedEnvelope): \Symfony\Component\Messenger\Envelope;
+        public function getMessageType(array $encodedEnvelope): ?string;
+        public function encode(\Symfony\Component\Messenger\Envelope $envelope): array;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    class Serializer implements \Symfony\Component\Messenger\Transport\Serialization\SerializerInterface, \Symfony\Component\Messenger\Transport\Serialization\MessageTypeAwareSerializerInterface {
+        public const string MESSENGER_SERIALIZATION_CONTEXT ?? 'messenger_serialization';
+        public function __construct(?\Symfony\Component\Serializer\SerializerInterface $serializer = null, string $format = 'json', array $context = []): void;
+        public static function create(): self;
+        public function decode(array $encodedEnvelope): \Symfony\Component\Messenger\Envelope;
+        public function getMessageType(array $encodedEnvelope): ?string;
+        public function encode(\Symfony\Component\Messenger\Envelope $envelope): array;
+    }
+    /**
+    * @author Samuel Roze <samuel.roze@gmail.com>
+    * @generated
+    */
+    interface SerializerInterface {
+        /**
+        * Decodes an envelope and its message from an encoded-form.
+        *
+        * The `$encodedEnvelope` parameter is a key-value array that
+        * describes the envelope and its content, that will be used by the different transports.
+        * 
+        * The most common keys are:
+        * - `body` (string) - the message body
+        * - `headers` (string<string>) - a key/value pair of headers
+        *
+        * @param array $encodedEnvelope
+        * @throws MessageDecodingFailedException
+        * @generated
+        */
+        public function decode(array $encodedEnvelope): \Symfony\Component\Messenger\Envelope;
+        /**
+        * Encodes an envelope content (message & stamps) to a common format understandable by transports.
+        *
+        * The encoded array should only contain scalars and arrays.
+        * 
+        * Stamps that implement NonSendableStampInterface should
+        * not be encoded.
+        * 
+        * The most common keys of the encoded array are:
+        * - `body` (string) - the message body
+        * - `headers` (string<string>) - a key/value pair of headers
+        *
+        * @return array
+        * @generated
+        */
+        public function encode(\Symfony\Component\Messenger\Envelope $envelope): array;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class SigningSerializer implements \Symfony\Component\Messenger\Transport\Serialization\SerializerInterface {
+        /**
+        * @param array<int, string> $signedMessageTypes
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Messenger\Transport\Serialization\SerializerInterface $inner, string|\Stringable $signingKey, array<int, string> $signedMessageTypes, string $algorithm = 'sha256'): void;
+        public function encode(\Symfony\Component\Messenger\Envelope $envelope): array;
+        public function decode(array $encodedEnvelope): \Symfony\Component\Messenger\Envelope;
+    }
+}
+namespace Symfony\Component\Messenger\Transport\Serialization\Normalizer {
+    /**
+    * This normalizer is only used in Debug/Dev/Messenger contexts.
+    *
+    * @author Pascal Luna <skalpa@zetareticuli.org>
+    * @generated
+    */
+    final class FlattenExceptionNormalizer implements \Symfony\Component\Serializer\Normalizer\DenormalizerInterface, \Symfony\Component\Serializer\Normalizer\NormalizerInterface {
+        use \Symfony\Component\Serializer\Normalizer\NormalizerAwareTrait;
+        public function normalize(mixed $data, ?string $format = null, array $context = []): array;
+        public function getSupportedTypes(?string $format): array;
+        public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool;
+        public function denormalize(mixed $data, string $type, ?string $format = null, array $context = []): \Symfony\Component\ErrorHandler\Exception\FlattenException;
+        public function supportsDenormalization(mixed $data, string $type, ?string $format = null, array $context = []): bool;
+    }
+}
+namespace Symfony\Component\Messenger\Transport\Sync {
+    /**
+    * Transport that immediately marks messages as received and dispatches for handling.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class SyncTransport implements \Symfony\Component\Messenger\Transport\TransportInterface {
+        public function __construct(\Symfony\Component\Messenger\MessageBusInterface $messageBus): void;
+        public function get(): iterable;
+        public function ack(\Symfony\Component\Messenger\Envelope $envelope): void;
+        public function reject(\Symfony\Component\Messenger\Envelope $envelope): void;
+        public function send(\Symfony\Component\Messenger\Envelope $envelope): \Symfony\Component\Messenger\Envelope;
+    }
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @implements TransportFactoryInterface<SyncTransport>
+    * @generated
+    */
+    class SyncTransportFactory implements \Symfony\Component\Messenger\Transport\TransportFactoryInterface {
+        public function __construct(\Symfony\Component\Messenger\MessageBusInterface $messageBus): void;
+        public function createTransport(string $dsn, array $options, \Symfony\Component\Messenger\Transport\Serialization\SerializerInterface $serializer): \Symfony\Component\Messenger\Transport\TransportInterface;
+        public function supports(string $dsn, array $options): bool;
+    }
+}

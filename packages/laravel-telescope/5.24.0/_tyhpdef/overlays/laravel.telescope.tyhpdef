@@ -1,0 +1,344 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under `overlays/stubs/`).
+ *
+ * Layer 1 is `Laravel\Telescope\` only. Watchers and IncomingEntry extend
+ * wrapped Illuminate types; no unwrapped-peer omits.
+ */
+
+namespace Laravel\Telescope {
+    /**
+     * Overlay: `EntryResult::jsonSerialize()` keys.
+     */
+    type EntryResultJsonSerializeResult = struct {
+        string $batch_id;
+        array $content;
+        string $created_at;
+        string|null $family_hash;
+        mixed $id;
+        mixed $sequence;
+        array $tags;
+        string $type;
+    };
+
+    /**
+     * Overlay: `EntryUpdate::$tagsChanges` keys.
+     */
+    type EntryUpdateTagsChanges = struct {
+        array $added;
+        array $removed;
+    };
+
+    /**
+     * Overlay: `IncomingEntry::toArray()` keys.
+     */
+    type IncomingEntryToArrayResult = struct {
+        string $batch_id;
+        array $content;
+        string $created_at;
+        string|null $family_hash;
+        string $type;
+        string $uuid;
+    };
+
+    /**
+     * Overlay: `Telescope::scriptVariables()` keys.
+     */
+    type TelescopeScriptVariables = struct {
+        mixed $path;
+        bool $recording;
+        mixed $timezone;
+    };
+
+    // @overlay-against: trait AuthorizesRequests
+    partial trait AuthorizesRequests {
+        /**
+         * Overlay: `check()` invokes the callback with the request.
+         */
+        // @overlay-against: \Closure $authUsing
+        public static ?\Closure<callable(\Illuminate\Http\Request): bool> $authUsing ?? null;
+
+        /**
+         * Overlay: `check()` invokes the callback with the request.
+         */
+        // @overlay-against: function auth(\Closure $callback): static
+        public static function auth(\Closure<callable(\Illuminate\Http\Request): bool> $callback): static;
+    }
+
+    // @overlay-against: class Avatar
+    partial class Avatar {
+        /**
+         * Overlay: `resolve()` invokes the callback with id and email. The method returns null.
+         */
+        // @overlay-against: function register(\Closure $callback): mixed
+        public static function register(\Closure<callable(mixed, mixed): mixed> $callback): null;
+    }
+
+    // @overlay-against: class EntryResult implements \JsonSerializable
+    partial class EntryResult {
+        /**
+         * Overlay: `jsonSerialize()` returns these keys.
+         */
+        // @overlay-against: function jsonSerialize(): array
+        public function jsonSerialize(): EntryResultJsonSerializeResult;
+    }
+
+    // @overlay-against: class EntryUpdate
+    partial class EntryUpdate {
+        /**
+         * Overlay: `tagsChanges` keeps `added` and `removed`.
+         */
+        // @overlay-against: array $tagsChanges
+        public EntryUpdateTagsChanges $tagsChanges ?? [
+            'added' => [],
+            'removed' => [],
+        ];
+    }
+
+    // @overlay-against: class ExceptionContext
+    partial class ExceptionContext {
+        /**
+         * Overlay: eval and file context are line => source text.
+         */
+        // @overlay-against: function get(\Throwable $exception): array
+        public static function get(\Throwable $exception): array<int, string>;
+    }
+
+    // @overlay-against: class ExtractProperties
+    partial class ExtractProperties {
+        /**
+         * Overlay: keys are property names.
+         */
+        // @overlay-against: function from(mixed $target): array
+        public static function from(mixed $target): array<string, mixed>;
+    }
+
+    // @overlay-against: class ExtractTags
+    partial class ExtractTags {
+        /**
+         * Overlay: `fromArray()` maps models through `FormatModel::given()`.
+         */
+        // @overlay-against: function fromArray(array $data): array
+        public static function fromArray(array $data): array<int, string>;
+    }
+
+    // @overlay-against: class IncomingEntry
+    partial class IncomingEntry {
+        /**
+         * Overlay: `toArray()` returns these keys.
+         */
+        // @overlay-against: function toArray(): array
+        public function toArray(): IncomingEntryToArrayResult;
+    }
+
+    // @overlay-against: class Telescope implements \Laravel\Telescope\AuthorizesRequests, \Laravel\Telescope\ExtractsMailableTags, \Laravel\Telescope\ListensForStorageOpportunities, \Laravel\Telescope\RegistersWatchers
+    partial class Telescope {
+        /**
+         * Overlay: `record()` invokes the hook with Telescope and the entry.
+         */
+        // @overlay-against: \Closure $afterRecordingHook
+        public static ?\Closure<callable(\Laravel\Telescope\Telescope, \Laravel\Telescope\IncomingEntry): mixed> $afterRecordingHook ?? null;
+
+        /**
+         * Overlay: hooks are appended. Arity stays open because `ModelWatcher` registers a zero-parameter closure while `store()` passes two arguments.
+         */
+        // @overlay-against: \Closure $afterStoringHooks
+        public static array<int, \Closure> $afterStoringHooks ?? [];
+
+        /**
+         * Overlay: `record()` appends `IncomingEntry` instances.
+         */
+        // @overlay-against: array $entriesQueue
+        public static array<int, \Laravel\Telescope\IncomingEntry> $entriesQueue ?? [];
+
+        /**
+         * Overlay: `store()` invokes each callback with the queued entries collection.
+         */
+        // @overlay-against: array $filterBatchUsing
+        public static array<int, \Closure<callable(\Illuminate\Support\Collection<int, \Laravel\Telescope\IncomingEntry>): mixed>> $filterBatchUsing ?? [];
+
+        /**
+         * Overlay: `record()` invokes each callback with the entry.
+         */
+        // @overlay-against: array $filterUsing
+        public static array<int, \Closure<callable(\Laravel\Telescope\IncomingEntry): mixed>> $filterUsing ?? [];
+
+        /**
+         * Overlay: `hideRequestHeaders()` stores `array_values()`.
+         */
+        // @overlay-against: array $hiddenRequestHeaders
+        public static array<int, mixed> $hiddenRequestHeaders ?? [];
+
+        /**
+         * Overlay: `hideResponseParameters()` stores `array_values()`.
+         */
+        // @overlay-against: array $hiddenResponseParameters
+        public static array<int, mixed> $hiddenResponseParameters ?? [];
+
+        /**
+         * Overlay: `recordUpdate()` appends `EntryUpdate` instances.
+         */
+        // @overlay-against: array $updatesQueue
+        public static array<int, \Laravel\Telescope\EntryUpdate> $updatesQueue ?? [];
+
+        /**
+         * Overlay: `record()` invokes the hook with Telescope and the entry.
+         */
+        // @overlay-against: function afterRecording(\Closure $callback): static
+        public static function afterRecording(\Closure<callable(\Laravel\Telescope\Telescope, \Laravel\Telescope\IncomingEntry): mixed> $callback): static;
+
+        /**
+         * Overlay: `Avatar::resolve()` invokes the callback with id and email.
+         */
+        // @overlay-against: function avatar(\Closure $callback): static
+        public static function avatar(\Closure<callable(mixed, mixed): mixed> $callback): static;
+
+        /**
+         * Overlay: `record()` invokes each callback with the entry.
+         */
+        // @overlay-against: function filter(\Closure $callback): static
+        public static function filter(\Closure<callable(\Laravel\Telescope\IncomingEntry): mixed> $callback): static;
+
+        /**
+         * Overlay: `store()` invokes each callback with the queued entries collection.
+         */
+        // @overlay-against: function filterBatch(\Closure $callback): static
+        public static function filterBatch(\Closure<callable(\Illuminate\Support\Collection<int, \Laravel\Telescope\IncomingEntry>): mixed> $callback): static;
+
+        /**
+         * Overlay: `scriptVariables()` returns these keys.
+         */
+        // @overlay-against: function scriptVariables(): array
+        public static function scriptVariables(): TelescopeScriptVariables;
+
+        /**
+         * Overlay: `record()` invokes each callback with the entry. `Arr::collapse()` keeps array and Collection results.
+         */
+        // @overlay-against: function tag(\Closure $callback): static
+        public static function tag(\Closure<callable(\Laravel\Telescope\IncomingEntry): mixed> $callback): static;
+
+        /**
+         * Overlay: `withoutRecording()` invokes the callback with no arguments.
+         */
+        // @overlay-against: function withoutRecording(callable $callback): mixed
+        public static function withoutRecording(callable(): mixed $callback): mixed;
+    }
+}
+
+namespace Laravel\Telescope\Contracts {
+    // @overlay-against: interface EntriesRepository
+    partial interface EntriesRepository {
+        /**
+         * Overlay: `DatabaseEntriesRepository::monitoring()` is the only implementation and returns `pluck('tag')->all()`.
+         */
+        // @overlay-against: function monitoring(): array
+        public function monitoring(): array<int, mixed>;
+    }
+}
+
+namespace Laravel\Telescope\Database\Factories {
+    /**
+     * Overlay: `EntryModelFactory::definition()` keys.
+     */
+    type EntryModelFactoryDefinitionResult = struct {
+        string $batch_id;
+        array<string, string> $content;
+        int $sequence;
+        mixed $type;
+        string $uuid;
+    };
+
+    // @overlay-against: class EntryModelFactory extends \Illuminate\Database\Eloquent\Factories\Factory
+    partial class EntryModelFactory {
+        /**
+         * Overlay: `definition()` returns these keys.
+         */
+        // @overlay-against: function definition(): mixed
+        public function definition(): EntryModelFactoryDefinitionResult;
+    }
+}
+
+namespace Laravel\Telescope\Http\Controllers {
+    // @overlay-against: class MailEmlController extends \Illuminate\Routing\Controller
+    partial class MailEmlController {
+        /**
+         * Overlay: `show()` returns `response()`.
+         */
+        // @overlay-against: function show(\Laravel\Telescope\Contracts\EntriesRepository $storage, int $id): mixed
+        public function show(\Laravel\Telescope\Contracts\EntriesRepository $storage, int $id): \Illuminate\Http\Response;
+    }
+}
+
+namespace Laravel\Telescope\Http\Middleware {
+    // @overlay-against: class Authorize
+    partial class Authorize {
+        /**
+         * Overlay: `handle()` calls `$next($request)` and returns that response.
+         */
+        // @overlay-against: function handle(\Illuminate\Http\Request $request, \Closure $next): \Illuminate\Http\Response
+        public function handle(\Illuminate\Http\Request $request, \Closure<callable(\Illuminate\Http\Request): \Illuminate\Http\Response> $next): \Illuminate\Http\Response;
+    }
+}
+
+namespace Laravel\Telescope\Jobs {
+    // @overlay-against: class ProcessPendingUpdates implements \Illuminate\Contracts\Queue\ShouldQueue, \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels
+    partial class ProcessPendingUpdates {
+        /**
+         * Overlay: `handle()` forwards the collection to `EntriesRepository::update()`, whose failed rows are `EntryUpdate` values appended with `[]`.
+         */
+        // @overlay-against: function __construct(mixed $pendingUpdates, int $attempt): void
+        public function __construct(\Illuminate\Support\Collection<int, \Laravel\Telescope\EntryUpdate> $pendingUpdates, int $attempt = 0): void;
+    }
+}
+
+namespace Laravel\Telescope\Storage {
+    /**
+     * Overlay: documented array shape.
+     */
+    type DatabaseEntriesRepositoryInsertChunkOfTagsTags = struct {
+        string $entry_uuid;
+        string $tag;
+    };
+
+    // @overlay-against: class DatabaseEntriesRepository implements \Laravel\Telescope\Contracts\EntriesRepository, \Laravel\Telescope\Contracts\ClearableRepository, \Laravel\Telescope\Contracts\PrunableRepository, \Laravel\Telescope\Contracts\TerminableRepository
+    partial class DatabaseEntriesRepository {
+        /**
+         * Overlay: `DatabaseEntriesRepository::insertChunkOfTags()` uses the documented types.
+         */
+        // @overlay-against: function insertChunkOfTags(array $tags): void
+        protected function insertChunkOfTags(array<int, DatabaseEntriesRepositoryInsertChunkOfTagsTags> $tags): void;
+
+        /**
+         * Overlay: `DatabaseEntriesRepository::storeTags()` uses the documented types.
+         */
+        // @overlay-against: function storeTags(\Illuminate\Support\Collection $results): void
+        protected function storeTags(\Illuminate\Support\Collection<string, array<int|string, mixed>> $results): void;
+
+        /**
+         * Overlay: `monitoring()` returns `pluck('tag')->all()`.
+         */
+        // @overlay-against: function monitoring(): array
+        public function monitoring(): array<int, mixed>;
+    }
+}
+
+namespace Laravel\Telescope\Watchers {
+    // @overlay-against: class JobWatcher extends \Laravel\Telescope\Watchers\Watcher
+    partial class JobWatcher {
+        /**
+         * Overlay: `JobWatcher::$ignoredJobClasses` uses the documented type.
+         */
+        // @overlay-against: array $ignoredJobClasses
+        protected array<int, __ClassName> $ignoredJobClasses ?? [];
+    }
+
+    // @overlay-against: class ModelWatcher extends \Laravel\Telescope\Watchers\Watcher
+    partial class ModelWatcher {
+        /**
+         * Overlay: hydration counts are stored by model class name.
+         */
+        // @overlay-against: array $hydrationEntries
+        public array<string, \Laravel\Telescope\IncomingEntry> $hydrationEntries ?? [];
+    }
+}

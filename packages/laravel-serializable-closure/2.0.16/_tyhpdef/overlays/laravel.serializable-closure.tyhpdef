@@ -1,0 +1,171 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * HMAC signature maps from the PHP source.
+ */
+
+namespace Laravel\SerializableClosure\Contracts {
+    /**
+     * HMAC payload: serialized closure plus hash.
+     */
+    type ClosureSignature = struct {
+        string $serializable;
+        string $hash;
+    };
+
+    /**
+     * Overlay: `sign()` / `verify()` use `{serializable, hash}`.
+     */
+    // @overlay-against: interface Signer
+    partial interface Signer {
+        // @overlay-against: function sign(string $serializable): array
+        public function sign(string $serializable): \Laravel\SerializableClosure\Contracts\ClosureSignature;
+
+        /**
+         * @param \Laravel\SerializableClosure\Contracts\ClosureSignature $signature
+         */
+        // @overlay-against: function verify(array $signature): bool
+        public function verify(\Laravel\SerializableClosure\Contracts\ClosureSignature $signature): bool;
+    }
+}
+
+namespace Laravel\SerializableClosure\Signers {
+    /**
+     * Overlay: HMAC `sign()` / `verify()` use the signature struct.
+     */
+    // @overlay-against: class Hmac implements \Laravel\SerializableClosure\Contracts\Signer
+    partial class Hmac {
+        // @overlay-against: function sign(string $serialized): array
+        public function sign(string $serialized): \Laravel\SerializableClosure\Contracts\ClosureSignature;
+
+        /**
+         * @param \Laravel\SerializableClosure\Contracts\ClosureSignature $signature
+         */
+        // @overlay-against: function verify(array $signature): bool
+        public function verify(\Laravel\SerializableClosure\Contracts\ClosureSignature $signature): bool;
+    }
+}
+
+namespace Laravel\SerializableClosure {
+    /**
+     * Overlay: serialize payload is a string-keyed map.
+     */
+    // @overlay-against: class SerializableClosure
+    partial class SerializableClosure {
+        /**
+         * @return array<string, mixed>
+         */
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): array<string, mixed>;
+
+        /**
+         * @param array<string, mixed> $data
+         */
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(array<string, mixed> $data): void;
+
+        // @overlay-against: function transformUseVariablesUsing(\Closure|null $transformer): void
+        public static function transformUseVariablesUsing(\Closure<callable(array<string, mixed>): array<string, mixed>>|null $transformer): void;
+
+        // @overlay-against: function resolveUseVariablesUsing(\Closure|null $resolver): void
+        public static function resolveUseVariablesUsing(\Closure<callable(array<string, mixed>): array<string, mixed>>|null $resolver): void;
+    }
+
+    /**
+     * Overlay: documented array shape.
+     */
+    type UnsignedSerializableClosure__serializeResult = struct {
+        \Laravel\SerializableClosure\Contracts\Serializable $serializable;
+    };
+
+    /**
+     * Overlay: documented array shape.
+     */
+    type UnsignedSerializableClosure__unserializeData = struct {
+        \Laravel\SerializableClosure\Contracts\Serializable $serializable;
+    };
+
+    // @overlay-against: class UnsignedSerializableClosure
+    partial class UnsignedSerializableClosure {
+        /**
+         * Overlay: `UnsignedSerializableClosure::__serialize()` uses the documented types.
+         */
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): UnsignedSerializableClosure__serializeResult;
+
+        /**
+         * Overlay: `UnsignedSerializableClosure::__unserialize()` uses the documented types.
+         */
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(UnsignedSerializableClosure__unserializeData $data): void;
+    }
+}
+
+namespace Laravel\SerializableClosure\Serializers {
+    /**
+     * Payload `Native::__serialize()` writes and `Native::__unserialize()` reads.
+     * `scope` and `this` may be null.
+     */
+    type Native__serializeResult = struct {
+        array<string, mixed> 'use' as $use;
+        string 'function' as $function;
+        string|null $scope;
+        object|null 'this' as $boundThis;
+        string 'self' as $self;
+    };
+
+    /**
+     * Same key set as `Native__serializeResult`.
+     */
+    type Native__unserializeData = struct {
+        array<string, mixed> 'use' as $use;
+        string 'function' as $function;
+        string|null $scope;
+        object|null 'this' as $boundThis;
+        string 'self' as $self;
+    };
+
+    /**
+     * Overlay: documented array shape.
+     */
+    type Signed__unserializeSignature = struct {
+        string $hash;
+        string $serializable;
+    };
+
+    // @overlay-against: class Native implements \Laravel\SerializableClosure\Contracts\Serializable
+    partial class Native {
+        // @overlay-against: \Closure|null $transformUseVariables
+        public static \Closure<callable(array<string, mixed>): array<string, mixed>>|null $transformUseVariables;
+
+        // @overlay-against: \Closure|null $resolveUseVariables
+        public static \Closure<callable(array<string, mixed>): array<string, mixed>>|null $resolveUseVariables;
+
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): Native__serializeResult;
+
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(Native__unserializeData $data): void;
+    }
+
+    // @overlay-against: class Signed implements \Laravel\SerializableClosure\Contracts\Serializable
+    partial class Signed {
+        /**
+         * Overlay: `Signed::__unserialize()` uses the documented types.
+         */
+        // @overlay-against: function __unserialize(array $signature): void
+        public function __unserialize(Signed__unserializeSignature $signature): void;
+
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Laravel\SerializableClosure\Contracts\ClosureSignature;
+    }
+}
+
+namespace Laravel\SerializableClosure\Support {
+    // @overlay-against: class ReflectionClosure extends \ReflectionFunction
+    partial class ReflectionClosure {
+        // @overlay-against: function getUseVariables(): array
+        public function getUseVariables(): array<string, mixed>;
+    }
+}

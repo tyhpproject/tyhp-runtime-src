@@ -1,0 +1,178 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Request option maps, 1xx tuples, JSON arrays, and `getInfo()` key overloads from PHPDoc.
+ */
+
+namespace Symfony\Contracts\HttpClient {
+    /**
+     * Header map from `ResponseInterface::getHeaders()`: lowercase name => list of values.
+     */
+    type HeaderMap = array<string, array<int, string>>;
+
+    /**
+     * Request options for `request()` / `withOptions()`.
+     * Keys are the `OPTIONS_DEFAULTS` names. A partial array literal is the call shape, so the parameter stays a string-keyed map.
+     */
+    type HttpClientOptions = array<string, mixed>;
+
+    /**
+     * JSON-decoded `toArray()` payload. Harvest left bare `array`.
+     */
+    type JsonArray = array<int|string, mixed>;
+
+    /**
+     * 1xx `[status code, headers]` tuple from `ChunkInterface::getInformationalStatus()`.
+     * Harvest left `?array`; PHPDoc describes the pair, not a `@phpstan-type`.
+     */
+    type InformationalStatus = struct {
+        int 0 as $statusCode;
+        \Symfony\Contracts\HttpClient\HeaderMap 1 as $headers;
+    };
+
+    /**
+     * Overlay: harvest `getInformationalStatus(): ?array`; PHPDoc is a `[status, headers]` pair.
+     */
+    // @overlay-against: interface ChunkInterface
+    partial interface ChunkInterface {
+        /**
+         * @return \Symfony\Contracts\HttpClient\InformationalStatus|null `[status, headers]` when a 1xx arrived.
+         */
+        // @overlay-against: function getInformationalStatus(): ?array
+        public function getInformationalStatus(): ?\Symfony\Contracts\HttpClient\InformationalStatus;
+    }
+
+    /**
+     * Overlay: harvest left bare `array $options` and untyped `iterable $responses`.
+     */
+    // @overlay-against: interface HttpClientInterface
+    partial interface HttpClientInterface {
+        /**
+         * Default option map. Same shape as `request()` / `withOptions()` (`HttpClientOptions`).
+         */
+        // @overlay-against: const array OPTIONS_DEFAULTS
+        public const \Symfony\Contracts\HttpClient\HttpClientOptions OPTIONS_DEFAULTS ?? [];
+
+        /**
+         * @param string $method HTTP method token.
+         * @param string $url Request URL.
+         * @param \Symfony\Contracts\HttpClient\HttpClientOptions $options Request options.
+         * @throws \Exception\TransportExceptionInterface When an unsupported option is passed
+         */
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        /**
+         * @param \Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses One or more responses created by the current HTTP client.
+         * @param ?float $timeout The idle timeout before yielding timeout chunks.
+         */
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+
+        /**
+         * @param \Symfony\Contracts\HttpClient\HttpClientOptions $options New default options.
+         */
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: harvest `toArray(): array` and `getInfo(?string $type = null): mixed`.
+     * Literal-key overloads match the MUST list in `ResponseInterface` PHPDoc.
+     */
+    // @overlay-against: interface ResponseInterface
+    partial interface ResponseInterface {
+        /**
+         * @return \Symfony\Contracts\HttpClient\JsonArray Decoded JSON payload.
+         */
+        // @overlay-against: function toArray(bool $throw): array
+        public function toArray(bool $throw = true): \Symfony\Contracts\HttpClient\JsonArray;
+
+        /**
+         * @return array<string, mixed> All available info keys.
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo(null $type = null): array<string, mixed>;
+
+        /**
+         * @param 'canceled' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('canceled' $type): bool;
+
+        /**
+         * @param 'error' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('error' $type): ?string;
+
+        /**
+         * @param 'http_code' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('http_code' $type): int;
+
+        /**
+         * @param 'http_method' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('http_method' $type): string;
+
+        /**
+         * @param 'peer_certificate_chain' $type
+         * @return array<int|string, resource>
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('peer_certificate_chain' $type): array<int|string, resource>;
+
+        /**
+         * @param 'redirect_count' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('redirect_count' $type): int;
+
+        /**
+         * @param 'redirect_url' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('redirect_url' $type): ?string;
+
+        /**
+         * @param 'response_headers' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('response_headers' $type): array<int, string>;
+
+        /**
+         * @param 'start_time' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('start_time' $type): float;
+
+        /**
+         * @param 'url' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('url' $type): string;
+
+        /**
+         * @param 'user_data' $type
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo('user_data' $type): mixed;
+
+        /**
+         * @param string $type Info key, including curl_getinfo()-named extras.
+         * @return mixed One info value, or null when an unsupported type is requested.
+         */
+        // @overlay-against: function getInfo(?string $type): mixed
+        public function getInfo(string $type): mixed;
+    }
+
+    /**
+     * PHPDoc `@extends \Iterator<ResponseInterface, ChunkInterface>`.
+     */
+    // @overlay-against: interface ResponseStreamInterface
+    partial interface ResponseStreamInterface extends \Iterator<\Symfony\Contracts\HttpClient\ResponseInterface, \Symfony\Contracts\HttpClient\ChunkInterface>;
+}

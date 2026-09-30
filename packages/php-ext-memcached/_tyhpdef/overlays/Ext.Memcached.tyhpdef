@@ -1,0 +1,84 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * getMulti map, server-list structs, get/getDelayed callbacks.
+ */
+
+/**
+ * Overlay: one `Memcached::fetch()` / `fetchAll()` row from `getDelayed()`.
+ */
+type MemcachedFetchedValue = struct {
+    string $key;
+    mixed $value;
+    float|int|string|null $cas;
+};
+
+/**
+ * Overlay: `Memcached::getServerList()` / `getServerByKey()` server record.
+ * Manual example uses `weight`; some builds also expose `type`.
+ */
+type MemcachedServer = struct {
+    string $host;
+    int $port;
+    ?int $weight;
+    ?string $type;
+};
+
+/**
+ * Overlay: `Memcached::addServers()` `[host, port, weight?]` row.
+ */
+type MemcachedServerSpec = struct {
+    string 0 as $host;
+    int 1 as $port;
+    ?int 2 as $weight;
+};
+
+type MemcachedCacheCallback = callable(\Memcached, string, mixed): bool;
+type MemcachedPersistentCallback = callable(\Memcached, string): void;
+type MemcachedValueCallback = callable(\Memcached, array<string, mixed>): void;
+
+// @overlay-against: class Memcached
+partial class Memcached {
+    // @overlay-against: function __construct(string $persistent_id, mixed $on_new_object_cb, string $connection_str)
+    public function __construct(string $persistent_id = "", ?MemcachedPersistentCallback $on_new_object_cb = null, string $connection_str = "");
+    // @overlay-against: function addServers(array $servers): bool
+    public function addServers(array<int, MemcachedServerSpec> $servers): bool;
+    // @overlay-against: function deleteMulti(array $keys, int $time): array
+    public function deleteMulti(array<int, string> $keys, int $time = 0): array<string, bool|int>;
+    // @overlay-against: function deleteMultiByKey(string $server_key, array $keys, int $time): array
+    public function deleteMultiByKey(string $server_key, array<int, string> $keys, int $time = 0): array<string, bool|int>;
+    // @overlay-against: function fetch(): array|false
+    public function fetch(): MemcachedFetchedValue|false;
+    // @overlay-against: function fetchAll(): array|false
+    public function fetchAll(): array<int, MemcachedFetchedValue>|false;
+    // @overlay-against: function get(string $key, ?callable $cache_cb, int $flags): mixed
+    public function get(string $key, ?MemcachedCacheCallback $cache_cb = null, int $flags = 0): mixed;
+    // @overlay-against: function getAllKeys(): array|false
+    public function getAllKeys(): array<int, string>|false;
+    // @overlay-against: function getByKey(string $server_key, string $key, ?callable $cache_cb, int $flags): mixed
+    public function getByKey(string $server_key, string $key, ?MemcachedCacheCallback $cache_cb = null, int $flags = 0): mixed;
+    // @overlay-against: function getDelayed(array $keys, bool $with_cas, ?callable $value_cb): bool
+    public function getDelayed(array<int, string> $keys, bool $with_cas = false, ?MemcachedValueCallback $value_cb = null): bool;
+    // @overlay-against: function getDelayedByKey(string $server_key, array $keys, bool $with_cas, ?callable $value_cb): bool
+    public function getDelayedByKey(string $server_key, array<int, string> $keys, bool $with_cas = false, ?MemcachedValueCallback $value_cb = null): bool;
+    // @overlay-against: function getLastDisconnectedServer(): array|false
+    public function getLastDisconnectedServer(): MemcachedServer|false;
+    // @overlay-against: function getMulti(array $keys, int $flags): array|false
+    public function getMulti(array<int, string> $keys, int $flags = 0): array<string, mixed>|false;
+    // @overlay-against: function getMultiByKey(string $server_key, array $keys, int $flags): array|false
+    public function getMultiByKey(string $server_key, array<int, string> $keys, int $flags = 0): array<string, mixed>|false;
+    // @overlay-against: function getServerByKey(string $server_key): array|false
+    public function getServerByKey(string $server_key): MemcachedServer|false;
+    // @overlay-against: function getServerList(): array
+    public function getServerList(): array<int, MemcachedServer>;
+    // @overlay-against: function getStats(?string $type): array|false
+    public function getStats(?string $type = null): array<string, array<string, string>>|false;
+    // @overlay-against: function getVersion(): array|false
+    public function getVersion(): array<string, string>|false;
+    // @overlay-against: function setMulti(array $items, int $expiration): bool
+    public function setMulti(array<string, mixed> $items, int $expiration = 0): bool;
+    // @overlay-against: function setMultiByKey(string $server_key, array $items, int $expiration): bool
+    public function setMultiByKey(string $server_key, array<string, mixed> $items, int $expiration = 0): bool;
+}

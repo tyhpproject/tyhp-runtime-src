@@ -1,0 +1,2862 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Behat\Gherkin {
+    type LexerTStepKeyword = string;
+    type LexerTTitleKeyword = string;
+    type LexerTTokenType = string|\Behat\Gherkin\LexerTTitleKeyword;
+    type LexerTToken = \Behat\Gherkin\LexerTStringValueToken|\Behat\Gherkin\LexerTNullValueToken|\Behat\Gherkin\LexerTTitleToken|\Behat\Gherkin\LexerTStepToken|\Behat\Gherkin\LexerTTagToken|\Behat\Gherkin\LexerTTableRowToken;
+    type LexerTDocStringSeparator = string;
+    type ParserTParsedExpressionResult = \Behat\Gherkin\Node\FeatureNode|\Behat\Gherkin\Node\BackgroundNode|\Behat\Gherkin\Node\ScenarioNode|\Behat\Gherkin\Node\OutlineNode|\Behat\Gherkin\Node\ExampleTableNode|\Behat\Gherkin\Node\TableNode|\Behat\Gherkin\Node\PyStringNode|\Behat\Gherkin\Node\StepNode|string;
+    /**
+    * Gherkin manager.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class Gherkin {
+        /**
+        * @deprecated this constant will not be updated for releases after 4.8.0 and will be removed in the next major.
+        * You can use composer's runtime API to get the behat version if you need it. Note that composer's versions will
+        * not always be simple numeric values.
+        * @generated
+        */
+        deprecated public const string VERSION ?? '4.8.0';
+        /**
+        * @var array<int, \Behat\Gherkin\Loader\LoaderInterface<mixed>>
+        * @generated
+        */
+        protected array<int, \Behat\Gherkin\Loader\LoaderInterface<mixed>> $loaders ?? [];
+        /**
+        * @var array<int, \Behat\Gherkin\Filter\FeatureFilterInterface>
+        * @generated
+        */
+        protected array<int, \Behat\Gherkin\Filter\FeatureFilterInterface> $filters ?? [];
+        /**
+        * Adds loader to manager.
+        *
+        * @param \Behat\Gherkin\Loader\LoaderInterface $loader Feature loader
+        * @return void
+        * @generated
+        */
+        public function addLoader(\Behat\Gherkin\Loader\LoaderInterface $loader): void;
+        /**
+        * Adds filter to manager.
+        *
+        * @param \Behat\Gherkin\Filter\FeatureFilterInterface $filter Feature filter
+        * @return void
+        * @generated
+        */
+        public function addFilter(\Behat\Gherkin\Filter\FeatureFilterInterface $filter): void;
+        /**
+        * Sets filters to the parser.
+        *
+        * @param array<mixed, \Behat\Gherkin\Filter\FeatureFilterInterface> $filters
+        * @return void
+        * @generated
+        */
+        public function setFilters(array<mixed, \Behat\Gherkin\Filter\FeatureFilterInterface> $filters): void;
+        /**
+        * Sets base features path.
+        *
+        * @param string $path Loaders base path
+        * @return void
+        * @generated
+        */
+        public function setBasePath(string $path): void;
+        /**
+        * Loads & filters resource with added loaders.
+        *
+        * @param mixed $resource Resource to load
+        * @param array<mixed, \Behat\Gherkin\Filter\FeatureFilterInterface> $filters Additional filters
+        * @return array<int, \Behat\Gherkin\Node\FeatureNode>
+        * @generated
+        */
+        public function load(mixed $resource, array<mixed, \Behat\Gherkin\Filter\FeatureFilterInterface> $filters = []): array<int, \Behat\Gherkin\Node\FeatureNode>;
+        /**
+        * Resolves loader by resource.
+        *
+        * @template TResourceType
+        * @param TResourceType $resource Resource to load
+        * @return \Behat\Gherkin\Loader\LoaderInterface<TResourceType>|null
+        * @generated
+        */
+        public function resolveLoader<TResourceType>(TResourceType $resource): \Behat\Gherkin\Loader\LoaderInterface<TResourceType>|null;
+    }
+    enum GherkinCompatibilityMode: string {
+        case LEGACY = 'legacy';
+        /**
+        * Note: The gherkin-32 parsing mode is not yet complete, and further behaviour changes are expected.
+        *
+        * @see https://github.com/Behat/Gherkin/issues?q=is%3Aissue%20state%3Aopen%20label%3Acucumber-parity
+        */
+        case GHERKIN_32 = 'gherkin-32';
+    }
+    type LexerTStringValueToken = struct {
+        \Behat\Gherkin\LexerTTokenType $type;
+        string $value;
+        int $line;
+        bool $deferred;
+    };
+    type LexerTNullValueToken = struct {
+        \Behat\Gherkin\LexerTTokenType $type;
+        null $value;
+        int $line;
+        bool $deferred;
+    };
+    type LexerTTitleToken = struct {
+        \Behat\Gherkin\LexerTTitleKeyword $type;
+        mixed $value;
+        int $line;
+        bool $deferred;
+        string $keyword;
+        int $indent;
+    };
+    type LexerTStepToken = struct {
+        string $type;
+        string $value;
+        int $line;
+        bool $deferred;
+        string $keyword_type;
+        string $text;
+        string $fullText;
+    };
+    type LexerTTagToken = struct {
+        string $type;
+        null $value;
+        int $line;
+        bool $deferred;
+        array<int, string> $tags;
+    };
+    type LexerTTableRowToken = struct {
+        string $type;
+        null $value;
+        int $line;
+        bool $deferred;
+        array<int, string> $columns;
+    };
+    /**
+    * Gherkin lexer.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class Lexer {
+        public function __construct(\Behat\Gherkin\Dialect\DialectProviderInterface|\Behat\Gherkin\Keywords\KeywordsInterface $dialectProvider): void;
+        /**
+        * Sets lexer input.
+        *
+        * @param string $input Input string
+        * @param string $language Language name
+        * @return void
+        * @throws LexerException
+        * @generated
+        */
+        public function analyse(string $input, string $language = 'en'): void;
+        /**
+        * Returns current lexer language.
+        *
+        * @return string
+        * @generated
+        */
+        public function getLanguage(): string;
+        /**
+        * Returns next token or previously stashed one.
+        *
+        * @return LexerTToken
+        * @generated
+        */
+        public function getAdvancedToken(): \Behat\Gherkin\LexerTToken;
+        /**
+        * Defers token.
+        *
+        * @return void
+        * @generated
+        */
+        public function deferToken(\Behat\Gherkin\LexerTToken $token): void;
+        /**
+        * Predicts the upcoming token without passing over it.
+        *
+        * @return LexerTToken
+        * @generated
+        */
+        public function predictToken(): \Behat\Gherkin\LexerTToken;
+        /**
+        * Skips over the currently-predicted token, if any.
+        *
+        * @return void
+        * @generated
+        */
+        public function skipPredictedToken(): void;
+        /**
+        * Constructs a token with specified parameters.
+        *
+        * @template T of TTokenType
+        * @param ?string $value Token value
+        * @return mixed
+        * @generated
+        */
+        public function takeToken<T extends \Behat\Gherkin\TTokenType>(string $type, ?string $value = null): mixed;
+        /**
+        * Consumes line from input & increments line counter.
+        *
+        * @return void
+        * @generated
+        */
+        protected function consumeLine(): void;
+        /**
+        * Consumes first part of line from input without incrementing the line number.
+        *
+        * @return void
+        * @generated
+        */
+        protected function consumeLineUntil(int $trimmedOffset): void;
+        /**
+        * Returns trimmed version of line.
+        *
+        * @return string
+        * @generated
+        */
+        protected function getTrimmedLine(): string;
+        /**
+        * Returns stashed token or null if there isn't one.
+        *
+        * @return LexerTToken|null
+        * @generated
+        */
+        protected function getStashedToken(): \Behat\Gherkin\LexerTToken|null;
+        /**
+        * Returns deferred token or null if there isn't one.
+        *
+        * @return LexerTToken|null
+        * @generated
+        */
+        protected function getDeferredToken(): \Behat\Gherkin\LexerTToken|null;
+        /**
+        * Returns next token from input.
+        *
+        * @return LexerTToken
+        * @generated
+        */
+        protected function getNextToken(): \Behat\Gherkin\LexerTToken;
+        /**
+        * Scans for token with specified regex.
+        *
+        * @param string $regex Regular expression
+        * @return LexerTStringValueToken|null
+        * @generated
+        */
+        protected function scanInput(string $regex, string $type): \Behat\Gherkin\LexerTStringValueToken|null;
+        /**
+        * Scans for token with specified keywords.
+        *
+        * @param string $keywords Keywords (separated by "|")
+        * @return LexerTTitleToken|null
+        * @deprecated
+        * @generated
+        */
+        deprecated protected function scanInputForKeywords(string $keywords, string $type): \Behat\Gherkin\LexerTTitleToken|null;
+        /**
+        * Scans EOS from input & returns it if found.
+        *
+        * @return LexerTNullValueToken|null
+        * @generated
+        */
+        protected function scanEOS(): \Behat\Gherkin\LexerTNullValueToken|null;
+        /**
+        * Returns a regex matching the keywords for the provided type.
+        *
+        * @return string
+        * @deprecated
+        * @generated
+        */
+        deprecated protected function getKeywords(string $type): string;
+        /**
+        * Scans Feature from input & returns it if found.
+        *
+        * @return LexerTTitleToken|null
+        * @generated
+        */
+        protected function scanFeature(): \Behat\Gherkin\LexerTTitleToken|null;
+        /**
+        * Scans Background from input & returns it if found.
+        *
+        * @return LexerTTitleToken|null
+        * @generated
+        */
+        protected function scanBackground(): \Behat\Gherkin\LexerTTitleToken|null;
+        /**
+        * Scans Scenario from input & returns it if found.
+        *
+        * @return LexerTTitleToken|null
+        * @generated
+        */
+        protected function scanScenario(): \Behat\Gherkin\LexerTTitleToken|null;
+        /**
+        * Scans Scenario Outline from input & returns it if found.
+        *
+        * @return LexerTTitleToken|null
+        * @generated
+        */
+        protected function scanOutline(): \Behat\Gherkin\LexerTTitleToken|null;
+        /**
+        * Scans Scenario Outline Examples from input & returns it if found.
+        *
+        * @return LexerTTitleToken|null
+        * @generated
+        */
+        protected function scanExamples(): \Behat\Gherkin\LexerTTitleToken|null;
+        /**
+        * Scans Step from input & returns it if found.
+        *
+        * @return LexerTStepToken|null
+        * @generated
+        */
+        protected function scanStep(): \Behat\Gherkin\LexerTStepToken|null;
+        /**
+        * Scans PyString from input & returns it if found.
+        *
+        * @return LexerTNullValueToken|null
+        * @generated
+        */
+        protected function scanPyStringOp(): \Behat\Gherkin\LexerTNullValueToken|null;
+        /**
+        * Scans PyString content.
+        *
+        * @return LexerTStringValueToken|null
+        * @generated
+        */
+        protected function scanPyStringContent(): \Behat\Gherkin\LexerTStringValueToken|null;
+        /**
+        * Scans Table Row from input & returns it if found.
+        *
+        * @return LexerTTableRowToken|null
+        * @generated
+        */
+        protected function scanTableRow(): \Behat\Gherkin\LexerTTableRowToken|null;
+        /**
+        * Scans Tags from input & returns it if found.
+        *
+        * @return LexerTTagToken|null
+        * @generated
+        */
+        protected function scanTags(): \Behat\Gherkin\LexerTTagToken|null;
+        /**
+        * Scans Language specifier from input & returns it if found.
+        *
+        * @return LexerTStringValueToken|null
+        * @generated
+        */
+        protected function scanLanguage(): \Behat\Gherkin\LexerTStringValueToken|null;
+        /**
+        * Scans Comment from input & returns it if found.
+        *
+        * @return LexerTStringValueToken|null
+        * @generated
+        */
+        protected function scanComment(): \Behat\Gherkin\LexerTStringValueToken|null;
+        /**
+        * Scans Newline from input & returns it if found.
+        *
+        * @return LexerTNullValueToken|null
+        * @generated
+        */
+        protected function scanNewline(): \Behat\Gherkin\LexerTNullValueToken|null;
+        /**
+        * Scans text from input & returns it if found.
+        *
+        * @return LexerTStringValueToken|LexerTNullValueToken
+        * @generated
+        */
+        protected function scanText(): \Behat\Gherkin\LexerTStringValueToken|\Behat\Gherkin\LexerTNullValueToken;
+    }
+    /**
+    * Gherkin parser.
+    *
+    * ```
+    * $lexer  = new Behat\Gherkin\Lexer($keywords);
+    * $parser = new Behat\Gherkin\Parser($lexer);
+    * $featuresArray = $parser->parse('/path/to/feature.feature');
+    * ```
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class Parser implements \Behat\Gherkin\ParserInterface {
+        public function __construct(\Behat\Gherkin\Lexer $lexer, \Behat\Gherkin\GherkinCompatibilityMode $compatibilityMode = \Behat\Gherkin\GherkinCompatibilityMode::LEGACY): void;
+        public function setGherkinCompatibilityMode(\Behat\Gherkin\GherkinCompatibilityMode $mode): void;
+        public function parse(string $input, ?string $file = null): mixed;
+        public function parseFile(string $file): ?\Behat\Gherkin\Node\FeatureNode;
+        /**
+        * Returns next token if it's type equals to expected.
+        *
+        * @return mixed
+        * @throws ParserException
+        * @generated
+        */
+        protected function expectTokenType(string $type): mixed;
+        /**
+        * Returns next token if it's type equals to expected.
+        *
+        * @param string $type Token type
+        * @return LexerTToken|null
+        * @generated
+        */
+        protected function acceptTokenType(string $type): \Behat\Gherkin\LexerTToken|null;
+        /**
+        * Returns next token type without real input reading (prediction).
+        *
+        * @return LexerTTokenType
+        * @generated
+        */
+        protected function predictTokenType(): \Behat\Gherkin\LexerTTokenType;
+        /**
+        * Parses current expression & returns Node.
+        *
+        * @throws ParserException
+        * @generated
+        */
+        protected function parseExpression(): \Behat\Gherkin\ParserTParsedExpressionResult;
+        /**
+        * Parses feature token & returns it's node.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @throws ParserException
+        * @generated
+        */
+        protected function parseFeature(): \Behat\Gherkin\Node\FeatureNode;
+        /**
+        * Parses background token & returns it's node.
+        *
+        * @return \Behat\Gherkin\Node\BackgroundNode
+        * @throws ParserException
+        * @generated
+        */
+        protected function parseBackground(): \Behat\Gherkin\Node\BackgroundNode;
+        /**
+        * Parses scenario token & returns it's node.
+        *
+        * @return \Behat\Gherkin\Node\OutlineNode|\Behat\Gherkin\Node\ScenarioNode
+        * @throws ParserException
+        * @generated
+        */
+        protected function parseScenario(): \Behat\Gherkin\Node\OutlineNode|\Behat\Gherkin\Node\ScenarioNode;
+        /**
+        * Parses scenario outline token & returns it's node.
+        *
+        * @return \Behat\Gherkin\Node\OutlineNode|\Behat\Gherkin\Node\ScenarioNode
+        * @throws ParserException
+        * @generated
+        */
+        protected function parseOutline(): \Behat\Gherkin\Node\OutlineNode|\Behat\Gherkin\Node\ScenarioNode;
+        /**
+        * Parses step token & returns it's node.
+        *
+        * @return \Behat\Gherkin\Node\StepNode
+        * @generated
+        */
+        protected function parseStep(): \Behat\Gherkin\Node\StepNode;
+        /**
+        * Parses examples table node.
+        *
+        * @return \Behat\Gherkin\Node\ExampleTableNode
+        * @generated
+        */
+        protected function parseExamples(): \Behat\Gherkin\Node\ExampleTableNode;
+        /**
+        * Parses table token & returns it's node.
+        *
+        * @return \Behat\Gherkin\Node\TableNode
+        * @generated
+        */
+        protected function parseTable(): \Behat\Gherkin\Node\TableNode;
+        /**
+        * Parses PyString token & returns it's node.
+        *
+        * @return \Behat\Gherkin\Node\PyStringNode
+        * @generated
+        */
+        protected function parsePyString(): \Behat\Gherkin\Node\PyStringNode;
+        /**
+        * Parses tags.
+        *
+        * @return string
+        * @generated
+        */
+        protected function parseTags(): string;
+        /**
+        * Returns current set of tags and clears tag buffer.
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        protected function popTags(): array<int, string>;
+        /**
+        * Checks the tags fit the required format.
+        *
+        * @param array<mixed, string> $tags
+        * @return void
+        * @generated
+        */
+        protected function guardTags(array<mixed, string> $tags): void;
+        /**
+        * Parses next text line & returns it.
+        *
+        * @return string
+        * @generated
+        */
+        protected function parseText(): string;
+        /**
+        * Parses next newline & returns \n.
+        *
+        * @return string
+        * @generated
+        */
+        protected function parseNewline(): string;
+        /**
+        * Skips over language tags (they are handled inside the Lexer).
+        *
+        * @throws ParserException
+        * @deprecated language tags are handled inside the Lexer, they skipped over (like any other comment) in the Parser
+        * @generated
+        */
+        deprecated protected function parseLanguage(): \Behat\Gherkin\ParserTParsedExpressionResult;
+    }
+    interface ParserInterface {
+        /**
+        * Parses a Gherkin document string and returns feature (or null when none found).
+        *
+        * @param string $input Gherkin string document
+        * @param ?string $file File name
+        * @return \Behat\Gherkin\Node\FeatureNode|null
+        * @throws ParserException
+        * @generated
+        */
+        public function parse(string $input, ?string $file = null): \Behat\Gherkin\Node\FeatureNode|null;
+        /**
+        * Parses a Gherkin file and returns feature (or null when none found).
+        *
+        * @throws ParserException
+        * @generated
+        */
+        public function parseFile(string $file): ?\Behat\Gherkin\Node\FeatureNode;
+    }
+}
+namespace Behat\Gherkin\Cache {
+    /**
+    * Parser cache interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface CacheInterface {
+        /**
+        * Checks that cache for feature exists and is fresh.
+        *
+        * @param string $path Feature path
+        * @param int $timestamp The last time feature was updated
+        * @return bool
+        * @generated
+        */
+        public function isFresh(string $path, int $timestamp): bool;
+        /**
+        * Reads feature cache from path.
+        *
+        * @param string $path Feature path
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function read(string $path): \Behat\Gherkin\Node\FeatureNode;
+        /**
+        * Caches feature node.
+        *
+        * @param string $path Feature path
+        * @return void
+        * @generated
+        */
+        public function write(string $path, \Behat\Gherkin\Node\FeatureNode $feature): void;
+    }
+    /**
+    * File cache.
+    *
+    * Caches feature into a file.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class FileCache implements \Behat\Gherkin\Cache\CacheInterface {
+        /**
+        * Initializes file cache.
+        *
+        * @param string $path path to the folder where to store caches
+        * @throws CacheException
+        * @generated
+        */
+        public function __construct(string $path): void;
+        /**
+        * Checks that cache for feature exists and is fresh.
+        *
+        * @param string $path Feature path
+        * @param int $timestamp The last time feature was updated
+        * @return bool
+        * @generated
+        */
+        public function isFresh(string $path, int $timestamp): bool;
+        /**
+        * Reads feature cache from path.
+        *
+        * @param string $path Feature path
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @throws CacheException
+        * @generated
+        */
+        public function read(string $path): \Behat\Gherkin\Node\FeatureNode;
+        /**
+        * Caches feature node.
+        *
+        * @param string $path Feature path
+        * @return void
+        * @generated
+        */
+        public function write(string $path, \Behat\Gherkin\Node\FeatureNode $feature): void;
+        /**
+        * Returns feature cache file path from features path.
+        *
+        * @param string $path Feature path
+        * @return string
+        * @generated
+        */
+        protected function getCachePathFor(string $path): string;
+    }
+    /**
+    * Memory cache.
+    *
+    * Caches feature into a memory.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class MemoryCache implements \Behat\Gherkin\Cache\CacheInterface {
+        /**
+        * Checks that cache for feature exists and is fresh.
+        *
+        * @param string $path Feature path
+        * @param int $timestamp The last time feature was updated
+        * @return bool
+        * @generated
+        */
+        public function isFresh(string $path, int $timestamp): bool;
+        /**
+        * Reads feature cache from path.
+        *
+        * @param string $path Feature path
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function read(string $path): \Behat\Gherkin\Node\FeatureNode;
+        /**
+        * Caches feature node.
+        *
+        * @param string $path Feature path
+        * @return void
+        * @generated
+        */
+        public function write(string $path, \Behat\Gherkin\Node\FeatureNode $feature): void;
+    }
+}
+namespace Behat\Gherkin\Dialect {
+    /**
+    * A dialect provider that loads the dialects based on the gherkin-languages.json file copied from the Cucumber project.
+    *
+    * @generated
+    */
+    final class CucumberDialectProvider implements \Behat\Gherkin\Dialect\DialectProviderInterface {
+        public function __construct(): void;
+        /**
+        * @param string $language
+        * @throws NoSuchLanguageException
+        * @generated
+        */
+        public function getDialect(string $language): \Behat\Gherkin\Dialect\GherkinDialect;
+        public function getDefaultDialect(): \Behat\Gherkin\Dialect\GherkinDialect;
+    }
+    interface DialectProviderInterface {
+        /**
+        * @param string $language
+        * @throws NoSuchLanguageException when the language is not supported
+        * @generated
+        */
+        public function getDialect(string $language): \Behat\Gherkin\Dialect\GherkinDialect;
+        public function getDefaultDialect(): \Behat\Gherkin\Dialect\GherkinDialect;
+    }
+    type GherkinDialectTDialectData = struct {
+        mixed $feature;
+        mixed $background;
+        mixed $scenario;
+        mixed $scenarioOutline;
+        mixed $examples;
+        mixed $rule;
+        mixed $given;
+        mixed $when;
+        mixed $then;
+        mixed $and;
+        mixed $but;
+    };
+    /**
+    * @generated
+    */
+    final class GherkinDialect {
+        /**
+        * @generated
+        */
+        public function __construct(string $language, \Behat\Gherkin\Dialect\GherkinDialectTDialectData $dialect): void;
+        public function getLanguage(): string;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getFeatureKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getBackgroundKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getScenarioKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getScenarioOutlineKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getRuleKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getGivenKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getWhenKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getThenKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getAndKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getButKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getStepKeywords(): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getExamplesKeywords(): array;
+    }
+}
+namespace Behat\Gherkin\Exception {
+    /**
+    * Cache exception.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class CacheException extends \RuntimeException implements \Behat\Gherkin\Exception\Exception {
+    }
+    interface Exception {
+    }
+    class FilesystemException extends \RuntimeException implements \Behat\Gherkin\Exception\Exception {
+    }
+    class InvalidTagContentException extends \Behat\Gherkin\Exception\ParserException {
+        public function __construct(string $tag, ?string $file): void;
+    }
+    class LexerException extends \RuntimeException implements \Behat\Gherkin\Exception\Exception {
+    }
+    class NodeException extends \RuntimeException implements \Behat\Gherkin\Exception\Exception {
+    }
+    final class NoSuchLanguageException extends \Behat\Gherkin\Exception\ParserException {
+        public readonly string $language;
+        public function __construct(string $language): void;
+    }
+    class ParserException extends \RuntimeException implements \Behat\Gherkin\Exception\Exception {
+    }
+    class UnexpectedParserNodeException extends \Behat\Gherkin\Exception\ParserException {
+        public readonly string $expectation;
+        public readonly string|\Behat\Gherkin\Node\NodeInterface $node;
+        public readonly ?string $sourceFile;
+        public function __construct(string $expectation, string|\Behat\Gherkin\Node\NodeInterface $node, ?string $sourceFile): void;
+    }
+    /**
+    * @generated
+    */
+    class UnexpectedTaggedNodeException extends \Behat\Gherkin\Exception\ParserException {
+        public readonly \Behat\Gherkin\LexerTToken $taggedToken;
+        public readonly ?string $sourceFile;
+        /**
+        * @generated
+        */
+        public function __construct(\Behat\Gherkin\LexerTToken $taggedToken, ?string $sourceFile): void;
+    }
+}
+namespace Behat\Gherkin\Filter {
+    /**
+    * Abstract filter class.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    abstract class ComplexFilter implements \Behat\Gherkin\Filter\ComplexFilterInterface {
+        /**
+        * Filters feature according to the filter.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function filterFeature(\Behat\Gherkin\Node\FeatureNode $feature): \Behat\Gherkin\Node\FeatureNode;
+    }
+    /**
+    * Filter interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface ComplexFilterInterface extends \Behat\Gherkin\Filter\FeatureFilterInterface {
+        /**
+        * Checks if scenario or outline matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\FeatureNode $feature Feature node instance
+        * @param \Behat\Gherkin\Node\ScenarioInterface $scenario Scenario or Outline node instance
+        * @return bool
+        * @generated
+        */
+        public function isScenarioMatch(\Behat\Gherkin\Node\FeatureNode $feature, \Behat\Gherkin\Node\ScenarioInterface $scenario): bool;
+    }
+    /**
+    * Feature filter interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface FeatureFilterInterface {
+        /**
+        * Checks if Feature matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\FeatureNode $feature Feature instance
+        * @return bool
+        * @generated
+        */
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): bool;
+        /**
+        * Filters feature according to the filter and returns new one.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function filterFeature(\Behat\Gherkin\Node\FeatureNode $feature): \Behat\Gherkin\Node\FeatureNode;
+    }
+    /**
+    * Filter interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface FilterInterface extends \Behat\Gherkin\Filter\FeatureFilterInterface {
+        /**
+        * Checks if scenario or outline matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\ScenarioInterface $scenario Scenario or Outline node instance
+        * @return bool
+        * @generated
+        */
+        public function isScenarioMatch(\Behat\Gherkin\Node\ScenarioInterface $scenario): bool;
+    }
+    /**
+    * Filters scenarios by definition line number.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class LineFilter implements \Behat\Gherkin\Filter\FilterInterface {
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $filterLine;
+        /**
+        * Initializes filter.
+        *
+        * @param int|string $filterLine Line of the scenario to filter on
+        * @generated
+        */
+        public function __construct(int|string $filterLine): void;
+        /**
+        * Checks if Feature matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\FeatureNode $feature Feature instance
+        * @return bool
+        * @generated
+        */
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): bool;
+        /**
+        * Checks if scenario or outline matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\ScenarioInterface $scenario Scenario or Outline node instance
+        * @return bool
+        * @generated
+        */
+        public function isScenarioMatch(\Behat\Gherkin\Node\ScenarioInterface $scenario): bool;
+        /**
+        * Filters feature according to the filter and returns new one.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function filterFeature(\Behat\Gherkin\Node\FeatureNode $feature): \Behat\Gherkin\Node\FeatureNode;
+    }
+    /**
+    * Filters scenarios by definition line number range.
+    *
+    * @author Fabian Kiss <headrevision@gmail.com>
+    * @generated
+    */
+    class LineRangeFilter implements \Behat\Gherkin\Filter\FilterInterface {
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $filterMinLine;
+        /**
+        * @var int
+        * @generated
+        */
+        protected int $filterMaxLine;
+        /**
+        * Initializes filter.
+        *
+        * @param int|string $filterMinLine Minimum line of a scenario to filter on
+        * @param int|string $filterMaxLine Maximum line of a scenario to filter on
+        * @generated
+        */
+        public function __construct(int|string $filterMinLine, int|string $filterMaxLine): void;
+        /**
+        * Checks if Feature matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\FeatureNode $feature Feature instance
+        * @return bool
+        * @generated
+        */
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): bool;
+        /**
+        * Checks if scenario or outline matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\ScenarioInterface $scenario Scenario or Outline node instance
+        * @return bool
+        * @generated
+        */
+        public function isScenarioMatch(\Behat\Gherkin\Node\ScenarioInterface $scenario): bool;
+        /**
+        * Filters feature according to the filter.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function filterFeature(\Behat\Gherkin\Node\FeatureNode $feature): \Behat\Gherkin\Node\FeatureNode;
+    }
+    /**
+    * Filters scenarios by feature/scenario name.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class NameFilter extends \Behat\Gherkin\Filter\SimpleFilter {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $filterString;
+        public function __construct(string $filterString): void;
+        /**
+        * Checks if Feature matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\FeatureNode $feature Feature instance
+        * @return bool
+        * @generated
+        */
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): bool;
+        /**
+        * Checks if scenario or outline matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\ScenarioInterface $scenario Scenario or Outline node instance
+        * @return bool
+        * @generated
+        */
+        public function isScenarioMatch(\Behat\Gherkin\Node\ScenarioInterface $scenario): bool;
+    }
+    /**
+    * Filters features by their narrative using regular expression.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class NarrativeFilter extends \Behat\Gherkin\Filter\SimpleFilter {
+        public function __construct(string $regex): void;
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): mixed;
+        public function isScenarioMatch(\Behat\Gherkin\Node\ScenarioInterface $scenario): mixed;
+    }
+    /**
+    * Filters features by their paths.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class PathsFilter extends \Behat\Gherkin\Filter\SimpleFilter {
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $filterPaths ?? [];
+        /**
+        * Initializes filter.
+        *
+        * @param array<mixed, string> $paths List of approved paths
+        * @generated
+        */
+        public function __construct(array<mixed, string> $paths): void;
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): mixed;
+        public function isScenarioMatch(\Behat\Gherkin\Node\ScenarioInterface $scenario): mixed;
+    }
+    /**
+    * Filters features by their actors role.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class RoleFilter extends \Behat\Gherkin\Filter\SimpleFilter {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $pattern;
+        /**
+        * Initializes filter.
+        *
+        * @param string $role Approved role wildcard
+        * @generated
+        */
+        public function __construct(string $role): void;
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): mixed;
+        public function isScenarioMatch(\Behat\Gherkin\Node\ScenarioInterface $scenario): mixed;
+    }
+    /**
+    * Abstract filter class.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    abstract class SimpleFilter implements \Behat\Gherkin\Filter\FilterInterface {
+        /**
+        * Filters feature according to the filter.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function filterFeature(\Behat\Gherkin\Node\FeatureNode $feature): \Behat\Gherkin\Node\FeatureNode;
+    }
+    /**
+    * Filters scenarios by feature/scenario tag.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class TagFilter extends \Behat\Gherkin\Filter\ComplexFilter {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $filterString;
+        public function __construct(string $filterString): void;
+        /**
+        * Filters feature according to the filter.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        public function filterFeature(\Behat\Gherkin\Node\FeatureNode $feature): \Behat\Gherkin\Node\FeatureNode;
+        /**
+        * Checks if Feature matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\FeatureNode $feature Feature instance
+        * @return bool
+        * @generated
+        */
+        public function isFeatureMatch(\Behat\Gherkin\Node\FeatureNode $feature): bool;
+        /**
+        * Checks if scenario or outline matches specified filter.
+        *
+        * @param \Behat\Gherkin\Node\FeatureNode $feature Feature node instance
+        * @param \Behat\Gherkin\Node\ScenarioInterface $scenario Scenario or Outline node instance
+        * @return bool
+        * @generated
+        */
+        public function isScenarioMatch(\Behat\Gherkin\Node\FeatureNode $feature, \Behat\Gherkin\Node\ScenarioInterface $scenario): bool;
+        /**
+        * Checks that node matches condition.
+        *
+        * @param array<mixed, string> $tags
+        * @return bool
+        * @generated
+        */
+        protected function isTagsMatchCondition(array<mixed, string> $tags): bool;
+    }
+}
+namespace Behat\Gherkin\Keywords {
+    type ArrayKeywordsTMultiLanguageKeywords = array<string, \Behat\Gherkin\Keywords\ArrayKeywordsTKeywordsArray>;
+    type ArrayKeywordsTKeywordsArray = struct {
+        string $feature;
+        string $background;
+        string $scenario;
+        string $scenario_outline;
+        string $examples;
+        string $given;
+        string $when;
+        string $then;
+        string $and;
+        string $but;
+    };
+    /**
+    * Array initializable keywords holder.
+    *
+    * ```
+    * $keywords = new Behat\Gherkin\Keywords\ArrayKeywords(array(
+    *     'en' => array(
+    *         'feature'          => 'Feature',
+    *         'background'       => 'Background',
+    *         'scenario'         => 'Scenario',
+    *         'scenario_outline' => 'Scenario Outline|Scenario Template',
+    *         'examples'         => 'Examples|Scenarios',
+    *         'given'            => 'Given',
+    *         'when'             => 'When',
+    *         'then'             => 'Then',
+    *         'and'              => 'And',
+    *         'but'              => 'But'
+    *     ),
+    *     'ru' => array(
+    *         'feature'          => 'Функционал',
+    *         'background'       => 'Предыстория',
+    *         'scenario'         => 'Сценарий',
+    *         'scenario_outline' => 'Структура сценария',
+    *         'examples'         => 'Примеры',
+    *         'given'            => 'Допустим',
+    *         'when'             => 'Если',
+    *         'then'             => 'То',
+    *         'and'              => 'И',
+    *         'but'              => 'Но'
+    *     )
+    * ));
+    * ```
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class ArrayKeywords implements \Behat\Gherkin\Keywords\KeywordsInterface {
+        /**
+        * Initializes holder with keywords.
+        *
+        * @generated
+        */
+        public function __construct(\Behat\Gherkin\Keywords\ArrayKeywordsTMultiLanguageKeywords $keywords): void;
+        /**
+        * Sets keywords holder language.
+        *
+        * @return void
+        * @generated
+        */
+        public function setLanguage(string $language): void;
+        /**
+        * Returns Feature keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getFeatureKeywords(): string;
+        /**
+        * Returns Background keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getBackgroundKeywords(): string;
+        /**
+        * Returns Scenario keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getScenarioKeywords(): string;
+        /**
+        * Returns Scenario Outline keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getOutlineKeywords(): string;
+        /**
+        * Returns Examples keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getExamplesKeywords(): string;
+        /**
+        * Returns Given keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getGivenKeywords(): string;
+        /**
+        * Returns When keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getWhenKeywords(): string;
+        /**
+        * Returns Then keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getThenKeywords(): string;
+        /**
+        * Returns And keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getAndKeywords(): string;
+        /**
+        * Returns But keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getButKeywords(): string;
+        /**
+        * Returns all step keywords (Given, When, Then, And, But).
+        *
+        * @return string
+        * @generated
+        */
+        public function getStepKeywords(): string;
+    }
+    /**
+    * File initializable keywords holder.
+    *
+    * $keywords = new Behat\Gherkin\Keywords\CachedArrayKeywords($file);
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class CachedArrayKeywords extends \Behat\Gherkin\Keywords\ArrayKeywords {
+        public static function withDefaultKeywords(): self;
+        /**
+        * Initializes holder with file.
+        *
+        * @param string $file Cached array path
+        * @generated
+        */
+        public function __construct(string $file): void;
+    }
+    /**
+    * Cucumber-translations reader.
+    *
+    * $keywords = new Behat\Gherkin\Keywords\CucumberKeywords($i18nYmlPath);
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class CucumberKeywords extends \Behat\Gherkin\Keywords\ArrayKeywords {
+        /**
+        * Initializes holder with yaml string OR file.
+        *
+        * @param string $yaml Yaml string or file path
+        * @generated
+        */
+        public function __construct(string $yaml): void;
+        /**
+        * Returns Feature keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getGivenKeywords(): string;
+        /**
+        * Returns When keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getWhenKeywords(): string;
+        /**
+        * Returns Then keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getThenKeywords(): string;
+        /**
+        * Returns And keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getAndKeywords(): string;
+        /**
+        * Returns But keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getButKeywords(): string;
+    }
+    /**
+    * Gherkin keywords dumper.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    class KeywordsDumper {
+        public function __construct(\Behat\Gherkin\Keywords\KeywordsInterface $keywords): void;
+        /**
+        * Sets keywords mapper function.
+        *
+        * Callable should accept 2 arguments (array $keywords and bool $isShort)
+        *
+        * @param callable $mapper Mapper function
+        * @return void
+        * @generated
+        */
+        public function setKeywordsDumperFunction(callable $mapper): void;
+        /**
+        * Defaults keywords dumper.
+        *
+        * @param array<int, string> $keywords Keywords list
+        * @param bool $isShort Is short version
+        * @return string
+        * @generated
+        */
+        public function dumpKeywords(array<int, string> $keywords, bool $isShort): string;
+        /**
+        * Dumps keyworded feature into string.
+        *
+        * @param string $language Keywords language
+        * @param bool $short Dump short version
+        * @return mixed String for short version and array of features for extended
+        * @generated
+        */
+        public function dump(string $language, bool $short = true, bool $excludeAsterisk = false): mixed;
+        /**
+        * Dumps feature example.
+        *
+        * @param string $keyword Item keyword
+        * @param bool $short Dump short version?
+        * @return string
+        * @generated
+        */
+        protected function dumpFeature(string $keyword, bool $short = true, bool $excludeAsterisk = false): string;
+        /**
+        * Dumps background example.
+        *
+        * @param string $keyword Item keyword
+        * @param bool $short Dump short version?
+        * @return string
+        * @generated
+        */
+        protected function dumpBackground(string $keyword, bool $short = true, bool $excludeAsterisk = false): string;
+        /**
+        * Dumps scenario example.
+        *
+        * @param string $keyword Item keyword
+        * @param bool $short Dump short version?
+        * @return string
+        * @generated
+        */
+        protected function dumpScenario(string $keyword, bool $short = true, bool $excludeAsterisk = false): string;
+        /**
+        * Dumps outline example.
+        *
+        * @param string $keyword Item keyword
+        * @param bool $short Dump short version?
+        * @return string
+        * @generated
+        */
+        protected function dumpOutline(string $keyword, bool $short = true, bool $excludeAsterisk = false): string;
+        /**
+        * Dumps step example.
+        *
+        * @param string $keywords Item keyword
+        * @param string $text Step text
+        * @param bool $short Dump short version?
+        * @return string
+        * @generated
+        */
+        protected function dumpStep(string $keywords, string $text, bool $short = true, bool $excludeAsterisk = false): string;
+    }
+    /**
+    * Keywords holder interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface KeywordsInterface {
+        /**
+        * Sets keywords holder language.
+        *
+        * @return void
+        * @generated
+        */
+        public function setLanguage(string $language): void;
+        /**
+        * Returns Feature keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getFeatureKeywords(): string;
+        /**
+        * Returns Background keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getBackgroundKeywords(): string;
+        /**
+        * Returns Scenario keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getScenarioKeywords(): string;
+        /**
+        * Returns Scenario Outline keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getOutlineKeywords(): string;
+        /**
+        * Returns Examples keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getExamplesKeywords(): string;
+        /**
+        * Returns Given keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getGivenKeywords(): string;
+        /**
+        * Returns When keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getWhenKeywords(): string;
+        /**
+        * Returns Then keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getThenKeywords(): string;
+        /**
+        * Returns And keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getAndKeywords(): string;
+        /**
+        * Returns But keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getButKeywords(): string;
+        /**
+        * Returns all step keywords (separated by "|").
+        *
+        * @return string
+        * @generated
+        */
+        public function getStepKeywords(): string;
+    }
+}
+namespace Behat\Gherkin\Loader {
+    type ArrayLoaderTExampleHash = array|\Behat\Gherkin\Loader\ArrayLoaderTExampleTableHash;
+    type ArrayLoaderTExampleTableHash = array<mixed, array<int, string>>;
+    type ArrayLoaderTArgumentHash = array|\Behat\Gherkin\Loader\ArrayLoaderTPyStringHash;
+    type ArrayLoaderTTableHash = array<int, array<int, string>>;
+    type ArrayLoaderTArrayResource = array;
+    type CucumberNDJsonAstLoaderTGherkinDocument = mixed;
+    /**
+    * Abstract filesystem loader.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @template TResourceType
+    * @extends AbstractLoader<TResourceType>
+    * @implements FileLoaderInterface<TResourceType>
+    * @generated
+    */
+    abstract class AbstractFileLoader<TResourceType> extends \Behat\Gherkin\Loader\AbstractLoader implements \Behat\Gherkin\Loader\FileLoaderInterface {
+        /**
+        * @var string|null
+        * @generated
+        */
+        protected string|null $basePath;
+        /**
+        * Sets base features path.
+        *
+        * @return void
+        * @generated
+        */
+        public function setBasePath(string $path): void;
+        /**
+        * Finds relative path for provided absolute (relative to base features path).
+        *
+        * @param string $path Absolute path
+        * @return string
+        * @generated
+        */
+        protected function findRelativePath(string $path): string;
+        /**
+        * Finds absolute path for provided relative (relative to base features path).
+        *
+        * @param string $path Relative path
+        * @return false|string
+        * @generated
+        */
+        protected function findAbsolutePath(string $path): false|string;
+        /**
+        * @throws \RuntimeException
+        * @generated
+        */
+        protected final function getAbsolutePath(string $path): string;
+    }
+    /**
+    * @template TResourceType
+    * @implements LoaderInterface<TResourceType>
+    * @generated
+    */
+    abstract class AbstractLoader<TResourceType> implements \Behat\Gherkin\Loader\LoaderInterface {
+        public function load(mixed $resource): mixed;
+        /**
+        * @param TResourceType $resource
+        * @return array<int, \Behat\Gherkin\Node\FeatureNode>
+        * @generated
+        */
+        protected abstract function doLoad(TResourceType $resource): array<int, \Behat\Gherkin\Node\FeatureNode>;
+    }
+    type ArrayLoaderTFeatureHash = struct {
+        string|null $title;
+        string|null $description;
+        ?array<int, string> $tags;
+        ?string $keyword;
+        ?string $language;
+        ?int $line;
+        \Behat\Gherkin\Loader\ArrayLoaderTBackgroundHash|null $background;
+        array<int, \Behat\Gherkin\Loader\ArrayLoaderTScenarioHash|\Behat\Gherkin\Loader\ArrayLoaderTOutlineHash>|null $scenarios;
+    };
+    type ArrayLoaderTBackgroundHash = struct {
+        string|null $title;
+        ?string $keyword;
+        ?int $line;
+        ?array<int, \Behat\Gherkin\Loader\ArrayLoaderTStepHash> $steps;
+    };
+    type ArrayLoaderTScenarioHash = struct {
+        string|null $title;
+        ?array<int, string> $tags;
+        ?string $keyword;
+        ?int $line;
+        ?array<int, \Behat\Gherkin\Loader\ArrayLoaderTStepHash> $steps;
+    };
+    type ArrayLoaderTOutlineHash = struct {
+        string $type;
+        string|null $title;
+        ?array<int, string> $tags;
+        ?string $keyword;
+        ?int $line;
+        ?array<int, \Behat\Gherkin\Loader\ArrayLoaderTStepHash> $steps;
+        \Behat\Gherkin\Loader\ArrayLoaderTExampleTableHash|array<mixed, \Behat\Gherkin\Loader\ArrayLoaderTExampleHash>|null $examples;
+    };
+    type ArrayLoaderTStepHash = struct {
+        ?string $keyword_type;
+        ?string $type;
+        string $text;
+        ?string $keyword;
+        ?int $line;
+        ?array<mixed, \Behat\Gherkin\Loader\ArrayLoaderTArgumentHash> $arguments;
+    };
+    type ArrayLoaderTPyStringHash = struct {
+        string $type;
+        ?int $line;
+        string $text;
+    };
+    /**
+    * From-array loader.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @phpstan-extends AbstractLoader<TArrayResource>
+    * @generated
+    */
+    class ArrayLoader extends \Behat\Gherkin\Loader\AbstractLoader {
+        public function supports(mixed $resource): mixed;
+        protected function doLoad(mixed $resource): array;
+        /**
+        * Loads feature from provided feature hash.
+        *
+        * @return \Behat\Gherkin\Node\FeatureNode
+        * @generated
+        */
+        protected function loadFeatureHash(\Behat\Gherkin\Loader\ArrayLoaderTFeatureHash $hash, int $line = 0): \Behat\Gherkin\Node\FeatureNode;
+        /**
+        * Loads background from provided hash.
+        *
+        * @return \Behat\Gherkin\Node\BackgroundNode
+        * @generated
+        */
+        protected function loadBackgroundHash(\Behat\Gherkin\Loader\ArrayLoaderTBackgroundHash $hash): \Behat\Gherkin\Node\BackgroundNode;
+        /**
+        * Loads scenario from provided scenario hash.
+        *
+        * @return \Behat\Gherkin\Node\ScenarioNode
+        * @generated
+        */
+        protected function loadScenarioHash(\Behat\Gherkin\Loader\ArrayLoaderTScenarioHash $hash, int $line = 0): \Behat\Gherkin\Node\ScenarioNode;
+        /**
+        * Loads outline from provided outline hash.
+        *
+        * @return \Behat\Gherkin\Node\OutlineNode
+        * @generated
+        */
+        protected function loadOutlineHash(\Behat\Gherkin\Loader\ArrayLoaderTOutlineHash $hash, int $line = 0): \Behat\Gherkin\Node\OutlineNode;
+        /**
+        * Loads step from provided hash.
+        *
+        * @return \Behat\Gherkin\Node\StepNode
+        * @generated
+        */
+        protected function loadStepHash(\Behat\Gherkin\Loader\ArrayLoaderTStepHash $hash, int $line = 0): \Behat\Gherkin\Node\StepNode;
+        /**
+        * Loads table from provided hash.
+        *
+        * @return \Behat\Gherkin\Node\TableNode
+        * @generated
+        */
+        protected function loadTableHash(\Behat\Gherkin\Loader\ArrayLoaderTTableHash $hash): \Behat\Gherkin\Node\TableNode;
+        /**
+        * Loads PyString from provided hash.
+        *
+        * @return \Behat\Gherkin\Node\PyStringNode
+        * @generated
+        */
+        protected function loadPyStringHash(\Behat\Gherkin\Loader\ArrayLoaderTPyStringHash $hash, int $line = 0): \Behat\Gherkin\Node\PyStringNode;
+    }
+    type CucumberNDJsonAstLoaderTLocation = struct {
+        int $line;
+        ?int $column;
+    };
+    type CucumberNDJsonAstLoaderTBackground = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        string $keyword;
+        string $name;
+        string $description;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTStep> $steps;
+        string $id;
+    };
+    type CucumberNDJsonAstLoaderTComment = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        string $text;
+    };
+    type CucumberNDJsonAstLoaderTDataTable = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTableRow> $rows;
+    };
+    type CucumberNDJsonAstLoaderTDocString = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        string $content;
+        string $delimiter;
+        ?string $mediaType;
+    };
+    type CucumberNDJsonAstLoaderTExamples = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTag> $tags;
+        string $keyword;
+        string $name;
+        string $description;
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTableRow $tableHeader;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTableRow> $tableBody;
+        string $id;
+    };
+    type CucumberNDJsonAstLoaderTFeature = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTag> $tags;
+        string $language;
+        string $keyword;
+        string $name;
+        string $description;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTFeatureChild> $children;
+    };
+    type CucumberNDJsonAstLoaderTFeatureChild = struct {
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTBackground $background;
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTScenario $scenario;
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTRule $rule;
+    };
+    type CucumberNDJsonAstLoaderTRule = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTag> $tags;
+        string $keyword;
+        string $name;
+        string $description;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTRuleChild> $children;
+        string $id;
+    };
+    type CucumberNDJsonAstLoaderTRuleChild = struct {
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTBackground $background;
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTScenario $scenario;
+    };
+    type CucumberNDJsonAstLoaderTScenario = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTag> $tags;
+        string $keyword;
+        string $name;
+        string $description;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTStep> $steps;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTExamples> $examples;
+        string $id;
+    };
+    type CucumberNDJsonAstLoaderTStep = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        string $keyword;
+        ?string $keywordType;
+        string $text;
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTDocString $docString;
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTDataTable $dataTable;
+        string $id;
+    };
+    type CucumberNDJsonAstLoaderTTableCell = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        string $value;
+    };
+    type CucumberNDJsonAstLoaderTTableRow = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        array<int, \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTTableCell> $cells;
+        string $id;
+    };
+    type CucumberNDJsonAstLoaderTTag = struct {
+        \Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTLocation $location;
+        string $name;
+        string $id;
+    };
+    type CucumberNDJsonAstLoaderTEnvelope = struct {
+        ?\Behat\Gherkin\Loader\CucumberNDJsonAstLoaderTGherkinDocument $gherkinDocument;
+    };
+    /**
+    * Loads a feature from cucumber's messages JSON format.
+    *
+    * Lines in the ndjson file are expected to match the Cucumber Messages JSON schema defined at https://github.com/cucumber/messages/tree/main/jsonschema
+    *
+    * @deprecated This loader is deprecated and will be removed in 5.0
+    * @extends AbstractLoader<string>
+    * @generated
+    */
+    deprecated class CucumberNDJsonAstLoader extends \Behat\Gherkin\Loader\AbstractLoader {
+        public function supports(mixed $resource): mixed;
+        protected function doLoad(mixed $resource): array;
+    }
+    /**
+    * Directory contents loader.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @extends AbstractFileLoader<string>
+    * @generated
+    */
+    class DirectoryLoader extends \Behat\Gherkin\Loader\AbstractFileLoader {
+        /**
+        * @var \Behat\Gherkin\Gherkin
+        * @generated
+        */
+        protected \Behat\Gherkin\Gherkin $gherkin;
+        /**
+        * Initializes loader.
+        *
+        * @generated
+        */
+        public function __construct(\Behat\Gherkin\Gherkin $gherkin): void;
+        public function supports(mixed $resource): mixed;
+        protected function doLoad(mixed $resource): array;
+    }
+    /**
+    * File Loader interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @template TResourceType
+    * @extends LoaderInterface<TResourceType>
+    * @generated
+    */
+    interface FileLoaderInterface<TResourceType> extends \Behat\Gherkin\Loader\LoaderInterface {
+        /**
+        * Sets base features path.
+        *
+        * @return void
+        * @generated
+        */
+        public function setBasePath(string $path): void;
+    }
+    /**
+    * Gherkin *.feature files loader.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @extends AbstractFileLoader<string>
+    * @generated
+    */
+    class GherkinFileLoader extends \Behat\Gherkin\Loader\AbstractFileLoader {
+        /**
+        * @var \Behat\Gherkin\ParserInterface
+        * @generated
+        */
+        protected \Behat\Gherkin\ParserInterface $parser;
+        /**
+        * @var \Behat\Gherkin\Cache\CacheInterface|null
+        * @generated
+        */
+        protected \Behat\Gherkin\Cache\CacheInterface|null $cache;
+        public function __construct(\Behat\Gherkin\ParserInterface $parser, ?\Behat\Gherkin\Cache\CacheInterface $cache = null): void;
+        /**
+        * Sets cache layer.
+        *
+        * @return void
+        * @generated
+        */
+        public function setCache(\Behat\Gherkin\Cache\CacheInterface $cache): void;
+        public function supports(mixed $resource): mixed;
+        protected function doLoad(mixed $resource): array;
+        /**
+        * Parses feature at provided absolute path.
+        *
+        * @param string $path Feature path
+        * @return \Behat\Gherkin\Node\FeatureNode|null
+        * @generated
+        */
+        protected function parseFeature(string $path): \Behat\Gherkin\Node\FeatureNode|null;
+    }
+    /**
+    * Loader interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @template TResourceType
+    * @generated
+    */
+    interface LoaderInterface<TResourceType> {
+        /**
+        * Checks if current loader supports provided resource.
+        *
+        * @param mixed $resource Resource to load
+        * @phpstan-assert-if-true =TResourceType $resource
+        * @return bool
+        * @generated
+        */
+        public function supports(mixed $resource): bool;
+        /**
+        * Loads features from provided resource.
+        *
+        * @param TResourceType $resource Resource to load
+        * @return array<int, \Behat\Gherkin\Node\FeatureNode>
+        * @generated
+        */
+        public function load(TResourceType $resource): array<int, \Behat\Gherkin\Node\FeatureNode>;
+    }
+    /**
+    * Yaml files loader.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @extends AbstractFileLoader<string>
+    * @generated
+    */
+    class YamlFileLoader extends \Behat\Gherkin\Loader\AbstractFileLoader {
+        /**
+        * @generated
+        */
+        public function __construct(\Behat\Gherkin\Loader\LoaderInterface $loader = null): void;
+        public function supports(mixed $resource): mixed;
+        protected function doLoad(mixed $resource): array;
+    }
+}
+namespace Behat\Gherkin\Node {
+    /**
+    * Gherkin arguments interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface ArgumentInterface extends \Behat\Gherkin\Node\NodeInterface {
+    }
+    /**
+    * Represents Gherkin Background.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class BackgroundNode implements \Behat\Gherkin\Node\ScenarioLikeInterface, \Behat\Gherkin\Node\DescribableNodeInterface {
+        /**
+        * @param array<int, StepNode> $steps
+        * @generated
+        */
+        public function __construct(?string $title, array<int, \Behat\Gherkin\Node\StepNode> $steps, string $keyword, int $line, ?string $description = null): void;
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns background title.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getTitle(): string|null;
+        public function getDescription(): ?string;
+        /**
+        * Checks if background has steps.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSteps(): bool;
+        /**
+        * Returns background steps.
+        *
+        * @return array<int, StepNode>
+        * @generated
+        */
+        public function getSteps(): array<int, \Behat\Gherkin\Node\StepNode>;
+        /**
+        * Returns background keyword.
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * Returns background declaration line number.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+    }
+    interface DescribableNodeInterface {
+        /**
+        * @return ?string
+        * @generated
+        */
+        public function getDescription(): ?string;
+    }
+    /**
+    * Represents Gherkin Outline Example.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class ExampleNode implements \Behat\Gherkin\Node\ScenarioInterface, \Behat\Gherkin\Node\NamedScenarioInterface {
+        /**
+        * @param string $text The entire row as a string, e.g. "| 1 | 2 | 3 |"
+        * @param array<int, string> $tags
+        * @param array<mixed, StepNode> $outlineSteps
+        * @param array<string, string> $tokens
+        * @param int $line line number within the feature file
+        * @param ?string $outlineTitle original title of the scenario outline
+        * @param ?int $index the 1-based index of the row/example within the scenario outline
+        * @generated
+        */
+        public function __construct(string $text, array<int, string> $tags, array<mixed, \Behat\Gherkin\Node\StepNode> $outlineSteps, array<string, string> $tokens, int $line, ?string $outlineTitle = null, ?int $index = null): void;
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns node keyword.
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * Returns the example row as a single string.
+        *
+        * @return string
+        * @deprecated you should normally not depend on the original row text, but if you really do, please switch
+        *             to {@see self::getExampleText()} as this method will be removed in the next major version
+        * @generated
+        */
+        deprecated public function getTitle(): string;
+        public function getTags(): mixed;
+        /**
+        * Checks if outline has steps.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSteps(): bool;
+        /**
+        * Returns outline steps.
+        *
+        * @return array<int, StepNode>
+        * @generated
+        */
+        public function getSteps(): array<int, \Behat\Gherkin\Node\StepNode>;
+        /**
+        * Returns example tokens.
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        public function getTokens(): array<int, string>;
+        /**
+        * Returns outline declaration line number.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+        /**
+        * Returns outline title.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getOutlineTitle(): string|null;
+        /**
+        * @todo Return type should become `string` in 5.0 when the class is actually `final`
+        * @phpstan-ignore return.unusedType
+        * @generated
+        */
+        public function getName(): ?string;
+        /**
+        * Returns the example row as a single string.
+        *
+        * You should normally not need this, since it is an implementation detail.
+        * If you need the individual example values, use {@see self::getTokens()}.
+        * To get the fully-normalised/expanded title, use {@see self::getName()}.
+        *
+        * @generated
+        */
+        public function getExampleText(): string;
+        /**
+        * Creates steps for this example from abstract outline steps.
+        *
+        * @return array<int, StepNode>
+        * @generated
+        */
+        protected function createExampleSteps(): array<int, \Behat\Gherkin\Node\StepNode>;
+        /**
+        * Replaces tokens in arguments with row values.
+        *
+        * @param array<mixed, ArgumentInterface> $arguments
+        * @return array<mixed, ArgumentInterface>
+        * @generated
+        */
+        protected function replaceArgumentsTokens(array<mixed, \Behat\Gherkin\Node\ArgumentInterface> $arguments): array<mixed, \Behat\Gherkin\Node\ArgumentInterface>;
+        /**
+        * Replaces tokens in table with row values.
+        *
+        * @return TableNode
+        * @generated
+        */
+        protected function replaceTableArgumentTokens(\Behat\Gherkin\Node\TableNode $argument): \Behat\Gherkin\Node\TableNode;
+        /**
+        * Replaces tokens in PyString with row values.
+        *
+        * @return PyStringNode
+        * @generated
+        */
+        protected function replacePyStringArgumentTokens(\Behat\Gherkin\Node\PyStringNode $argument): \Behat\Gherkin\Node\PyStringNode;
+        /**
+        * Replaces tokens in text with row values.
+        *
+        * @return string
+        * @generated
+        */
+        protected function replaceTextTokens(string $text): string;
+    }
+    /**
+    * Represents Gherkin Outline Example Table.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class ExampleTableNode extends \Behat\Gherkin\Node\TableNode implements \Behat\Gherkin\Node\TaggedNodeInterface, \Behat\Gherkin\Node\DescribableNodeInterface {
+        /**
+        * @param array<int, array<int, string>> $table Table in form of [$rowLineNumber => [$val1, $val2, $val3]]
+        * @param array<int, string> $tags
+        * @generated
+        */
+        public function __construct(array<int, array<int, string>> $table, string $keyword, array<int, string> $tags = [], ?string $name = null, ?string $description = null): void;
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        public function getName(): ?string;
+        public function getDescription(): ?string;
+        public function getTags(): mixed;
+        /**
+        * Returns example table keyword.
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * @param array<int, array<int, string>> $table Table in form of [$rowLineNumber => [$val1, $val2, $val3]]
+        * @generated
+        */
+        public function withTable(array<int, array<int, string>> $table): self;
+    }
+    /**
+    * Represents Gherkin Feature.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class FeatureNode implements \Behat\Gherkin\Node\KeywordNodeInterface, \Behat\Gherkin\Node\TaggedNodeInterface, \Behat\Gherkin\Node\DescribableNodeInterface {
+        /**
+        * @param array<int, string> $tags
+        * @param array<int, ScenarioInterface> $scenarios
+        * @param ?string $file the absolute path to the feature file
+        * @generated
+        */
+        public function __construct(?string $title, ?string $description, array<int, string> $tags, ?\Behat\Gherkin\Node\BackgroundNode $background, array<int, \Behat\Gherkin\Node\ScenarioInterface> $scenarios, string $keyword, string $language, ?string $file, int $line): void;
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns feature title.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getTitle(): string|null;
+        /**
+        * Checks if feature has a description.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasDescription(): bool;
+        /**
+        * Returns feature description.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getDescription(): string|null;
+        public function getTags(): mixed;
+        /**
+        * Checks if feature has background.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasBackground(): bool;
+        /**
+        * Returns feature background.
+        *
+        * @return BackgroundNode|null
+        * @generated
+        */
+        public function getBackground(): \Behat\Gherkin\Node\BackgroundNode|null;
+        /**
+        * Checks if feature has scenarios.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasScenarios(): bool;
+        /**
+        * Returns feature scenarios.
+        *
+        * @return array<int, ScenarioInterface>
+        * @generated
+        */
+        public function getScenarios(): array<int, \Behat\Gherkin\Node\ScenarioInterface>;
+        /**
+        * Returns feature keyword.
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * Returns feature language.
+        *
+        * @return string
+        * @generated
+        */
+        public function getLanguage(): string;
+        /**
+        * Returns feature file as an absolute path.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getFile(): string|null;
+        /**
+        * Returns feature declaration line number.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+        /**
+        * Returns a copy of this feature, but with a different set of scenarios.
+        *
+        * @param array<mixed, ScenarioInterface> $scenarios
+        * @generated
+        */
+        public function withScenarios(array<mixed, \Behat\Gherkin\Node\ScenarioInterface> $scenarios): self;
+        /**
+        * Returns whether the file path is an absolute path.
+        *
+        * @param ?string $file A file path
+        * @return bool
+        * @see https://github.com/symfony/filesystem/blob/master/Filesystem.php
+        * @generated
+        */
+        protected function isAbsolutePath(?string $file): bool;
+    }
+    /**
+    * Gherkin keyword node interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface KeywordNodeInterface extends \Behat\Gherkin\Node\NodeInterface {
+        /**
+        * Returns node keyword.
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * Returns node title.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getTitle(): string|null;
+    }
+    interface NamedScenarioInterface {
+        /**
+        * Returns the human-readable name of the scenario.
+        *
+        * @generated
+        */
+        public function getName(): ?string;
+    }
+    /**
+    * Gherkin node interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface NodeInterface {
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns feature declaration line number.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+    }
+    /**
+    * Represents Gherkin Outline.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class OutlineNode implements \Behat\Gherkin\Node\ScenarioInterface, \Behat\Gherkin\Node\DescribableNodeInterface {
+        /**
+        * @param array<int, string> $tags
+        * @param array<int, StepNode> $steps
+        * @param array|\Behat\Gherkin\Node\ExampleTableNode $tables
+        * @generated
+        */
+        public function __construct(?string $title, array<int, string> $tags, array<int, \Behat\Gherkin\Node\StepNode> $steps, array|\Behat\Gherkin\Node\ExampleTableNode $tables, string $keyword, int $line, ?string $description = null): void;
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns outline title.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getTitle(): string|null;
+        public function getDescription(): ?string;
+        public function getTags(): mixed;
+        /**
+        * Checks if outline has steps.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSteps(): bool;
+        /**
+        * Returns outline steps.
+        *
+        * @return array<int, StepNode>
+        * @generated
+        */
+        public function getSteps(): array<int, \Behat\Gherkin\Node\StepNode>;
+        /**
+        * Checks if outline has examples.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasExamples(): bool;
+        /**
+        * Builds and returns examples table for the outline.
+        *
+        * WARNING: it returns a merged table with tags, names & descriptions lost.
+        *
+        * @return ExampleTableNode
+        * @deprecated use getExampleTables instead
+        * @generated
+        */
+        deprecated public function getExampleTable(): \Behat\Gherkin\Node\ExampleTableNode;
+        /**
+        * Returns list of examples for the outline.
+        *
+        * @return array<int, ExampleNode>
+        * @generated
+        */
+        public function getExamples(): array<int, \Behat\Gherkin\Node\ExampleNode>;
+        /**
+        * Returns examples tables array for the outline.
+        *
+        * @return array<mixed, ExampleTableNode>
+        * @generated
+        */
+        public function getExampleTables(): array<mixed, \Behat\Gherkin\Node\ExampleTableNode>;
+        /**
+        * Returns outline keyword.
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * Returns outline declaration line number.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+        /**
+        * Returns a copy of this outline, but with a different table.
+        *
+        * @param array<mixed, ExampleTableNode> $exampleTables
+        * @generated
+        */
+        public function withTables(array<mixed, \Behat\Gherkin\Node\ExampleTableNode> $exampleTables): self;
+        /**
+        * Creates examples for this outline using examples table.
+        *
+        * @return array<int, ExampleNode>
+        * @generated
+        */
+        protected function createExamples(): array<int, \Behat\Gherkin\Node\ExampleNode>;
+    }
+    /**
+    * Represents Gherkin PyString argument.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class PyStringNode implements \Stringable, \Behat\Gherkin\Node\ArgumentInterface {
+        /**
+        * @param array<int, string> $strings String in form of [$stringLine]
+        * @param int $line Line number where string been started
+        * @generated
+        */
+        public function __construct(array<int, string> $strings, int $line): void;
+        /**
+        * Returns node type.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns entire PyString lines set.
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        public function getStrings(): array<int, string>;
+        /**
+        * Returns raw string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getRaw(): string;
+        /**
+        * Converts PyString into string.
+        *
+        * @return string
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Returns line number at which PyString was started.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+    }
+    /**
+    * Gherkin scenario interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface ScenarioInterface extends \Behat\Gherkin\Node\ScenarioLikeInterface, \Behat\Gherkin\Node\TaggedNodeInterface {
+    }
+    /**
+    * Gherkin scenario-like interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface ScenarioLikeInterface extends \Behat\Gherkin\Node\KeywordNodeInterface, \Behat\Gherkin\Node\StepContainerInterface {
+    }
+    /**
+    * Represents Gherkin Scenario.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class ScenarioNode implements \Behat\Gherkin\Node\ScenarioInterface, \Behat\Gherkin\Node\NamedScenarioInterface, \Behat\Gherkin\Node\DescribableNodeInterface {
+        /**
+        * @param array<int, StepNode> $steps
+        * @param array<int, string> $tags
+        * @generated
+        */
+        public function __construct(?string $title, array<int, string> $tags, array<int, \Behat\Gherkin\Node\StepNode> $steps, string $keyword, int $line, ?string $description = null): void;
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns scenario title.
+        *
+        * @return string|null
+        * @deprecated you should use {@see self::getName()} instead as this method will be removed in the next
+        *             major version
+        * @generated
+        */
+        deprecated public function getTitle(): string|null;
+        public function getName(): ?string;
+        public function getDescription(): ?string;
+        public function getTags(): mixed;
+        /**
+        * Checks if scenario has steps.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSteps(): bool;
+        /**
+        * Returns scenario steps.
+        *
+        * @return array<int, StepNode>
+        * @generated
+        */
+        public function getSteps(): array<int, \Behat\Gherkin\Node\StepNode>;
+        /**
+        * Returns scenario keyword.
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * Returns scenario declaration line number.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+    }
+    /**
+    * Gherkin step container interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface StepContainerInterface extends \Behat\Gherkin\Node\NodeInterface {
+        /**
+        * Checks if container has steps.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSteps(): bool;
+        /**
+        * Returns container steps.
+        *
+        * @return array<int, StepNode>
+        * @generated
+        */
+        public function getSteps(): array<int, \Behat\Gherkin\Node\StepNode>;
+    }
+    /**
+    * Represents Gherkin Step.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @final since 4.15.0
+    * @generated
+    */
+    class StepNode implements \Behat\Gherkin\Node\NodeInterface {
+        /**
+        * @param array<int, ArgumentInterface> $arguments
+        * @generated
+        */
+        public function __construct(string $keyword, string $text, array<int, \Behat\Gherkin\Node\ArgumentInterface> $arguments, int $line, ?string $keywordType = null, ?string $fullText = null): void;
+        /**
+        * Returns node type string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns step keyword in provided language (Given, When, Then, etc.).
+        *
+        * @return string
+        * @deprecated use getKeyword() instead
+        * @generated
+        */
+        deprecated public function getType(): string;
+        /**
+        * Returns step keyword in provided language (Given, When, Then, etc.).
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeyword(): string;
+        /**
+        * Returns step type keyword (Given, When, Then, etc.).
+        *
+        * @return string
+        * @generated
+        */
+        public function getKeywordType(): string;
+        /**
+        * Returns step text.
+        *
+        * @return string
+        * @generated
+        */
+        public function getText(): string;
+        /**
+        * Returns the full gherkin text including the keyword.
+        *
+        * Can be used to print a representation of the gherkin for this step, without
+        * needing to know whether the language / keyword requires a space between the
+        * keyword and the following text.
+        *
+        * @generated
+        */
+        public function getFullText(): string;
+        /**
+        * Checks if step has arguments.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasArguments(): bool;
+        /**
+        * Returns step arguments.
+        *
+        * @return array<int, ArgumentInterface>
+        * @generated
+        */
+        public function getArguments(): array<int, \Behat\Gherkin\Node\ArgumentInterface>;
+        /**
+        * Returns step declaration line number.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+    }
+    /**
+    * Represents Gherkin Table argument.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @template-implements IteratorAggregate<int, array<string, string>>
+    * @generated
+    */
+    class TableNode implements \Stringable, \Behat\Gherkin\Node\ArgumentInterface, \IteratorAggregate {
+        /**
+        * Initializes table.
+        *
+        * @param array<int, array<int, string>> $table Table in form of [$rowLineNumber => [$val1, $val2, $val3]]
+        * @throws NodeException If the given table is invalid
+        * @generated
+        */
+        public function __construct(array<int, array<int, string>> $table): void;
+        /**
+        * Creates a table from a given list.
+        *
+        * @param array<int, string> $list One-dimensional array
+        * @return TableNode
+        * @throws NodeException If the given list is not a one-dimensional array
+        * @generated
+        */
+        public static function fromList(array<int, string> $list): \Behat\Gherkin\Node\TableNode;
+        /**
+        * Returns node type.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNodeType(): string;
+        /**
+        * Returns table hash, formed by columns (ColumnsHash).
+        *
+        * @return array<int, array<string, string>>
+        * @generated
+        */
+        public function getHash(): array<int, array<string, string>>;
+        /**
+        * Returns table hash, formed by columns.
+        *
+        * @return array<int, array<string, string>>
+        * @generated
+        */
+        public function getColumnsHash(): array<int, array<string, string>>;
+        /**
+        * Returns table hash, formed by rows.
+        *
+        * @return array<string, string|array<int, string>>
+        * @generated
+        */
+        public function getRowsHash(): array<string, string|array<int, string>>;
+        /**
+        * Returns numerated table lines.
+        *
+        * Line numbers are keys, lines are values.
+        *
+        * @return array<int, array<int, string>>
+        * @generated
+        */
+        public function getTable(): array<int, array<int, string>>;
+        /**
+        * Returns table rows.
+        *
+        * @return array<int, array<int, string>>
+        * @generated
+        */
+        public function getRows(): array<int, array<int, string>>;
+        /**
+        * Returns table definition lines.
+        *
+        * @return array<int, int>
+        * @generated
+        */
+        public function getLines(): array<int, int>;
+        /**
+        * Returns specific row in a table.
+        *
+        * @param int $index Row number
+        * @return array<int, string>
+        * @throws NodeException If row with specified index does not exist
+        * @generated
+        */
+        public function getRow(int $index): array<int, string>;
+        /**
+        * Returns specific column in a table.
+        *
+        * @param int $index Column number
+        * @return array<int, string>
+        * @throws NodeException If column with specified index does not exist
+        * @generated
+        */
+        public function getColumn(int $index): array<int, string>;
+        /**
+        * Returns line number at which specific row was defined.
+        *
+        * @return int
+        * @throws NodeException If row with specified index does not exist
+        * @generated
+        */
+        public function getRowLine(int $index): int;
+        /**
+        * Converts row into delimited string.
+        *
+        * @param int $rowNum Row number
+        * @return string
+        * @generated
+        */
+        public function getRowAsString(int $rowNum): string;
+        /**
+        * Converts row into delimited string.
+        *
+        * @param int $rowNum Row number
+        * @param callable $wrapper Wrapper function
+        * @return string
+        * @generated
+        */
+        public function getRowAsStringWithWrappedValues(int $rowNum, callable $wrapper): string;
+        /**
+        * Converts entire table into string.
+        *
+        * @return string
+        * @generated
+        */
+        public function getTableAsString(): string;
+        /**
+        * Returns line number at which table was started.
+        *
+        * @return int
+        * @generated
+        */
+        public function getLine(): int;
+        /**
+        * Converts table into string.
+        *
+        * @return string
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Retrieves a hash iterator.
+        *
+        * @return \Iterator
+        * @generated
+        */
+        public function getIterator(): \Iterator;
+        /**
+        * Obtains and adds rows from another table to the current table.
+        *
+        * The second table should have the same structure as the current one.
+        *
+        * @return void
+        * @deprecated remove together with OutlineNode::getExampleTable
+        * @generated
+        */
+        deprecated public function mergeRowsFromTable(\Behat\Gherkin\Node\TableNode $node): void;
+        /**
+        * Pads string right.
+        *
+        * @return string
+        * @generated
+        */
+        protected function padRight(string $text, int $length): string;
+    }
+    /**
+    * Gherkin tagged node interface.
+    *
+    * @author Konstantin Kudryashov <ever.zet@gmail.com>
+    * @generated
+    */
+    interface TaggedNodeInterface extends \Behat\Gherkin\Node\NodeInterface {
+        /**
+        * Checks if node is tagged with tag.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasTag(string $tag): bool;
+        /**
+        * Checks if node has tags (including any inherited tags e.g. from feature).
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasTags(): bool;
+        /**
+        * Returns node tags (including any inherited tags e.g. from feature).
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        public function getTags(): array<int, string>;
+    }
+}

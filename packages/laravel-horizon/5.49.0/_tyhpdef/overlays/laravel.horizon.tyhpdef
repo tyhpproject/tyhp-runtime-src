@@ -1,0 +1,1056 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under `overlays/stubs/`).
+ *
+ * `WorkCommand` extends illuminate-queue's omitted `\Illuminate\Queue\Console\WorkCommand`.
+ * LongWaitDetected `toSlack` / `toNexmo` name notification channel types that are not
+ * in the wrapped illuminate-notifications surface.
+ */
+
+namespace Laravel\Horizon {
+    /**
+     * Overlay: `Horizon::scriptVariables()` keys.
+     */
+    type HorizonScriptVariablesResult = struct {
+        mixed $path;
+        mixed $proxy_path;
+    };
+
+    /**
+     * Overlay: `SupervisorOptions::toArray()` keys.
+     */
+    type SupervisorOptionsToArrayResult = struct {
+        string|null $autoScalingStrategy;
+        int|string $backoff;
+        string $balance;
+        int $balanceCooldown;
+        int $balanceMaxShift;
+        string $connection;
+        bool $force;
+        bool $json;
+        int $maxJobs;
+        int $maxProcesses;
+        int $maxTime;
+        int $maxTries;
+        int $memory;
+        int $minProcesses;
+        string $name;
+        int $nice;
+        int|false $parentId;
+        mixed $queue;
+        int $rest;
+        int $sleep;
+        int $timeout;
+        string $workersName;
+    };
+
+    // @overlay-against: trait EventMap
+    partial trait EventMap {
+        /**
+         * Overlay: event class => list of listener classes.
+         */
+        // @overlay-against: array $events
+        protected array<__ClassName, array<int, __ClassName>> $events ?? [];
+    }
+
+    // @overlay-against: class Horizon
+    partial class Horizon {
+        /**
+         * Overlay: `check()` invokes this with the request and returns the result.
+         */
+        // @overlay-against: \Closure $authUsing
+        public static \Closure<callable(\Illuminate\Http\Request): bool>|null $authUsing;
+
+        /**
+         * Overlay: database names stored on the property (`'Jobs'`, `'Supervisors'`, …).
+         */
+        // @overlay-against: array $databases
+        public static array<int, string> $databases ?? [];
+
+        /**
+         * Overlay: `check()` invokes this with the request and returns the result.
+         */
+        // @overlay-against: function auth(\Closure $callback): static
+        public static function auth(\Closure<callable(\Illuminate\Http\Request): bool> $callback): static;
+
+        /**
+         * Overlay: cluster config is indexed by node (`$config[0]`) and by `'options'`.
+         */
+        // @overlay-against: function configureClusterConnection(array $config): void
+        protected static function configureClusterConnection(array<int|string, mixed> $config): void;
+
+        /**
+         * Overlay: standalone config is written at `$config['options']`.
+         */
+        // @overlay-against: function configureStandaloneConnection(array $config): void
+        protected static function configureStandaloneConnection(array<string, mixed> $config): void;
+
+        /**
+         * Overlay: `scriptVariables()` returns `path` and `proxy_path` from config.
+         */
+        // @overlay-against: function scriptVariables(): array
+        public static function scriptVariables(): HorizonScriptVariablesResult;
+    }
+
+    // @overlay-against: trait ListensForSignals
+    partial trait ListensForSignals {
+        /**
+         * Overlay: signal name => the same method name (`'terminate'`, `'restart'`, `'pause'`, `'continue'`).
+         */
+        // @overlay-against: array $pendingSignals
+        protected array<string, string> $pendingSignals ?? [];
+    }
+
+    // @overlay-against: class Lock
+    partial class Lock {
+        /**
+         * Overlay: `with()` invokes the callback with no arguments.
+         */
+        // @overlay-against: function with(string $key, \Closure $callback, int $seconds): void
+        public function with(string $key, \Closure<callable(): void> $callback, int $seconds = 60): void;
+    }
+
+    // @overlay-against: class MasterSupervisor implements \Laravel\Horizon\Contracts\Pausable, \Laravel\Horizon\Contracts\Restartable, \Laravel\Horizon\Contracts\Terminable, \Laravel\Horizon\ListensForSignals
+    partial class MasterSupervisor {
+        /**
+         * Overlay: `basename()` invokes this with no arguments and uses the result as the name.
+         */
+        // @overlay-against: \Closure|null $nameResolver
+        public static \Closure<callable(): string>|null $nameResolver;
+
+        /**
+         * Overlay: `output()` invokes this with the string type and line.
+         */
+        // @overlay-against: \Closure|null $output
+        public \Closure<callable(string, string): void>|null $output;
+
+        /**
+         * Overlay: `basename()` invokes this with no arguments and uses the result as the name.
+         */
+        // @overlay-against: function determineNameUsing(\Closure $callback): void
+        public static function determineNameUsing(\Closure<callable(): string> $callback): void;
+
+        /**
+         * Overlay: `output()` invokes this with the string type and line.
+         */
+        // @overlay-against: function handleOutputUsing(\Closure $callback): static
+        public function handleOutputUsing(\Closure<callable(string, string): void> $callback): static;
+    }
+
+    // @overlay-against: class ProcessInspector
+    partial class ProcessInspector {
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function current(): array
+        public function current(): array<int, int>;
+
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function monitoring(): array
+        public function monitoring(): array<int, int>;
+    }
+
+    // @overlay-against: class ProcessPool implements \Countable
+    partial class ProcessPool {
+        /**
+         * Overlay: `start()` invokes this with the process output type and line.
+         */
+        // @overlay-against: \Closure|null $output
+        public \Closure<callable(mixed, mixed): void>|null $output;
+
+        /**
+         * Overlay: active workers (`createProcess()` / `markForTermination()`).
+         */
+        // @overlay-against: array $processes
+        public array<int, \Laravel\Horizon\WorkerProcess> $processes ?? [];
+
+        /**
+         * Overlay: workers marked for termination (`markForTermination()`).
+         */
+        // @overlay-against: array $terminatingProcesses
+        public array<int, \Laravel\Horizon\WorkerProcess> $terminatingProcesses ?? [];
+
+        /**
+         * Overlay: whether the pool is running. The declaration default is `true`.
+         */
+        // @overlay-against: array $working
+        public bool $working ?? true;
+
+        /**
+         * Overlay: `start()` invokes this with the process output type and line.
+         */
+        // @overlay-against: function __construct(\Laravel\Horizon\SupervisorOptions $options, ?\Closure $output): void
+        public function __construct(\Laravel\Horizon\SupervisorOptions $options, \Closure<callable(mixed, mixed): void>|null $output = null): void;
+    }
+
+    // @overlay-against: class ProvisioningPlan
+    partial class ProvisioningPlan {
+        /**
+         * Overlay: environment => collection of supervisor name => `SupervisorOptions` (`toSupervisorOptions()`).
+         */
+        // @overlay-against: array $parsed
+        public array<string, \Illuminate\Support\Collection<string, \Laravel\Horizon\SupervisorOptions>> $parsed;
+
+        /**
+         * Overlay: environment => supervisor => option map (`applyDefaultOptions()`).
+         */
+        // @overlay-against: array $plan
+        public array<string, array<string, array<string, mixed>>> $plan;
+
+        /**
+         * Overlay: `$plan` is environment => supervisor => options; `$defaults` is supervisor => options.
+         */
+        // @overlay-against: function __construct(string $master, array $plan, array $defaults): void
+        public function __construct(string $master, array<string, array<string, array<string, mixed>>> $plan, array<string, array<string, mixed>> $defaults = []): void;
+
+        /**
+         * Overlay: `$plan` is environment => supervisor => options; `$defaults` is supervisor => options.
+         */
+        // @overlay-against: function applyDefaultOptions(array $plan, array $defaults): array
+        protected function applyDefaultOptions(array<string, array<string, array<string, mixed>>> $plan, array<string, array<string, mixed>> $defaults = []): array<string, array<string, array<string, mixed>>>;
+
+        /**
+         * Overlay: option names (`'queue'`, `'tries'`, `'backoff'`, …) with mixed values.
+         */
+        // @overlay-against: function convert(string $supervisor, array $options): \Laravel\Horizon\SupervisorOptions
+        protected function convert(string $supervisor, array<string, mixed> $options): \Laravel\Horizon\SupervisorOptions;
+
+        /**
+         * Overlay: `array_keys($this->parsed)` environment names.
+         */
+        // @overlay-against: function environments(): array
+        public function environments(): array<int, string>;
+
+        /**
+         * Overlay: returns the parsed `SupervisorOptions`, or nothing when the pair is missing.
+         */
+        // @overlay-against: function optionsFor(string $environment, string $supervisor): mixed
+        public function optionsFor(string $environment, string $supervisor): \Laravel\Horizon\SupervisorOptions|null;
+
+        /**
+         * Overlay: environment => collection of supervisor name => `SupervisorOptions`.
+         */
+        // @overlay-against: function toSupervisorOptions(): array
+        public function toSupervisorOptions(): array<string, \Illuminate\Support\Collection<string, \Laravel\Horizon\SupervisorOptions>>;
+    }
+
+    // @overlay-against: class RedisHorizonCommandQueue implements \Laravel\Horizon\Contracts\HorizonCommandQueue, \Laravel\Horizon\Repositories\UsesClusterAwarePipeline
+    partial class RedisHorizonCommandQueue {
+        /**
+         * Overlay: pending commands are the `string $command` values passed to `push()`.
+         */
+        // @overlay-against: function pending(string $name): array
+        public function pending(string $name): array<int, string>;
+    }
+
+    // @overlay-against: class RedisQueue extends \Illuminate\Queue\RedisQueue
+    partial class RedisQueue {
+        /**
+         * Overlay: `event()` calls `connection()` / `queue()` on Redis events and `JobsMigrated`.
+         */
+        // @overlay-against: function event(string $queue, mixed $event): void
+        protected function event(string $queue, \Laravel\Horizon\Events\JobsMigrated|\Laravel\Horizon\Events\RedisEvent $event): void;
+
+        /**
+         * Overlay: returns `$payload->id()`.
+         */
+        // @overlay-against: function pushRaw(string $payload, string|null $queue, array $options): mixed
+        public function pushRaw(string $payload, string|null $queue = null, array $options = []): string;
+    }
+
+    // @overlay-against: trait ServiceBindings
+    partial trait ServiceBindings {
+        /**
+         * Overlay: numeric keys and contract class names map to implementation class names.
+         */
+        // @overlay-against: array $serviceBindings
+        public array<int|string, __ClassName> $serviceBindings ?? [];
+    }
+
+    // @overlay-against: class Stopwatch
+    partial class Stopwatch {
+        /**
+         * Overlay: timer key => `microtime(true)`.
+         */
+        // @overlay-against: array $timers
+        public array<string, float> $timers ?? [];
+    }
+
+    // @overlay-against: class Supervisor implements \Laravel\Horizon\Contracts\Pausable, \Laravel\Horizon\Contracts\Restartable, \Laravel\Horizon\Contracts\Terminable, \Laravel\Horizon\ListensForSignals
+    partial class Supervisor {
+        /**
+         * Overlay: `output()` invokes this with the string type and line.
+         */
+        // @overlay-against: \Closure|null $output
+        public \Closure<callable(string, string): void>|null $output;
+
+        /**
+         * Overlay: queue name => scale passed to `scale()`.
+         */
+        // @overlay-against: function balance(array $balance): void
+        public function balance(array<string, mixed> $balance): void;
+
+        /**
+         * Overlay: `output()` invokes this with the string type and line.
+         */
+        // @overlay-against: function handleOutputUsing(\Closure $callback): static
+        public function handleOutputUsing(\Closure<callable(string, string): void> $callback): static;
+    }
+
+    // @overlay-against: class SupervisorOptions
+    partial class SupervisorOptions {
+        /**
+         * Overlay: assigns `$array['name']`, `$array['connection']`, and every other string key.
+         */
+        // @overlay-against: function fromArray(array $array): static
+        public static function fromArray(array<string, mixed> $array): static;
+
+        /**
+         * Overlay: `toArray()` returns the supervisor option fields.
+         */
+        // @overlay-against: function toArray(): array
+        public function toArray(): SupervisorOptionsToArrayResult;
+    }
+
+    // @overlay-against: class SupervisorProcess extends \Laravel\Horizon\WorkerProcess
+    partial class SupervisorProcess {
+        /**
+         * Overlay: exit codes `0`, `2`, and `13`.
+         */
+        // @overlay-against: array $dontRestartOn
+        public array<int, int> $dontRestartOn ?? [];
+    }
+
+    // @overlay-against: class Tags
+    partial class Tags {
+        /**
+         * Overlay: each job is an object (`method_exists($job, 'tags')`).
+         */
+        // @overlay-against: function explicitTags(array $jobs): array
+        protected static function explicitTags(array<int, object> $jobs): array;
+
+        /**
+         * Overlay: returns `$job->data[0]` when it is an object, otherwise `new stdClass`.
+         */
+        // @overlay-against: function extractEvent(mixed $job): mixed
+        protected static function extractEvent(object $job): object;
+
+        /**
+         * Overlay: `newInstanceWithoutConstructor()` on `$job->class`.
+         */
+        // @overlay-against: function extractListener(mixed $job): mixed
+        protected static function extractListener(object $job): object;
+
+        /**
+         * Overlay: `$target` is passed to `ReflectionProperty::getValue()`.
+         */
+        // @overlay-against: function getValue(\ReflectionProperty $property, mixed $target): mixed
+        protected static function getValue(\ReflectionProperty $property, object $target): mixed;
+
+        /**
+         * Overlay: each target is passed to `new ReflectionClass($target)`.
+         */
+        // @overlay-against: function modelsFor(array $targets): \Illuminate\Support\Collection
+        public static function modelsFor(array<int, object|string> $targets): \Illuminate\Support\Collection;
+
+        /**
+         * Overlay: `$job` is passed to `extractEvent()` / `extractListener()`, which read properties.
+         */
+        // @overlay-against: function tagsForListener(mixed $job): array
+        protected static function tagsForListener(object $job): array;
+    }
+
+    // @overlay-against: class WaitTimeCalculator
+    partial class WaitTimeCalculator {
+        /**
+         * Overlay: queue name => seconds from `calculateTimeToClear()` (`round()`).
+         */
+        // @overlay-against: function calculate(string|null $queue): array
+        public function calculate(string|null $queue = null): array<string, float>;
+    }
+}
+
+namespace Laravel\Horizon\Connectors {
+    // @overlay-against: class RedisConnector extends \Illuminate\Queue\Connectors\RedisConnector
+    partial class RedisConnector {
+        /**
+         * Overlay: reads string keys `queue`, `connection`, `retry_after`, `block_for`, and `after_commit`.
+         */
+        // @overlay-against: function connect(array $config): \Laravel\Horizon\RedisQueue
+        public function connect(array<string, mixed> $config): \Laravel\Horizon\RedisQueue;
+    }
+}
+
+namespace Laravel\Horizon\Console {
+    // @overlay-against: class WorkCommand extends \Illuminate\Queue\Console\WorkCommand
+    omit class WorkCommand {
+    }
+}
+
+namespace Laravel\Horizon\Notifications {
+    // @overlay-against: class LongWaitDetected extends \Illuminate\Notifications\Notification implements \Laravel\Horizon\Contracts\LongWaitDetectedNotification, \Illuminate\Bus\Queueable
+    partial class LongWaitDetected {
+        // @overlay-against: function toNexmo(mixed $notifiable): \Illuminate\Notifications\Messages\NexmoMessage
+        omit function toNexmo();
+
+        // @overlay-against: function toSlack(mixed $notifiable): \Illuminate\Notifications\Messages\SlackMessage
+        omit function toSlack();
+
+        /**
+         * Overlay: `array_filter` of `'slack'`, `'nexmo'`, and `'mail'`.
+         */
+        // @overlay-against: function via(mixed $notifiable): array
+        public function via(mixed $notifiable): array<int, string>;
+    }
+}
+
+namespace Laravel\Horizon\Contracts {
+    /**
+     * Overlay: documented array shape.
+     */
+    type WorkloadRepositoryGetResult = struct {
+        int $length;
+        string $name;
+        int $wait;
+    };
+
+    /**
+     * Overlay: documented array shape.
+     */
+    type WorkloadRepositoryGetResult2 = struct {
+        int $length;
+        string $name;
+        int $processes;
+        null|array<int, WorkloadRepositoryGetResult> $split_queues;
+        int $wait;
+    };
+
+    // @overlay-against: interface HorizonCommandQueue
+    partial interface HorizonCommandQueue {
+        /**
+         * Overlay: pending commands are the `string $command` values passed to `push()`.
+         */
+        // @overlay-against: function pending(string $name): array
+        public function pending(string $name): array<int, string>;
+    }
+
+    // @overlay-against: interface JobRepository
+    partial interface JobRepository {
+        /**
+         * Overlay: job IDs are strings (`nextJobId()`).
+         */
+        // @overlay-against: function deleteMonitored(array $ids): void
+        public function deleteMonitored(array<int, string> $ids): void;
+
+        /**
+         * Overlay: a chunk of the failed jobs `findFailed()` returns as `stdClass`.
+         */
+        // @overlay-against: function getFailed(string|null $afterIndex): \Illuminate\Support\Collection
+        public function getFailed(string|null $afterIndex = null): \Illuminate\Support\Collection<int, \stdClass>;
+
+        /**
+         * Overlay: job IDs are strings (`nextJobId()`).
+         */
+        // @overlay-against: function getJobs(array $ids, mixed $indexFrom): \Illuminate\Support\Collection
+        public function getJobs(array<int, string> $ids, int $indexFrom = 0): \Illuminate\Support\Collection;
+    }
+
+    // @overlay-against: interface MasterSupervisorRepository
+    partial interface MasterSupervisorRepository {
+        /**
+         * Overlay: `all()` returns `get()`, whose elements are `(object)` records.
+         */
+        // @overlay-against: function all(): array
+        public function all(): array<int, \stdClass>;
+
+        /**
+         * Overlay: `find()` returns the first `get()` record, or null.
+         */
+        // @overlay-against: function find(string $name): array
+        public function find(string $name): \stdClass|null;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`). `get()` returns `(object)` records.
+         */
+        // @overlay-against: function get(array $names): array
+        public function get(array<int, string> $names): array<int, \stdClass>;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`).
+         */
+        // @overlay-against: function names(): array
+        public function names(): array<int, string>;
+    }
+
+    // @overlay-against: interface MetricsRepository
+    partial interface MetricsRepository {
+        /**
+         * Overlay: measured jobs are class names.
+         */
+        // @overlay-against: function measuredJobs(): array
+        public function measuredJobs(): array<int, __ClassName>;
+
+        /**
+         * Overlay: measured queues are the `string $queue` names used by this repository.
+         */
+        // @overlay-against: function measuredQueues(): array
+        public function measuredQueues(): array<int, string>;
+
+        /**
+         * Overlay: `RedisMetricsRepository::snapshotsFor()` maps each snapshot to an object.
+         */
+        // @overlay-against: function snapshotsForJob(string $job): array
+        public function snapshotsForJob(string $job): array<int, \stdClass>;
+
+        /**
+         * Overlay: `RedisMetricsRepository::snapshotsFor()` maps each snapshot to an object.
+         */
+        // @overlay-against: function snapshotsForQueue(string $queue): array
+        public function snapshotsForQueue(string $queue): array<int, \stdClass>;
+    }
+
+    // @overlay-against: interface ProcessRepository
+    partial interface ProcessRepository {
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function forgetOrphans(string $master, array $processIds): void
+        public function forgetOrphans(string $master, array<int, int> $processIds): void;
+
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function orphaned(string $master, array $processIds): array
+        public function orphaned(string $master, array<int, int> $processIds): array;
+
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function orphanedFor(string $master, int $seconds): array
+        public function orphanedFor(string $master, int $seconds): array<int, int>;
+    }
+
+    // @overlay-against: interface SupervisorRepository
+    partial interface SupervisorRepository {
+        /**
+         * Overlay: `all()` returns `get()`, whose elements are `(object)` records.
+         */
+        // @overlay-against: function all(): array
+        public function all(): array<int, \stdClass>;
+
+        /**
+         * Overlay: `find()` returns the first `get()` record, or null.
+         */
+        // @overlay-against: function find(string $name): array
+        public function find(string $name): \stdClass|null;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`).
+         */
+        // @overlay-against: function forget(array|string $names): void
+        public function forget(array<int, string>|string $names): void;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`). `get()` returns `(object)` records.
+         */
+        // @overlay-against: function get(array $names): array
+        public function get(array<int, string> $names): array<int, \stdClass>;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`).
+         */
+        // @overlay-against: function names(): array
+        public function names(): array<int, string>;
+    }
+
+    // @overlay-against: interface TagRepository
+    partial interface TagRepository {
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function add(string $id, array $tags): void
+        public function add(string $id, array<int, string> $tags): void;
+
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function addTemporary(int $minutes, string $id, array $tags): void
+        public function addTemporary(int $minutes, string $id, array<int, string> $tags): void;
+
+        /**
+         * Overlay: job IDs are strings (`JobRepository::nextJobId()`).
+         */
+        // @overlay-against: function jobs(string $tag): array
+        public function jobs(string $tag): array<int, string>;
+
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function monitored(array $tags): array
+        public function monitored(array<int, string> $tags): array<int, string>;
+
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function monitoring(): array
+        public function monitoring(): array<int, string>;
+
+        /**
+         * Overlay: job IDs are strings (`JobRepository::nextJobId()`).
+         */
+        // @overlay-against: function paginate(string $tag, int $startingAt, int $limit): array
+        public function paginate(string $tag, int $startingAt = 0, int $limit = 25): array<int, string>;
+    }
+
+    // @overlay-against: interface WorkloadRepository
+    partial interface WorkloadRepository {
+        /**
+         * Overlay: `WorkloadRepository::get()` uses the documented types.
+         */
+        // @overlay-against: function get(): array
+        public function get(): array<int, WorkloadRepositoryGetResult2>;
+    }
+}
+
+namespace Laravel\Horizon\Events {
+    // @overlay-against: class JobsMigrated
+    partial class JobsMigrated {
+        /**
+         * Overlay: each payload is passed to `new JobPayload($job)`.
+         */
+        // @overlay-against: function __construct(array $payloads): void
+        public function __construct(array<int, string> $payloads): void;
+    }
+}
+
+namespace Laravel\Horizon\Http\Controllers {
+    /**
+     * Overlay: `BatchesController::index()` key.
+     */
+    type BatchesControllerIndexResult = struct {
+        mixed $batches;
+    };
+
+    /**
+     * Overlay: `BatchesController::show()` keys.
+     */
+    type BatchesControllerShowResult = struct {
+        mixed $batch;
+        \Illuminate\Support\Collection<int, \stdClass>|null $failedJobs;
+    };
+
+    /**
+     * Overlay: `CompletedJobsController::index()` keys.
+     */
+    type CompletedJobsControllerIndexResult = struct {
+        \Illuminate\Support\Collection<int, \stdClass> $jobs;
+        int $total;
+    };
+
+    /**
+     * Overlay: `periods` inside `DashboardStatsController::index()`.
+     */
+    type DashboardStatsControllerIndexPeriods = struct {
+        mixed $failedJobs;
+        mixed $recentJobs;
+    };
+
+    /**
+     * Overlay: `DashboardStatsController::index()` keys.
+     */
+    type DashboardStatsControllerIndexResult = struct {
+        int $failedJobs;
+        float $jobsPerMinute;
+        int $pausedMasters;
+        DashboardStatsControllerIndexPeriods $periods;
+        int $processes;
+        string|null $queueWithMaxRuntime;
+        string|null $queueWithMaxThroughput;
+        int $recentJobs;
+        string $status;
+        \Illuminate\Support\Collection<string, float> $wait;
+    };
+
+    /**
+     * Overlay: `FailedJobsController::index()` keys.
+     */
+    type FailedJobsControllerIndexResult = struct {
+        \Illuminate\Support\Collection<int, \stdClass> $jobs;
+        int $total;
+    };
+
+    /**
+     * Overlay: `MonitoringController::paginate()` keys.
+     */
+    type MonitoringControllerPaginateResult = struct {
+        \Illuminate\Support\Collection<int, \stdClass> $jobs;
+        int $total;
+    };
+
+    /**
+     * Overlay: `PendingJobsController::index()` keys.
+     */
+    type PendingJobsControllerIndexResult = struct {
+        \Illuminate\Support\Collection<int, \stdClass> $jobs;
+        int $total;
+    };
+
+    /**
+     * Overlay: `SilencedJobsController::index()` keys.
+     */
+    type SilencedJobsControllerIndexResult = struct {
+        \Illuminate\Support\Collection<int, \stdClass> $jobs;
+        int $total;
+    };
+
+    // @overlay-against: class BatchesController extends \Laravel\Horizon\Http\Controllers\Controller
+    partial class BatchesController {
+        /**
+         * Overlay: returns `['batches' => $batches]`.
+         */
+        // @overlay-against: function index(\Illuminate\Http\Request $request): array
+        public function index(\Illuminate\Http\Request $request): BatchesControllerIndexResult;
+
+        /**
+         * Overlay: returns `batch` from `find()` and `failedJobs` from `getJobs()`.
+         */
+        // @overlay-against: function show(string $id): array
+        public function show(string $id): BatchesControllerShowResult;
+    }
+
+    // @overlay-against: class CompletedJobsController extends \Laravel\Horizon\Http\Controllers\Controller
+    partial class CompletedJobsController {
+        /**
+         * Overlay: returns `jobs` and `total`.
+         */
+        // @overlay-against: function index(\Illuminate\Http\Request $request): array
+        public function index(\Illuminate\Http\Request $request): CompletedJobsControllerIndexResult;
+    }
+
+    // @overlay-against: class DashboardStatsController extends \Laravel\Horizon\Http\Controllers\Controller
+    partial class DashboardStatsController {
+        /**
+         * Overlay: dashboard stat keys built in `index()`.
+         */
+        // @overlay-against: function index(): array
+        public function index(): DashboardStatsControllerIndexResult;
+    }
+
+    // @overlay-against: class FailedJobsController extends \Laravel\Horizon\Http\Controllers\Controller
+    partial class FailedJobsController {
+        /**
+         * Overlay: returns `jobs` and `total`.
+         */
+        // @overlay-against: function index(\Illuminate\Http\Request $request): array
+        public function index(\Illuminate\Http\Request $request): FailedJobsControllerIndexResult;
+    }
+
+    // @overlay-against: class MonitoringController extends \Laravel\Horizon\Http\Controllers\Controller
+    partial class MonitoringController {
+        /**
+         * Overlay: returns `jobs` from `getJobs()` and `total` from `TagRepository::count()`.
+         */
+        // @overlay-against: function paginate(\Illuminate\Http\Request $request): array
+        public function paginate(\Illuminate\Http\Request $request): MonitoringControllerPaginateResult;
+    }
+
+    // @overlay-against: class PendingJobsController extends \Laravel\Horizon\Http\Controllers\Controller
+    partial class PendingJobsController {
+        /**
+         * Overlay: returns `jobs` and `total`.
+         */
+        // @overlay-against: function index(\Illuminate\Http\Request $request): array
+        public function index(\Illuminate\Http\Request $request): PendingJobsControllerIndexResult;
+    }
+
+    // @overlay-against: class SilencedJobsController extends \Laravel\Horizon\Http\Controllers\Controller
+    partial class SilencedJobsController {
+        /**
+         * Overlay: returns `jobs` and `total`.
+         */
+        // @overlay-against: function index(\Illuminate\Http\Request $request): array
+        public function index(\Illuminate\Http\Request $request): SilencedJobsControllerIndexResult;
+    }
+}
+
+namespace Laravel\Horizon\Http\Middleware {
+    // @overlay-against: class Authenticate
+    partial class Authenticate {
+        /**
+         * Overlay: `handle()` returns `$next($request)`.
+         */
+        // @overlay-against: function handle(\Illuminate\Http\Request $request, \Closure $next): \Illuminate\Http\Response|null
+        public function handle(\Illuminate\Http\Request $request, \Closure<callable(\Illuminate\Http\Request): \Illuminate\Http\Response|null> $next): \Illuminate\Http\Response|null;
+    }
+}
+
+namespace Laravel\Horizon\Listeners {
+    // @overlay-against: class SendNotification
+    partial class SendNotification {
+        /**
+         * Overlay: `handle()` calls `$event->toNotification()`.
+         */
+        // @overlay-against: function handle(mixed $event): void
+        public function handle(\Laravel\Horizon\Events\LongWaitDetected $event): void;
+    }
+}
+
+namespace Laravel\Horizon\MasterSupervisorCommands {
+    // @overlay-against: class AddSupervisor
+    partial class AddSupervisor {
+        /**
+         * Overlay: both push sites pass `SupervisorOptions::toArray()`.
+         */
+        // @overlay-against: function process(\Laravel\Horizon\MasterSupervisor $master, array $options): void
+        public function process(\Laravel\Horizon\MasterSupervisor $master, \Laravel\Horizon\SupervisorOptionsToArrayResult $options): void;
+    }
+}
+
+namespace Laravel\Horizon\Repositories {
+    /**
+     * Overlay: retry records written by `storeRetryReference()` and updated by `updateRetryStatus()`.
+     */
+    type RedisJobRepositoryRetryStatus = struct {
+        string $id;
+        int $retried_at;
+        string $status;
+    };
+
+    /**
+     * Overlay: `baseSnapshotData()` keys.
+     */
+    type RedisMetricsRepositoryBaseSnapshotData = struct {
+        mixed $runtime;
+        mixed $throughput;
+    };
+
+    /**
+     * Overlay: documented array shape.
+     */
+    type RedisWorkloadRepositoryGetResult = struct {
+        int $length;
+        string $name;
+        int $wait;
+    };
+
+    /**
+     * Overlay: documented array shape.
+     */
+    type RedisWorkloadRepositoryGetResult2 = struct {
+        int $length;
+        string $name;
+        int $processes;
+        null|array<int, RedisWorkloadRepositoryGetResult> $split_queues;
+        int $wait;
+    };
+
+    // @overlay-against: class RedisJobRepository implements \Laravel\Horizon\Contracts\JobRepository, \Laravel\Horizon\Repositories\UsesClusterAwarePipeline
+    partial class RedisJobRepository {
+        /**
+         * Overlay: hash field names stored on each job (`'id'`, `'connection'`, `'queue'`, …).
+         */
+        // @overlay-against: array $keys
+        public array<int, string> $keys ?? [];
+
+        /**
+         * Overlay: job IDs are strings (`nextJobId()`).
+         */
+        // @overlay-against: function deleteMonitored(array $ids): void
+        public function deleteMonitored(array<int, string> $ids): void;
+
+        /**
+         * Overlay: a chunk of the failed jobs `findFailed()` returns as `stdClass`.
+         */
+        // @overlay-against: function getFailed(string|null $afterIndex): \Illuminate\Support\Collection
+        public function getFailed(string|null $afterIndex = null): \Illuminate\Support\Collection<int, \stdClass>;
+
+        /**
+         * Overlay: job IDs are strings (`nextJobId()`).
+         */
+        // @overlay-against: function getJobs(array $ids, mixed $indexFrom): \Illuminate\Support\Collection
+        public function getJobs(array<int, string> $ids, int $indexFrom = 0): \Illuminate\Support\Collection;
+
+        /**
+         * Overlay: each retry row has `id`, `status`, and `retried_at`.
+         */
+        // @overlay-against: function updateRetryStatus(\Laravel\Horizon\JobPayload $payload, array $retries, bool $failed): array
+        protected function updateRetryStatus(\Laravel\Horizon\JobPayload $payload, array<int, RedisJobRepositoryRetryStatus> $retries, bool $failed): array<int, RedisJobRepositoryRetryStatus>;
+    }
+
+    // @overlay-against: class RedisMasterSupervisorRepository implements \Laravel\Horizon\Contracts\MasterSupervisorRepository, \Laravel\Horizon\Repositories\UsesClusterAwarePipeline
+    partial class RedisMasterSupervisorRepository {
+        /**
+         * Overlay: `all()` returns `get()`, whose elements are `(object)` records.
+         */
+        // @overlay-against: function all(): array
+        public function all(): array<int, \stdClass>;
+
+        /**
+         * Overlay: `find()` returns the first `get()` record, or null.
+         */
+        // @overlay-against: function find(string $name): \stdClass|null
+        public function find(string $name): \stdClass|null;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`). `get()` returns `(object)` records.
+         */
+        // @overlay-against: function get(array $names): array
+        public function get(array<int, string> $names): array<int, \stdClass>;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`).
+         */
+        // @overlay-against: function names(): array
+        public function names(): array<int, string>;
+    }
+
+    // @overlay-against: class RedisMetricsRepository implements \Laravel\Horizon\Contracts\MetricsRepository
+    partial class RedisMetricsRepository {
+        /**
+         * Overlay: returns `throughput` and `runtime` from the metrics hash, or nulls.
+         */
+        // @overlay-against: function baseSnapshotData(string $key): array
+        protected function baseSnapshotData(string $key): RedisMetricsRepositoryBaseSnapshotData;
+
+        /**
+         * Overlay: measured jobs are class names.
+         */
+        // @overlay-against: function measuredJobs(): array
+        public function measuredJobs(): array<int, __ClassName>;
+
+        /**
+         * Overlay: measured queues are the `string $queue` names used by this repository.
+         */
+        // @overlay-against: function measuredQueues(): array
+        public function measuredQueues(): array<int, string>;
+
+        /**
+         * Overlay: each stored snapshot is cast with `(object) json_decode($snapshot, true)`.
+         */
+        // @overlay-against: function snapshotsFor(string $key): array
+        protected function snapshotsFor(string $key): array<int, \stdClass>;
+
+        /**
+         * Overlay: returns `snapshotsFor()`, which casts each snapshot to an object.
+         */
+        // @overlay-against: function snapshotsForJob(string $job): array
+        public function snapshotsForJob(string $job): array<int, \stdClass>;
+
+        /**
+         * Overlay: returns `snapshotsFor()`, which casts each snapshot to an object.
+         */
+        // @overlay-against: function snapshotsForQueue(string $queue): array
+        public function snapshotsForQueue(string $queue): array<int, \stdClass>;
+    }
+
+    // @overlay-against: class RedisProcessRepository implements \Laravel\Horizon\Contracts\ProcessRepository, \Laravel\Horizon\Repositories\UsesClusterAwarePipeline
+    partial class RedisProcessRepository {
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function forgetOrphans(string $master, array $processIds): void
+        public function forgetOrphans(string $master, array<int, int> $processIds): void;
+
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function orphaned(string $master, array $processIds): void
+        public function orphaned(string $master, array<int, int> $processIds): void;
+
+        /**
+         * Overlay: process IDs are ints (`MasterSupervisor::pid()`, `Supervisor::pid()`).
+         */
+        // @overlay-against: function orphanedFor(string $master, int $seconds): array
+        public function orphanedFor(string $master, int $seconds): array<int, int>;
+    }
+
+    // @overlay-against: class RedisSupervisorRepository implements \Laravel\Horizon\Contracts\SupervisorRepository, \Laravel\Horizon\Repositories\UsesClusterAwarePipeline
+    partial class RedisSupervisorRepository {
+        /**
+         * Overlay: `all()` returns `get()`, whose elements are `(object)` records.
+         */
+        // @overlay-against: function all(): array
+        public function all(): array<int, \stdClass>;
+
+        /**
+         * Overlay: `find()` returns the first `get()` record, or null.
+         */
+        // @overlay-against: function find(string $name): \stdClass|null
+        public function find(string $name): \stdClass|null;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`).
+         */
+        // @overlay-against: function forget(array|string $names): void
+        public function forget(array<int, string>|string $names): void;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`). `get()` returns `(object)` records.
+         */
+        // @overlay-against: function get(array $names): array
+        public function get(array<int, string> $names): array<int, \stdClass>;
+
+        /**
+         * Overlay: supervisor names are strings (`find(string $name)`).
+         */
+        // @overlay-against: function names(): array
+        public function names(): array<int, string>;
+    }
+
+    // @overlay-against: class RedisTagRepository implements \Laravel\Horizon\Contracts\TagRepository, \Laravel\Horizon\Repositories\UsesClusterAwarePipeline
+    partial class RedisTagRepository {
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function add(string $id, array $tags): void
+        public function add(string $id, array<int, string> $tags): void;
+
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function addTemporary(int $minutes, string $id, array $tags): void
+        public function addTemporary(int $minutes, string $id, array<int, string> $tags): void;
+
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`); job IDs are strings (`nextJobId()`).
+         */
+        // @overlay-against: function forgetJobs(array|string $tags, array|string $ids): void
+        public function forgetJobs(array<int, string>|string $tags, array<int, string>|string $ids): void;
+
+        /**
+         * Overlay: job IDs are strings (`JobRepository::nextJobId()`).
+         */
+        // @overlay-against: function jobs(string $tag): array
+        public function jobs(string $tag): array<int, string>;
+
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function monitored(array $tags): array
+        public function monitored(array<int, string> $tags): array<int, string>;
+
+        /**
+         * Overlay: tags are strings (`monitor(string $tag)`).
+         */
+        // @overlay-against: function monitoring(): array
+        public function monitoring(): array<int, string>;
+
+        /**
+         * Overlay: job IDs are strings (`JobRepository::nextJobId()`).
+         */
+        // @overlay-against: function paginate(string $tag, int $startingAt, int $limit): array
+        public function paginate(string $tag, int $startingAt = 0, int $limit = 25): array<int, string>;
+    }
+
+    // @overlay-against: class RedisWorkloadRepository implements \Laravel\Horizon\Contracts\WorkloadRepository
+    partial class RedisWorkloadRepository {
+        /**
+         * Overlay: `RedisWorkloadRepository::get()` uses the documented types.
+         */
+        // @overlay-against: function get(): array
+        public function get(): array<int, RedisWorkloadRepositoryGetResult2>;
+    }
+}

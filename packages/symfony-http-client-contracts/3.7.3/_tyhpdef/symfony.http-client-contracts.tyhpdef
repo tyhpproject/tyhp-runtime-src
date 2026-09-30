@@ -1,0 +1,269 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Contracts\HttpClient {
+    /**
+    * The interface of chunks returned by ResponseStreamInterface::current().
+    *
+    * When the chunk is first, last or timeout, the content MUST be empty.
+    * When an unchecked timeout or a network error occurs, a TransportExceptionInterface
+    * MUST be thrown by the destructor unless one was already thrown by another method.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ChunkInterface {
+        /**
+        * Tells when the idle timeout has been reached.
+        *
+        * @throws TransportExceptionInterface on a network error
+        * @generated
+        */
+        public function isTimeout(): bool;
+        /**
+        * Tells when headers just arrived.
+        *
+        * @throws TransportExceptionInterface on a network error or when the idle timeout is reached
+        * @generated
+        */
+        public function isFirst(): bool;
+        /**
+        * Tells when the body just completed.
+        *
+        * @throws TransportExceptionInterface on a network error or when the idle timeout is reached
+        * @generated
+        */
+        public function isLast(): bool;
+        /**
+        * Returns a [status code, headers] tuple when a 1xx status code was just received.
+        *
+        * @throws TransportExceptionInterface on a network error or when the idle timeout is reached
+        * @generated
+        */
+        public function getInformationalStatus(): ?array;
+        /**
+        * Returns the content of the response chunk.
+        *
+        * @throws TransportExceptionInterface on a network error or when the idle timeout is reached
+        * @generated
+        */
+        public function getContent(): string;
+        /**
+        * Returns the offset of the chunk in the response body.
+        *
+        * @generated
+        */
+        public function getOffset(): int;
+        /**
+        * In case of error, returns the message that describes it.
+        *
+        * @generated
+        */
+        public function getError(): ?string;
+    }
+    /**
+    * Provides flexible methods for requesting HTTP resources synchronously or asynchronously.
+    *
+    * @see HttpClientTestCase for a reference test suite
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface HttpClientInterface {
+        public const array OPTIONS_DEFAULTS ?? [];
+        /**
+        * Requests an HTTP resource.
+        *
+        * Responses MUST be lazy, but their status code MUST be
+        * checked even if none of their public methods are called.
+        * 
+        * Implementations are not required to support all options described above; they can also
+        * support more custom options; but in any case, they MUST throw a TransportExceptionInterface
+        * when an unsupported option is passed.
+        *
+        * @throws TransportExceptionInterface When an unsupported option is passed
+        * @generated
+        */
+        public function request(string $method, string $url, array $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+        /**
+        * Yields responses chunk by chunk as they complete.
+        *
+        * @param \Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses One or more responses created by the current HTTP client
+        * @param ?float $timeout The idle timeout before yielding timeout chunks
+        * @generated
+        */
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+        /**
+        * Returns a new instance of the client with new default options.
+        *
+        * @generated
+        */
+        public function withOptions(array $options): static;
+    }
+    /**
+    * A (lazily retrieved) HTTP response.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ResponseInterface {
+        /**
+        * Gets the HTTP status code of the response.
+        *
+        * @throws TransportExceptionInterface when a network error occurs
+        * @generated
+        */
+        public function getStatusCode(): int;
+        /**
+        * Gets the HTTP headers of the response.
+        *
+        * @param bool $throw Whether an exception should be thrown on 3/4/5xx status codes
+        * @return array<string, array<int, string>> The headers of the response keyed by header names in lowercase
+        * @throws TransportExceptionInterface   When a network error occurs
+        * @throws RedirectionExceptionInterface On a 3xx when $throw is true and the "max_redirects" option has been reached
+        * @throws ClientExceptionInterface      On a 4xx when $throw is true
+        * @throws ServerExceptionInterface      On a 5xx when $throw is true
+        * @generated
+        */
+        public function getHeaders(bool $throw = true): array<string, array<int, string>>;
+        /**
+        * Gets the response body as a string.
+        *
+        * @param bool $throw Whether an exception should be thrown on 3/4/5xx status codes
+        * @throws TransportExceptionInterface   When a network error occurs
+        * @throws RedirectionExceptionInterface On a 3xx when $throw is true and the "max_redirects" option has been reached
+        * @throws ClientExceptionInterface      On a 4xx when $throw is true
+        * @throws ServerExceptionInterface      On a 5xx when $throw is true
+        * @generated
+        */
+        public function getContent(bool $throw = true): string;
+        /**
+        * Gets the response body decoded as array, typically from a JSON payload.
+        *
+        * @param bool $throw Whether an exception should be thrown on 3/4/5xx status codes
+        * @throws DecodingExceptionInterface    When the body cannot be decoded to an array
+        * @throws TransportExceptionInterface   When a network error occurs
+        * @throws RedirectionExceptionInterface On a 3xx when $throw is true and the "max_redirects" option has been reached
+        * @throws ClientExceptionInterface      On a 4xx when $throw is true
+        * @throws ServerExceptionInterface      On a 5xx when $throw is true
+        * @generated
+        */
+        public function toArray(bool $throw = true): array;
+        /**
+        * Closes the response stream and all related buffers.
+        *
+        * No further chunk will be yielded after this method has been called.
+        *
+        * @generated
+        */
+        public function cancel(): void;
+        /**
+        * Returns info coming from the transport layer.
+        *
+        * This method SHOULD NOT throw any ExceptionInterface and SHOULD be non-blocking.
+        * The returned info is "live": it can be empty and can change from one call to
+        * another, as the request/response progresses.
+        * 
+        * The following info MUST be returned:
+        *  - canceled (bool) - true if the response was canceled using ResponseInterface::cancel(), false otherwise
+        *  - error (string|null) - the error message when the transfer was aborted, null otherwise
+        *  - http_code (int) - the last response code or 0 when it is not known yet
+        *  - http_method (string) - the HTTP verb of the last request
+        *  - redirect_count (int) - the number of redirects followed while executing the request
+        *  - redirect_url (string|null) - the resolved location of redirect responses, null otherwise
+        *  - response_headers (array) - an array modelled after the special $http_response_header variable
+        *  - start_time (float) - the time when the request was sent or 0.0 when it's pending
+        *  - url (string) - the last effective URL of the request
+        *  - user_data (mixed) - the value of the "user_data" request option, null if not set
+        * 
+        * When the "capture_peer_cert_chain" option is true, the "peer_certificate_chain"
+        * attribute SHOULD list the peer certificates as an array of OpenSSL X.509 resources.
+        * 
+        * Other info SHOULD be named after curl_getinfo()'s associative return value.
+        *
+        * @return mixed An array of all available info, or one of them when $type is
+        *  *                   provided, or null when an unsupported type is requested
+        * @generated
+        */
+        public function getInfo(?string $type = null): mixed;
+    }
+    /**
+    * Yields response chunks, returned by HttpClientInterface::stream().
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @extends \Iterator<ResponseInterface, ChunkInterface>
+    * @generated
+    */
+    interface ResponseStreamInterface extends \Iterator {
+        public function key(): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function current(): \Symfony\Contracts\HttpClient\ChunkInterface;
+    }
+}
+namespace Symfony\Contracts\HttpClient\Exception {
+    /**
+    * When a 4xx response is returned.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ClientExceptionInterface extends \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface {
+    }
+    /**
+    * When a content-type cannot be decoded to the expected representation.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface DecodingExceptionInterface extends \Symfony\Contracts\HttpClient\Exception\ExceptionInterface {
+    }
+    /**
+    * The base interface for all exceptions in the contract.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ExceptionInterface extends \Throwable {
+    }
+    /**
+    * Base interface for HTTP-related exceptions.
+    *
+    * @author Anton Chernikov <anton_ch1989@mail.ru>
+    * @generated
+    */
+    interface HttpExceptionInterface extends \Symfony\Contracts\HttpClient\Exception\ExceptionInterface {
+        public function getResponse(): \Symfony\Contracts\HttpClient\ResponseInterface;
+    }
+    /**
+    * When a 3xx response is returned and the "max_redirects" option has been reached.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface RedirectionExceptionInterface extends \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface {
+    }
+    /**
+    * When a 5xx response is returned.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ServerExceptionInterface extends \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface {
+    }
+    /**
+    * When an idle timeout occurs.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface TimeoutExceptionInterface extends \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface {
+    }
+    /**
+    * When any error happens at the transport level.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface TransportExceptionInterface extends \Symfony\Contracts\HttpClient\Exception\ExceptionInterface {
+    }
+}

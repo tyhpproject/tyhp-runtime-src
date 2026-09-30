@@ -1,0 +1,106 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Omit unwrapped serializer peer; restore `@internal` DatabaseTableTrait used by PDO/DBAL stores.
+ */
+
+namespace Symfony\Component\Lock\Serializer {
+    /**
+     * Overlay: optional `symfony/serializer` peer.
+     */
+    // @overlay-against: class LockKeyNormalizer implements \Symfony\Component\Serializer\Normalizer\NormalizerInterface, \Symfony\Component\Serializer\Normalizer\DenormalizerInterface
+    omit class LockKeyNormalizer {
+    }
+}
+
+namespace Symfony\Component\Lock\Store {
+    /**
+     * Overlay: `@internal` table helpers omitted from Layer 1; PdoStore / DoctrineDbalStore `use` them.
+     */
+    trait DatabaseTableTrait {
+        private function getHashedKey(\Symfony\Component\Lock\Key $key): string;
+
+        private function getUniqueToken(\Symfony\Component\Lock\Key $key): string;
+
+        private function init(array<string, mixed> $options, float $gcProbability, int $initialTtl): void;
+
+        private function randomlyPrune(): void;
+    }
+
+    /**
+     * Overlay: PHPDoc shapes harvest left loose on `CombinedStore`.
+     */
+    // @overlay-against: class CombinedStore implements \Symfony\Component\Lock\SharedLockStoreInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Component\Lock\Store\ExpiringStoreTrait, \Psr\Log\LoggerAwareTrait
+    partial class CombinedStore {
+        /**
+         * @param array<\Symfony\Component\Lock\PersistingStoreInterface> $stores
+         */
+        // @overlay-against: function __construct(array $stores, \Symfony\Component\Lock\Strategy\StrategyInterface $strategy): void
+        public function __construct(array<\Symfony\Component\Lock\PersistingStoreInterface> $stores, \Symfony\Component\Lock\Strategy\StrategyInterface $strategy): void;
+    }
+}
+
+namespace Symfony\Component\Lock\Store {
+    /**
+     * Overlay: options, context, and config maps are `array<string, mixed>`. Harvest left bare `array`.
+     */
+    // @overlay-against: class DoctrineDbalStore implements \Symfony\Component\Lock\PersistingStoreInterface, \Symfony\Component\Lock\Store\DatabaseTableTrait, \Symfony\Component\Lock\Store\ExpiringStoreTrait
+    partial class DoctrineDbalStore {
+        // @overlay-against: function __construct(\Doctrine\DBAL\Connection|string $connOrUrl, array $options, float $gcProbability, int $initialTtl): void
+        public function __construct(\Doctrine\DBAL\Connection|string $connOrUrl, array<string, mixed> $options = [], float $gcProbability = 0.01, int $initialTtl = 300): void;
+    }
+    /**
+     * Overlay: options, context, and config maps are `array<string, mixed>`. Harvest left bare `array`.
+     */
+    // @overlay-against: class MongoDbStore implements \Symfony\Component\Lock\PersistingStoreInterface, \Symfony\Component\Lock\Store\ExpiringStoreTrait
+    partial class MongoDbStore {
+        // @overlay-against: function __construct(\MongoDB\Collection|\MongoDB\Database|\MongoDB\Client|\MongoDB\Driver\Manager|string $mongo, array $options, float $initialTtl): void
+        public function __construct(\MongoDB\Collection|\MongoDB\Database|\MongoDB\Client|\MongoDB\Driver\Manager|string $mongo, array<string, mixed> $options = [], float $initialTtl = 300.0): void;
+    }
+    /**
+     * Overlay: options, context, and config maps are `array<string, mixed>`. Harvest left bare `array`.
+     */
+    // @overlay-against: class PdoStore implements \Symfony\Component\Lock\PersistingStoreInterface, \Symfony\Component\Lock\Store\DatabaseTableTrait, \Symfony\Component\Lock\Store\ExpiringStoreTrait
+    partial class PdoStore {
+        // @overlay-against: function __construct(\PDO|string $connOrDsn, array $options, float $gcProbability, int $initialTtl): void
+        public function __construct(\PDO|string $connOrDsn, array<string, mixed> $options = [], float $gcProbability = 0.01, int $initialTtl = 300): void;
+    }
+    /**
+     * Overlay: options, context, and config maps are `array<string, mixed>`. Harvest left bare `array`.
+     */
+    // @overlay-against: class PostgreSqlStore implements \Symfony\Component\Lock\BlockingSharedLockStoreInterface, \Symfony\Component\Lock\BlockingStoreInterface
+    partial class PostgreSqlStore {
+        // @overlay-against: function __construct(\PDO|string $connOrDsn, array $options): void
+        public function __construct(\PDO|string $connOrDsn, array<string, mixed> $options = []): void;
+    }
+}
+
+namespace Symfony\Component\Lock {
+    /**
+     * Payload of `Key::__serialize`. `state` values are whatever `setState` stored.
+     */
+    type KeySerialized = struct {
+        string $resource;
+        ?float $expiringTime;
+        array<string, mixed> $state;
+    };
+
+    /**
+     * Overlay: serialized key fields. Unserialize also accepts the private `\0Class\0prop` keys, so that parameter stays a string map.
+     */
+    // @overlay-against: class Key implements \Stringable
+    partial class Key {
+        /**
+         * @return \Symfony\Component\Lock\KeySerialized
+         */
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): \Symfony\Component\Lock\KeySerialized;
+
+        /**
+         * @param array<string, mixed> $data
+         */
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(array<string, mixed> $data): void;
+    }
+}

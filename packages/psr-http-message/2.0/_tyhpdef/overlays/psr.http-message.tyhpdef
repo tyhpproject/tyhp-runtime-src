@@ -1,0 +1,224 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Header maps, request/cookie/query/upload trees, stream metadata overloads,
+ * and the `seek()` `$whence = SEEK_SET` default dropped by Layer 1.
+ */
+
+namespace Psr\Http\Message {
+    /**
+     * One header field: a single string or a list of strings (`string|string[]` in PSR-7).
+     * List literals in Tyhp are `array<int|string, string>`.
+     */
+    type HeaderValue = string|array<int|string, string>;
+
+    /**
+     * `getHeaders()` map: header name => list of values. Keys are names, not offsets.
+     */
+    type HeaderMap = array<string, array<int, string>>;
+
+    /**
+     * Cookie map compatible with PHP `$_COOKIE` (string names to string values).
+     */
+    type CookieParams = array<string, string>;
+
+    /**
+     * Query map compatible with PHP `parse_str()` / `$_GET`.
+     */
+    type QueryParams = array<string, mixed>;
+
+    /**
+     * `$_SERVER`-shaped request environment.
+     */
+    type ServerParams = array<string, mixed>;
+
+    /**
+     * Request attribute map (`getAttributes()` / `withAttribute()`).
+     */
+    type RequestAttributes = array<string, mixed>;
+
+    /**
+     * Normalized uploaded-file tree: leaves are `UploadedFileInterface`.
+     */
+    type UploadedFileTree = array<int|string, \Psr\Http\Message\UploadedFileInterface|\Psr\Http\Message\UploadedFileTree>;
+
+    /**
+     * Parsed body: form/`$_POST` array, decoded object, or null when absent.
+     */
+    type ParsedBody = array<string, mixed>|object|null;
+
+    /**
+     * Common HTTP request methods. PSR-7 still allows other method tokens via `string`.
+     */
+    type HttpMethod = 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'|'HEAD'|'OPTIONS'|'TRACE'|'CONNECT'|string;
+
+    /**
+     * Overlay: header maps use string names; `withHeader` values are `HeaderValue`.
+     */
+    // @overlay-against: interface MessageInterface
+    partial interface MessageInterface {
+        /**
+         * @return \Psr\Http\Message\HeaderMap Header name => list of values.
+         */
+        // @overlay-against: function getHeaders(): array
+        public function getHeaders(): \Psr\Http\Message\HeaderMap;
+
+        /**
+         * @param string $name Case-insensitive header field name.
+         * @param \Psr\Http\Message\HeaderValue $value Header value(s).
+         * @throws \InvalidArgumentException for invalid header names or values.
+         */
+        // @overlay-against: function withHeader(string $name, string|array $value): \Psr\Http\Message\MessageInterface
+        public function withHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Psr\Http\Message\MessageInterface;
+
+        /**
+         * @param string $name Case-insensitive header field name to add.
+         * @param \Psr\Http\Message\HeaderValue $value Header value(s).
+         * @throws \InvalidArgumentException for invalid header names or values.
+         */
+        // @overlay-against: function withAddedHeader(string $name, string|array $value): \Psr\Http\Message\MessageInterface
+        public function withAddedHeader(string $name, \Psr\Http\Message\HeaderValue $value): \Psr\Http\Message\MessageInterface;
+    }
+
+    /**
+     * Overlay: `getMethod()` / `withMethod()` use the HTTP method union.
+     */
+    // @overlay-against: interface RequestInterface
+    partial interface RequestInterface {
+        /**
+         * @return \Psr\Http\Message\HttpMethod Returns the request method.
+         */
+        // @overlay-against: function getMethod(): string
+        public function getMethod(): \Psr\Http\Message\HttpMethod;
+
+        /**
+         * @param \Psr\Http\Message\HttpMethod $method Case-sensitive method.
+         * @throws \InvalidArgumentException for invalid HTTP methods.
+         */
+        // @overlay-against: function withMethod(string $method): \Psr\Http\Message\RequestInterface
+        public function withMethod(\Psr\Http\Message\HttpMethod $method): \Psr\Http\Message\RequestInterface;
+    }
+
+    /**
+     * Overlay: cookie/query/server/upload/attribute maps and parsed-body union.
+     */
+    // @overlay-against: interface ServerRequestInterface
+    partial interface ServerRequestInterface {
+        /**
+         * @return \Psr\Http\Message\ServerParams Typically `$_SERVER`.
+         */
+        // @overlay-against: function getServerParams(): array
+        public function getServerParams(): \Psr\Http\Message\ServerParams;
+
+        /**
+         * @return \Psr\Http\Message\CookieParams Compatible with `$_COOKIE`.
+         */
+        // @overlay-against: function getCookieParams(): array
+        public function getCookieParams(): \Psr\Http\Message\CookieParams;
+
+        /**
+         * @param \Psr\Http\Message\CookieParams $cookies Key/value pairs representing cookies.
+         */
+        // @overlay-against: function withCookieParams(array $cookies): \Psr\Http\Message\ServerRequestInterface
+        public function withCookieParams(\Psr\Http\Message\CookieParams $cookies): \Psr\Http\Message\ServerRequestInterface;
+
+        /**
+         * @return \Psr\Http\Message\QueryParams Deserialized query string arguments.
+         */
+        // @overlay-against: function getQueryParams(): array
+        public function getQueryParams(): \Psr\Http\Message\QueryParams;
+
+        /**
+         * @param \Psr\Http\Message\QueryParams $query Query string arguments, typically from `$_GET`.
+         */
+        // @overlay-against: function withQueryParams(array $query): \Psr\Http\Message\ServerRequestInterface
+        public function withQueryParams(\Psr\Http\Message\QueryParams $query): \Psr\Http\Message\ServerRequestInterface;
+
+        /**
+         * @return \Psr\Http\Message\UploadedFileTree Tree of uploaded files; empty array when none.
+         */
+        // @overlay-against: function getUploadedFiles(): array
+        public function getUploadedFiles(): \Psr\Http\Message\UploadedFileTree;
+
+        /**
+         * @param \Psr\Http\Message\UploadedFileTree $uploadedFiles Tree of `UploadedFileInterface` instances.
+         * @throws \InvalidArgumentException if an invalid structure is provided.
+         */
+        // @overlay-against: function withUploadedFiles(array $uploadedFiles): \Psr\Http\Message\ServerRequestInterface
+        public function withUploadedFiles(\Psr\Http\Message\UploadedFileTree $uploadedFiles): \Psr\Http\Message\ServerRequestInterface;
+
+        /**
+         * @return \Psr\Http\Message\ParsedBody Deserialized body parameters.
+         */
+        // @overlay-against: function getParsedBody(): null|array|object
+        public function getParsedBody(): \Psr\Http\Message\ParsedBody;
+
+        /**
+         * @param \Psr\Http\Message\ParsedBody $data Deserialized body data.
+         * @throws \InvalidArgumentException if an unsupported argument type is provided.
+         */
+        // @overlay-against: function withParsedBody(null|array|object $data): \Psr\Http\Message\ServerRequestInterface
+        public function withParsedBody(\Psr\Http\Message\ParsedBody $data): \Psr\Http\Message\ServerRequestInterface;
+
+        /**
+         * @return \Psr\Http\Message\RequestAttributes Attributes derived from the request.
+         */
+        // @overlay-against: function getAttributes(): array
+        public function getAttributes(): \Psr\Http\Message\RequestAttributes;
+
+        /**
+         * Overlay: `getAttribute` result matches the provided default's type.
+         *
+         * @param string $name The attribute name.
+         * @param T $default Default value to return if the attribute does not exist.
+         * @return T
+         */
+        // @overlay-against: function getAttribute(string $name, mixed $default): mixed
+        public function getAttribute<T = mixed>(string $name, T $default = null): T;
+    }
+
+    /**
+     * Overlay: restore `seek()` default; `getMetadata()` matches `stream_get_meta_data()`.
+     */
+    // @overlay-against: interface StreamInterface
+    partial interface StreamInterface {
+        /**
+         * Overlay: restore the harvest-missing `$whence = \SEEK_SET` default.
+         *
+         * @param int $whence `SEEK_SET` / `SEEK_CUR` / `SEEK_END`.
+         * @throws \RuntimeException on failure.
+         */
+        // @overlay-against: function seek(int $offset, int $whence): void
+        public function seek(int $offset, int $whence = \SEEK_SET): void;
+
+        /**
+         * Overlay: no key returns the `stream_get_meta_data()` shape from `tyhpdef/php`.
+         *
+         * @return \StreamMetadata Associative metadata when `$key` is omitted.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(null $key = null): \StreamMetadata;
+
+        /**
+         * Overlay: named key returns that entry or null.
+         *
+         * @param string $key Specific metadata to retrieve.
+         * @return mixed Key value, or null if the key is not found.
+         */
+        // @overlay-against: function getMetadata(?string $key): mixed
+        public function getMetadata(string $key): mixed;
+    }
+
+    /**
+     * Overlay: `getError()` is a PHP `UPLOAD_ERR_*` code.
+     */
+    // @overlay-against: interface UploadedFileInterface
+    partial interface UploadedFileInterface {
+        /**
+         * @return int One of PHP's `UPLOAD_ERR_*` constants.
+         */
+        // @overlay-against: function getError(): int
+        public function getError(): int;
+    }
+}

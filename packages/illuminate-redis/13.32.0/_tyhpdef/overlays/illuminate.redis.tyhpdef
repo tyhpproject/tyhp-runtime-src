@@ -1,0 +1,150 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Channel lists are names. `command()` parameters are the Redis argument list.
+ */
+
+namespace Illuminate\Redis {
+    /**
+     * Overlay: resolved connections are keyed by name.
+     */
+    // @overlay-against: class RedisManager implements \Illuminate\Contracts\Redis\Factory, \Illuminate\Support\RebindsCallbacksToSelf
+    partial class RedisManager {
+        // @overlay-against: function __construct(\Illuminate\Contracts\Foundation\Application $app, string $driver, array $config): void
+        public function __construct(\Illuminate\Contracts\Foundation\Application $app, string $driver, array<string, mixed> $config): void;
+        // @overlay-against: function connections(): array
+        public function connections(): array<string, \Illuminate\Redis\Connections\Connection>;
+        // @overlay-against: function parseConnectionConfiguration(mixed $config): array
+        protected function parseConnectionConfiguration(array<string, mixed>|string $config): array<string, mixed>;
+    }
+}
+
+namespace Illuminate\Redis\Connections {
+    /**
+     * One SCAN or SSCAN page: the next cursor, then the matched strings.
+     */
+    type RedisStringScan = struct {
+        int|string 0 as $cursor;
+        array<int, string> 1 as $entries;
+    };
+
+    /**
+     * One HSCAN page: the next cursor, then field names to values.
+     */
+    type RedisHashScan = struct {
+        int|string 0 as $cursor;
+        array<string, string> 1 as $fields;
+    };
+
+    /**
+     * One ZSCAN page: the next cursor, then member names to scores.
+     */
+    type RedisSortedSetScan = struct {
+        int|string 0 as $cursor;
+        array<string, float|string> 1 as $members;
+    };
+
+    /**
+     * BLPOP and BRPOP return the list name and the popped element.
+     */
+    type RedisBlockingPop = struct {
+        string 0 as $key;
+        string 1 as $element;
+    };
+
+    /**
+     * MATCH and COUNT options for SCAN.
+     */
+    type RedisScanOptions = struct {
+        ?string $match;
+        ?int $count;
+    };
+
+    /**
+     * A cluster node passed to PhpRedis: a host string, or a list of address parts.
+     */
+    type RedisClusterScanNode = string|array<int, string>;
+
+    /**
+     * Cluster SCAN options. `node` selects one master.
+     */
+    type RedisClusterScanOptions = struct {
+        ?string $match;
+        ?int $count;
+        ?RedisClusterScanNode $node;
+    };
+
+    /**
+     * Overlay: subscribe channels are names. Command parameters are a list.
+     */
+    // @overlay-against: class Connection implements \Illuminate\Support\Traits\Macroable
+    partial class Connection {
+        // @overlay-against: function command(string $method, array $parameters): mixed
+        public function command(string $method, array<int, mixed> $parameters = []): mixed;
+        // @overlay-against: function psubscribe(array|string $channels, \Closure $callback): void
+        public function psubscribe(array<int, string>|string $channels, \Closure $callback): void;
+        // @overlay-against: function subscribe(array|string $channels, \Closure $callback): void
+        public function subscribe(array<int, string>|string $channels, \Closure $callback): void;
+    }
+
+    /**
+     * Overlay: cluster SCAN cursors are strings, including the encoded multi-master cursor.
+     */
+    // @overlay-against: class PhpRedisClusterConnection extends \Illuminate\Redis\Connections\PhpRedisConnection
+    partial class PhpRedisClusterConnection {
+        // @overlay-against: function scan(mixed $cursor, array $options): mixed
+        public function scan(int|string $cursor, RedisClusterScanOptions $options = []): RedisStringScan|false;
+    }
+
+    /**
+     * Overlay: the PhpRedis overrides keep the same channel and argument lists.
+     */
+    // @overlay-against: class PhpRedisConnection extends \Illuminate\Redis\Connections\Connection implements \Illuminate\Contracts\Redis\Connection, \Illuminate\Redis\Connections\PacksPhpRedisValues
+    partial class PhpRedisConnection {
+        // @overlay-against: function blpop(mixed $arguments): array|null
+        public function blpop(string|int|float|array<int, string> ...$arguments): RedisBlockingPop|null;
+        // @overlay-against: function brpop(mixed $arguments): array|null
+        public function brpop(string|int|float|array<int, string> ...$arguments): RedisBlockingPop|null;
+        // @overlay-against: function command(string $method, array $parameters): mixed
+        public function command(string $method, array<int, mixed> $parameters = []): mixed;
+        // @overlay-against: function hscan(string $key, mixed $cursor, array $options): mixed
+        public function hscan(string $key, int|string $cursor, RedisScanOptions $options = []): RedisHashScan|false;
+        // @overlay-against: function mget(array $keys): array
+        public function mget(array<int, string> $keys): array<int, mixed>;
+        // @overlay-against: function psubscribe(array|string $channels, \Closure $callback): void
+        public function psubscribe(array<int, string>|string $channels, \Closure $callback): void;
+        // @overlay-against: function scan(mixed $cursor, array $options): mixed
+        public function scan(int|string $cursor, RedisScanOptions $options = []): RedisStringScan|false;
+        // @overlay-against: function sscan(string $key, mixed $cursor, array $options): mixed
+        public function sscan(string $key, int|string $cursor, RedisScanOptions $options = []): RedisStringScan|false;
+        // @overlay-against: function subscribe(array|string $channels, \Closure $callback): void
+        public function subscribe(array<int, string>|string $channels, \Closure $callback): void;
+        // @overlay-against: function zscan(string $key, mixed $cursor, array $options): mixed
+        public function zscan(string $key, int|string $cursor, RedisScanOptions $options = []): RedisSortedSetScan|false;
+    }
+}
+
+namespace Illuminate\Redis\Connectors {
+    /**
+     * Overlay: connection config is a string-keyed map. A URL string is parsed before connect.
+     */
+    // @overlay-against: class PhpRedisConnector implements \Illuminate\Contracts\Redis\Connector
+    partial class PhpRedisConnector {
+        // @overlay-against: function connect(array $config, array $options): \Illuminate\Redis\Connections\PhpRedisConnection
+        public function connect(array<string, mixed> $config, array<string, mixed> $options): \Illuminate\Redis\Connections\PhpRedisConnection;
+        // @overlay-against: function connectToCluster(array $config, array $clusterOptions, array $options): \Illuminate\Redis\Connections\PhpRedisClusterConnection
+        public function connectToCluster(array<int|string, array<string, mixed>|string> $config, array<string, mixed> $clusterOptions, array<string, mixed> $options): \Illuminate\Redis\Connections\PhpRedisClusterConnection;
+    }
+
+    /**
+     * Overlay: connection config is a string-keyed map. A URL string is parsed before connect.
+     */
+    // @overlay-against: class PredisConnector implements \Illuminate\Contracts\Redis\Connector
+    partial class PredisConnector {
+        // @overlay-against: function connect(array $config, array $options): \Illuminate\Redis\Connections\PredisConnection
+        public function connect(array<string, mixed> $config, array<string, mixed> $options): \Illuminate\Redis\Connections\PredisConnection;
+        // @overlay-against: function connectToCluster(array $config, array $clusterOptions, array $options): \Illuminate\Redis\Connections\PredisClusterConnection
+        public function connectToCluster(array<int|string, array<string, mixed>|string> $config, array<string, mixed> $clusterOptions, array<string, mixed> $options): \Illuminate\Redis\Connections\PredisClusterConnection;
+    }
+}

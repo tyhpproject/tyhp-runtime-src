@@ -1,0 +1,197 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Runtime {
+    /**
+    * A runtime to do bare-metal PHP without using superglobals.
+    *
+    * It supports the following options:
+    *  - "debug" toggles displaying errors and defaults
+    *    to the "APP_DEBUG" environment variable;
+    *  - "runtimes" maps types to a GenericRuntime implementation
+    *    that knows how to deal with each of them;
+    *  - "error_handler" defines the class to use to handle PHP errors;
+    *  - "env_var_name" and "debug_var_name" define the name of the env
+    *    vars that hold the Symfony env and the debug flag respectively.
+    * 
+    * The app-callable can declare arguments among either:
+    * - "array $context" to get a local array similar to $_SERVER;
+    * - "array $argv" to get the command line arguments when running on the CLI;
+    * - "array $request" to get a local array with keys "query", "body", "files" and
+    *   "session", which map to $_GET, $_POST, $FILES and &$_SESSION respectively.
+    * 
+    * It should return a Closure():int|string|null or an instance of RunnerInterface.
+    * 
+    * In debug mode, the runtime registers a strict error handler
+    * that throws exceptions when a PHP warning/notice is raised.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class GenericRuntime implements \Symfony\Component\Runtime\RuntimeInterface {
+        protected array $options;
+        /**
+        * @param array $options
+        * @generated
+        */
+        public function __construct(array $options = []): void;
+        public function getResolver(callable $callable, ?\ReflectionFunction $reflector = null): \Symfony\Component\Runtime\ResolverInterface;
+        public function getRunner(?object $application): \Symfony\Component\Runtime\RunnerInterface;
+        protected function getArgument(\ReflectionParameter $parameter, ?string $type): mixed;
+        protected static function register(self $runtime): self;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ResolverInterface {
+        /**
+        * @return array
+        * @generated
+        */
+        public function resolve(): array;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface RunnerInterface {
+        public function run(): int;
+    }
+    /**
+    * Enables decoupling applications from global state.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface RuntimeInterface {
+        /**
+        * Returns a resolver that should compute the arguments of a callable.
+        *
+        * The callable itself should return an object that represents the application to pass to the getRunner() method.
+        *
+        * @generated
+        */
+        public function getResolver(callable $callable, ?\ReflectionFunction $reflector = null): \Symfony\Component\Runtime\ResolverInterface;
+        /**
+        * Returns a callable that knows how to run the passed object and that returns its exit status as int.
+        *
+        * The passed object is typically created by calling ResolverInterface::resolve().
+        *
+        * @generated
+        */
+        public function getRunner(?object $application): \Symfony\Component\Runtime\RunnerInterface;
+    }
+    /**
+    * Knows the basic conventions to run Symfony apps.
+    *
+    * In addition to the options managed by GenericRuntime, it accepts the following options:
+    *  - "env" to define the name of the environment the app runs in;
+    *  - "disable_dotenv" to disable looking for .env files;
+    *  - "dotenv_path" to define the path of dot-env files - defaults to ".env";
+    *  - "prod_envs" to define the names of the production envs - defaults to ["prod"];
+    *  - "test_envs" to define the names of the test envs - defaults to ["test"];
+    *  - "use_putenv" to tell Dotenv to set env vars using putenv() (NOT RECOMMENDED.)
+    *  - "dotenv_overload" to tell Dotenv to override existing vars
+    *  - "dotenv_extra_paths" to define a list of additional dot-env files
+    *  - "worker_loop_max" to define the number of requests after which the worker must restart to prevent memory leaks
+    * 
+    * When the "debug" / "env" options are not defined, they will fallback to the
+    * "APP_DEBUG" / "APP_ENV" environment variables, and to the "--env|-e" / "--no-debug"
+    * command line arguments if "symfony/console" is installed.
+    * 
+    * When the "symfony/dotenv" component is installed, .env files are loaded.
+    * When "symfony/error-handler" is installed, it is registered in debug mode.
+    * 
+    * On top of the base arguments provided by GenericRuntime,
+    * this runtime can feed the app-callable with arguments of type:
+    *  - Request from "symfony/http-foundation" if the component is installed;
+    *  - Application, Command, InputInterface and/or OutputInterface
+    *    from "symfony/console" if the component is installed.
+    * 
+    * This runtime can handle app-callables that return instances of either:
+    *  - HttpKernelInterface,
+    *  - Response,
+    *  - Application,
+    *  - Command,
+    *  - int|string|null as handled by GenericRuntime.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class SymfonyRuntime extends \Symfony\Component\Runtime\GenericRuntime {
+        /**
+        * @param array $options
+        * @generated
+        */
+        public function __construct(array $options = []): void;
+        public function getRunner(?object $application): \Symfony\Component\Runtime\RunnerInterface;
+        protected function getArgument(\ReflectionParameter $parameter, ?string $type): mixed;
+        protected static function register(\Symfony\Component\Runtime\GenericRuntime $runtime): \Symfony\Component\Runtime\GenericRuntime;
+    }
+}
+namespace Symfony\Component\Runtime\Resolver {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class ClosureResolver implements \Symfony\Component\Runtime\ResolverInterface {
+        public function __construct(\Closure $closure, \Closure $arguments): void;
+        public function resolve(): array;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class DebugClosureResolver extends \Symfony\Component\Runtime\Resolver\ClosureResolver {
+        public function resolve(): array;
+    }
+}
+namespace Symfony\Component\Runtime\Runner {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class ClosureRunner implements \Symfony\Component\Runtime\RunnerInterface {
+        public function __construct(\Closure $closure): void;
+        public function run(): int;
+    }
+    /**
+    * A runner for FrankenPHP in worker mode.
+    *
+    * @author Kévin Dunglas <kevin@dunglas.dev>
+    * @generated
+    */
+    class FrankenPhpWorkerRunner implements \Symfony\Component\Runtime\RunnerInterface {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, int $loopMax): void;
+        public function run(): int;
+    }
+}
+namespace Symfony\Component\Runtime\Runner\Symfony {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class ConsoleApplicationRunner implements \Symfony\Component\Runtime\RunnerInterface {
+        public function __construct(\Symfony\Component\Console\Application $application, ?string $defaultEnv, \Symfony\Component\Console\Input\InputInterface $input, ?\Symfony\Component\Console\Output\OutputInterface $output = null): void;
+        public function run(): int;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class HttpKernelRunner implements \Symfony\Component\Runtime\RunnerInterface {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, \Symfony\Component\HttpFoundation\Request $request, bool $debug = false): void;
+        public function run(): int;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class ResponseRunner implements \Symfony\Component\Runtime\RunnerInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\Response $response): void;
+        public function run(): int;
+    }
+}

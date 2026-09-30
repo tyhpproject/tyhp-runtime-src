@@ -1,0 +1,85 @@
+<?tyhp
+
+namespace OverlayTests\Filter;
+
+function filterVar_validateIntConst_isIntOrFalse(string $s): int|false {
+    return \filter_var($s, \FILTER_VALIDATE_INT);
+}
+
+function filterVar_validateInt_onInt_isInt(int $n): int {
+    return \filter_var($n, \FILTER_VALIDATE_INT);
+}
+
+function filterVar_validateInt_nullOnFailure_isIntOrNull(string $s): int|null {
+    return \filter_var($s, \FILTER_VALIDATE_INT, \FILTER_NULL_ON_FAILURE);
+}
+
+function filterVar_validateBoolConst_isBool(mixed $v): bool {
+    return \filter_var($v, \FILTER_VALIDATE_BOOL);
+}
+
+function filterVar_validateEmailConst_isStringOrFalse(string $s): string|false {
+    return \filter_var($s, \FILTER_VALIDATE_EMAIL);
+}
+
+function filterVar_defaultOnString_isString(string $s): string {
+    return \filter_var($s);
+}
+
+function filterVar_sanitizeEmail_isStringOrFalse(mixed $v): string|false {
+    return \filter_var($v, \FILTER_SANITIZE_EMAIL);
+}
+
+function filterList_isListOfFilterNames(): array<int, \FilterName> {
+    return \filter_list();
+}
+
+function filterId_knownName_isInt(): int {
+    return \filter_id('int');
+}
+
+function filterInput_validateInt_isIntFalseOrNull(): int|false|null {
+    return \filter_input(\INPUT_GET, 'id', \FILTER_VALIDATE_INT);
+}
+
+function filterVarArray_validateInt_preservesKeys(array<string, mixed> $data): array<string, int|false|null>|false|null {
+    return \filter_var_array($data, \FILTER_VALIDATE_INT);
+}
+
+function filterVarArray_perKeySpecs_preserveKeys(array<string, mixed> $data): array<string, mixed>|false|null {
+    return \filter_var_array($data, [
+        'id' => \FILTER_VALIDATE_INT,
+        'email' => \FILTER_VALIDATE_EMAIL,
+    ]);
+}
+
+function filterVar_callback_usesCallbackReturn(mixed $v): string {
+    return \filter_var($v, \FILTER_CALLBACK, [
+        'options' => fn(mixed $x): string => (string) $x,
+    ]);
+}
+
+function filterCallbackOptions_callbackIsStringToT(\FilterCallbackOptions<int> $opts): callable(string): int {
+    return $opts->options;
+}
+
+function filterVar_intOptionsStruct_typeChecks(string $s): int|false|null {
+    return \filter_var($s, \FILTER_VALIDATE_INT, [
+        'options' => [
+            'min_range' => 1,
+            'max_range' => 10,
+        ],
+    ]);
+}
+
+function filterIntRangeOptions_defaultIsOptionalInt(\FilterIntRangeOptions $opts): ?int {
+    return $opts->default;
+}
+
+function filterFloatRangeOptions_defaultIsOptionalFloat(\FilterFloatRangeOptions $opts): ?float {
+    return $opts->default;
+}
+
+function filterIntRangeOptions_customDefaultIsExplicit(\FilterIntRangeOptions<string> $opts): ?string {
+    return $opts->default;
+}

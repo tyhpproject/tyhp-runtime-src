@@ -1,0 +1,26 @@
+<?tyhp
+
+function test_error_handler_register(): \Symfony\Component\ErrorHandler\ErrorHandler
+{
+    return \Symfony\Component\ErrorHandler\ErrorHandler::register(null, false);
+}
+
+function test_error_handler_flatten(): int
+{
+    $flat = \Symfony\Component\ErrorHandler\Exception\FlattenException::createFromThrowable(
+        new \RuntimeException('boom'),
+        500,
+        ['Content-Type' => 'text/plain']
+    );
+    return $flat->getStatusCode();
+}
+
+function test_error_handler_html_render(\Symfony\Component\ErrorHandler\ErrorRenderer\HtmlErrorRenderer $renderer): string
+{
+    return $renderer->render(new \RuntimeException('boom'))->getAsString();
+}
+
+function test_error_handler_set_logger(\Symfony\Component\ErrorHandler\ErrorHandler $handler, \Psr\Log\LoggerInterface $logger): void
+{
+    $handler->setDefaultLogger($logger, \E_ALL);
+}

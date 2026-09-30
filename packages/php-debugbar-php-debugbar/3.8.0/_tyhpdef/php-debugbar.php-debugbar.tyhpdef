@@ -1,0 +1,2800 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace DebugBar {
+    /**
+    * Handler to render assets
+    *
+    * @generated
+    */
+    class AssetHandler {
+        protected readonly \DebugBar\DebugBar $debugBar;
+        public function __construct(\DebugBar\DebugBar $debugBar): void;
+        /**
+        * Handles the current request
+        *
+        * @param null|array $request
+        * @throws DebugBarException
+        * @generated
+        */
+        public function handle(null|array $request = null, bool $echo = true, bool $sendHeader = true): string;
+    }
+    /**
+    * Main DebugBar object
+    *
+    * Manages data collectors. DebugBar provides an array-like access
+    * to collectors by name.
+    * 
+    * <code>
+    *     $debugbar = new DebugBar();
+    *     $debugbar->addCollector(new DataCollector\MessagesCollector());
+    *     $debugbar['messages']->addMessage("foobar");
+    * </code>
+    *
+    * @implements ArrayAccess<string, DataCollectorInterface>
+    * @generated
+    */
+    class DebugBar implements \ArrayAccess {
+        public static bool $useOpenHandlerWhenSendingDataHeaders ?? false;
+        /**
+        * @var array<int, \DebugBar\DataCollector\DataCollectorInterface>
+        * @generated
+        */
+        protected array<int, \DebugBar\DataCollector\DataCollectorInterface> $collectors ?? [];
+        protected ?array $data ?? null;
+        protected ?\DebugBar\JavascriptRenderer $jsRenderer ?? null;
+        protected ?\DebugBar\RequestIdGeneratorInterface $requestIdGenerator ?? null;
+        protected ?string $requestId ?? null;
+        protected ?\DebugBar\Storage\StorageInterface $storage ?? null;
+        protected ?\DebugBar\HttpDriverInterface $httpDriver ?? null;
+        protected string $stackSessionNamespace ?? 'PHPDEBUGBAR_STACK_DATA';
+        protected bool $useHtmlVarDumper ?? true;
+        protected bool $stackAlwaysUseSessionStorage ?? false;
+        protected ?string $editorTemplate ?? null;
+        protected ?string $editorLinkTemplate ?? null;
+        protected ?array $remotePathReplacements ?? null;
+        /**
+        * Adds a data collector
+        *
+        * @throws DebugBarException
+        * @return static
+        * @generated
+        */
+        public function addCollector(\DebugBar\DataCollector\DataCollectorInterface $collector): static;
+        /**
+        * Checks if a data collector has been added
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasCollector(string $name): bool;
+        public function getCollector(string $name): \DebugBar\DataCollector\DataCollectorInterface;
+        public function removeCollector(string $name): void;
+        /**
+        * Returns an array of all data collectors
+        *
+        * @return array|array<int, \DebugBar\DataCollector\DataCollectorInterface>
+        * @generated
+        */
+        public function getCollectors(): array|array<int, \DebugBar\DataCollector\DataCollectorInterface>;
+        /**
+        * Sets the request id generator
+        *
+        * @return static
+        * @generated
+        */
+        public function setRequestIdGenerator(\DebugBar\RequestIdGeneratorInterface $generator): static;
+        public function getRequestIdGenerator(): \DebugBar\RequestIdGeneratorInterface;
+        /**
+        * Returns the id of the current request
+        *
+        * @generated
+        */
+        public function getCurrentRequestId(): string;
+        /**
+        * Sets the storage backend to use to store the collected data
+        *
+        * @return static
+        * @generated
+        */
+        public function setStorage(?\DebugBar\Storage\StorageInterface $storage = null): static;
+        public function getStorage(): ?\DebugBar\Storage\StorageInterface;
+        /**
+        * Checks if the data will be persisted
+        *
+        * @return bool
+        * @generated
+        */
+        public function isDataPersisted(): bool;
+        /**
+        * Sets the HTTP driver
+        *
+        * @return static
+        * @generated
+        */
+        public function setHttpDriver(\DebugBar\HttpDriverInterface $driver): static;
+        /**
+        * Returns the HTTP driver
+        *
+        * If no http driver where defined, a PhpHttpDriver is automatically created
+        *
+        * @generated
+        */
+        public function getHttpDriver(): \DebugBar\HttpDriverInterface;
+        /**
+        * Collects meta data about the current request
+        *
+        * @generated
+        */
+        public function collectMetaData(): array;
+        /**
+        * Collects the data from the collectors
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * Returns collected data
+        *
+        * Will collect the data if none have been collected yet
+        *
+        * @generated
+        */
+        public function getData(): array;
+        public function reset(): void;
+        /**
+        * Returns an array of HTTP headers containing the data
+        *
+        * @param int $maxHeaderLength
+        * @return array<string, string>
+        * @generated
+        */
+        public function getDataAsHeaders(string $headerName = 'phpdebugbar', int $maxHeaderLength = 4096, int $maxTotalHeaderLength = 250000): array<string, string>;
+        /**
+        * Sends the data through the HTTP headers
+        *
+        * @param int $maxHeaderLength
+        * @return static
+        * @generated
+        */
+        public function sendDataInHeaders(?bool $useOpenHandler = null, string $headerName = 'phpdebugbar', int $maxHeaderLength = 4096): static;
+        /**
+        * Stacks the data in the session for later rendering
+        *
+        * @generated
+        */
+        public function stackData(): static;
+        /**
+        * Checks if there is stacked data in the session
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasStackedData(): bool;
+        /**
+        * @throws DebugBarException
+        * @generated
+        */
+        protected function getStackedValue(bool $delete = true): array;
+        /**
+        * Returns the data stacked in the session
+        *
+        * @param bool $delete Whether to delete the data in the session
+        * @return array<int, array>
+        * @generated
+        */
+        public function getStackedData(bool $delete = true): array<int, array>;
+        public function getStackedIds(bool $delete = true): array;
+        /**
+        * Sets the key to use in the $_SESSION array
+        *
+        * @return static
+        * @generated
+        */
+        public function setStackDataSessionNamespace(string $ns): static;
+        /**
+        * Returns the key used in the $_SESSION array
+        *
+        * @generated
+        */
+        public function getStackDataSessionNamespace(): string;
+        /**
+        * Sets whether to only use the session to store stacked data even
+        *
+        * if a storage is enabled
+        *
+        * @param bool $enabled
+        * @return static
+        * @generated
+        */
+        public function setStackAlwaysUseSessionStorage(bool $enabled = true): static;
+        /**
+        * Checks if the session is always used to store stacked data
+        *
+        * even if a storage is enabled
+        *
+        * @return bool
+        * @generated
+        */
+        public function isStackAlwaysUseSessionStorage(): bool;
+        /**
+        * Initializes the session for stacked data
+        *
+        * @throws DebugBarException
+        * @generated
+        */
+        protected function initStackSession(): \DebugBar\HttpDriverInterface;
+        /**
+        * Returns a JavascriptRenderer for this instance
+        *
+        * @generated
+        */
+        public function getJavascriptRenderer(?string $baseUrl = null, ?string $basePath = null): \DebugBar\JavascriptRenderer;
+        /**
+        * Set the editor globally, e.g., `vscode`
+        *
+        * @generated
+        */
+        public function setEditor(string $editor): void;
+        /**
+        * Set the editor link template globally,
+        *
+        * `%f` = file, `%l` = line, e.g., `vscode://file/%f:%l`
+        *
+        * @generated
+        */
+        public function setEditorTemplate(string $editorLinkTemplate, bool $shouldUseAjax = false): void;
+        /**
+        * Set server path replacements, server paths will be mapped to local paths
+        *
+        * e.g., `['/var/www/remote/' => '/home/local/']`,
+        * '/var/www/remote/app/path' will become to '/home/local/app/path'
+        *
+        * @generated
+        */
+        public function setRemoteReplacements(array $remotePathReplacements): void;
+        public function offsetSet(mixed $offset, mixed $value): void;
+        public function offsetGet(mixed $offset): mixed;
+        public function offsetExists(mixed $offset): bool;
+        public function offsetUnset(mixed $offset): void;
+    }
+    class DebugBarException extends \Exception {
+    }
+    /**
+    * Provides an abstraction of PHP native features for easier integration
+    *
+    * in third party frameworks
+    *
+    * @generated
+    */
+    interface HttpDriverInterface {
+        /**
+        * Sets HTTP headers
+        *
+        * @param array<string, string> $headers
+        * @generated
+        */
+        public function setHeaders(array<string, string> $headers): void;
+        /**
+        * Write a string to the output buffer
+        *
+        * @generated
+        */
+        public function output(string $content): void;
+        /**
+        * Checks if the session is started
+        *
+        * @return bool
+        * @generated
+        */
+        public function isSessionStarted(): bool;
+        /**
+        * Sets a value in the session
+        *
+        * @generated
+        */
+        public function setSessionValue(string $name, mixed $value): void;
+        /**
+        * Checks if a value is in the session
+        *
+        * @generated
+        */
+        public function hasSessionValue(string $name): bool;
+        /**
+        * Returns a value from the session
+        *
+        * @generated
+        */
+        public function getSessionValue(string $name): mixed;
+        /**
+        * Deletes a value from the session
+        *
+        * @generated
+        */
+        public function deleteSessionValue(string $name): void;
+    }
+    /**
+    * Renders the debug bar using the client side javascript implementation
+    *
+    * Generates all the needed initialization code of controls
+    *
+    * @generated
+    */
+    class JavascriptRenderer {
+        public const int INITIALIZE_CONSTRUCTOR ?? 2;
+        public const int INITIALIZE_CONTROLS ?? 4;
+        public const string REPLACEABLE_TAG ?? "{--DEBUGBAR_OB_START_REPLACE_ME--}";
+        public const string RELATIVE_PATH ?? 'path';
+        public const string RELATIVE_URL ?? 'url';
+        protected \DebugBar\DebugBar $debugBar;
+        protected ?string $baseUrl;
+        protected string $basePath;
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected array<string, string> $cssVendors ?? [];
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected array<string, string> $jsVendors ?? [];
+        protected bool|array $includeVendors ?? true;
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $cssFiles ?? [];
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $jsFiles ?? [];
+        protected bool $useDistFiles ?? true;
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $distCssFiles ?? [];
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $distJsFiles ?? [];
+        /**
+        * These files are included in the dist files. When using source, they are added by collectors if needed.
+        *
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $distIncludedAssets ?? [];
+        /**
+        * @var array<int, array>
+        * @generated
+        */
+        protected array<int, array> $additionalAssets ?? [];
+        protected string $javascriptClass ?? 'PhpDebugBar.DebugBar';
+        protected string $variableName ?? 'phpdebugbar';
+        protected ?string $theme ?? null;
+        protected ?bool $hideEmptyTabs ?? null;
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $spaNavigationEvents ?? [];
+        protected int $initialization;
+        /**
+        * @var array<string, null|array>
+        * @generated
+        */
+        protected array<string, null|array> $controls ?? [];
+        protected array $ignoredCollectors ?? [];
+        protected ?string $ajaxHandlerClass ?? 'PhpDebugBar.AjaxHandler';
+        protected bool $ajaxHandlerBindToFetch ?? true;
+        protected bool $ajaxHandlerBindToXHR ?? true;
+        protected bool $ajaxHandlerAutoShow ?? true;
+        protected bool $ajaxHandlerEnableTab ?? false;
+        protected bool $ajaxHandlerCaptureStreamed ?? false;
+        /**
+        * @var array<int, string>|null
+        * @generated
+        */
+        protected array<int, string>|null $ajaxHandlerStreamedContentTypes ?? null;
+        protected bool $deferDatasets ?? false;
+        protected string $openHandlerClass ?? 'PhpDebugBar.OpenHandler';
+        protected ?string $openHandlerUrl ?? null;
+        protected ?string $assetHandlerUrl ?? null;
+        protected ?string $cspNonce ?? null;
+        public function __construct(\DebugBar\DebugBar $debugBar, ?string $baseUrl = null, ?string $basePath = null): void;
+        /**
+        * @param array $options
+        * @generated
+        */
+        public function setOptions(array $options): static;
+        /**
+        * Sets the path which assets are relative to
+        *
+        * @generated
+        */
+        public function setBasePath(string $path): static;
+        /**
+        * Returns the path which assets are relative to
+        *
+        * @generated
+        */
+        public function getBasePath(): ?string;
+        /**
+        * Sets the base URL from which assets will be served
+        *
+        * @generated
+        */
+        public function setBaseUrl(?string $url): static;
+        /**
+        * Returns the base URL from which assets will be served
+        *
+        * @generated
+        */
+        public function getBaseUrl(): ?string;
+        /**
+        * Whether to include vendor assets
+        *
+        * You can only include js or css vendors using
+        * setIncludeVendors('css') or setIncludeVendors('js')
+        *
+        * @param bool|string|array $enabled
+        * @generated
+        */
+        public function setIncludeVendors(bool|string|array $enabled = true): static;
+        /**
+        * Checks if vendors assets are included
+        *
+        * @return bool
+        * @generated
+        */
+        public function areVendorsIncluded(): bool;
+        /**
+        * Disable a specific vendor's assets.
+        *
+        * @param string $name "highlightjs"
+        * @generated
+        */
+        public function disableVendor(string $name): static;
+        /**
+        * Enables or disables using dist files instead of source files
+        *
+        * @generated
+        */
+        public function setUseDistFiles(bool $useDistFiles = true): static;
+        /**
+        * Returns the usage of dist files.
+        *
+        * @generated
+        */
+        public function getUseDistFiles(): bool;
+        /**
+        * Sets the javascript class name
+        *
+        * @generated
+        */
+        public function setJavascriptClass(string $className): static;
+        /**
+        * Returns the javascript class name
+        *
+        * @generated
+        */
+        public function getJavascriptClass(): string;
+        /**
+        * Sets the variable name of the class instance
+        *
+        * @generated
+        */
+        public function setVariableName(string $name): static;
+        /**
+        * Returns the variable name of the class instance
+        *
+        * @generated
+        */
+        public function getVariableName(): string;
+        /**
+        * Sets what should be initialized
+        *
+        *  - INITIALIZE_CONSTRUCTOR: only initializes the instance
+        *  - INITIALIZE_CONTROLS: initializes the controls and data mapping
+        *  - INITIALIZE_CONSTRUCTOR | INITIALIZE_CONTROLS: initialize everything (default)
+        *
+        * @param int $init
+        * @generated
+        */
+        public function setInitialization(int $init): static;
+        /**
+        * Returns what should be initialized
+        *
+        * @return int
+        * @generated
+        */
+        public function getInitialization(): int;
+        public function setTheme(?string $theme = 'auto'): static;
+        public function getTheme(): ?string;
+        public function setHideEmptyTabs(bool $hide = true): static;
+        public function areEmptyTabsHidden(): ?bool;
+        /**
+        * Sets the SPA navigation events to listen for.
+        *
+        * When using SPA navigation (Livewire, Turbo, HTMX, etc.), the body's
+        * padding may change between pages. Setting these events will cause
+        * the debug bar to recalculate its position after navigation.
+        * 
+        * Default: ['livewire:navigated', 'turbo:load', 'htmx:afterSettle']
+        * 
+        * Set to an empty array to disable this feature.
+        *
+        * @param array<int, string> $events
+        * @generated
+        */
+        public function setSpaNavigationEvents(array<int, string> $events): static;
+        /**
+        * Returns the SPA navigation events.
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        public function getSpaNavigationEvents(): array<int, string>;
+        /**
+        * Adds a control to initialize
+        *
+        * Possible options:
+        *  - icon: icon name
+        *  - tooltip: string
+        *  - widget: widget class name
+        *  - title: tab title
+        *  - map: a property name from the data to map the control to
+        *  - default: a js string, default value of the data map
+        * 
+        * "icon" or "widget" are at least needed
+        *
+        * @param array $options
+        * @phpstan-assert (array{icon: string}|array{widget: class-string}) $options
+        * @generated
+        */
+        public function addControl(string $name, array $options): static;
+        /**
+        * Disables a control
+        *
+        * @generated
+        */
+        public function disableControl(string $name): static;
+        /**
+        * Returns the list of controls
+        *
+        * This does not include controls provided by collectors
+        *
+        * @generated
+        */
+        public function getControls(): array;
+        /**
+        * Ignores widgets provided by a collector
+        *
+        * @generated
+        */
+        public function ignoreCollector(string $name): static;
+        /**
+        * Returns the list of ignored collectors
+        *
+        * @generated
+        */
+        public function getIgnoredCollectors(): array;
+        /**
+        * Sets the class name of the ajax handler
+        *
+        * Set to null to disable
+        *
+        * @generated
+        */
+        public function setAjaxHandlerClass(?string $className): static;
+        /**
+        * Returns the class name of the ajax handler
+        *
+        * @generated
+        */
+        public function getAjaxHandlerClass(): ?string;
+        /**
+        * Sets whether to call bindToFetch() on the ajax handler
+        *
+        * @param bool $bind
+        * @generated
+        */
+        public function setBindAjaxHandlerToFetch(bool $bind = true): static;
+        /**
+        * Checks whether bindToFetch() will be called on the ajax handler
+        *
+        * @return bool
+        * @generated
+        */
+        public function isAjaxHandlerBoundToFetch(): bool;
+        /**
+        * Sets whether to call bindToXHR() on the ajax handler
+        *
+        * @param bool $bind
+        * @generated
+        */
+        public function setBindAjaxHandlerToXHR(bool $bind = true): static;
+        /**
+        * Checks whether bindToXHR() will be called on the ajax handler
+        *
+        * @return bool
+        * @generated
+        */
+        public function isAjaxHandlerBoundToXHR(): bool;
+        /**
+        * Sets whether new ajax debug data will be immediately shown.  Setting to false could be useful
+        *
+        * if there are a lot of tracking events cluttering things.
+        *
+        * @param bool $autoShow
+        * @generated
+        */
+        public function setAjaxHandlerAutoShow(bool $autoShow = true): static;
+        /**
+        * Checks whether the ajax handler will immediately show new ajax requests.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isAjaxHandlerAutoShow(): bool;
+        /**
+        * Sets whether new ajax debug data will be shown in a separate tab instead of dropdown.
+        *
+        * @param bool $enabled
+        * @generated
+        */
+        public function setAjaxHandlerEnableTab(bool $enabled = true): static;
+        /**
+        * Check if the Ajax Handler History tab is enabled
+        *
+        * @return bool
+        * @generated
+        */
+        public function isAjaxHandlerTabEnabled(): bool;
+        /**
+        * Sets whether the ajax handler correlates streamed responses.
+        *
+        * When enabled, a correlation id is injected on same-origin fetch/XHR
+        * requests so datasets from responses that lose the phpdebugbar-id header
+        * (SSE, StreamedResponse, anything flushed mid-request) can be looked up
+        * through the open handler.
+        *
+        * @param bool $capture
+        * @generated
+        */
+        public function setAjaxHandlerCaptureStreamed(bool $capture = true): static;
+        /**
+        * Checks whether the ajax handler correlates streamed responses
+        *
+        * @return bool
+        * @generated
+        */
+        public function isAjaxHandlerCaptureStreamed(): bool;
+        /**
+        * Sets the response Content-Types treated as streamed for the correlation
+        *
+        * fallback lookup.
+        * 
+        * Pass null to use the ajax handler default (SSE only). Pass an empty array
+        * to fall back on any response missing the phpdebugbar-id header.
+        *
+        * @param array<int, string>|null $contentTypes
+        * @generated
+        */
+        public function setAjaxHandlerStreamedContentTypes(array<int, string>|null $contentTypes): static;
+        /**
+        * Returns the response Content-Types treated as streamed, or null when the
+        *
+        * ajax handler default is used
+        *
+        * @return array<int, string>|null
+        * @generated
+        */
+        public function getAjaxHandlerStreamedContentTypes(): array<int, string>|null;
+        /**
+        * Sets whether datasets are directly loaded or deferred
+        *
+        * @param bool $defer
+        * @generated
+        */
+        public function setDeferDatasets(bool $defer = true): static;
+        /**
+        * Check if the datasets are deffered
+        *
+        * @return bool
+        * @generated
+        */
+        public function areDatasetsDeferred(): bool;
+        /**
+        * Sets the class name of the js open handler
+        *
+        * @generated
+        */
+        public function setOpenHandlerClass(string $className): static;
+        /**
+        * Returns the class name of the js open handler
+        *
+        * @generated
+        */
+        public function getOpenHandlerClass(): string;
+        /**
+        * Sets the url of the open handler
+        *
+        * @generated
+        */
+        public function setOpenHandlerUrl(?string $url): static;
+        /**
+        * Returns the url for the open handler
+        *
+        * @generated
+        */
+        public function getOpenHandlerUrl(): ?string;
+        /**
+        * Sets the url of the asset handler
+        *
+        * @generated
+        */
+        public function setAssetHandlerUrl(?string $url): static;
+        /**
+        * Returns the url for the asset handler
+        *
+        * @generated
+        */
+        public function getAssetHandlerUrl(): ?string;
+        /**
+        * Sets the CSP Nonce (or remove it by setting to null)
+        *
+        * @return static
+        * @generated
+        */
+        public function setCspNonce(?string $nonce): static;
+        /**
+        * Get the CSP Nonce
+        *
+        * @generated
+        */
+        public function getCspNonce(): ?string;
+        /**
+        * Add assets stored in files to render in the head
+        *
+        * @param array|string $cssFiles An array of filenames
+        * @param array|string $jsFiles An array of filenames
+        * @param ?string $basePath Base path of those files
+        * @param ?string $baseUrl Base url of those files
+        * @return static
+        * @generated
+        */
+        public function addAssets(array|string $cssFiles = [], array|string $jsFiles = [], ?string $basePath = null, ?string $baseUrl = null): static;
+        /**
+        * Add inline assets to render inline in the head.  Ideally, you should store static assets in
+        *
+        * files that you add with the addAssets function.  However, adding inline assets is useful when
+        * integrating with 3rd-party libraries that require static assets that are only available in an
+        * inline format.
+        * 
+        * The inline content arrays require special string array keys:  they are used to deduplicate
+        * content.  This is particularly useful if multiple instances of the same asset end up being
+        * added.  Inline assets from all collectors are merged together into the same array, so these
+        * content IDs effectively deduplicate the inline assets.
+        *
+        * @param array|string $inlineCss An array map of content ID to inline CSS content (not including <style> tag)
+        * @param array|string $inlineJs An array map of content ID to inline JS content (not including <script> tag)
+        * @param array|string $inlineHead An array map of content ID to arbitrary inline HTML content (typically
+        *  *                                        <style>/<script> tags); it must be embedded within the <head> element
+        * @return static
+        * @generated
+        */
+        public function addInlineAssets(array|string $inlineCss, array|string $inlineJs, array|string $inlineHead): static;
+        /**
+        * Returns the list of asset files
+        *
+        * @param ?string $relativeTo The type of path to which filenames must be relative (path, url or null)
+        * @return array
+        * @generated
+        */
+        public function getAssets(?string $relativeTo = self::RELATIVE_PATH): array;
+        /**
+        * @return array
+        * @generated
+        */
+        public function getDistIncludedAssets(?string $relativeTo = self::RELATIVE_PATH): array;
+        /**
+        * Returns the correct base according to the type
+        *
+        * @generated
+        */
+        protected function getRelativeRoot(?string $relativeTo, string $basePath, ?string $baseUrl): ?string;
+        /**
+        * @param array<int, string> $uris
+        * @return array<int, string>
+        * @generated
+        */
+        protected function makeUrisRelativeTo(array<int, string> $uris, ?string $root): array<int, string>;
+        protected function makeUriRelativeTo(string $uri, ?string $root): string;
+        /**
+        * Write all CSS assets to standard output or in a file
+        *
+        * @generated
+        */
+        public function dumpCssAssets(?string $targetFilename = null, bool $echo = true): string;
+        /**
+        * Write all JS assets to standard output or in a file
+        *
+        * @generated
+        */
+        public function dumpJsAssets(?string $targetFilename = null, bool $echo = true): string;
+        /**
+        * Write all inline HTML header assets to standard output or in a file (only returns assets not
+        *
+        * already returned by dumpCssAssets or dumpJsAssets)
+        *
+        * @generated
+        */
+        public function dumpHeadAssets(?string $targetFilename = null, bool $echo = true): string;
+        /**
+        * Write assets to standard output or in a file
+        *
+        * @param array<int, string>|null $files Filenames containing assets
+        * @param array<int, string>|null $content Inline content to dump
+        * @generated
+        */
+        public function dumpAssets(array<int, string>|null $files = null, array<int, string>|null $content = null, ?string $targetFilename = null, bool $echo = true): string;
+        /**
+        * Renders the html to include needed assets
+        *
+        * @generated
+        */
+        public function renderHead(): string;
+        /**
+        * @param array<int, string> $files
+        * @generated
+        */
+        protected function getFilesModifiedTime(array<int, string> $files): int;
+        public function injectInHtmlResponse(string $content, bool $withHead = true): string;
+        /**
+        * Register shutdown to display the debug bar
+        *
+        * @param bool $here Set position of HTML. True if is to current position or false for end file
+        * @param bool $initialize Whether to render the de bug bar initialization code
+        * @return string Return "{--DEBUGBAR_OB_START_REPLACE_ME--}" or return an empty string if $here == false
+        * @generated
+        */
+        public function renderOnShutdown(bool $here = true, bool $initialize = true, bool $renderStackedData = true, bool $head = false): string;
+        /**
+        * Same as renderOnShutdown() with $head = true
+        *
+        * @param bool $here
+        * @param bool $initialize
+        * @param bool $renderStackedData
+        * @generated
+        */
+        public function renderOnShutdownWithHead(bool $here = true, bool $initialize = true, bool $renderStackedData = true): string;
+        /**
+        * Is callback function for register_shutdown_function(...)
+        *
+        * @param bool $here Set position of HTML. True if is to current position or false for end file
+        * @param bool $initialize Whether to render the de bug bar initialization code
+        * @generated
+        */
+        public function replaceTagInBuffer(bool $here = true, bool $initialize = true, bool $renderStackedData = true, bool $head = false): void;
+        /**
+        * Returns the code needed to display the debug bar
+        *
+        * AJAX request should not render the initialization code.
+        *
+        * @param bool $initialize Whether or not to render the debug bar initialization code
+        * @param bool $renderStackedData Whether or not to render the stacked data
+        * @generated
+        */
+        public function render(bool $initialize = true, bool $renderStackedData = true): string;
+        /**
+        * Returns the js code needed to initialize the debug bar
+        *
+        * @generated
+        */
+        protected function getJsInitializationCode(): string;
+        protected function getInitializeOptions(): array;
+        /**
+        * Returns the js code needed to initialized the controls and data mapping of the debug bar
+        *
+        * Controls can be defined by collectors themselves or using {@see addControl()}
+        *
+        * @generated
+        */
+        protected function getJsControlsDefinitionCode(string $varname): string;
+        /**
+        * Returns the js code needed to add a dataset
+        *
+        * @generated
+        */
+        protected function getAddDatasetCode(string $requestId, array $data, ?string $suffix = null, bool $show = true): string;
+        /**
+        * Returns the js code needed to load a dataset with the OpenHandler
+        *
+        * @generated
+        */
+        protected function getLoadDatasetCode(string $requestId, ?string $suffix = null, bool $show = true): string;
+        /**
+        * If a nonce it set, create the correct attribute
+        *
+        * @generated
+        */
+        protected function getNonceAttribute(): ?string;
+    }
+    /**
+    * Handler to list and open saved dataset
+    *
+    * @generated
+    */
+    class OpenHandler {
+        protected \DebugBar\DebugBar $debugBar;
+        protected \DebugBar\Storage\StorageInterface $storage;
+        /**
+        * @throws DebugBarException
+        * @generated
+        */
+        public function __construct(\DebugBar\DebugBar $debugBar): void;
+        /**
+        * Handles the current request
+        *
+        * @param null|array<string, mixed> $request Request parameters
+        * @throws DebugBarException
+        * @generated
+        */
+        public function handle(null|array<string, mixed> $request = null, bool $echo = true, bool $sendHeader = true): string;
+        /**
+        * Find operation
+        *
+        * @param array<string, mixed> $request
+        * @generated
+        */
+        protected function find(array<string, mixed> $request): array;
+        /**
+        * Get operation
+        *
+        * @param array<string, mixed> $request
+        * @throws DebugBarException
+        * @generated
+        */
+        protected function get(array<string, mixed> $request): array;
+        /**
+        * Clear operation
+        *
+        * @generated
+        */
+        protected function clear(): array;
+    }
+    /**
+    * HTTP driver for native php
+    *
+    * @generated
+    */
+    class PhpHttpDriver implements \DebugBar\HttpDriverInterface {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function setHeaders(array $headers): void;
+        public function output(string $content): void;
+        public function isSessionStarted(): bool;
+        public function setSessionValue(string $name, mixed $value): void;
+        public function hasSessionValue(string $name): bool;
+        public function getSessionValue(string $name): mixed;
+        public function deleteSessionValue(string $name): void;
+    }
+    /**
+    * Basic request ID generator
+    *
+    * @generated
+    */
+    class RequestIdGenerator implements \DebugBar\RequestIdGeneratorInterface {
+        public function generate(): string;
+    }
+    interface RequestIdGeneratorInterface {
+        /**
+        * Generates a unique id for the current request.  If called repeatedly, a new unique id must
+        *
+        * always be returned on each call to generate() - even across different object instances.
+        * 
+        * It MUST be a Lexicographically Sortable string.
+        *
+        * @generated
+        */
+        public function generate(): string;
+    }
+    /**
+    * Debug bar subclass which adds all included collectors
+    *
+    * @generated
+    */
+    class StandardDebugBar extends \DebugBar\DebugBar {
+        public function __construct(): void;
+    }
+}
+namespace DebugBar\DataCollector {
+    /**
+    * Aggregates data from multiple collectors
+    *
+    * <code>
+    * $aggcollector = new AggregateCollector('foobar');
+    * $aggcollector->addCollector(new MessagesCollector('msg1'));
+    * $aggcollector->addCollector(new MessagesCollector('msg2'));
+    * $aggcollector['msg1']->addMessage('hello world');
+    * </code>
+    *
+    * @implements ArrayAccess<string, DataCollectorInterface>
+    * @generated
+    */
+    class AggregatedCollector implements \DebugBar\DataCollector\DataCollectorInterface, \ArrayAccess, \DebugBar\DataCollector\Resettable {
+        protected string $name;
+        protected ?string $mergeProperty;
+        protected bool|string $sort;
+        /**
+        * @var array<string, DataCollectorInterface>
+        * @generated
+        */
+        protected array<string, \DebugBar\DataCollector\DataCollectorInterface> $collectors ?? [];
+        public function __construct(string $name, ?string $mergeProperty = null, bool|string $sort = false): void;
+        public function reset(): void;
+        public function addCollector(\DebugBar\DataCollector\DataCollectorInterface $collector): void;
+        public function getCollectors(): array;
+        /**
+        * Merge data from one of the key/value pair of the collected data
+        *
+        * @generated
+        */
+        public function setMergeProperty(string $property): void;
+        public function getMergeProperty(): ?string;
+        /**
+        * Sorts the collected data
+        *
+        * If true, sorts using sort()
+        * If it is a string, sorts the data using the value from a key/value pair of the array
+        *
+        * @generated
+        */
+        public function setSort(bool|string $sort): void;
+        public function getSort(): bool|string;
+        public function collect(): array;
+        /**
+        * Sorts the collected data
+        *
+        * @generated
+        */
+        protected function sort(array $data): array;
+        public function getName(): string;
+        /**
+        * @throws DebugBarException
+        * @generated
+        */
+        public function offsetSet(mixed $offset, mixed $value): void;
+        public function offsetGet(mixed $offset): \DebugBar\DataCollector\DataCollectorInterface;
+        public function offsetExists(mixed $offset): bool;
+        /**
+        * @throws DebugBarException
+        * @generated
+        */
+        public function offsetUnset(mixed $offset): void;
+    }
+    /**
+    * Indicates that a DataCollector provides some assets
+    *
+    * @generated
+    */
+    interface AssetProvider {
+        /**
+        * Returns an array with the following keys:
+        *
+        *  - base_path
+        *  - base_url
+        *  - css: an array of filenames
+        *  - js: an array of filenames
+        *  - inline_css: an array map of content ID to inline CSS content (not including <style> tag)
+        *  - inline_js: an array map of content ID to inline JS content (not including <script> tag)
+        *  - inline_head: an array map of content ID to arbitrary inline HTML content (typically
+        *        <style>/<script> tags); it must be embedded within the <head> element
+        * 
+        * All keys are optional.
+        * 
+        * Ideally, you should store static assets in filenames that are returned via the normal css/js
+        * keys.  However, the inline asset elements are useful when integrating with 3rd-party
+        * libraries that require static assets that are only available in an inline format.
+        * 
+        * The inline content arrays require special string array keys:  the caller of this function
+        * will use them to deduplicate content.  This is particularly useful if multiple instances of
+        * the same asset provider are used.  Inline assets from all collectors are merged together into
+        * the same array, so these content IDs effectively deduplicate the inline assets.
+        *
+        * @return array
+        * @generated
+        */
+        public function getAssets(): array;
+    }
+    /**
+    * Collects array data
+    *
+    * @generated
+    */
+    class ConfigCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\Resettable {
+        protected string $name;
+        protected array $data;
+        public function __construct(array $data = [], string $name = 'config'): void;
+        public function reset(): void;
+        /**
+        * Sets the data
+        *
+        * @generated
+        */
+        public function setData(array $data): void;
+        public function collect(): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    /**
+    * Abstract class for data collectors
+    *
+    * @generated
+    */
+    abstract class DataCollector implements \DebugBar\DataCollector\DataCollectorInterface {
+        use \DebugBar\DataFormatter\HasDataFormatter, \DebugBar\DataFormatter\HasXdebugLinks, \DebugBar\DataCollector\HidesMaskedValues;
+        public static ?\DebugBar\DataFormatter\DataFormatterInterface $defaultDataFormatter ?? null;
+    }
+    /**
+    * DataCollector Interface
+    *
+    * @generated
+    */
+    interface DataCollectorInterface {
+        /**
+        * Called by the DebugBar when data needs to be collected
+        *
+        * @return array<int|string, mixed> Collected data
+        * @generated
+        */
+        public function collect(): array<int|string, mixed>;
+        /**
+        * Returns the unique name of the collector
+        *
+        * @generated
+        */
+        public function getName(): string;
+    }
+    /**
+    * Collects info about exceptions
+    *
+    * @generated
+    */
+    class ExceptionsCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\Resettable {
+        protected string $name ?? 'exceptions';
+        protected string $icon ?? 'bug';
+        protected array $exceptions ?? [];
+        protected array $existingWarnings ?? [];
+        protected bool $chainExceptions ?? false;
+        public function __construct(string $name = 'exceptions', string $icon = 'bug'): void;
+        public function reset(): void;
+        /**
+        * Adds an exception to be profiled in the debug bar. Same as addThrowable
+        *
+        * @generated
+        */
+        public function addException(\Throwable $e): void;
+        /**
+        * Adds a Throwable to be profiled in the debug bar
+        *
+        * @generated
+        */
+        public function addThrowable(\Throwable $e): void;
+        /**
+        * Configure whether or not all chained exceptions should be shown.
+        *
+        * @generated
+        */
+        public function setChainExceptions(bool $chainExceptions = true): void;
+        /**
+        * Start collecting warnings, notices and deprecations
+        *
+        * @generated
+        */
+        public function collectWarnings(bool $preserveOriginalHandler = true): void;
+        /**
+        * Adds an warning to be profiled in the debug bar
+        *
+        * @generated
+        */
+        public function addWarning(int $errno, string $errstr, string $errfile = '', int $errline = 0): void;
+        /**
+        * Returns the list of exceptions being profiled
+        *
+        * @return array<\Throwable|array>
+        * @generated
+        */
+        public function getExceptions(): array<\Throwable|array>;
+        public function collect(): array;
+        /**
+        * Returns Throwable trace as an formated array
+        *
+        * @generated
+        */
+        public function formatTrace(array $trace): array;
+        /**
+        * Returns Throwable data as an string
+        *
+        * @generated
+        */
+        public function formatTraceAsString(\Throwable $e): string;
+        /**
+        * Returns Throwable data as an array of lines
+        *
+        * @generated
+        */
+        public function formatTraceAsArray(\Throwable $e): array;
+        /**
+        * Returns Throwable data as an array
+        *
+        * @generated
+        */
+        public function formatThrowableData(\Throwable|array $e): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    trait HasTimeDataCollector {
+        protected ?\DebugBar\DataCollector\TimeDataCollector $timeDataCollector ?? null;
+        public function withTimeDataCollector(\DebugBar\DataCollector\TimeDataCollector $timeDataCollector): static;
+        public function setTimeDataCollector(\DebugBar\DataCollector\TimeDataCollector $timeDataCollector): void;
+        public function hasTimeDataCollector(): bool;
+        public function getTimeDataCollector(): ?\DebugBar\DataCollector\TimeDataCollector;
+        public function addTimeMeasure(string $label, ?float $start = null, ?float $end = null, array $params = [], ?string $group = null): void;
+    }
+    trait HidesMaskedValues {
+        protected array $maskedKeys ?? [];
+        /**
+        * @var array|array<int, string>
+        * @generated
+        */
+        public static array|array<int, string> $SENSITIVE_KEYS ?? [];
+        public function hideMaskedValues(array $data, ?string $prefix = null): mixed;
+        public function addMaskedKeys(array $keys): void;
+        public function maskValue(mixed $value): string;
+        protected function isMaskedKey(string $key): bool;
+    }
+    class HttpCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\AssetProvider, \DebugBar\DataCollector\Resettable {
+        use \DebugBar\DataCollector\HasTimeDataCollector;
+        protected string $name;
+        protected array $requests ?? [];
+        public function __construct(string $name = 'http'): void;
+        public function reset(): void;
+        public function getName(): string;
+        public function getWidgets(): array;
+        public function getAssets(): array;
+        public function addRequest(string $method, string $url, ?int $status, ?float $duration, array $details = []): void;
+        public function collect(): array;
+    }
+    /**
+    * Collects info about the current localization state
+    *
+    * @generated
+    */
+    class LocalizationCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable {
+        /**
+        * Get the current locale
+        *
+        * @generated
+        */
+        public function getLocale(): string|false;
+        /**
+        * Get the current translations domain
+        *
+        * @generated
+        */
+        public function getDomain(): string|false;
+        public function collect(): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    /**
+    * Collects info about memory usage
+    *
+    * @generated
+    */
+    class MemoryCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable {
+        protected bool $realUsage ?? false;
+        protected int $memoryRealStart ?? 0;
+        protected int $memoryStart ?? 0;
+        protected int $peakUsage ?? 0;
+        protected int $precision ?? 0;
+        /**
+        * Set the precision of the 'peak_usage_str' output.
+        *
+        * @generated
+        */
+        public function setPrecision(int $precision): void;
+        /**
+        * Returns whether total allocated memory page size is used instead of actual used memory size
+        *
+        * by the application.  See $real_usage parameter on memory_get_peak_usage for details.
+        *
+        * @generated
+        */
+        public function getRealUsage(): bool;
+        /**
+        * Sets whether total allocated memory page size is used instead of actual used memory size
+        *
+        * by the application.  See $real_usage parameter on memory_get_peak_usage for details.
+        *
+        * @generated
+        */
+        public function setRealUsage(bool $realUsage): void;
+        /**
+        * Reset memory baseline, to measure multiple requests in a long running process
+        *
+        * @generated
+        */
+        public function resetMemoryBaseline(): void;
+        /**
+        * Returns the peak memory usage
+        *
+        * @generated
+        */
+        public function getPeakUsage(): int;
+        /**
+        * Updates the peak memory usage value
+        *
+        * @generated
+        */
+        public function updatePeakUsage(): void;
+        public function collect(): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    interface MessagesAggregateInterface extends \DebugBar\DataCollector\DataCollectorInterface {
+        /**
+        * Returns collected messages
+        *
+        * @return array<int, array>
+        * @generated
+        */
+        public function getMessages(): array<int, array>;
+    }
+    /**
+    * Provides a way to log messages
+    *
+    * @generated
+    */
+    class MessagesCollector extends \Psr\Log\AbstractLogger implements \DebugBar\DataCollector\DataCollectorInterface, \DebugBar\DataCollector\MessagesAggregateInterface, \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\Resettable {
+        use \DebugBar\DataFormatter\HasDataFormatter, \DebugBar\DataFormatter\HasXdebugLinks, \DebugBar\DataCollector\HasTimeDataCollector;
+        protected string $name;
+        protected array $messages ?? [];
+        /**
+        * @var array<MessagesAggregateInterface>
+        * @generated
+        */
+        protected array<\DebugBar\DataCollector\MessagesAggregateInterface> $aggregates ?? [];
+        protected bool $compactDumps ?? false;
+        protected bool $collectFile ?? false;
+        protected int $backtraceLimit ?? 15;
+        /**
+        * @var array<string>
+        * @generated
+        */
+        protected array<string> $backtraceExcludePaths ?? [];
+        public function __construct(string $name = 'messages'): void;
+        public function reset(): void;
+        public function compactDumps(bool $enabled = true): void;
+        public function collectFileTrace(bool $enabled = true): void;
+        public function limitBacktrace(int $limit): void;
+        /**
+        * Set paths to exclude from the backtrace
+        *
+        * @generated
+        */
+        public function addBacktraceExcludePaths(array $excludePaths): void;
+        /**
+        * Check if the given file is to be excluded from analysis
+        *
+        * @generated
+        */
+        protected function fileIsInExcludedPath(string $file): bool;
+        /**
+        * Returns a simple plain-text representation of a variable for search/display fallback.
+        *
+        * @generated
+        */
+        protected function getPlainTextFromVar(mixed $var): string;
+        protected function compactMessageDump(?string $messageHtml): ?string;
+        protected function getStackTraceItem(array $stacktrace): array;
+        /**
+        * Adds a message
+        *
+        * A message can be anything from an object to a string
+        *
+        * @generated
+        */
+        public function addMessage(mixed $message, string $label = 'info', array $context = []): void;
+        public function addLink(string $text, string $url, string $label = 'info', array $context = []): void;
+        /**
+        * Aggregates messages from other collectors
+        *
+        * @generated
+        */
+        public function aggregate(\DebugBar\DataCollector\MessagesAggregateInterface $messages): void;
+        public function getMessages(): array;
+        public function log(mixed $level, mixed $message, array $context = []): void;
+        /**
+        * Interpolates context values into the message placeholders.
+        *
+        * @generated
+        */
+        public function interpolate(string $message, array $context = []): string;
+        /**
+        * Deletes all messages
+        *
+        * @generated
+        */
+        public function clear(): void;
+        public function collect(): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    /**
+    * Collector for hit counts.
+    *
+    * @generated
+    */
+    class ObjectCountCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\DataCollectorInterface, \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\Resettable {
+        protected int $classCount ?? 0;
+        /**
+        * @var array<string, array<string, int>>
+        * @generated
+        */
+        protected array<string, array<string, int>> $classList ?? [];
+        /**
+        * @var array<string, int>
+        * @generated
+        */
+        protected array<string, int> $classSummary ?? [];
+        protected bool $collectSummary ?? false;
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected array<string, string> $keyMap ?? [];
+        public function __construct(string $name = 'counter', string $icon = 'box'): void;
+        public function reset(): void;
+        /**
+        * Allows to define an array to map internal keys to human-readable labels
+        *
+        * @generated
+        */
+        public function setKeyMap(array $keyMap): void;
+        /**
+        * Allows to add a summary row
+        *
+        * @generated
+        */
+        public function collectCountSummary(bool $enable = true): void;
+        public function countClass(string|object $class, int $count = 1, string $key = 'value'): void;
+        public function collect(): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    /**
+    * Collects info about PHP
+    *
+    * @generated
+    */
+    class PhpInfoCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable {
+        public function getName(): string;
+        public function collect(): array;
+        public function getWidgets(): array;
+    }
+    /**
+    * Indicates that a DataCollector is renderable using JavascriptRenderer
+    *
+    * @generated
+    */
+    interface Renderable extends \DebugBar\DataCollector\DataCollectorInterface {
+        /**
+        * Returns a hash where keys are control names and their values
+        *
+        * an array of options as defined in {@see DebugBar\JavascriptRenderer::addControl()}
+        *
+        * @return array<string, array>
+        * @generated
+        */
+        public function getWidgets(): array<string, array>;
+    }
+    /**
+    * Collects info about the current request
+    *
+    * @generated
+    */
+    class RequestDataCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable {
+        protected bool $showUriIndicator ?? false;
+        public function __construct(): void;
+        public function collect(): array;
+        public function setShowUriIndicator(bool $showUriIndicator = true): void;
+        /**
+        * Hide a sensitive value within one of the superglobal arrays.
+        *
+        * @deprecated use addMaskedKeys($keys)
+        * @generated
+        */
+        deprecated public function hideSuperglobalKeys(string $superGlobalName, string|array $keys): void;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    /**
+    * DataCollector Interface
+    *
+    * @generated
+    */
+    interface Resettable {
+        /**
+        * Reset the collector to the original state
+        *
+        * @generated
+        */
+        public function reset(): void;
+    }
+    class TemplateCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\AssetProvider, \DebugBar\DataCollector\Resettable {
+        use \DebugBar\DataCollector\HasTimeDataCollector;
+        protected string $name;
+        protected array $templates ?? [];
+        protected bool|string $collect_data;
+        /**
+        * @var array<string>
+        * @generated
+        */
+        protected array<string> $exclude_paths;
+        protected int|bool $group;
+        /**
+        * @param array<int, string> $excludePaths Paths to exclude from collection
+        * @generated
+        */
+        public function __construct(bool|string $collectData = true, array<int, string> $excludePaths = [], int|bool $group = true): void;
+        public function reset(): void;
+        public function getName(): string;
+        public function getWidgets(): array;
+        public function getAssets(): array;
+        public function addTemplate(string $name, array $data, ?string $type, ?string $path): void;
+        public function collect(): array;
+    }
+    /**
+    * Collects info about the request duration as well as providing
+    *
+    * a way to log duration of any operations
+    *
+    * @generated
+    */
+    class TimeDataCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\Resettable {
+        protected float $requestStartTime;
+        protected ?float $requestEndTime ?? null;
+        protected array $startedMeasures ?? [];
+        protected array $measures ?? [];
+        protected bool $memoryMeasure ?? false;
+        protected bool $mergeMeasures ?? false;
+        public function __construct(?float $requestStartTime = null): void;
+        public function reset(): void;
+        public function setRequestStartTime(?float $requestStartTime = null): void;
+        /**
+        * Starts memory measuring
+        *
+        * @generated
+        */
+        public function showMemoryUsage(): void;
+        /**
+        * Merge repeated measures into a single timeline entry, reusing the same segment
+        *
+        * @generated
+        */
+        public function mergeRepeatedMeasures(): void;
+        /**
+        * Starts a measure
+        *
+        * @generated
+        */
+        public function startMeasure(string $name, ?string $label = null, ?string $collector = null, ?string $group = null): void;
+        /**
+        * Check a measure exists
+        *
+        * @generated
+        */
+        public function hasStartedMeasure(string $name): bool;
+        /**
+        * Stops a measure
+        *
+        * @throws DebugBarException
+        * @generated
+        */
+        public function stopMeasure(string $name, array $params = []): void;
+        /**
+        * Adds a measure
+        *
+        * @generated
+        */
+        public function addMeasure(string $label, ?float $start = null, ?float $end = null, array $params = [], ?string $collector = null, ?string $group = null): void;
+        /**
+        * Utility function to measure the execution of a Closure
+        *
+        * @generated
+        */
+        public function measure(string $label, \Closure $closure, ?string $collector = null, ?string $group = null): mixed;
+        /**
+        * Returns an array of all measures
+        *
+        * @generated
+        */
+        public function getMeasures(): array;
+        /**
+        * Returns the request start time
+        *
+        * @generated
+        */
+        public function getRequestStartTime(): float;
+        /**
+        * Returns the request end time
+        *
+        * @generated
+        */
+        public function getRequestEndTime(): ?float;
+        /**
+        * Returns the duration of a request
+        *
+        * @generated
+        */
+        public function getRequestDuration(): float;
+        /**
+        * @throws DebugBarException
+        * @generated
+        */
+        public function collect(): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+}
+namespace DebugBar\DataCollector\Message {
+    readonly class LinkMessage implements \DebugBar\DataCollector\Message\MessageInterface {
+        public function __construct(string $text, string $url): void;
+        public function getText(): string;
+        public function getHtml(): ?string;
+    }
+    interface MessageInterface {
+        public function getText(): string;
+        public function getHtml(): ?string;
+    }
+}
+namespace DebugBar\DataCollector\PDO {
+    /**
+    * Collects data about SQL statements executed with PDO
+    *
+    * @generated
+    */
+    class PDOCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\AssetProvider {
+        use \DebugBar\DataCollector\HasTimeDataCollector;
+        /**
+        * @var array<string, TraceablePDO>
+        * @generated
+        */
+        protected array<string, \DebugBar\DataCollector\PDO\TraceablePDO> $connections ?? [];
+        protected ?\DebugBar\DataFormatter\QueryFormatter $queryFormatter ?? null;
+        protected bool $renderSqlWithParams ?? true;
+        protected bool $durationBackground ?? true;
+        protected ?float $slowThreshold ?? null;
+        protected ?int $backtraceLimit ?? null;
+        public function __construct(?\PDO $pdo = null): void;
+        public function reset(): void;
+        public function getQueryFormatter(): \DebugBar\DataFormatter\QueryFormatter;
+        /**
+        * Set the backtrace limit to check for PDO statements. Set to null to disable.
+        *
+        * @generated
+        */
+        public function enableBacktrace(?int $backtraceLimit = 10): void;
+        /**
+        * Renders the SQL of traced statements with params embeded
+        *
+        * @generated
+        */
+        public function setRenderSqlWithParams(bool $enabled = true): void;
+        /**
+        * Enable/disable the shaded duration background on queries
+        *
+        * @generated
+        */
+        public function setDurationBackground(bool $enabled): void;
+        /**
+        * Highlights queries that exceed the threshold
+        *
+        * @param int|float $threshold miliseconds value
+        * @generated
+        */
+        public function setSlowThreshold(int|float $threshold): void;
+        public function isSqlRenderedWithParams(): bool;
+        /**
+        * Adds a new PDO instance to be collector
+        *
+        * @generated
+        */
+        public function addConnection(\PDO $pdo, ?string $name = null): void;
+        /**
+        * Returns PDO instances to be collected
+        *
+        * @return array<string, TraceablePDO>
+        * @generated
+        */
+        public function getConnections(): array<string, \DebugBar\DataCollector\PDO\TraceablePDO>;
+        public function collect(): array;
+        /**
+        * Collects data from a single TraceablePDO instance
+        *
+        * @generated
+        */
+        protected function collectPDO(\DebugBar\DataCollector\PDO\TraceablePDO $pdo, ?string $connectionName = null): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+        public function getAssets(): array;
+    }
+    /**
+    * A PDO proxy which traces statements
+    *
+    * @generated
+    */
+    class TraceablePDO extends \PDO {
+        protected \PDO $pdo;
+        /**
+        * @var array<int, TracedStatement>
+        * @generated
+        */
+        protected array<int, \DebugBar\DataCollector\PDO\TracedStatement> $executedStatements ?? [];
+        protected ?int $backtraceLimit ?? null;
+        public function __construct(\PDO $pdo): void;
+        /**
+        * Set the backtrace limit to check for PDO statements. Set to null to disable.
+        *
+        * @generated
+        */
+        public function enableBacktrace(?int $backtraceLimit = 10): void;
+        /**
+        * Initiates a transaction
+        *
+        * @link http://php.net/manual/en/pdo.begintransaction.php
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function beginTransaction(): bool;
+        /**
+        * Commits a transaction
+        *
+        * @link http://php.net/manual/en/pdo.commit.php
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function commit(): bool;
+        /**
+        * Fetch extended error information associated with the last operation on the database handle
+        *
+        * @link https://www.php.net/manual/en/pdo.errorcode.php
+        * @return ?string Fetch the SQLSTATE associated with the last operation on the database handle
+        * @generated
+        */
+        public function errorCode(): ?string;
+        /**
+        * Fetch extended error information associated with the last operation on the database handle
+        *
+        * @link http://php.net/manual/en/pdo.errorinfo.php
+        * @return array PDO::errorInfo returns an array of error information
+        * @generated
+        */
+        public function errorInfo(): array;
+        /**
+        * Execute an SQL statement and return the number of affected rows
+        *
+        * @link http://php.net/manual/en/pdo.exec.php
+        * @return int|false PDO::exec returns the number of rows that were modified or deleted by the
+        *  *                       SQL statement you issued. If no rows were affected, PDO::exec returns 0. This function may
+        *  *                       return Boolean FALSE, but may also return a non-Boolean value which evaluates to FALSE.
+        *  *                       Please read the section on Booleans for more information
+        * @generated
+        */
+        public function exec(string $statement): int|false;
+        /**
+        * Retrieve a database connection attribute
+        *
+        * @link http://php.net/manual/en/pdo.getattribute.php
+        * @param int $attribute One of the PDO::ATTR_* constants
+        * @return mixed A successful call returns the value of the requested PDO attribute.
+        *  *                   An unsuccessful call returns null.
+        * @generated
+        */
+        public function getAttribute(int $attribute): mixed;
+        /**
+        * Checks if inside a transaction
+        *
+        * @link http://php.net/manual/en/pdo.intransaction.php
+        * @return bool TRUE if a transaction is currently active, and FALSE if not.
+        * @generated
+        */
+        public function inTransaction(): bool;
+        /**
+        * Returns the ID of the last inserted row or sequence value
+        *
+        * @link http://php.net/manual/en/pdo.lastinsertid.php
+        * @param ?string $name [optional]
+        * @return string|false If a sequence name was not specified for the name parameter, PDO::lastInsertId
+        *  *                          returns a string representing the row ID of the last row that was inserted into the database.
+        * @generated
+        */
+        public function lastInsertId(?string $name = null): string|false;
+        /**
+        * Prepares a statement for execution and returns a statement object
+        *
+        * @link http://php.net/manual/en/pdo.prepare.php
+        * @param string $statement This must be a valid SQL statement template for the target DB server.
+        * @param array $driver_options [optional] This array holds one or more key=&gt;value pairs to
+        *  *                                   set attribute values for the PDOStatement object that this method returns.
+        * @return \DebugBar\DataCollector\PDO\TraceablePDOStatement|bool If the database server successfully prepares the statement,
+        *  *                                         PDO::prepare returns a PDOStatement object. If the database server cannot successfully prepare
+        *  *                                         the statement, PDO::prepare returns FALSE or emits PDOException (depending on error handling).
+        * @generated
+        */
+        public function prepare(string $statement, array $driver_options = []): \DebugBar\DataCollector\PDO\TraceablePDOStatement|bool;
+        /**
+        * Executes an SQL statement, returning a result set as a PDOStatement object
+        *
+        * @link http://php.net/manual/en/pdo.query.php
+        * @param string $statement
+        * @param int $fetchMode
+        * @return bool|\DebugBar\DataCollector\PDO\TraceablePDOStatement PDO::query returns a PDOStatement object, or FALSE on
+        *  *                                        failure.
+        * @generated
+        */
+        public function query(string $statement, int $fetchMode = null, mixed ...$fetchModeArgs): bool|\DebugBar\DataCollector\PDO\TraceablePDOStatement;
+        /**
+        * Quotes a string for use in a query.
+        *
+        * @link http://php.net/manual/en/pdo.quote.php
+        * @param string $string The string to be quoted.
+        * @param int $parameter_type [optional] Provides a data type hint for drivers that have
+        *  *                                   alternate quoting styles.
+        * @return string|false A quoted string that is theoretically safe to pass into an SQL statement.
+        *  *                          Returns FALSE if the driver does not support quoting in this way.
+        * @generated
+        */
+        public function quote(string $string, int $parameter_type = \PDO::PARAM_STR): string|false;
+        /**
+        * Rolls back a transaction
+        *
+        * @link http://php.net/manual/en/pdo.rollback.php
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function rollBack(): bool;
+        /**
+        * Set an attribute
+        *
+        * @link http://php.net/manual/en/pdo.setattribute.php
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function setAttribute(int $attribute, mixed $value): bool;
+        /**
+        * Profiles a call to a PDO method
+        *
+        * @param string $method
+        * @param string $sql
+        * @return mixed The result of the call
+        * @generated
+        */
+        protected function profileCall(string $method, string $sql, array $args): mixed;
+        /**
+        * Adds an executed TracedStatement
+        *
+        * @generated
+        */
+        public function addExecutedStatement(\DebugBar\DataCollector\PDO\TracedStatement $stmt): void;
+        /**
+        * Adds a PDO event
+        *
+        * @generated
+        */
+        public function addPdoEvent(string $event): void;
+        /**
+        * Returns the accumulated execution time of statements
+        *
+        * @generated
+        */
+        public function getAccumulatedStatementsDuration(): float;
+        /**
+        * Returns the peak memory usage while performing statements
+        *
+        * @generated
+        */
+        public function getMemoryUsage(): int;
+        /**
+        * Returns the peak memory usage while performing statements
+        *
+        * @generated
+        */
+        public function getPeakMemoryUsage(): int;
+        /**
+        * Returns the list of executed statements as TracedStatement objects
+        *
+        * @return array<int, TracedStatement>
+        * @generated
+        */
+        public function getExecutedStatements(): array<int, \DebugBar\DataCollector\PDO\TracedStatement>;
+        /**
+        * Returns the list of failed statements
+        *
+        * @return array<int, TracedStatement>
+        * @generated
+        */
+        public function getFailedExecutedStatements(): array<int, \DebugBar\DataCollector\PDO\TracedStatement>;
+        public function resetExecutedStatements(): void;
+        public function __get(string $name): mixed;
+        public function __set(string $name, mixed $value): void;
+        public function __call(string $name, array $args): mixed;
+    }
+    /**
+    * A traceable PDO statement to use with Traceablepdo
+    *
+    * @generated
+    */
+    class TraceablePDOStatement extends \PDOStatement {
+        protected \DebugBar\DataCollector\PDO\TraceablePDO $pdo;
+        protected array $boundParameters ?? [];
+        /**
+        * TraceablePDOStatement constructor.
+        *
+        * @generated
+        */
+        protected function __construct(\DebugBar\DataCollector\PDO\TraceablePDO $pdo): void;
+        /**
+        * Bind a column to a PHP variable
+        *
+        * @link http://php.net/manual/en/pdostatement.bindcolumn.php
+        * @param mixed $column Number of the column (1-indexed) or name of the column in the result set
+        * @param mixed $param Name of the PHP variable to which the column will be bound.
+        * @param int $type [optional] Data type of the parameter, specified by the PDO::PARAM_*
+        *  *                              constants.
+        * @param int $maxlen [optional] A hint for pre-allocation.
+        * @param mixed $driverdata [optional] Optional parameter(s) for the driver.
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function bindColumn(mixed $column, mixed &$param, int $type = null, int $maxlen = null, mixed $driverdata = null): bool;
+        /**
+        * Binds a parameter to the specified variable name
+        *
+        * @link http://php.net/manual/en/pdostatement.bindparam.php
+        * @param mixed $parameter Parameter identifier. For a prepared statement using named
+        *  *                                  placeholders, this will be a parameter name of the form :name. For a prepared statement using
+        *  *                                  question mark placeholders, this will be the 1-indexed position of the parameter.
+        * @param mixed $variable Name of the PHP variable to bind to the SQL statement parameter.
+        * @param int $data_type [optional] Explicit data type for the parameter using the PDO::PARAM_*
+        *  *                                  constants.
+        * @param ?int $length [optional] Length of the data type. To indicate that a parameter is an OUT
+        *  *                                  parameter from a stored procedure, you must explicitly set the length.
+        * @param mixed $driver_options [optional]
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function bindParam(mixed $parameter, mixed &$variable, int $data_type = \PDO::PARAM_STR, ?int $length = null, mixed $driver_options = null): bool;
+        /**
+        * Binds a value to a parameter
+        *
+        * @link http://php.net/manual/en/pdostatement.bindvalue.php
+        * @param mixed $parameter Parameter identifier. For a prepared statement using named
+        *  *                             placeholders, this will be a parameter name of the form :name. For a prepared statement using
+        *  *                             question mark placeholders, this will be the 1-indexed position of the parameter.
+        * @param mixed $value The value to bind to the parameter.
+        * @param int $data_type [optional] Explicit data type for the parameter using the PDO::PARAM_*
+        *  *                             constants.
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function bindValue(mixed $parameter, mixed $value, int $data_type = \PDO::PARAM_STR): bool;
+        /**
+        * Executes a prepared statement
+        *
+        * @link http://php.net/manual/en/pdostatement.execute.php
+        * @param ?array $input_parameters [optional] An array of values with as many elements as there
+        *  *                                     are bound parameters in the SQL statement being executed. All values are treated as
+        *  *                                     PDO::PARAM_STR.
+        * @throws PDOException
+        * @return bool TRUE on success or FALSE on failure.
+        * @generated
+        */
+        public function execute(?array $input_parameters = null): bool;
+    }
+    /**
+    * Holds information about a statement
+    *
+    * @generated
+    */
+    class TracedStatement {
+        protected string $sql;
+        protected ?string $type ?? null;
+        protected int $rowCount;
+        protected array $parameters;
+        protected float $startTime;
+        protected float $endTime;
+        protected float $duration;
+        protected int $startMemory;
+        protected int $endMemory;
+        protected int $memoryDelta;
+        protected ?\Exception $exception;
+        protected ?string $preparedId;
+        protected ?array $backtrace ?? null;
+        public function __construct(string $sql, array $params = [], ?string $preparedId = null): void;
+        public function setQueryType(string $type): void;
+        public function start(?float $startTime = null, ?int $startMemory = null): void;
+        public function end(?\Exception $exception = null, int $rowCount = 0, ?float $endTime = null, ?int $endMemory = null): void;
+        public function checkBacktrace(int $limit = 15): void;
+        /**
+        * Check parameters for illegal (non UTF-8) strings, like Binary data.
+        *
+        * @generated
+        */
+        public function checkParameters(array $params): array;
+        public function getBacktrace(): ?array;
+        /**
+        * Returns the SQL string used for the query, without filled parameters
+        *
+        * @generated
+        */
+        public function getSql(): string;
+        /**
+        * Returns the number of rows affected/returned
+        *
+        * @generated
+        */
+        public function getRowCount(): int;
+        /**
+        * Returns an array of parameters used with the query
+        *
+        * @generated
+        */
+        public function getParameters(): array;
+        /**
+        * Returns the prepared statement id
+        *
+        * @generated
+        */
+        public function getPreparedId(): ?string;
+        /**
+        * Checks if this is a prepared statement
+        *
+        * @return bool
+        * @generated
+        */
+        public function isPrepared(): bool;
+        public function getStartTime(): float;
+        public function getEndTime(): float;
+        /**
+        * Returns the duration in seconds + microseconds of the execution
+        *
+        * @generated
+        */
+        public function getDuration(): float;
+        public function getStartMemory(): int;
+        public function getEndMemory(): int;
+        /**
+        * Returns the memory usage during the execution
+        *
+        * @generated
+        */
+        public function getMemoryUsage(): int;
+        /**
+        * Checks if the statement was successful
+        *
+        * @return bool
+        * @generated
+        */
+        public function isSuccess(): bool;
+        /**
+        * Returns the exception triggered
+        *
+        * @generated
+        */
+        public function getException(): \Exception;
+        /**
+        * Returns the exception's code
+        *
+        * @generated
+        */
+        public function getErrorCode(): int|string;
+        /**
+        * Returns the exception's message
+        *
+        * @generated
+        */
+        public function getErrorMessage(): string;
+        /**
+        * Returns the query type
+        *
+        * @generated
+        */
+        public function getQueryType(): string;
+    }
+}
+namespace DebugBar\DataFormatter {
+    class DataFormatter implements \DebugBar\DataFormatter\DataFormatterInterface {
+        protected static array $defaultClonerOptions ?? [];
+        protected ?array $clonerOptions ?? null;
+        protected ?\Symfony\Component\VarDumper\Cloner\VarCloner $cloner ?? null;
+        protected ?\Symfony\Component\VarDumper\Dumper\DataDumperInterface $dumper ?? null;
+        public function formatVar(mixed $data, bool $deep = true): mixed;
+        protected function cloneVar(mixed $data, bool $deep): \Symfony\Component\VarDumper\Cloner\Data;
+        protected function dumpClonedVar(\Symfony\Component\VarDumper\Cloner\Data $data): string;
+        public function formatDuration(float|int $seconds): string;
+        public function formatBytes(float|int|string|null $size, int $precision = 2): string;
+        public function formatClassName(object $object): string;
+        /**
+        * Gets the array of non-default VarCloner configuration options.
+        *
+        * @generated
+        */
+        public function getClonerOptions(): array;
+        /**
+        * Merges an array of non-default VarCloner configuration options with the existing non-default
+        *
+        * options.
+        * 
+        * Configuration options are:
+        *  - casters: a map of VarDumper Caster objects to use instead of the default casters.
+        *  - additional_casters: a map of VarDumper Caster objects to use in addition to the default
+        *    casters.
+        *  - max_items: maximum number of items to clone beyond the minimum depth.
+        *  - max_string: maximum string size
+        *  - min_depth: minimum tree depth to clone before counting items against the max_items limit.
+        *
+        * @generated
+        */
+        public function mergeClonerOptions(array $options): void;
+        /**
+        * Resets the array of non-default VarCloner configuration options without retaining any of the
+        *
+        * existing non-default options.
+        * 
+        * Configuration options are:
+        *  - casters: a map of VarDumper Caster objects to use instead of the default casters.
+        *  - additional_casters: a map of VarDumper Caster objects to use in addition to the default
+        *    casters.
+        *  - max_items: maximum number of items to clone beyond the minimum depth.
+        *  - max_string: maximum string size
+        *  - min_depth: minimum tree depth to clone before counting items against the max_items limit.
+        *
+        * @generated
+        */
+        public function resetClonerOptions(?array $options = null): void;
+        /**
+        * Gets the VarCloner instance with configuration options set.
+        *
+        * @generated
+        */
+        protected function getCloner(): \Symfony\Component\VarDumper\Cloner\VarCloner;
+        protected function getDumper(): \Symfony\Component\VarDumper\Dumper\DataDumperInterface;
+    }
+    /**
+    * Formats data to be outputed as string
+    *
+    * @generated
+    */
+    interface DataFormatterInterface {
+        /**
+        * Transforms a PHP variable to a string representation
+        *
+        * @generated
+        */
+        public function formatVar(mixed $data, bool $deep = true): mixed;
+        /**
+        * Transforms a duration in seconds in a readable string
+        *
+        * @generated
+        */
+        public function formatDuration(int|float $seconds): string;
+        /**
+        * Transforms a size in bytes to a human readable string
+        *
+        * @generated
+        */
+        public function formatBytes(float|int|string|null $size, int $precision = 2): string;
+        /**
+        * Format a classname in a readable string
+        *
+        * @generated
+        */
+        public function formatClassName(object $object): string;
+    }
+    trait HasDataFormatter {
+        protected ?\DebugBar\DataFormatter\DataFormatterInterface $dataFormatter ?? null;
+        /**
+        * Indicates whether the Symfony HtmlDumper will be used to dump variables for rich variable
+        *
+        * rendering.
+        *
+        * @generated
+        */
+        public function isHtmlVarDumperUsed(): bool;
+        /**
+        * Indicates whether the JSON VarDumper will be used to dump variables for client-side
+        *
+        * rendering.
+        *
+        * @generated
+        */
+        public function isJsonVarDumperUsed(): bool;
+        /**
+        * Sets the default data formater instance used by all collectors subclassing this class
+        *
+        * @generated
+        */
+        public static function setDefaultDataFormatter(\DebugBar\DataFormatter\DataFormatterInterface $formater): void;
+        /**
+        * Returns the default data formater
+        *
+        * @generated
+        */
+        public static function getDefaultDataFormatter(): \DebugBar\DataFormatter\DataFormatterInterface;
+        /**
+        * Sets the data formater instance used by this collector
+        *
+        * @return static
+        * @generated
+        */
+        public function setDataFormatter(\DebugBar\DataFormatter\DataFormatterInterface $formatter): static;
+        public function getDataFormatter(): \DebugBar\DataFormatter\DataFormatterInterface;
+    }
+    trait HasXdebugLinks {
+        protected string $xdebugLinkTemplate ?? '';
+        protected bool $xdebugShouldUseAjax ?? false;
+        protected array $xdebugReplacements ?? [];
+        /**
+        * Shorten the file path by removing the xdebug path replacements
+        *
+        * @generated
+        */
+        public function normalizeFilePath(string $file): string;
+        /**
+        * Get an Xdebug Link to a file
+        *
+        * @return null|array
+        * @generated
+        */
+        public function getXdebugLink(string $file, ?int $line = null): null|array;
+        public function getXdebugLinkTemplate(): string;
+        public function setEditorLinkTemplate(string $editor): void;
+        public function setXdebugLinkTemplate(string $xdebugLinkTemplate, bool $shouldUseAjax = false): void;
+        public function getXdebugShouldUseAjax(): bool;
+        /**
+        * returns an array of filename-replacements
+        *
+        * this is useful f.e. when using vagrant or remote servers,
+        * where the path of the file is different between server and
+        * development environment
+        *
+        * @return array key-value-pairs of replacements, key = path on server, value = replacement
+        * @generated
+        */
+        public function getXdebugReplacements(): array;
+        public function addXdebugReplacements(array $xdebugReplacements): void;
+        public function setXdebugReplacements(array $xdebugReplacements): void;
+        public function setXdebugReplacement(string $serverPath, string $replacement): void;
+    }
+    /**
+    * Clones and renders variables in HTML format using the Symfony VarDumper component.
+    *
+    * Cloning is decoupled from rendering, so that dumper users can have the fastest possible cloning
+    * performance, while delaying rendering until it is actually needed.
+    *
+    * @generated
+    */
+    class HtmlDataFormatter extends \DebugBar\DataFormatter\DataFormatter implements \DebugBar\DataCollector\AssetProvider {
+        protected static array $defaultDumperOptions ?? [];
+        protected ?array $dumperOptions ?? null;
+        protected function dumpClonedVar(\Symfony\Component\VarDumper\Cloner\Data $data): string;
+        /**
+        * Gets the DebugBarHtmlDumper instance with configuration options set.
+        *
+        * @generated
+        */
+        protected function getDumper(): \Symfony\Component\VarDumper\Dumper\DataDumperInterface;
+        /**
+        * Gets the array of non-default HtmlDumper configuration options.
+        *
+        * @generated
+        */
+        public function getDumperOptions(): array;
+        /**
+        * Merges an array of non-default HtmlDumper configuration options with the existing non-default
+        *
+        * options.
+        * 
+        * Configuration options are:
+        *  - styles: a map of CSS styles to include in the assets, as documented in
+        *    HtmlDumper::setStyles.
+        *  - expanded_depth: the tree depth to initially expand.
+        *  - max_string: maximum string size.
+        *  - file_link_format: link format for files; %f expanded to file and %l expanded to line
+        *
+        * @generated
+        */
+        public function mergeDumperOptions(array $options): void;
+        /**
+        * Resets the array of non-default HtmlDumper configuration options without retaining any of the
+        *
+        * existing non-default options.
+        * 
+        * Configuration options are:
+        *  - styles: a map of CSS styles to include in the assets, as documented in
+        *    HtmlDumper::setStyles.
+        *  - expanded_depth: the tree depth to initially expand.
+        *    (Requires Symfony 3.2; ignored on older versions.)
+        *  - max_string: maximum string size.
+        *    (Requires Symfony 3.2; ignored on older versions.)
+        *  - file_link_format: link format for files; %f expanded to file and %l expanded to line
+        *    (Requires Symfony 3.2; ignored on older versions.)
+        *
+        * @generated
+        */
+        public function resetDumperOptions(?array $options = null): void;
+        /**
+        * Gets the display options for the HTML dumper.
+        *
+        * @generated
+        */
+        protected function getDisplayOptions(): array;
+        /**
+        * Returns assets required for rendering variables.
+        *
+        * @generated
+        */
+        public static function getDefaultStyles(): array;
+        public function getAssets(): array;
+    }
+    /**
+    * Clones and renders variables as JSON-serializable structures using the DebugBarJsonDumper.
+    *
+    * The JSON output is rendered client-side by the VarDumpRenderer JavaScript widget,
+    * eliminating the dependency on Symfony's HtmlDumper JS/CSS.
+    *
+    * @generated
+    */
+    class JsonDataFormatter extends \DebugBar\DataFormatter\DataFormatter implements \DebugBar\DataCollector\AssetProvider {
+        protected static array $defaultDumperOptions ?? [];
+        protected ?array $dumperOptions ?? null;
+        /**
+        * Returns the raw value for scalars/short strings, or a dump node array for complex types.
+        *
+        * Simple values (null, bool, int, float, short string) pass through unchanged.
+        * Complex values return a dump node array — see {@see DebugBarJsonDumper::dumpAsArray()}.
+        *
+        * @return null|bool|int|float|string|array
+        * @generated
+        */
+        public function formatVar(mixed $data, bool $deep = true): null|bool|int|float|string|array;
+        protected function cloneVar(mixed $data, bool $deep): \Symfony\Component\VarDumper\Cloner\Data;
+        protected function getDumper(): \Symfony\Component\VarDumper\Dumper\DataDumperInterface;
+        public function getDumperOptions(): array;
+        public function mergeClonerOptions(array $options): void;
+        public function resetClonerOptions(?array $options = null): void;
+        public function mergeDumperOptions(array $options): void;
+        public function resetDumperOptions(?array $options = null): void;
+        public function getAssets(): array;
+    }
+    class QueryFormatter extends \DebugBar\DataFormatter\DataFormatter {
+        /**
+        * Removes extra spaces at the beginning and end of the SQL query and its lines.
+        *
+        * @generated
+        */
+        public function formatSql(string $sql): string;
+        /**
+        * Check bindings for illegal (non UTF-8) strings, like Binary data.
+        *
+        * @generated
+        */
+        public function checkBindings(array $bindings): array;
+        /**
+        * Format a source object.
+        *
+        * @param object|null $source If the backtrace is disabled, the $source will be null.
+        * @generated
+        */
+        public function formatSource(object|null $source, bool $short = false): string;
+        /**
+        * Returns the SQL string with any parameters used embedded
+        *
+        * @generated
+        */
+        public function formatSqlWithBindings(string $sql, array $bindings, ?\PDO $pdo = null): string;
+        protected function quoteBinding(string $binding, ?\PDO $pdo = null): string;
+        protected function emulateQuote(string $value): string;
+    }
+}
+namespace DebugBar\DataFormatter\VarDumper {
+    /**
+    * We have to extend the base HtmlDumper class in order to get access to the protected-only
+    *
+    * getDumpHeader function.
+    *
+    * @generated
+    */
+    class DebugBarHtmlDumper extends \Symfony\Component\VarDumper\Dumper\HtmlDumper {
+        /**
+        * Resets an HTML header.
+        *
+        * @generated
+        */
+        public function resetDumpHeader(): void;
+        public function getDumpCss(): string;
+        public function getDumpJs(): string;
+        public function getDumpHeaderByDebugBar(): string;
+    }
+    /**
+    * Caster that teaches VarCloner how to present DebugBarJsonVar nodes
+    *
+    * as if they were the original PHP values.
+    * 
+    * Usage:
+    *     $cloner = new VarCloner();
+    *     $cloner->addCasters(DebugBarJsonCaster::getCasters());
+    *     $data = $cloner->cloneVar(new DebugBarJsonVar($jsonNode));
+    *     (new HtmlDumper())->dump($data);
+    *
+    * @generated
+    */
+    class DebugBarJsonCaster {
+        /**
+        * Returns the caster map to register with VarCloner::addCasters().
+        *
+        * @generated
+        */
+        public static function getCasters(): array;
+        public static function cast(\DebugBar\DataFormatter\VarDumper\DebugBarJsonVar $var, array $a, \Symfony\Component\VarDumper\Cloner\Stub $stub, bool $isNested): array;
+    }
+    /**
+    * Dumps variables as JSON-serializable structures using a natural tree format.
+    *
+    * Values are stored as native JSON types. Only objects/resources carry metadata
+    * in a `_vd` sidecar key: [ht, ref?, class?, prefixes?]
+    * 
+    * Format:
+    *  - Scalars: native JSON (null, bool, int, float)
+    *  - Strings: native JSON string, truncated with "[..N]" suffix
+    *  - Arrays:  native JSON arrays/objects (handled by JsonDataFormatter)
+    *  - Objects: {"_vd": [ht, ref?, class?, prefixes?], key: value, ...}
+    *  - Resources: {"_vd": [5, 0, class, prefixes?], key: value, ...}
+    *  - Cut collections: "_cut" key with remaining count
+    * 
+    * Legacy format (with "t", "ht", "c", "_sd" keys) is still supported by the JS renderer.
+    *
+    * @generated
+    */
+    class DebugBarJsonDumper implements \Symfony\Component\VarDumper\Cloner\DumperInterface, \Symfony\Component\VarDumper\Dumper\DataDumperInterface {
+        /**
+        * Dump a Data object and return the JSON string.
+        *
+        * @generated
+        */
+        public function dump(\Symfony\Component\VarDumper\Cloner\Data $data): ?string;
+        /**
+        * Dump a Data object and return the raw PHP value (avoids double-encoding).
+        *
+        * @generated
+        */
+        public function dumpAsArray(\Symfony\Component\VarDumper\Cloner\Data $data): mixed;
+        public function dumpScalar(\Symfony\Component\VarDumper\Cloner\Cursor $cursor, string $type, mixed $value): void;
+        public function dumpString(\Symfony\Component\VarDumper\Cloner\Cursor $cursor, string $str, bool $bin, int $cut): void;
+        public function enterHash(\Symfony\Component\VarDumper\Cloner\Cursor $cursor, int $type, mixed $class, bool $hasChild): void;
+        public function leaveHash(\Symfony\Component\VarDumper\Cloner\Cursor $cursor, int $type, mixed $class, bool $hasChild, int $cut): void;
+    }
+    /**
+    * Wraps a JSON node from DebugBarJsonDumper so it can be cloned by VarCloner
+    *
+    * and dumped through any standard Symfony dumper (CliDumper, HtmlDumper).
+    * 
+    * Register the companion caster on your VarCloner:
+    * 
+    *     $cloner = new VarCloner();
+    *     $cloner->addCasters(DebugBarJsonCaster::getCasters());
+    *     $data = $cloner->cloneVar(new DebugBarJsonVar($jsonNode));
+    *
+    * @generated
+    */
+    class DebugBarJsonVar {
+        public readonly mixed $node;
+        public function __construct(mixed $node): void;
+    }
+    class ReverseJsonDumper {
+        public function toCloneVarData(mixed $data): \Symfony\Component\VarDumper\Cloner\Data;
+        public function reverseFormatVar(mixed $node): string;
+    }
+}
+namespace DebugBar\Storage {
+    abstract class AbstractStorage implements \DebugBar\Storage\StorageInterface {
+        protected int|false $autoPrune ?? 24;
+        protected int $autoPruneProbability ?? 5;
+        public function setAutoPrune(int|false $autoPrune, ?int $autoPruneProbability = null): void;
+        public function getAutoPrune(): ?int;
+        public function autoPrune(): void;
+    }
+    /**
+    * Stores collected data into files
+    *
+    * @generated
+    */
+    class FileStorage extends \DebugBar\Storage\AbstractStorage {
+        protected string $dirname;
+        /**
+        * @param string $dirname Directories where to store files
+        * @generated
+        */
+        public function __construct(string $dirname): void;
+        public function save(string $id, array $data): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function get(string $id): array;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function find(array $filters = [], int $max = 20, int $offset = 0): array;
+        /**
+        * Filter the metadata for matches.
+        *
+        * @generated
+        */
+        protected function filter(array $meta, array $filters): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function clear(): void;
+        public function makeFilename(string $id): string;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function prune(int $hours = 24): void;
+    }
+    /**
+    * Stores collected data into Memcache using the Memcached extension
+    *
+    * @generated
+    */
+    class MemcachedStorage extends \DebugBar\Storage\AbstractStorage {
+        protected \Memcached $memcached;
+        protected string $keyNamespace;
+        protected int $expiration;
+        protected ?bool $newGetMultiSignature ?? null;
+        /**
+        * @param string $keyNamespace Namespace for Memcached key names (to avoid conflict with other Memcached users).
+        * @param int $expiration Expiration for Memcached entries (see Expiration Times in Memcached documentation).
+        * @generated
+        */
+        public function __construct(\Memcached $memcached, string $keyNamespace = 'phpdebugbar', int $expiration = 0): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function save(string $id, array $data): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function get(string $id): array;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function find(array $filters = [], int $max = 20, int $offset = 0): array;
+        /**
+        * Filter the metadata for matches.
+        *
+        * @generated
+        */
+        protected function filter(array $meta, array $filters): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function clear(): void;
+        protected function createKey(string $id): string;
+        public function prune(int $hours = 24): void;
+        /**
+        * The memcached getMulti function changed in version 3.0.0 to only have two parameters.
+        *
+        * @generated
+        */
+        protected function memcachedGetMulti(array $keys, int $flags): mixed;
+    }
+    /**
+    * Stores collected data into a database using PDO
+    *
+    * @generated
+    */
+    class PdoStorage extends \DebugBar\Storage\AbstractStorage {
+        protected \PDO $pdo;
+        protected string $tableName;
+        protected array $sqlQueries ?? [];
+        public function __construct(\PDO $pdo, string $tableName = 'phpdebugbar'): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function save(string $id, array $data): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function get(string $id): array;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function find(array $filters = [], int $max = 20, int $offset = 0): array;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function clear(): void;
+        /**
+        * Gets the number of entries in storage
+        *
+        * @generated
+        */
+        public function count(): int;
+        public function prune(int $hours = 24): void;
+        /**
+        * Gets the PDO instance
+        *
+        * @generated
+        */
+        public function getPdo(): \PDO;
+        /**
+        * Gets the table name
+        *
+        * @generated
+        */
+        public function getTableName(): string;
+        /**
+        * Sets the sql queries to be used
+        *
+        * @generated
+        */
+        public function setSqlQueries(array $queries): void;
+        public function globToSql(string $pattern, string $escapeChar = '\\'): string;
+        /**
+        * Get a SQL Query for a task, with the variables replaced
+        *
+        * @generated
+        */
+        protected function getSqlQuery(string $name, array $vars = []): string;
+        /**
+        * Creates the table and indexes if they don't exist
+        *
+        * @generated
+        */
+        protected function createTable(): void;
+    }
+    class RedisStorage extends \DebugBar\Storage\AbstractStorage {
+        protected \Predis\Client|\Redis|\RedisCluster $redis;
+        protected string $hash;
+        public function __construct(\Predis\Client|\Redis|\RedisCluster $redis, string $hash = 'phpdebugbar'): void;
+        public function getExpiration(): ?int;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function save(string $id, array $data): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function get(string $id): array;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function find(array $filters = [], int $max = 20, int $offset = 0): array;
+        /**
+        * Filter the metadata for matches.
+        *
+        * @generated
+        */
+        protected function filter(array $meta, array $filters): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function clear(): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function prune(int $hours = 24): void;
+    }
+    /**
+    * Stores collected data into a SQLite database file
+    *
+    * Extends PdoStorage with SQLite-specific features like automatic table creation
+    * and database optimization
+    *
+    * @generated
+    */
+    class SqliteStorage extends \DebugBar\Storage\PdoStorage {
+        /**
+        * @param string $filepath Path to the SQLite database file
+        * @param string $tableName Name of the table to store data
+        * @generated
+        */
+        public function __construct(string $filepath, string $tableName = 'phpdebugbar'): void;
+        public function clear(): void;
+        public function prune(int $hours = 24): void;
+        /**
+        * Optimizes the database (runs VACUUM)
+        *
+        * This can be called periodically to reclaim space from deleted records
+        *
+        * @generated
+        */
+        public function optimize(): void;
+    }
+    interface StorageInterface {
+        /**
+        * Saves collected data
+        *
+        * @generated
+        */
+        public function save(string $id, array $data): void;
+        /**
+        * Returns collected data with the specified id
+        *
+        * @generated
+        */
+        public function get(string $id): array;
+        /**
+        * Returns a metadata about collected data
+        *
+        * @param int $max
+        * @param int $offset
+        * @generated
+        */
+        public function find(array $filters = [], int $max = 20, int $offset = 0): array;
+        /**
+        * Clears all the collected data
+        *
+        * @generated
+        */
+        public function clear(): void;
+        public function prune(int $hours = 24): void;
+    }
+}

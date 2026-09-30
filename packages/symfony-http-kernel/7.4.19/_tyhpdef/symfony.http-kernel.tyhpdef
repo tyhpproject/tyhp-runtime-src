@@ -1,0 +1,3810 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\HttpKernel {
+    /**
+    * An implementation of a Symfony HTTP kernel using a "real" HTTP client.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class HttpClientKernel implements \Symfony\Component\HttpKernel\HttpKernelInterface {
+        public function __construct(?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null): void;
+        public function handle(\Symfony\Component\HttpFoundation\Request $request, int $type = \Symfony\Component\HttpKernel\HttpKernelInterface::MAIN_REQUEST, bool $catch = true): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * HttpKernel notifies events to convert a Request object to a Response one.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class HttpKernel implements \Symfony\Component\HttpKernel\HttpKernelInterface, \Symfony\Component\HttpKernel\TerminableInterface {
+        protected \Symfony\Component\HttpFoundation\RequestStack $requestStack;
+        protected \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher;
+        protected \Symfony\Component\HttpKernel\Controller\ControllerResolverInterface $resolver;
+        public function __construct(\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher, \Symfony\Component\HttpKernel\Controller\ControllerResolverInterface $resolver, ?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null, ?\Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface $argumentResolver = null, bool $handleAllThrowables = false): void;
+        public function handle(\Symfony\Component\HttpFoundation\Request $request, int $type = \Symfony\Component\HttpKernel\HttpKernelInterface::MAIN_REQUEST, bool $catch = true): \Symfony\Component\HttpFoundation\Response;
+        public function terminate(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+    }
+    /**
+    * Simulates a browser and makes requests to an HttpKernel instance.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @template-extends AbstractBrowser<Request, Response>
+    * @generated
+    */
+    class HttpKernelBrowser extends \Symfony\Component\BrowserKit\AbstractBrowser {
+        protected \Symfony\Component\HttpKernel\HttpKernelInterface $kernel;
+        /**
+        * @param array $server The server parameters (equivalent of $_SERVER)
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, array $server = [], ?\Symfony\Component\BrowserKit\History $history = null, ?\Symfony\Component\BrowserKit\CookieJar $cookieJar = null): void;
+        /**
+        * Sets whether to catch exceptions when the kernel is handling a request.
+        *
+        * @generated
+        */
+        public function catchExceptions(bool $catchExceptions): void;
+        /**
+        * @param \Symfony\Component\HttpFoundation\Request $request
+        * @generated
+        */
+        protected function doRequest(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * @param \Symfony\Component\HttpFoundation\Request $request
+        * @generated
+        */
+        protected function getScript(\Symfony\Component\HttpFoundation\Request $request): string;
+        protected function getHandleScript(): string;
+        protected function filterRequest(\Symfony\Component\BrowserKit\Request $request): \Symfony\Component\HttpFoundation\Request;
+        /**
+        * Filters an array of files.
+        *
+        * This method created test instances of UploadedFile so that the move()
+        * method can be called on those instances.
+        * 
+        * If the size of a file is greater than the allowed size (from php.ini) then
+        * an invalid UploadedFile is returned with an error set to UPLOAD_ERR_INI_SIZE.
+        *
+        * @see UploadedFile
+        * @generated
+        */
+        protected function filterFiles(array $files): array;
+        /**
+        * @param \Symfony\Component\HttpFoundation\Response $response
+        * @generated
+        */
+        protected function filterResponse(\Symfony\Component\HttpFoundation\Response $response): \Symfony\Component\BrowserKit\Response;
+    }
+    /**
+    * HttpKernelInterface handles a Request to convert it to a Response.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface HttpKernelInterface {
+        public const int MAIN_REQUEST ?? 1;
+        public const int SUB_REQUEST ?? 2;
+        /**
+        * Handles a Request to convert it to a Response.
+        *
+        * When $catch is true, the implementation must catch all exceptions
+        * and do its best to convert them to a Response instance.
+        *
+        * @param int $type The type of the request
+        *  *                        (one of HttpKernelInterface::MAIN_REQUEST or HttpKernelInterface::SUB_REQUEST)
+        * @param bool $catch Whether to catch exceptions or not
+        * @throws \Exception When an Exception occurs during processing
+        * @generated
+        */
+        public function handle(\Symfony\Component\HttpFoundation\Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * The Kernel is the heart of the Symfony system.
+    *
+    * It manages an environment made of bundles.
+    * 
+    * Environment names must always start with a letter and
+    * they must only contain letters and numbers.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class Kernel implements \Symfony\Component\HttpKernel\KernelInterface, \Symfony\Component\HttpKernel\RebootableInterface, \Symfony\Component\HttpKernel\TerminableInterface {
+        public const string VERSION ?? '7.4.19';
+        public const int VERSION_ID ?? 70419;
+        public const int MAJOR_VERSION ?? 7;
+        public const int MINOR_VERSION ?? 4;
+        public const int RELEASE_VERSION ?? 19;
+        public const string EXTRA_VERSION ?? '';
+        public const string END_OF_MAINTENANCE ?? '11/2028';
+        public const string END_OF_LIFE ?? '11/2029';
+        /**
+        * @var array<string, \Symfony\Component\HttpKernel\Bundle\BundleInterface>
+        * @generated
+        */
+        protected array<string, \Symfony\Component\HttpKernel\Bundle\BundleInterface> $bundles ?? [];
+        protected ?\Symfony\Component\DependencyInjection\ContainerInterface $container ?? null;
+        protected bool $booted ?? false;
+        protected ?float $startTime ?? null;
+        protected string $environment;
+        protected bool $debug;
+        public function __construct(string $environment, bool $debug): void;
+        public function __clone(): mixed;
+        public function boot(): void;
+        public function reboot(?string $warmupDir): void;
+        public function terminate(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+        public function shutdown(): void;
+        public function handle(\Symfony\Component\HttpFoundation\Request $request, int $type = \Symfony\Component\HttpKernel\HttpKernelInterface::MAIN_REQUEST, bool $catch = true): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Gets an HTTP kernel from the container.
+        *
+        * @generated
+        */
+        protected function getHttpKernel(): \Symfony\Component\HttpKernel\HttpKernelInterface;
+        public function getBundles(): array;
+        public function getBundle(string $name): \Symfony\Component\HttpKernel\Bundle\BundleInterface;
+        public function locateResource(string $name): string;
+        public function getEnvironment(): string;
+        public function isDebug(): bool;
+        /**
+        * Gets the application root dir (path of the project's composer file).
+        *
+        * @generated
+        */
+        public function getProjectDir(): string;
+        public function getContainer(): \Symfony\Component\DependencyInjection\ContainerInterface;
+        public function getStartTime(): float;
+        public function getCacheDir(): string;
+        public function getBuildDir(): string;
+        public function getShareDir(): ?string;
+        public function getLogDir(): string;
+        public function getCharset(): string;
+        /**
+        * Gets the patterns defining the classes to parse and cache for annotations.
+        *
+        * @return array<int, string>
+        * @deprecated since Symfony 7.1, to be removed in 8.0
+        * @generated
+        */
+        deprecated public function getAnnotatedClassesToCompile(): array<int, string>;
+        /**
+        * Initializes bundles.
+        *
+        * @throws \LogicException if two bundles share a common name
+        * @generated
+        */
+        protected function initializeBundles(): void;
+        /**
+        * The extension point similar to the Bundle::build() method.
+        *
+        * Use this method to register compiler passes and manipulate the container during the building process.
+        *
+        * @generated
+        */
+        protected function build(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+        /**
+        * Gets the container class.
+        *
+        * @throws \InvalidArgumentException If the generated classname is invalid
+        * @generated
+        */
+        protected function getContainerClass(): string;
+        /**
+        * Gets the container's base class.
+        *
+        * All names except Container must be fully qualified.
+        *
+        * @generated
+        */
+        protected function getContainerBaseClass(): string;
+        /**
+        * Initializes the service container.
+        *
+        * The built version of the service container is used when fresh, otherwise the
+        * container is built.
+        *
+        * @generated
+        */
+        protected function initializeContainer(): void;
+        /**
+        * Returns the kernel parameters.
+        *
+        * @return array<string, array|bool|string|int|float|\UnitEnum|null>
+        * @generated
+        */
+        protected function getKernelParameters(): array<string, array|bool|string|int|float|\UnitEnum|null>;
+        /**
+        * Builds the service container.
+        *
+        * @throws \RuntimeException
+        * @generated
+        */
+        protected function buildContainer(): \Symfony\Component\DependencyInjection\ContainerBuilder;
+        /**
+        * Prepares the ContainerBuilder before it is compiled.
+        *
+        * @generated
+        */
+        protected function prepareContainer(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+        /**
+        * Gets a new ContainerBuilder instance used to build the service container.
+        *
+        * @generated
+        */
+        protected function getContainerBuilder(): \Symfony\Component\DependencyInjection\ContainerBuilder;
+        /**
+        * Dumps the service container to PHP code in the cache.
+        *
+        * @param string $class The name of the class to generate
+        * @param string $baseClass The name of the container's base class
+        * @generated
+        */
+        protected function dumpContainer(\Symfony\Component\Config\ConfigCache $cache, \Symfony\Component\DependencyInjection\ContainerBuilder $container, string $class, string $baseClass): void;
+        /**
+        * Returns a loader for the container.
+        *
+        * @generated
+        */
+        protected function getContainerLoader(\Symfony\Component\DependencyInjection\ContainerInterface $container): \Symfony\Component\Config\Loader\DelegatingLoader;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        /**
+        * @deprecated since Symfony 7.4, will be replaced by `__serialize()` in 8.0
+        * @generated
+        */
+        deprecated public function __sleep(): array;
+        /**
+        * @deprecated since Symfony 7.4, will be replaced by `__unserialize()` in 8.0
+        * @generated
+        */
+        deprecated public function __wakeup(): void;
+    }
+    /**
+    * Contains all events thrown in the HttpKernel component.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    final class KernelEvents {
+        /**
+        * The REQUEST event occurs at the very beginning of request
+        *
+        * dispatching.
+        * 
+        * This event allows you to create a response for a request before any
+        * other code in the framework is executed.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\RequestEvent")
+        * @generated
+        */
+        public const string REQUEST ?? 'kernel.request';
+        /**
+        * The EXCEPTION event occurs when an uncaught exception appears.
+        *
+        * This event allows you to create a response for a thrown exception or
+        * to modify the thrown exception.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\ExceptionEvent")
+        * @generated
+        */
+        public const string EXCEPTION ?? 'kernel.exception';
+        /**
+        * The CONTROLLER event occurs once a controller was found for
+        *
+        * handling a request.
+        * 
+        * This event allows you to change the controller that will handle the
+        * request.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\ControllerEvent")
+        * @generated
+        */
+        public const string CONTROLLER ?? 'kernel.controller';
+        /**
+        * The CONTROLLER_ARGUMENTS event occurs once controller arguments have been resolved.
+        *
+        * This event allows you to change the arguments that will be passed to
+        * the controller.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent")
+        * @generated
+        */
+        public const string CONTROLLER_ARGUMENTS ?? 'kernel.controller_arguments';
+        /**
+        * The VIEW event occurs when the return value of a controller
+        *
+        * is not a Response instance.
+        * 
+        * This event allows you to create a response for the return value of the
+        * controller.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\ViewEvent")
+        * @generated
+        */
+        public const string VIEW ?? 'kernel.view';
+        /**
+        * The RESPONSE event occurs once a response was created for
+        *
+        * replying to a request.
+        * 
+        * This event allows you to modify or replace the response that will be
+        * replied.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\ResponseEvent")
+        * @generated
+        */
+        public const string RESPONSE ?? 'kernel.response';
+        /**
+        * The FINISH_REQUEST event occurs when a response was generated for a request.
+        *
+        * This event allows you to reset the global and environmental state of
+        * the application, when it was changed during the request.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\FinishRequestEvent")
+        * @generated
+        */
+        public const string FINISH_REQUEST ?? 'kernel.finish_request';
+        /**
+        * The TERMINATE event occurs once a response was sent.
+        *
+        * This event allows you to run expensive post-response jobs.
+        *
+        * @event ("Symfony\Component\HttpKernel\Event\TerminateEvent")
+        * @generated
+        */
+        public const string TERMINATE ?? 'kernel.terminate';
+        /**
+        * Event aliases.
+        *
+        * These aliases can be consumed by RegisterListenersPass.
+        *
+        * @generated
+        */
+        public const array ALIASES ?? [];
+    }
+    /**
+    * The Kernel is the heart of the Symfony system.
+    *
+    * It manages an environment made of application kernel and bundles.
+    *
+    * @method string|null getShareDir() Returns the share directory - not implementing it is deprecated since Symfony 7.4.
+    *                                   This directory should be used to store data that is shared between all front-end servers; this typically fits application caches.
+    *                                   `null` should be returned if the application shall not use a share directory.
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface KernelInterface extends \Symfony\Component\HttpKernel\HttpKernelInterface {
+        /**
+        * Returns an array of bundles to register.
+        *
+        * @return iterable<mixed, \Symfony\Component\HttpKernel\Bundle\BundleInterface>
+        * @generated
+        */
+        public function registerBundles(): iterable<mixed, \Symfony\Component\HttpKernel\Bundle\BundleInterface>;
+        /**
+        * Loads the container configuration.
+        *
+        * @return void
+        * @generated
+        */
+        public function registerContainerConfiguration(\Symfony\Component\Config\Loader\LoaderInterface $loader): void;
+        /**
+        * Boots the current kernel.
+        *
+        * @return void
+        * @generated
+        */
+        public function boot(): void;
+        /**
+        * Shutdowns the kernel.
+        *
+        * This method is mainly useful when doing functional testing.
+        *
+        * @return void
+        * @generated
+        */
+        public function shutdown(): void;
+        /**
+        * Gets the registered bundle instances.
+        *
+        * @return array<string, \Symfony\Component\HttpKernel\Bundle\BundleInterface>
+        * @generated
+        */
+        public function getBundles(): array<string, \Symfony\Component\HttpKernel\Bundle\BundleInterface>;
+        /**
+        * Returns a bundle.
+        *
+        * @throws \InvalidArgumentException when the bundle is not enabled
+        * @generated
+        */
+        public function getBundle(string $name): \Symfony\Component\HttpKernel\Bundle\BundleInterface;
+        /**
+        * Returns the file path for a given bundle resource.
+        *
+        * A Resource can be a file or a directory.
+        * 
+        * The resource name must follow the following pattern:
+        * 
+        *     "@BundleName/path/to/a/file.something"
+        * 
+        * where BundleName is the name of the bundle
+        * and the remaining part is the relative path in the bundle.
+        *
+        * @throws \InvalidArgumentException if the file cannot be found or the name is not valid
+        * @throws \RuntimeException         if the name contains invalid/unsafe characters
+        * @generated
+        */
+        public function locateResource(string $name): string;
+        /**
+        * Gets the environment.
+        *
+        * @generated
+        */
+        public function getEnvironment(): string;
+        /**
+        * Checks if debug mode is enabled.
+        *
+        * @generated
+        */
+        public function isDebug(): bool;
+        /**
+        * Gets the project dir (path of the project's composer file).
+        *
+        * @generated
+        */
+        public function getProjectDir(): string;
+        /**
+        * Gets the current container.
+        *
+        * @generated
+        */
+        public function getContainer(): \Symfony\Component\DependencyInjection\ContainerInterface;
+        /**
+        * Gets the request start time (not available if debug is disabled).
+        *
+        * @generated
+        */
+        public function getStartTime(): float;
+        /**
+        * Gets the cache directory.
+        *
+        * This directory should be used for caches that are written at runtime.
+        * For caches and artifacts that can be warmed at compile-time and deployed as read-only,
+        * use the "build directory" returned by the {@see getBuildDir()} method.
+        *
+        * @generated
+        */
+        public function getCacheDir(): string;
+        /**
+        * Returns the build directory.
+        *
+        * This directory should be used to store build artifacts, and can be read-only at runtime.
+        * System caches written at runtime should be stored in the "cache directory" ({@see KernelInterface::getCacheDir()}).
+        * Application caches that are shared between all front-end servers should be stored
+        * in the "share directory" ({@see KernelInterface::getShareDir()}).
+        *
+        * @generated
+        */
+        public function getBuildDir(): string;
+        /**
+        * Gets the log directory.
+        *
+        * @generated
+        */
+        public function getLogDir(): string;
+        /**
+        * Gets the charset of the application.
+        *
+        * @generated
+        */
+        public function getCharset(): string;
+        public function getShareDir(): string|null;
+    }
+    /**
+    * Allows the Kernel to be rebooted using a temporary cache directory.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface RebootableInterface {
+        /**
+        * Reboots a kernel.
+        *
+        * The getBuildDir() method of a rebootable kernel should not be called
+        * while building the container. Use the %kernel.build_dir% parameter instead.
+        *
+        * @param ?string $warmupDir pass null to reboot in the regular build directory
+        * @generated
+        */
+        public function reboot(?string $warmupDir): void;
+    }
+    /**
+    * Terminable extends the Kernel request/response cycle with dispatching a post
+    *
+    * response event after sending the response and before shutting down the kernel.
+    *
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @author Pierre Minnieur <pierre.minnieur@sensiolabs.de>
+    * @generated
+    */
+    interface TerminableInterface {
+        /**
+        * Terminates a request/response cycle.
+        *
+        * Should be called after sending the response and before shutting down the kernel.
+        *
+        * @generated
+        */
+        public function terminate(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\Attribute {
+    /**
+    * Autoconfigures controllers as services by applying
+    *
+    * the `controller.service_arguments` tag to them.
+    * 
+    * This enables injecting services as method arguments in addition
+    * to other conventional dependency injection strategies.
+    *
+    * @generated
+    */
+    class AsController {
+    }
+    /**
+    * Service tag to autoconfigure targeted value resolvers.
+    *
+    * @generated
+    */
+    class AsTargetedValueResolver {
+        public readonly ?string $name ?? null;
+        /**
+        * @param ?string $name The name with which the resolver can be targeted
+        * @generated
+        */
+        public function __construct(?string $name = null): void;
+    }
+    /**
+    * Describes the default HTTP cache headers on controllers.
+    *
+    * Headers defined in the Cache attribute are ignored if they are already set
+    * by the controller.
+    *
+    * @see https://symfony.com/doc/current/http_cache.html#making-your-responses-http-cacheable
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class Cache {
+        public ?string $expires ?? null;
+        public int|string|null $maxage ?? null;
+        public int|string|null $smaxage ?? null;
+        public ?bool $public ?? null;
+        public bool $mustRevalidate ?? false;
+        public array $vary ?? [];
+        public ?string $lastModified ?? null;
+        public ?string $etag ?? null;
+        public int|string|null $maxStale ?? null;
+        public int|string|null $staleWhileRevalidate ?? null;
+        public int|string|null $staleIfError ?? null;
+        public ?bool $noStore ?? null;
+        public function __construct(?string $expires = null, int|string|null $maxage = null, int|string|null $smaxage = null, ?bool $public = null, bool $mustRevalidate = false, array $vary = [], ?string $lastModified = null, ?string $etag = null, int|string|null $maxStale = null, int|string|null $staleWhileRevalidate = null, int|string|null $staleIfError = null, ?bool $noStore = null): void;
+    }
+    /**
+    * Validates the request signature for specific HTTP methods.
+    *
+    * This class determines whether a request's signature should be validated
+    * based on the configured HTTP methods. If the request method matches one
+    * of the specified methods (or if no methods are specified), the signature
+    * is checked.
+    * 
+    * If the signature is invalid, a {@see \Symfony\Component\HttpFoundation\Exception\SignedUriException}
+    * is thrown during validation.
+    *
+    * @author Santiago San Martin <sanmartindev@gmail.com>
+    * @generated
+    */
+    final class IsSignatureValid {
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        public readonly array<int, string> $methods;
+        /**
+        * @param array|string $methods HTTP methods that require signature validation. An empty array means that no method filtering is done
+        * @generated
+        */
+        public function __construct(array|string $methods = []): void;
+    }
+    /**
+    * Controller parameter tag to configure DateTime arguments.
+    *
+    * @generated
+    */
+    class MapDateTime extends \Symfony\Component\HttpKernel\Attribute\ValueResolver {
+        public readonly ?string $format ?? null;
+        /**
+        * @param ?string $format The DateTime format to use, @see https://php.net/datetime.format
+        * @param bool $disabled Whether this value resolver is disabled; this allows to enable a value resolver globally while disabling it in specific cases
+        * @param string $resolver The name of the resolver to use
+        * @generated
+        */
+        public function __construct(?string $format = null, bool $disabled = false, string $resolver = \Symfony\Component\HttpKernel\Controller\ArgumentResolver\DateTimeValueResolver::class): void;
+    }
+    /**
+    * Can be used to pass a query parameter to a controller argument.
+    *
+    * @author Ruud Kamphuis <ruud@ticketswap.com>
+    * @author Ionut Enache <i.ovidiuenache@yahoo.com>
+    * @generated
+    */
+    final class MapQueryParameter extends \Symfony\Component\HttpKernel\Attribute\ValueResolver {
+        public ?string $name ?? null;
+        public ?int $filter ?? null;
+        public int $flags ?? 0;
+        public array $options ?? [];
+        public int $validationFailedStatusCode ?? \Symfony\Component\HttpFoundation\Response::HTTP_NOT_FOUND;
+        /**
+        * @see https://php.net/manual/filter.constants for filter, flags and options
+        * @param ?string $name The name of the query parameter; if null, the name of the argument in the controller will be used
+        * @param ?int $filter The filter to pass to "filter_var()", deduced from the type-hint if null
+        * @param int $flags
+        * @param array $options
+        * @param string $resolver The name of the resolver to use
+        * @generated
+        */
+        public function __construct(?string $name = null, ?int $filter = null, int $flags = 0, array $options = [], string $resolver = \Symfony\Component\HttpKernel\Controller\ArgumentResolver\QueryParameterValueResolver::class, int $validationFailedStatusCode = \Symfony\Component\HttpFoundation\Response::HTTP_NOT_FOUND): void;
+    }
+    /**
+    * Controller parameter tag to map the query string of the request to typed object and validate it.
+    *
+    * @author Konstantin Myakshin <molodchick@gmail.com>
+    * @generated
+    */
+    class MapQueryString extends \Symfony\Component\HttpKernel\Attribute\ValueResolver {
+        public \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $metadata;
+        public readonly array<string, mixed> $serializationContext ?? [];
+        public readonly string|\Symfony\Component\Validator\Constraints\GroupSequence|array|null $validationGroups ?? null;
+        public readonly int $validationFailedStatusCode ?? \Symfony\Component\HttpFoundation\Response::HTTP_NOT_FOUND;
+        public readonly ?string $key ?? null;
+        /**
+        * @param array<string, mixed> $serializationContext The serialization context to use when deserializing the query string
+        * @param string|\Symfony\Component\Validator\Constraints\GroupSequence|array|null $validationGroups The validation groups to use when validating the query string mapping
+        * @param string $resolver The class name of the resolver to use
+        * @param int $validationFailedStatusCode The HTTP code to return if the validation fails
+        * @generated
+        */
+        public function __construct(array<string, mixed> $serializationContext = [], string|\Symfony\Component\Validator\Constraints\GroupSequence|array|null $validationGroups = null, string $resolver = \Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestPayloadValueResolver::class, int $validationFailedStatusCode = \Symfony\Component\HttpFoundation\Response::HTTP_NOT_FOUND, ?string $key = null): void;
+    }
+    /**
+    * Controller parameter tag to map the request content to typed object and validate it.
+    *
+    * @author Konstantin Myakshin <molodchick@gmail.com>
+    * @generated
+    */
+    class MapRequestPayload extends \Symfony\Component\HttpKernel\Attribute\ValueResolver {
+        public \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $metadata;
+        public readonly array|string|null $acceptFormat ?? null;
+        public readonly array<string, mixed> $serializationContext ?? [];
+        public readonly string|\Symfony\Component\Validator\Constraints\GroupSequence|array|null $validationGroups ?? null;
+        public readonly int $validationFailedStatusCode ?? \Symfony\Component\HttpFoundation\Response::HTTP_UNPROCESSABLE_ENTITY;
+        public readonly ?string $type ?? null;
+        /**
+        * @param array|string|null $acceptFormat The payload formats to accept (i.e. "json", "xml")
+        * @param array<string, mixed> $serializationContext The serialization context to use when deserializing the payload
+        * @param string|\Symfony\Component\Validator\Constraints\GroupSequence|array|null $validationGroups The validation groups to use when validating the query string mapping
+        * @param string $resolver The class name of the resolver to use
+        * @param int $validationFailedStatusCode The HTTP code to return if the validation fails
+        * @param ?string $type The element type for array deserialization
+        * @generated
+        */
+        public function __construct(array|string|null $acceptFormat = null, array<string, mixed> $serializationContext = [], string|\Symfony\Component\Validator\Constraints\GroupSequence|array|null $validationGroups = null, string $resolver = \Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestPayloadValueResolver::class, int $validationFailedStatusCode = \Symfony\Component\HttpFoundation\Response::HTTP_UNPROCESSABLE_ENTITY, ?string $type = null): void;
+    }
+    class MapUploadedFile extends \Symfony\Component\HttpKernel\Attribute\ValueResolver {
+        public \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $metadata;
+        public \Symfony\Component\Validator\Constraint|array|null $constraints ?? null;
+        public ?string $name ?? null;
+        public readonly int $validationFailedStatusCode ?? \Symfony\Component\HttpFoundation\Response::HTTP_UNPROCESSABLE_ENTITY;
+        public function __construct(\Symfony\Component\Validator\Constraint|array|null $constraints = null, ?string $name = null, string $resolver = \Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestPayloadValueResolver::class, int $validationFailedStatusCode = \Symfony\Component\HttpFoundation\Response::HTTP_UNPROCESSABLE_ENTITY): void;
+    }
+    /**
+    * Defines which value resolver should be used for a given parameter.
+    *
+    * @generated
+    */
+    class ValueResolver {
+        public string $resolver;
+        public bool $disabled ?? false;
+        /**
+        * @param string $resolver The class name of the resolver to use
+        * @param bool $disabled Whether this value resolver is disabled; this allows to enable a value resolver globally while disabling it in specific cases
+        * @generated
+        */
+        public function __construct(string $resolver, bool $disabled = false): void;
+    }
+    /**
+    * Defines the HTTP status code applied to an exception.
+    *
+    * @author Dejan Angelov <angelovdejan@protonmail.com>
+    * @generated
+    */
+    class WithHttpStatus {
+        public readonly int $statusCode;
+        public readonly array<string, string> $headers ?? [];
+        /**
+        * @param int $statusCode The HTTP status code to use
+        * @param array<string, string> $headers The HTTP headers to add to the response
+        * @generated
+        */
+        public function __construct(int $statusCode, array<string, string> $headers = []): void;
+    }
+    /**
+    * Defines the log level applied to an exception.
+    *
+    * @author Dejan Angelov <angelovdejan@protonmail.com>
+    * @generated
+    */
+    final class WithLogLevel {
+        public readonly string $level;
+        /**
+        * @param LogLevel:: $ * $level The level to use to log the exception
+        * @generated
+        */
+        public function __construct(string $level): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\Bundle {
+    /**
+    * A Bundle that provides configuration hooks.
+    *
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @generated
+    */
+    abstract class AbstractBundle extends \Symfony\Component\HttpKernel\Bundle\Bundle implements \Symfony\Component\DependencyInjection\Extension\ConfigurableExtensionInterface {
+        protected string $extensionAlias ?? '';
+        public function configure(\Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator $definition): void;
+        public function prependExtension(\Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator $configurator, \Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+        public function loadExtension(array $config, \Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator $configurator, \Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+        public function getContainerExtension(): ?\Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
+        public function getPath(): string;
+    }
+    /**
+    * An implementation of BundleInterface that adds a few conventions for DependencyInjection extensions.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class Bundle implements \Symfony\Component\HttpKernel\Bundle\BundleInterface {
+        protected string $name;
+        protected \Symfony\Component\DependencyInjection\Extension\ExtensionInterface|false|null $extension ?? null;
+        protected string $path;
+        protected ?\Symfony\Component\DependencyInjection\ContainerInterface $container;
+        /**
+        * @return void
+        * @generated
+        */
+        public function boot(): void;
+        /**
+        * @return void
+        * @generated
+        */
+        public function shutdown(): void;
+        /**
+        * This method can be overridden to register compilation passes,
+        *
+        * other extensions, ...
+        *
+        * @return void
+        * @generated
+        */
+        public function build(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+        /**
+        * Returns the bundle's container extension.
+        *
+        * @throws \LogicException
+        * @generated
+        */
+        public function getContainerExtension(): ?\Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
+        public function getNamespace(): string;
+        public function getPath(): string;
+        /**
+        * Returns the bundle name (the class short name).
+        *
+        * @generated
+        */
+        public final function getName(): string;
+        /**
+        * @return void
+        * @generated
+        */
+        public function registerCommands(\Symfony\Component\Console\Application $application): void;
+        /**
+        * Returns the bundle's container extension class.
+        *
+        * @generated
+        */
+        protected function getContainerExtensionClass(): string;
+        /**
+        * Creates the bundle's container extension.
+        *
+        * @generated
+        */
+        protected function createContainerExtension(): ?\Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
+        public function setContainer(?\Symfony\Component\DependencyInjection\ContainerInterface $container): void;
+    }
+    /**
+    * BundleInterface.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface BundleInterface {
+        /**
+        * Boots the Bundle.
+        *
+        * @return void
+        * @generated
+        */
+        public function boot(): void;
+        /**
+        * Shutdowns the Bundle.
+        *
+        * @return void
+        * @generated
+        */
+        public function shutdown(): void;
+        /**
+        * Builds the bundle.
+        *
+        * It is only ever called once when the cache is empty.
+        *
+        * @return void
+        * @generated
+        */
+        public function build(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+        /**
+        * Returns the container extension that should be implicitly loaded.
+        *
+        * @generated
+        */
+        public function getContainerExtension(): ?\Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
+        /**
+        * Returns the bundle name (the class short name).
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Gets the Bundle namespace.
+        *
+        * @generated
+        */
+        public function getNamespace(): string;
+        /**
+        * Gets the Bundle directory path.
+        *
+        * The path should always be returned as a Unix path (with /).
+        *
+        * @generated
+        */
+        public function getPath(): string;
+        public function setContainer(?\Symfony\Component\DependencyInjection\ContainerInterface $container): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\CacheClearer {
+    /**
+    * CacheClearerInterface.
+    *
+    * @author Dustin Dobervich <ddobervich@gmail.com>
+    * @generated
+    */
+    interface CacheClearerInterface {
+        /**
+        * Clears any caches necessary.
+        *
+        * @generated
+        */
+        public function clear(string $cacheDir): void;
+    }
+    /**
+    * ChainCacheClearer.
+    *
+    * @author Dustin Dobervich <ddobervich@gmail.com>
+    * @final
+    * @generated
+    */
+    class ChainCacheClearer implements \Symfony\Component\HttpKernel\CacheClearer\CacheClearerInterface {
+        /**
+        * @param iterable<mixed, CacheClearerInterface> $clearers
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\HttpKernel\CacheClearer\CacheClearerInterface> $clearers = []): void;
+        public function clear(string $cacheDir): void;
+    }
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class Psr6CacheClearer implements \Symfony\Component\HttpKernel\CacheClearer\CacheClearerInterface {
+        /**
+        * @param array<string, \Psr\Cache\CacheItemPoolInterface> $pools
+        * @generated
+        */
+        public function __construct(array<string, \Psr\Cache\CacheItemPoolInterface> $pools = []): void;
+        public function hasPool(string $name): bool;
+        /**
+        * @throws \InvalidArgumentException If the cache pool with the given name does not exist
+        * @generated
+        */
+        public function getPool(string $name): \Psr\Cache\CacheItemPoolInterface;
+        /**
+        * @throws \InvalidArgumentException If the cache pool with the given name does not exist
+        * @generated
+        */
+        public function clearPool(string $name): bool;
+        public function clear(string $cacheDir): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\CacheWarmer {
+    /**
+    * Abstract cache warmer that knows how to write a file to the cache.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class CacheWarmer implements \Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface {
+        protected function writeCacheFile(string $file, mixed $content): void;
+    }
+    /**
+    * Aggregates several cache warmers into a single one.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class CacheWarmerAggregate implements \Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface {
+        /**
+        * @param iterable<mixed, CacheWarmerInterface> $warmers
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface> $warmers = [], bool $debug = false, ?string $deprecationLogsFilepath = null): void;
+        public function enableOptionalWarmers(): void;
+        public function enableOnlyOptionalWarmers(): void;
+        public function warmUp(string $cacheDir, ?string $buildDir = null, ?\Symfony\Component\Console\Style\SymfonyStyle $io = null): array;
+        public function isOptional(): bool;
+    }
+    /**
+    * Interface for classes able to warm up the cache.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface CacheWarmerInterface extends \Symfony\Component\HttpKernel\CacheWarmer\WarmableInterface {
+        /**
+        * Checks whether this warmer is optional or not.
+        *
+        * Optional warmers can be ignored on certain conditions.
+        * 
+        * A warmer should return true if the cache can be
+        * generated incrementally and on-demand.
+        *
+        * @generated
+        */
+        public function isOptional(): bool;
+    }
+    /**
+    * Interface for classes that support warming their cache.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface WarmableInterface {
+        /**
+        * Warms up the cache.
+        *
+        * @param string $cacheDir Where warm-up artifacts should be stored
+        * @param ?string $buildDir Where read-only artifacts should go; null when called after compile-time
+        * @return array<int, string> A list of classes or files to preload
+        * @generated
+        */
+        public function warmUp(string $cacheDir, ?string $buildDir = null): array<int, string>;
+    }
+}
+namespace Symfony\Component\HttpKernel\Config {
+}
+namespace Symfony\Component\HttpKernel\Controller {
+    /**
+    * Responsible for resolving the arguments passed to an action.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class ArgumentResolver implements \Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface {
+        /**
+        * @param iterable<mixed, ValueResolverInterface> $argumentValueResolvers
+        * @generated
+        */
+        public function __construct(?\Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadataFactoryInterface $argumentMetadataFactory = null, iterable<mixed, \Symfony\Component\HttpKernel\Controller\ValueResolverInterface> $argumentValueResolvers = [], ?\Psr\Container\ContainerInterface $namedResolvers = null): void;
+        public function getArguments(\Symfony\Component\HttpFoundation\Request $request, callable $controller, ?\ReflectionFunctionAbstract $reflector = null): array;
+        /**
+        * @return iterable<int, ValueResolverInterface>
+        * @generated
+        */
+        public static function getDefaultArgumentValueResolvers(): iterable<int, \Symfony\Component\HttpKernel\Controller\ValueResolverInterface>;
+    }
+    /**
+    * An ArgumentResolverInterface instance knows how to determine the
+    *
+    * arguments for a specific action.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ArgumentResolverInterface {
+        /**
+        * Returns the arguments to pass to the controller.
+        *
+        * @throws \RuntimeException When no value could be provided for a required argument
+        * @generated
+        */
+        public function getArguments(\Symfony\Component\HttpFoundation\Request $request, callable $controller, ?\ReflectionFunctionAbstract $reflector = null): array;
+    }
+    /**
+    * A controller resolver searching for a controller in a psr-11 container when using the "service::method" notation.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    class ContainerControllerResolver extends \Symfony\Component\HttpKernel\Controller\ControllerResolver {
+        protected \Psr\Container\ContainerInterface $container;
+        public function __construct(\Psr\Container\ContainerInterface $container, ?\Psr\Log\LoggerInterface $logger = null): void;
+        protected function instantiateController(string $class): object;
+    }
+    /**
+    * Acts as a marker and a data holder for a Controller.
+    *
+    * Some methods in Symfony accept both a URI (as a string) or a controller as
+    * an argument. In the latter case, instead of passing an array representing
+    * the controller, you can use an instance of this class.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @see FragmentRendererInterface
+    * @generated
+    */
+    class ControllerReference {
+        public array $attributes ?? [];
+        public array $query ?? [];
+        public string $controller;
+        /**
+        * @param string $controller The controller name
+        * @param array $attributes An array of parameters to add to the Request attributes
+        * @param array $query An array of parameters to add to the Request query string
+        * @generated
+        */
+        public function __construct(string $controller, array $attributes = [], array $query = []): void;
+    }
+    /**
+    * This implementation uses the '_controller' request attribute to determine
+    *
+    * the controller to execute.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    class ControllerResolver implements \Symfony\Component\HttpKernel\Controller\ControllerResolverInterface {
+        public function __construct(?\Psr\Log\LoggerInterface $logger = null): void;
+        /**
+        * @param array<string> $types
+        * @param array<string> $attributes
+        * @generated
+        */
+        public function allowControllers(array<string> $types = [], array<string> $attributes = []): void;
+        /**
+        * @throws BadRequestException when the request has attribute "_check_controller_is_allowed" set to true and the controller is not allowed
+        * @generated
+        */
+        public function getController(\Symfony\Component\HttpFoundation\Request $request): callable|false;
+        /**
+        * Returns a callable for the given controller.
+        *
+        * @throws \InvalidArgumentException When the controller cannot be created
+        * @generated
+        */
+        protected function createController(string $controller): callable;
+        /**
+        * Returns an instantiated controller.
+        *
+        * @generated
+        */
+        protected function instantiateController(string $class): object;
+    }
+    /**
+    * A ControllerResolverInterface implementation knows how to determine the
+    *
+    * controller to execute based on a Request object.
+    * 
+    * A Controller can be any valid PHP callable.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ControllerResolverInterface {
+        /**
+        * Returns the Controller instance associated with a Request.
+        *
+        * As several resolvers can exist for a single application, a resolver must
+        * return false when it is not able to determine the controller.
+        * 
+        * The resolver must only throw an exception when it should be able to load a
+        * controller but cannot because of some errors made by the developer.
+        *
+        * @return callable|false A PHP callable representing the Controller,
+        *  *                            or false if this resolver is not able to determine the controller
+        * @throws \LogicException If a controller was found based on the request but it is not callable
+        * @generated
+        */
+        public function getController(\Symfony\Component\HttpFoundation\Request $request): callable|false;
+    }
+    /**
+    * Renders error or exception pages from a given FlattenException.
+    *
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @author Matthias Pigulla <mp@webfactory.de>
+    * @generated
+    */
+    class ErrorController {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, string|object|array|null $controller, \Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface $errorRenderer): void;
+        public function __invoke(\Throwable $exception): \Symfony\Component\HttpFoundation\Response;
+        public function preview(\Symfony\Component\HttpFoundation\Request $request, int $code): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class TraceableArgumentResolver implements \Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface {
+        public function __construct(\Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface $resolver, \Symfony\Component\Stopwatch\Stopwatch $stopwatch): void;
+        public function getArguments(\Symfony\Component\HttpFoundation\Request $request, callable $controller, ?\ReflectionFunctionAbstract $reflector = null): array;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class TraceableControllerResolver implements \Symfony\Component\HttpKernel\Controller\ControllerResolverInterface {
+        public function __construct(\Symfony\Component\HttpKernel\Controller\ControllerResolverInterface $resolver, \Symfony\Component\Stopwatch\Stopwatch $stopwatch): void;
+        public function getController(\Symfony\Component\HttpFoundation\Request $request): callable|false;
+    }
+    /**
+    * Responsible for resolving the value of an argument based on its metadata.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    interface ValueResolverInterface {
+        /**
+        * Returns the possible value(s).
+        *
+        * @generated
+        */
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): iterable;
+    }
+}
+namespace Symfony\Component\HttpKernel\ControllerMetadata {
+    /**
+    * Responsible for storing metadata of an argument.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    class ArgumentMetadata {
+        public const int IS_INSTANCEOF ?? 2;
+        /**
+        * @param array<int, object> $attributes
+        * @generated
+        */
+        public function __construct(string $name, ?string $type, bool $isVariadic, bool $hasDefaultValue, mixed $defaultValue, bool $isNullable = false, array<int, object> $attributes = [], string $controllerName = 'n/a'): void;
+        /**
+        * Returns the name as given in PHP, $foo would yield "foo".
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Returns the type of the argument.
+        *
+        * @generated
+        */
+        public function getType(): ?string;
+        /**
+        * Returns whether the argument is defined as "...$variadic".
+        *
+        * @generated
+        */
+        public function isVariadic(): bool;
+        /**
+        * Returns whether the argument has a default value.
+        *
+        * Implies whether an argument is optional.
+        *
+        * @generated
+        */
+        public function hasDefaultValue(): bool;
+        /**
+        * Returns whether the argument accepts null values.
+        *
+        * @generated
+        */
+        public function isNullable(): bool;
+        /**
+        * Returns the default value of the argument.
+        *
+        * @throws \LogicException if no default value is present; {@see self::hasDefaultValue()}
+        * @generated
+        */
+        public function getDefaultValue(): mixed;
+        /**
+        * @param ?string $name
+        * @param int $flags
+        * @return array<object>
+        * @generated
+        */
+        public function getAttributes(?string $name = null, int $flags = 0): array<object>;
+        /**
+        * @template T of object
+        * @param string $name
+        * @param int $flags
+        * @return array<T>
+        * @generated
+        */
+        public function getAttributesOfType<T extends object>(string $name, int $flags = 0): array<T>;
+        public function getControllerName(): string;
+    }
+    /**
+    * Builds {@see ArgumentMetadata} objects based on the given Controller.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class ArgumentMetadataFactory implements \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadataFactoryInterface {
+        public function createArgumentMetadata(string|object|array $controller, ?\ReflectionFunctionAbstract $reflector = null): array;
+    }
+    /**
+    * Builds method argument data.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    interface ArgumentMetadataFactoryInterface {
+        /**
+        * @return array<int, ArgumentMetadata>
+        * @generated
+        */
+        public function createArgumentMetadata(string|object|array $controller, ?\ReflectionFunctionAbstract $reflector = null): array<int, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata>;
+    }
+}
+namespace Symfony\Component\HttpKernel\Controller\ArgumentResolver {
+    /**
+    * Attempt to resolve backed enum cases from request attributes, for a route path parameter,
+    *
+    * leading to a 404 Not Found if the attribute value isn't a valid backing value for the enum type.
+    *
+    * @author Maxime Steinhausser <maxime.steinhausser@gmail.com>
+    * @generated
+    */
+    final class BackedEnumValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): iterable;
+    }
+    /**
+    * Convert DateTime instances from request attribute variable.
+    *
+    * @author Benjamin Eberlei <kontakt@beberlei.de>
+    * @author Tim Goudriaan <tim@codedmonkey.com>
+    * @generated
+    */
+    final class DateTimeValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function __construct(?\Psr\Clock\ClockInterface $clock = null): void;
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Yields the default value defined in the action signature when no value has been given.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class DefaultValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Provides an intuitive error message when controller fails because it is not registered as a service.
+    *
+    * @author Simeon Kolev <simeon.kolev9@gmail.com>
+    * @generated
+    */
+    final class NotTaggedControllerValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function __construct(\Psr\Container\ContainerInterface $container): void;
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Resolve arguments of type: array, string, int, float, bool, \BackedEnum from query parameters.
+    *
+    * @author Ruud Kamphuis <ruud@ticketswap.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Mateusz Anders <anders_mateusz@outlook.com>
+    * @author Ionut Enache <i.ovidiuenache@yahoo.com>
+    * @generated
+    */
+    final class QueryParameterValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Yields a non-variadic argument's value from the request attributes.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class RequestAttributeValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * @author Konstantin Myakshin <molodchick@gmail.com>
+    * @final
+    * @generated
+    */
+    class RequestPayloadValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface, \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Serializer\SerializerInterface&\Symfony\Component\Serializer\Normalizer\DenormalizerInterface $serializer, ?\Symfony\Component\Validator\Validator\ValidatorInterface $validator = null, ?\Symfony\Contracts\Translation\TranslatorInterface $translator = null, string $translationDomain = 'validators'): void;
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): iterable;
+        public function onKernelControllerArguments(\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Yields the same instance as the request object passed along.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class RequestValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Yields a service keyed by _controller and argument name.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class ServiceValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function __construct(\Psr\Container\ContainerInterface $container): void;
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Yields the Session.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class SessionValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Provides timing information via the stopwatch.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class TraceableValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function __construct(\Symfony\Component\HttpKernel\Controller\ValueResolverInterface $inner, \Symfony\Component\Stopwatch\Stopwatch $stopwatch): void;
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): iterable;
+    }
+    final class UidValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+    /**
+    * Yields a variadic argument's values from the request attributes.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class VariadicValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+}
+namespace Symfony\Component\HttpKernel\DataCollector {
+    /**
+    * @author Bart van den Burg <bart@burgov.nl>
+    * @final
+    * @generated
+    */
+    class AjaxDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector {
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function reset(): void;
+        public function getName(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class ConfigDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector implements \Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface {
+        /**
+        * Sets the Kernel associated with this Request.
+        *
+        * @generated
+        */
+        public function setKernel(\Symfony\Component\HttpKernel\KernelInterface $kernel): void;
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function lateCollect(): void;
+        /**
+        * Gets the token.
+        *
+        * @generated
+        */
+        public function getToken(): ?string;
+        /**
+        * Gets the Symfony version.
+        *
+        * @generated
+        */
+        public function getSymfonyVersion(): string;
+        /**
+        * Returns the state of the current Symfony release
+        *
+        * as one of: unknown, dev, stable, eom, eol.
+        *
+        * @generated
+        */
+        public function getSymfonyState(): string;
+        /**
+        * Returns the minor Symfony version used (without patch numbers of extra
+        *
+        * suffix like "RC", "beta", etc.).
+        *
+        * @generated
+        */
+        public function getSymfonyMinorVersion(): string;
+        public function isSymfonyLts(): bool;
+        /**
+        * Returns the human readable date when this Symfony version ends its
+        *
+        * maintenance period.
+        *
+        * @generated
+        */
+        public function getSymfonyEom(): string;
+        /**
+        * Returns the human readable date when this Symfony version reaches its
+        *
+        * "end of life" and won't receive bugs or security fixes.
+        *
+        * @generated
+        */
+        public function getSymfonyEol(): string;
+        /**
+        * Gets the PHP version.
+        *
+        * @generated
+        */
+        public function getPhpVersion(): string;
+        /**
+        * Gets the PHP version extra part.
+        *
+        * @generated
+        */
+        public function getPhpVersionExtra(): ?string;
+        public function getPhpArchitecture(): int;
+        public function getPhpIntlLocale(): string;
+        public function getPhpTimezone(): string;
+        /**
+        * Gets the environment.
+        *
+        * @generated
+        */
+        public function getEnv(): string;
+        /**
+        * Returns true if the debug is enabled.
+        *
+        * @return bool|string true if debug is enabled, false otherwise or a string if no kernel was set
+        * @generated
+        */
+        public function isDebug(): bool|string;
+        /**
+        * Returns true if the Xdebug is enabled.
+        *
+        * @generated
+        */
+        public function hasXdebug(): bool;
+        public function getXdebugStatus(): string;
+        /**
+        * Returns true if the function xdebug_info is available.
+        *
+        * @generated
+        */
+        public function hasXdebugInfo(): bool;
+        /**
+        * Returns true if APCu is enabled.
+        *
+        * @generated
+        */
+        public function hasApcu(): bool;
+        public function getApcuStatus(): string;
+        /**
+        * Returns true if Zend OPcache is enabled.
+        *
+        * @generated
+        */
+        public function hasZendOpcache(): bool;
+        public function getZendOpcacheStatus(): string;
+        public function getBundles(): array|\Symfony\Component\VarDumper\Cloner\Data;
+        /**
+        * Gets the PHP SAPI name.
+        *
+        * @generated
+        */
+        public function getSapiName(): string;
+        public function getRunnerClass(): ?string;
+        public function getName(): string;
+    }
+    /**
+    * DataCollector.
+    *
+    * Children of this class must store the collected data in the data property.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Bernhard Schussek <bschussek@symfony.com>
+    * @generated
+    */
+    abstract class DataCollector implements \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface {
+        protected array|\Symfony\Component\VarDumper\Cloner\Data $data ?? [];
+        /**
+        * Converts the variable into a serializable Data instance.
+        *
+        * This array can be displayed in the template using
+        * the VarDumper component.
+        *
+        * @generated
+        */
+        protected function cloneVar(mixed $var): \Symfony\Component\VarDumper\Cloner\Data;
+        /**
+        * @return array<int, callable> The casters to add to the cloner
+        * @generated
+        */
+        protected function getCasters(): array<int, callable>;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        /**
+        * @deprecated since Symfony 7.4, will be replaced by `__serialize()` in 8.0
+        * @generated
+        */
+        deprecated public function __sleep(): array;
+        /**
+        * @deprecated since Symfony 7.4, will be replaced by `__unserialize()` in 8.0
+        * @generated
+        */
+        deprecated public function __wakeup(): void;
+        /**
+        * @return void
+        * @generated
+        */
+        public function reset(): void;
+    }
+    /**
+    * DataCollectorInterface.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface DataCollectorInterface extends \Symfony\Contracts\Service\ResetInterface {
+        /**
+        * Collects data for the given Request and Response.
+        *
+        * @return void
+        * @generated
+        */
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        /**
+        * Returns the name of the collector.
+        *
+        * @return string
+        * @generated
+        */
+        public function getName(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @see TraceableEventDispatcher
+    * @final
+    * @generated
+    */
+    class EventDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector implements \Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface {
+        /**
+        * @param iterable|\Symfony\Contracts\EventDispatcher\EventDispatcherInterface|null $dispatchers
+        * @generated
+        */
+        public function __construct(iterable|\Symfony\Contracts\EventDispatcher\EventDispatcherInterface|null $dispatchers = null, ?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null, string $defaultDispatcher = 'event_dispatcher'): void;
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function reset(): void;
+        public function lateCollect(): void;
+        public function getData(): array|\Symfony\Component\VarDumper\Cloner\Data;
+        /**
+        * @see TraceableEventDispatcher
+        * @generated
+        */
+        public function setCalledListeners(array $listeners, ?string $dispatcher = null): void;
+        /**
+        * @see TraceableEventDispatcher
+        * @generated
+        */
+        public function getCalledListeners(?string $dispatcher = null): array|\Symfony\Component\VarDumper\Cloner\Data;
+        /**
+        * @see TraceableEventDispatcher
+        * @generated
+        */
+        public function setNotCalledListeners(array $listeners, ?string $dispatcher = null): void;
+        /**
+        * @see TraceableEventDispatcher
+        * @generated
+        */
+        public function getNotCalledListeners(?string $dispatcher = null): array|\Symfony\Component\VarDumper\Cloner\Data;
+        /**
+        * @param array $events An array of orphaned events
+        * @see TraceableEventDispatcher
+        * @generated
+        */
+        public function setOrphanedEvents(array $events, ?string $dispatcher = null): void;
+        /**
+        * @see TraceableEventDispatcher
+        * @generated
+        */
+        public function getOrphanedEvents(?string $dispatcher = null): array|\Symfony\Component\VarDumper\Cloner\Data;
+        public function getName(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class ExceptionDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector {
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function hasException(): bool;
+        public function getException(): \Exception|\Symfony\Component\ErrorHandler\Exception\FlattenException;
+        public function getMessage(): string;
+        public function getCode(): int|string;
+        public function getStatusCode(): int;
+        public function getTrace(): array;
+        public function getName(): string;
+    }
+    /**
+    * LateDataCollectorInterface.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface LateDataCollectorInterface {
+        /**
+        * Collects data as late as possible.
+        *
+        * @return void
+        * @generated
+        */
+        public function lateCollect(): void;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class LoggerDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector implements \Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface {
+        public function __construct(?object $logger = null, ?string $containerPathPrefix = null, ?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null): void;
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function lateCollect(): void;
+        public function getLogs(): \Symfony\Component\VarDumper\Cloner\Data|array;
+        public function getProcessedLogs(): array;
+        public function getFilters(): array;
+        public function getPriorities(): \Symfony\Component\VarDumper\Cloner\Data|array;
+        public function countErrors(): int;
+        public function countDeprecations(): int;
+        public function countWarnings(): int;
+        public function countScreams(): int;
+        public function getCompilerLogs(): \Symfony\Component\VarDumper\Cloner\Data;
+        public function getName(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class MemoryDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector implements \Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface {
+        public function __construct(): void;
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function reset(): void;
+        public function lateCollect(): void;
+        public function getMemory(): int;
+        public function getMemoryLimit(): int|float;
+        public function updateMemoryUsage(): void;
+        public function getName(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class RequestDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector implements \Symfony\Component\EventDispatcher\EventSubscriberInterface, \Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface {
+        public function __construct(?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null): void;
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function lateCollect(): void;
+        public function reset(): void;
+        public function getMethod(): string;
+        public function getPathInfo(): string;
+        public function getRequestRequest(): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getRequestQuery(): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getRequestFiles(): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getRequestHeaders(): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getRequestServer(bool $raw = false): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getRequestCookies(bool $raw = false): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getRequestAttributes(): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getResponseHeaders(): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getResponseCookies(): \Symfony\Component\HttpFoundation\ParameterBag;
+        public function getSessionMetadata(): array;
+        public function getSessionAttributes(): array;
+        public function getStatelessCheck(): bool;
+        public function getSessionUsages(): \Symfony\Component\VarDumper\Cloner\Data|array;
+        public function getFlashes(): array;
+        /**
+        * @return string|resource
+        * @generated
+        */
+        public function getContent(): string|resource;
+        public function isJsonRequest(): bool;
+        public function getPrettyJson(): ?string;
+        public function getContentType(): string;
+        public function getStatusText(): string;
+        public function getStatusCode(): int;
+        public function getFormat(): string;
+        public function getLocale(): string;
+        public function getDotenvVars(): \Symfony\Component\HttpFoundation\ParameterBag;
+        /**
+        * Gets the route name.
+        *
+        * The _route request attributes is automatically set by the Router Matcher.
+        *
+        * @generated
+        */
+        public function getRoute(): string;
+        public function getIdentifier(): string;
+        /**
+        * Gets the route parameters.
+        *
+        * The _route_params request attributes is automatically set by the RouterListener.
+        *
+        * @generated
+        */
+        public function getRouteParams(): array;
+        /**
+        * Gets the parsed controller.
+        *
+        * @return array|string|\Symfony\Component\VarDumper\Cloner\Data The controller as a string or array of data
+        *  *                               with keys 'class', 'method', 'file' and 'line'
+        * @generated
+        */
+        public function getController(): array|string|\Symfony\Component\VarDumper\Cloner\Data;
+        /**
+        * Gets the previous request attributes.
+        *
+        * @return array|\Symfony\Component\VarDumper\Cloner\Data|false A legacy array of data from the previous redirection response
+        *  *                              or false otherwise
+        * @generated
+        */
+        public function getRedirect(): array|\Symfony\Component\VarDumper\Cloner\Data|false;
+        public function getForwardToken(): ?string;
+        public function onKernelController(\Symfony\Component\HttpKernel\Event\ControllerEvent $event): void;
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public static function getSubscribedEvents(): array;
+        public function getName(): string;
+        public function collectSessionUsage(): void;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class RouterDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector {
+        /**
+        * @var \SplObjectStorage
+        * @generated
+        */
+        protected \SplObjectStorage $controllers;
+        public function __construct(): void;
+        /**
+        * @final
+        * @generated
+        */
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function reset(): void;
+        protected function guessRoute(\Symfony\Component\HttpFoundation\Request $request, string|object|array $controller): string;
+        /**
+        * Remembers the controller associated to each request.
+        *
+        * @generated
+        */
+        public function onKernelController(\Symfony\Component\HttpKernel\Event\ControllerEvent $event): void;
+        /**
+        * @return bool Whether this request will result in a redirect
+        * @generated
+        */
+        public function getRedirect(): bool;
+        public function getTargetUrl(): ?string;
+        public function getTargetRoute(): ?string;
+        public function getName(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class TimeDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector implements \Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface {
+        public function __construct(?\Symfony\Component\HttpKernel\KernelInterface $kernel = null, ?\Symfony\Component\Stopwatch\Stopwatch $stopwatch = null): void;
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function reset(): void;
+        public function lateCollect(): void;
+        /**
+        * @param array<int, \Symfony\Component\Stopwatch\StopwatchEvent> $events The request events
+        * @generated
+        */
+        public function setEvents(array<int, \Symfony\Component\Stopwatch\StopwatchEvent> $events): void;
+        /**
+        * @return array<int, \Symfony\Component\Stopwatch\StopwatchEvent>
+        * @generated
+        */
+        public function getEvents(): array<int, \Symfony\Component\Stopwatch\StopwatchEvent>;
+        /**
+        * Gets the request elapsed time.
+        *
+        * @generated
+        */
+        public function getDuration(): float;
+        /**
+        * Gets the initialization time.
+        *
+        * This is the time spent until the beginning of the request handling.
+        *
+        * @generated
+        */
+        public function getInitTime(): float;
+        public function getStartTime(): float;
+        public function isStopwatchInstalled(): bool;
+        public function getName(): string;
+    }
+}
+namespace Symfony\Component\HttpKernel\Debug {
+    /**
+    * Collects some data about event listeners.
+    *
+    * This event dispatcher delegates the dispatching to another one.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class TraceableEventDispatcher extends \Symfony\Component\EventDispatcher\Debug\TraceableEventDispatcher {
+        protected function beforeDispatch(string $eventName, object $event): void;
+        protected function afterDispatch(string $eventName, object $event): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\DependencyInjection {
+    /**
+    * Sets the classes to compile in the cache for the container.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @deprecated since Symfony 7.1, to be removed in 8.0
+    * @generated
+    */
+    deprecated class AddAnnotatedClassesToCachePass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        public function __construct(\Symfony\Component\HttpKernel\Kernel $kernel): void;
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * This extension sub-class provides first-class integration with the
+    *
+    * Config/Definition Component.
+    * 
+    * You can use this as base class if
+    * 
+    *    a) you use the Config/Definition component for configuration,
+    *    b) your configuration class is named "Configuration", and
+    *    c) the configuration class resides in the DependencyInjection sub-folder.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    abstract class ConfigurableExtension extends \Symfony\Component\HttpKernel\DependencyInjection\Extension {
+        public final function load(array $configs, \Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+        /**
+        * Configures the passed container according to the merged configuration.
+        *
+        * @generated
+        */
+        protected abstract function loadInternal(array $mergedConfig, \Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Gathers and configures the argument value resolvers.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    class ControllerArgumentValueResolverPass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        use \Symfony\Component\DependencyInjection\Compiler\PriorityTaggedServiceTrait;
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Adds services tagged kernel.fragment_renderer as HTTP content rendering strategies.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class FragmentRendererPass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Lazily loads fragment renderers from the dependency injection container.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class LazyLoadingFragmentHandler extends \Symfony\Component\HttpKernel\Fragment\FragmentHandler {
+        public function __construct(\Psr\Container\ContainerInterface $container, \Symfony\Component\HttpFoundation\RequestStack $requestStack, bool $debug = false): void;
+        public function render(string|\Symfony\Component\HttpKernel\Controller\ControllerReference $uri, string $renderer = 'inline', array $options = []): ?string;
+    }
+    /**
+    * Registers the default logger if necessary.
+    *
+    * @author Kévin Dunglas <dunglas@gmail.com>
+    * @generated
+    */
+    class LoggerPass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Ensures certain extensions are always loaded.
+    *
+    * @author Kris Wallsmith <kris@symfony.com>
+    * @generated
+    */
+    class MergeExtensionConfigurationPass extends \Symfony\Component\DependencyInjection\Compiler\MergeExtensionConfigurationPass {
+        /**
+        * @param array<int, string> $extensions
+        * @generated
+        */
+        public function __construct(array<int, string> $extensions): void;
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Creates the service-locators required by ServiceValueResolver.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class RegisterControllerArgumentLocatorsPass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Register all services that have the "kernel.locale_aware" tag into the listener.
+    *
+    * @author Pierre Bobiet <pierrebobiet@gmail.com>
+    * @generated
+    */
+    class RegisterLocaleAwareServicesPass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Removes empty service-locators registered for ServiceValueResolver.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class RemoveEmptyControllerArgumentLocatorsPass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @generated
+    */
+    class ResettableServicePass implements \Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface {
+        public function process(\Symfony\Component\DependencyInjection\ContainerBuilder $container): void;
+    }
+    /**
+    * Resets provided services.
+    *
+    * @author Alexander M. Turek <me@derrabus.de>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @final since Symfony 7.2
+    * @generated
+    */
+    class ServicesResetter implements \Symfony\Component\HttpKernel\DependencyInjection\ServicesResetterInterface {
+        /**
+        * @param \Traversable $resettableServices
+        * @param array<string, string|array<int, string>> $resetMethods
+        * @generated
+        */
+        public function __construct(\Traversable $resettableServices, array<string, string|array<int, string>> $resetMethods): void;
+        public function reset(): void;
+    }
+    /**
+    * Resets provided services.
+    *
+    * @generated
+    */
+    interface ServicesResetterInterface extends \Symfony\Contracts\Service\ResetInterface {
+    }
+}
+namespace Symfony\Component\HttpKernel\Event {
+    /**
+    * Allows filtering of controller arguments.
+    *
+    * You can call getController() to retrieve the controller and getArguments
+    * to retrieve the current arguments. With setArguments() you can replace
+    * arguments that are used to call the controller.
+    * 
+    * Arguments set in the event must be compatible with the signature of the
+    * controller.
+    *
+    * @author Christophe Coevoet <stof@notk.org>
+    * @generated
+    */
+    final class ControllerArgumentsEvent extends \Symfony\Component\HttpKernel\Event\KernelEvent {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, callable|\Symfony\Component\HttpKernel\Event\ControllerEvent $controller, array $arguments, \Symfony\Component\HttpFoundation\Request $request, ?int $requestType): void;
+        public function getController(): callable;
+        /**
+        * @param array<string, array<int, object>>|null $attributes
+        * @generated
+        */
+        public function setController(callable $controller, array<string, array<int, object>>|null $attributes = null): void;
+        public function getArguments(): array;
+        public function setArguments(array $arguments): void;
+        public function getNamedArguments(): array;
+        /**
+        * @template T of object
+        * @param ?string $className
+        * @return array ($className is null ? array<class-string, list<object>> : list<T>)
+        * @generated
+        */
+        public function getAttributes<T extends object>(?string $className = null): array;
+    }
+    /**
+    * Allows filtering of a controller callable.
+    *
+    * You can call getController() to retrieve the current controller. With
+    * setController() you can set a new controller that is used in the processing
+    * of the request.
+    * 
+    * Controllers should be callables.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    final class ControllerEvent extends \Symfony\Component\HttpKernel\Event\KernelEvent {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, callable $controller, \Symfony\Component\HttpFoundation\Request $request, ?int $requestType): void;
+        public function getController(): callable;
+        public function getControllerReflector(): \ReflectionFunctionAbstract;
+        /**
+        * @param array<string, array<int, object>>|null $attributes
+        * @generated
+        */
+        public function setController(callable $controller, array<string, array<int, object>>|null $attributes = null): void;
+        /**
+        * @template T of object
+        * @param ?string $className
+        * @return array ($className is null ? array<class-string, list<object>> : list<T>)
+        * @generated
+        */
+        public function getAttributes<T extends object>(?string $className = null): array;
+    }
+    /**
+    * Allows to create a response for a thrown exception.
+    *
+    * Call setResponse() to set the response that will be returned for the
+    * current request. The propagation of this event is stopped as soon as a
+    * response is set.
+    * 
+    * You can also call setThrowable() to replace the thrown exception. This
+    * exception will be thrown if no response is set during processing of this
+    * event.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    final class ExceptionEvent extends \Symfony\Component\HttpKernel\Event\RequestEvent {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, \Symfony\Component\HttpFoundation\Request $request, int $requestType, \Throwable $e, bool $isKernelTerminating = false): void;
+        public function getThrowable(): \Throwable;
+        /**
+        * Replaces the thrown exception.
+        *
+        * This exception will be thrown if no response is set in the event.
+        *
+        * @generated
+        */
+        public function setThrowable(\Throwable $exception): void;
+        /**
+        * Mark the event as allowing a custom response code.
+        *
+        * @generated
+        */
+        public function allowCustomResponseCode(): void;
+        /**
+        * Returns true if the event allows a custom response code.
+        *
+        * @generated
+        */
+        public function isAllowingCustomResponseCode(): bool;
+        public function isKernelTerminating(): bool;
+    }
+    /**
+    * Triggered whenever a request is fully processed.
+    *
+    * @author Benjamin Eberlei <kontakt@beberlei.de>
+    * @generated
+    */
+    final class FinishRequestEvent extends \Symfony\Component\HttpKernel\Event\KernelEvent {
+    }
+    /**
+    * Base class for events dispatched in the HttpKernel component.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class KernelEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        /**
+        * @param ?int $requestType The request type the kernel is currently processing; one of
+        *  *                             HttpKernelInterface::MAIN_REQUEST or HttpKernelInterface::SUB_REQUEST
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, \Symfony\Component\HttpFoundation\Request $request, ?int $requestType): void;
+        /**
+        * Returns the kernel in which this event was thrown.
+        *
+        * @generated
+        */
+        public function getKernel(): \Symfony\Component\HttpKernel\HttpKernelInterface;
+        /**
+        * Returns the request the kernel is currently processing.
+        *
+        * @generated
+        */
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        /**
+        * Returns the request type the kernel is currently processing.
+        *
+        * @return int One of HttpKernelInterface::MAIN_REQUEST and
+        *  *                 HttpKernelInterface::SUB_REQUEST
+        * @generated
+        */
+        public function getRequestType(): int;
+        /**
+        * Checks if this is the main request.
+        *
+        * @generated
+        */
+        public function isMainRequest(): bool;
+    }
+    /**
+    * Allows to create a response for a request.
+    *
+    * Call setResponse() to set the response that will be returned for the
+    * current request. The propagation of this event is stopped as soon as a
+    * response is set.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    class RequestEvent extends \Symfony\Component\HttpKernel\Event\KernelEvent {
+        /**
+        * Returns the response object.
+        *
+        * @generated
+        */
+        public function getResponse(): ?\Symfony\Component\HttpFoundation\Response;
+        /**
+        * Sets a response and stops event propagation.
+        *
+        * @generated
+        */
+        public function setResponse(\Symfony\Component\HttpFoundation\Response $response): void;
+        /**
+        * Returns whether a response was set.
+        *
+        * @psalm-assert-if-true !null $this->getResponse()
+        * @generated
+        */
+        public function hasResponse(): bool;
+    }
+    /**
+    * Allows to filter a Response object.
+    *
+    * You can call getResponse() to retrieve the current response. With
+    * setResponse() you can set a new response that will be returned to the
+    * browser.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    final class ResponseEvent extends \Symfony\Component\HttpKernel\Event\KernelEvent {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, \Symfony\Component\HttpFoundation\Request $request, int $requestType, \Symfony\Component\HttpFoundation\Response $response): void;
+        public function getResponse(): \Symfony\Component\HttpFoundation\Response;
+        public function setResponse(\Symfony\Component\HttpFoundation\Response $response): void;
+    }
+    /**
+    * Allows to execute logic after a response was sent.
+    *
+    * Since it's only triggered on main requests, the `getRequestType()` method
+    * will always return the value of `HttpKernelInterface::MAIN_REQUEST`.
+    *
+    * @author Jordi Boggiano <j.boggiano@seld.be>
+    * @generated
+    */
+    final class TerminateEvent extends \Symfony\Component\HttpKernel\Event\KernelEvent {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, \Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+        public function getResponse(): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Allows to create a response for the return value of a controller.
+    *
+    * Call setResponse() to set the response that will be returned for the
+    * current request. The propagation of this event is stopped as soon as a
+    * response is set.
+    *
+    * @author Bernhard Schussek <bschussek@gmail.com>
+    * @generated
+    */
+    final class ViewEvent extends \Symfony\Component\HttpKernel\Event\RequestEvent {
+        public readonly ?\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $controllerArgumentsEvent ?? null;
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, \Symfony\Component\HttpFoundation\Request $request, int $requestType, mixed $controllerResult, ?\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $controllerArgumentsEvent = null): void;
+        public function getControllerResult(): mixed;
+        public function setControllerResult(mixed $controllerResult): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\EventListener {
+    /**
+    * Sets the session onto the request on the "kernel.request" event and saves
+    *
+    * it on the "kernel.response" event.
+    * 
+    * In addition, if the session has been started it overrides the Cache-Control
+    * header in such a way that all caching is disabled in that case.
+    * If you have a scenario where caching responses with session information in
+    * them makes sense, you can disable this behaviour by setting the header
+    * AbstractSessionListener::NO_AUTO_CACHE_CONTROL_HEADER on the response.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Tobias Schultze <http://tobion.de>
+    * @generated
+    */
+    abstract class AbstractSessionListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface, \Symfony\Contracts\Service\ResetInterface {
+        public const string NO_AUTO_CACHE_CONTROL_HEADER ?? 'Symfony-Session-NoAutoCacheControl';
+    }
+    /**
+    * Adds configured formats to each request.
+    *
+    * @author Gildas Quemener <gildas.quemener@gmail.com>
+    * @final
+    * @generated
+    */
+    class AddRequestFormatsListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(array $formats): void;
+        /**
+        * Adds request formats.
+        *
+        * @generated
+        */
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Handles HTTP cache headers configured via the Cache attribute.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class CacheAttributeListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(?\Symfony\Component\ExpressionLanguage\ExpressionLanguage $expressionLanguage = null): void;
+        /**
+        * Handles HTTP validation headers.
+        *
+        * @generated
+        */
+        public function onKernelControllerArguments(\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $event): void;
+        /**
+        * Modifies the response to apply HTTP cache headers when needed.
+        *
+        * @generated
+        */
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public static function getSubscribedEvents(): array;
+        public function reset(): void;
+    }
+    /**
+    * Ensures that the application is not indexed by search engines.
+    *
+    * @author Gary PEGEOT <garypegeot@gmail.com>
+    * @generated
+    */
+    class DisallowRobotsIndexingListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function onResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Configures dump() handler.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class DumpListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param ?\Symfony\Component\VarDumper\Dumper\DataDumperInterface $profilerDumper The dumper to use when CLI profiling is enabled.
+        *  *                                                 If null, the default $dumper will be used instead.
+        * @generated
+        */
+        public function __construct(\Symfony\Component\VarDumper\Cloner\ClonerInterface $cloner, \Symfony\Component\VarDumper\Dumper\DataDumperInterface $dumper, ?\Symfony\Component\VarDumper\Server\Connection $connection = null, ?\Symfony\Component\VarDumper\Dumper\DataDumperInterface $profilerDumper = null): void;
+        /**
+        * @param ?ConsoleCommandEvent $event
+        * @generated
+        */
+        public function configure(): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ErrorListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        protected string|object|array|null $controller;
+        protected ?\Psr\Log\LoggerInterface $logger ?? null;
+        protected bool $debug ?? false;
+        protected array<string, array> $exceptionsMapping ?? [];
+        protected array $loggers ?? [];
+        /**
+        * @param array<string, array> $exceptionsMapping
+        * @generated
+        */
+        public function __construct(string|object|array|null $controller, ?\Psr\Log\LoggerInterface $logger = null, bool $debug = false, array<string, array> $exceptionsMapping = [], array $loggers = []): void;
+        public function logKernelException(\Symfony\Component\HttpKernel\Event\ExceptionEvent $event): void;
+        public function onKernelException(\Symfony\Component\HttpKernel\Event\ExceptionEvent $event): void;
+        public function removeCspHeader(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public function onControllerArguments(\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $event): void;
+        public static function getSubscribedEvents(): array;
+        /**
+        * Logs an exception.
+        *
+        * @param ?string $logChannel
+        * @generated
+        */
+        protected function logException(\Throwable $exception, string $message, ?string $logLevel = null): void;
+        /**
+        * Clones the request for the exception.
+        *
+        * @generated
+        */
+        protected function duplicateRequest(\Throwable $exception, \Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\HttpFoundation\Request;
+    }
+    /**
+    * Handles content fragments represented by special URIs.
+    *
+    * All URL paths starting with /_fragment are handled as
+    * content fragments by this listener.
+    * 
+    * Throws an AccessDeniedHttpException exception if the request
+    * is not signed or if it is not an internal sub-request.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class FragmentListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param string $fragmentPath The path that triggers this listener
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpFoundation\UriSigner $signer, string $fragmentPath = '/_fragment'): void;
+        /**
+        * Fixes request attributes when the path is '/_fragment'.
+        *
+        * @throws AccessDeniedHttpException if the request does not come from a trusted IP
+        * @generated
+        */
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        protected function validateRequest(\Symfony\Component\HttpFoundation\Request $request): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Handles the IsSignatureValid attribute.
+    *
+    * @author Santiago San Martin <sanmartindev@gmail.com>
+    * @generated
+    */
+    class IsSignatureValidAttributeListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\UriSigner $uriSigner): void;
+        public function onKernelControllerArguments(\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Pass the current locale to the provided services.
+    *
+    * @author Pierre Bobiet <pierrebobiet@gmail.com>
+    * @generated
+    */
+    class LocaleAwareListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param iterable<mixed, \Symfony\Contracts\Translation\LocaleAwareInterface> $localeAwareServices
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Contracts\Translation\LocaleAwareInterface> $localeAwareServices, \Symfony\Component\HttpFoundation\RequestStack $requestStack): void;
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public function onKernelFinishRequest(\Symfony\Component\HttpKernel\Event\FinishRequestEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Initializes the locale based on the current request.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class LocaleListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, string $defaultLocale = 'en', ?\Symfony\Component\Routing\RequestContextAwareInterface $router = null, bool $useAcceptLanguageHeader = false, array $enabledLocales = []): void;
+        public function setDefaultLocale(\Symfony\Component\HttpKernel\Event\KernelEvent $event): void;
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public function onKernelFinishRequest(\Symfony\Component\HttpKernel\Event\FinishRequestEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * ProfilerListener collects data for the current request by listening to the kernel events.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class ProfilerListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param bool $onlyException True if the profiler only collects data when an exception occurs, false otherwise
+        * @param bool $onlyMainRequests True if the profiler only collects data when the request is the main request, false otherwise
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpKernel\Profiler\Profiler $profiler, \Symfony\Component\HttpFoundation\RequestStack $requestStack, ?\Symfony\Component\HttpFoundation\RequestMatcherInterface $matcher = null, bool $onlyException = false, bool $onlyMainRequests = false, ?string $collectParameter = null): void;
+        /**
+        * Handles the onKernelException event.
+        *
+        * @generated
+        */
+        public function onKernelException(\Symfony\Component\HttpKernel\Event\ExceptionEvent $event): void;
+        /**
+        * Handles the onKernelResponse event.
+        *
+        * @generated
+        */
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public function onKernelTerminate(\Symfony\Component\HttpKernel\Event\TerminateEvent $event): void;
+        public function reset(): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * ResponseListener fixes the Response headers based on the Request.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class ResponseListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(string $charset, bool $addContentLanguageHeader = false): void;
+        /**
+        * Filters the Response.
+        *
+        * @generated
+        */
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Initializes the context from the request and sets request attributes based on a matching route.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Yonel Ceruto <yonelceruto@gmail.com>
+    * @final
+    * @generated
+    */
+    class RouterListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param ?\Symfony\Component\Routing\RequestContext $context The RequestContext (can be null when $matcher implements RequestContextAwareInterface)
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Routing\Matcher\UrlMatcherInterface|\Symfony\Component\Routing\Matcher\RequestMatcherInterface $matcher, \Symfony\Component\HttpFoundation\RequestStack $requestStack, ?\Symfony\Component\Routing\RequestContext $context = null, ?\Psr\Log\LoggerInterface $logger = null, ?string $projectDir = null, bool $debug = true): void;
+        /**
+        * After a sub-request is done, we need to reset the routing context to the parent request so that the URL generator
+        *
+        * operates on the correct context again.
+        *
+        * @generated
+        */
+        public function onKernelFinishRequest(): void;
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public function onKernelException(\Symfony\Component\HttpKernel\Event\ExceptionEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Sets the session in the request.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class SessionListener extends \Symfony\Component\HttpKernel\EventListener\AbstractSessionListener {
+        public function __construct(?\Psr\Container\ContainerInterface $container = null, bool $debug = false, array $sessionOptions = []): void;
+        protected function getSession(): ?\Symfony\Component\HttpFoundation\Session\SessionInterface;
+    }
+    /**
+    * SurrogateListener adds a Surrogate-Control HTTP header when the Response needs to be parsed for Surrogates.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class SurrogateListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(?\Symfony\Component\HttpKernel\HttpCache\SurrogateInterface $surrogate = null): void;
+        /**
+        * Filters the Response.
+        *
+        * @generated
+        */
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Validates Requests.
+    *
+    * @author Magnus Nordlander <magnus@fervo.se>
+    * @final
+    * @generated
+    */
+    class ValidateRequestListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * Performs the validation.
+        *
+        * @generated
+        */
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+}
+namespace Symfony\Component\HttpKernel\Exception {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Christophe Coevoet <stof@notk.org>
+    * @generated
+    */
+    class AccessDeniedHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class BadRequestHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class ConflictHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    class ControllerDoesNotReturnResponseException extends \LogicException {
+        public function __construct(string $message, callable $controller, string $file, int $line): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class GoneHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * HttpException.
+    *
+    * @author Kris Wallsmith <kris@symfony.com>
+    * @generated
+    */
+    class HttpException extends \RuntimeException implements \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface {
+        public function __construct(int $statusCode, string $message = '', ?\Throwable $previous = null, array $headers = [], int $code = 0): void;
+        public static function fromStatusCode(int $statusCode, string $message = '', ?\Throwable $previous = null, array $headers = [], int $code = 0): self;
+        public function getStatusCode(): int;
+        public function getHeaders(): array;
+        public function setHeaders(array $headers): void;
+    }
+    /**
+    * Interface for HTTP error exceptions.
+    *
+    * @author Kris Wallsmith <kris@symfony.com>
+    * @generated
+    */
+    interface HttpExceptionInterface extends \Throwable {
+        /**
+        * Returns the status code.
+        *
+        * @generated
+        */
+        public function getStatusCode(): int;
+        /**
+        * Returns response headers.
+        *
+        * @generated
+        */
+        public function getHeaders(): array;
+    }
+    class InvalidMetadataException extends \LogicException {
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class LengthRequiredHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Peter Dietrich <xosofox@gmail.com>
+    * @generated
+    */
+    class LockedHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Kris Wallsmith <kris@symfony.com>
+    * @generated
+    */
+    class MethodNotAllowedHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        /**
+        * @param array<int, string> $allow An array of allowed methods
+        * @generated
+        */
+        public function __construct(array<int, string> $allow, string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * Lets value resolvers tell when an argument could be under their watch but failed to be resolved.
+    *
+    * Throwing this exception inside `ValueResolverInterface::resolve` does not interrupt the value resolvers chain.
+    *
+    * @generated
+    */
+    class NearMissValueResolverException extends \RuntimeException {
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class NotAcceptableHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class NotFoundHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class PreconditionFailedHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @see http://tools.ietf.org/html/rfc6585
+    * @generated
+    */
+    class PreconditionRequiredHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    class ResolverNotFoundException extends \RuntimeException {
+        /**
+        * @param array<int, string> $alternatives
+        * @generated
+        */
+        public function __construct(string $name, array<int, string> $alternatives = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class ServiceUnavailableHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        /**
+        * @param int|string|null $retryAfter The number of seconds or HTTP-date after which the request may be retried
+        * @generated
+        */
+        public function __construct(int|string|null $retryAfter = null, string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @see http://tools.ietf.org/html/rfc6585
+    * @generated
+    */
+    class TooManyRequestsHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        /**
+        * @param int|string|null $retryAfter The number of seconds or HTTP-date after which the request may be retried
+        * @generated
+        */
+        public function __construct(int|string|null $retryAfter = null, string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class UnauthorizedHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        /**
+        * @param string $challenge WWW-Authenticate challenge string
+        * @generated
+        */
+        public function __construct(string $challenge, string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Mathias Arlaud <mathias.arlaud@gmail.com>
+    * @generated
+    */
+    class UnexpectedSessionUsageException extends \LogicException {
+    }
+    /**
+    * @author Steve Hutchins <hutchinsteve@gmail.com>
+    * @generated
+    */
+    class UnprocessableEntityHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+    /**
+    * @author Ben Ramsey <ben@benramsey.com>
+    * @generated
+    */
+    class UnsupportedMediaTypeHttpException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public function __construct(string $message = '', ?\Throwable $previous = null, int $code = 0, array $headers = []): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\Fragment {
+    /**
+    * Implements Surrogate rendering strategy.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class AbstractSurrogateFragmentRenderer extends \Symfony\Component\HttpKernel\Fragment\RoutableFragmentRenderer {
+        /**
+        * The "fallback" strategy when surrogate is not available should always be an
+        *
+        * instance of InlineFragmentRenderer.
+        *
+        * @param \Symfony\Component\HttpKernel\Fragment\FragmentRendererInterface $inlineStrategy The inline strategy to use when the surrogate is not supported
+        * @generated
+        */
+        public function __construct(?\Symfony\Component\HttpKernel\HttpCache\SurrogateInterface $surrogate, \Symfony\Component\HttpKernel\Fragment\FragmentRendererInterface $inlineStrategy, ?\Symfony\Component\HttpFoundation\UriSigner $signer = null): void;
+        /**
+        * Note that if the current Request has no surrogate capability, this method
+        *
+        * falls back to use the inline rendering strategy.
+        * 
+        * Additional available options:
+        * 
+        *  * alt: an alternative URI to render in case of an error
+        *  * comment: a comment to add when returning the surrogate tag
+        *  * absolute_uri: whether to generate an absolute URI or not. Default is false
+        * 
+        * Note, that not all surrogate strategies support all options. For now
+        * 'alt' and 'comment' are only supported by ESI.
+        *
+        * @see Symfony\Component\HttpKernel\HttpCache\SurrogateInterface
+        * @generated
+        */
+        public function render(string|\Symfony\Component\HttpKernel\Controller\ControllerReference $uri, \Symfony\Component\HttpFoundation\Request $request, array $options = []): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Implements the ESI rendering strategy.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class EsiFragmentRenderer extends \Symfony\Component\HttpKernel\Fragment\AbstractSurrogateFragmentRenderer {
+        public function getName(): string;
+    }
+    /**
+    * Renders a URI that represents a resource fragment.
+    *
+    * This class handles the rendering of resource fragments that are included into
+    * a main resource. The handling of the rendering is managed by specialized renderers.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @see FragmentRendererInterface
+    * @generated
+    */
+    class FragmentHandler {
+        /**
+        * @param array<int, FragmentRendererInterface> $renderers An array of FragmentRendererInterface instances
+        * @param bool $debug Whether the debug mode is enabled or not
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, array<int, \Symfony\Component\HttpKernel\Fragment\FragmentRendererInterface> $renderers = [], bool $debug = false): void;
+        /**
+        * Adds a renderer.
+        *
+        * @generated
+        */
+        public function addRenderer(\Symfony\Component\HttpKernel\Fragment\FragmentRendererInterface $renderer): void;
+        /**
+        * Renders a URI and returns the Response content.
+        *
+        * Available options:
+        * 
+        *  * ignore_errors: true to return an empty string in case of an error
+        *
+        * @throws \InvalidArgumentException when the renderer does not exist
+        * @throws \LogicException           when no main request is being handled
+        * @generated
+        */
+        public function render(string|\Symfony\Component\HttpKernel\Controller\ControllerReference $uri, string $renderer = 'inline', array $options = []): ?string;
+        /**
+        * Delivers the Response as a string.
+        *
+        * When the Response is a StreamedResponse, the content is streamed immediately
+        * instead of being returned.
+        *
+        * @return ?string The Response content or null when the Response is streamed
+        * @throws \RuntimeException when the Response is not successful
+        * @generated
+        */
+        protected function deliver(\Symfony\Component\HttpFoundation\Response $response): ?string;
+    }
+    /**
+    * Interface implemented by all rendering strategies.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface FragmentRendererInterface {
+        /**
+        * Renders a URI and returns the Response content.
+        *
+        * @generated
+        */
+        public function render(string|\Symfony\Component\HttpKernel\Controller\ControllerReference $uri, \Symfony\Component\HttpFoundation\Request $request, array $options = []): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Gets the name of the strategy.
+        *
+        * @generated
+        */
+        public function getName(): string;
+    }
+    /**
+    * Generates a fragment URI.
+    *
+    * @author Kévin Dunglas <kevin@dunglas.fr>
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class FragmentUriGenerator implements \Symfony\Component\HttpKernel\Fragment\FragmentUriGeneratorInterface {
+        public function __construct(string $fragmentPath, ?\Symfony\Component\HttpFoundation\UriSigner $signer = null, ?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null): void;
+        public function generate(\Symfony\Component\HttpKernel\Controller\ControllerReference $controller, ?\Symfony\Component\HttpFoundation\Request $request = null, bool $absolute = false, bool $strict = true, bool $sign = true): string;
+    }
+    /**
+    * Interface implemented by rendering strategies able to generate a URL for a fragment.
+    *
+    * @author Kévin Dunglas <kevin@dunglas.fr>
+    * @generated
+    */
+    interface FragmentUriGeneratorInterface {
+        /**
+        * Generates a fragment URI for a given controller.
+        *
+        * @param bool $absolute Whether to generate an absolute URL or not
+        * @param bool $strict Whether to allow non-scalar attributes or not
+        * @param bool $sign Whether to sign the URL or not
+        * @generated
+        */
+        public function generate(\Symfony\Component\HttpKernel\Controller\ControllerReference $controller, ?\Symfony\Component\HttpFoundation\Request $request = null, bool $absolute = false, bool $strict = true, bool $sign = true): string;
+    }
+    /**
+    * Implements the Hinclude rendering strategy.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class HIncludeFragmentRenderer extends \Symfony\Component\HttpKernel\Fragment\RoutableFragmentRenderer {
+        /**
+        * @param ?string $globalDefaultTemplate The global default content (it can be a template name or the content)
+        * @generated
+        */
+        public function __construct(?\Twig\Environment $twig = null, ?\Symfony\Component\HttpFoundation\UriSigner $signer = null, ?string $globalDefaultTemplate = null, string $charset = 'utf-8'): void;
+        /**
+        * Checks if a templating engine has been set.
+        *
+        * @generated
+        */
+        public function hasTemplating(): bool;
+        /**
+        * Additional available options:
+        *
+        *  * default:    The default content (it can be a template name or the content)
+        *  * id:         An optional hx:include tag id attribute
+        *  * attributes: An optional array of hx:include tag attributes
+        *
+        * @generated
+        */
+        public function render(string|\Symfony\Component\HttpKernel\Controller\ControllerReference $uri, \Symfony\Component\HttpFoundation\Request $request, array $options = []): \Symfony\Component\HttpFoundation\Response;
+        public function getName(): string;
+    }
+    /**
+    * Implements the inline rendering strategy where the Request is rendered by the current HTTP kernel.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class InlineFragmentRenderer extends \Symfony\Component\HttpKernel\Fragment\RoutableFragmentRenderer {
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null): void;
+        /**
+        * Additional available options:
+        *
+        *  * alt: an alternative URI to render in case of an error
+        *
+        * @generated
+        */
+        public function render(string|\Symfony\Component\HttpKernel\Controller\ControllerReference $uri, \Symfony\Component\HttpFoundation\Request $request, array $options = []): \Symfony\Component\HttpFoundation\Response;
+        protected function createSubRequest(string $uri, \Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\HttpFoundation\Request;
+        public function getName(): string;
+    }
+    /**
+    * Adds the possibility to generate a fragment URI for a given Controller.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class RoutableFragmentRenderer implements \Symfony\Component\HttpKernel\Fragment\FragmentRendererInterface {
+        /**
+        * Sets the fragment path that triggers the fragment listener.
+        *
+        * @see FragmentListener
+        * @generated
+        */
+        public function setFragmentPath(string $path): void;
+        /**
+        * Generates a fragment URI for a given controller.
+        *
+        * @param bool $absolute Whether to generate an absolute URL or not
+        * @param bool $strict Whether to allow non-scalar attributes or not
+        * @generated
+        */
+        protected function generateFragmentUri(\Symfony\Component\HttpKernel\Controller\ControllerReference $reference, \Symfony\Component\HttpFoundation\Request $request, bool $absolute = false, bool $strict = true): string;
+    }
+    /**
+    * Implements the SSI rendering strategy.
+    *
+    * @author Sebastian Krebs <krebs.seb@gmail.com>
+    * @generated
+    */
+    class SsiFragmentRenderer extends \Symfony\Component\HttpKernel\Fragment\AbstractSurrogateFragmentRenderer {
+        public function getName(): string;
+    }
+}
+namespace Symfony\Component\HttpKernel\HttpCache {
+    /**
+    * Abstract class implementing Surrogate capabilities to Request and Response instances.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    abstract class AbstractSurrogate implements \Symfony\Component\HttpKernel\HttpCache\SurrogateInterface {
+        protected array $contentTypes ?? [];
+        /**
+        * @param array $contentTypes An array of content-type that should be parsed for Surrogate information
+        *  *                                (default: text/html, text/xml, application/xhtml+xml, and application/xml)
+        * @generated
+        */
+        public function __construct(array $contentTypes = []): void;
+        /**
+        * Returns a new cache strategy instance.
+        *
+        * @generated
+        */
+        public function createCacheStrategy(): \Symfony\Component\HttpKernel\HttpCache\ResponseCacheStrategyInterface;
+        public function hasSurrogateCapability(\Symfony\Component\HttpFoundation\Request $request): bool;
+        public function addSurrogateCapability(\Symfony\Component\HttpFoundation\Request $request): void;
+        public function needsParsing(\Symfony\Component\HttpFoundation\Response $response): bool;
+        public function handle(\Symfony\Component\HttpKernel\HttpCache\HttpCache $cache, string $uri, string $alt, bool $ignoreErrors): string;
+        /**
+        * Remove the Surrogate from the Surrogate-Control header.
+        *
+        * @generated
+        */
+        protected function removeFromControl(\Symfony\Component\HttpFoundation\Response $response): void;
+        protected static function generateBodyEvalBoundary(): string;
+    }
+    /**
+    * Esi implements the ESI capabilities to Request and Response instances.
+    *
+    * For more information, read the following W3C notes:
+    * 
+    *  * ESI Language Specification 1.0 (http://www.w3.org/TR/esi-lang)
+    * 
+    *  * Edge Architecture Specification (http://www.w3.org/TR/edge-arch)
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Esi extends \Symfony\Component\HttpKernel\HttpCache\AbstractSurrogate {
+        public function getName(): string;
+        public function addSurrogateControl(\Symfony\Component\HttpFoundation\Response $response): void;
+        public function renderIncludeTag(string $uri, ?string $alt = null, bool $ignoreErrors = true, string $comment = ''): string;
+        public function process(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Cache provides HTTP caching.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class HttpCache implements \Symfony\Component\HttpKernel\HttpKernelInterface, \Symfony\Component\HttpKernel\TerminableInterface {
+        public const int BODY_EVAL_BOUNDARY_LENGTH ?? 24;
+        /**
+        * Constructor.
+        *
+        * The available options are:
+        * 
+        *   * debug                  If true, exceptions are thrown when things go wrong. Otherwise, the cache
+        *                            will try to carry on and deliver a meaningful response.
+        * 
+        *   * trace_level            May be one of 'none', 'short' and 'full'. For 'short', a concise trace of the
+        *                            main request will be added as an HTTP header. 'full' will add traces for all
+        *                            requests (including ESI subrequests). (default: 'full' if in debug; 'none' otherwise)
+        * 
+        *   * trace_header           Header name to use for traces. (default: X-Symfony-Cache)
+        * 
+        *   * default_ttl            The number of seconds that a cache entry should be considered
+        *                            fresh when no explicit freshness information is provided in
+        *                            a response. Explicit Cache-Control or Expires headers
+        *                            override this value. (default: 0)
+        * 
+        *   * private_headers        Set of request headers that trigger "private" cache-control behavior
+        *                            on responses that don't explicitly state whether the response is
+        *                            public or private via a Cache-Control directive. (default: Authorization and Cookie)
+        * 
+        *   * skip_response_headers  Set of response headers that are never cached even if a response is cacheable (public).
+        *                            (default: Set-Cookie)
+        * 
+        *   * allow_reload           Specifies whether the client can force a cache reload by including a
+        *                            Cache-Control "no-cache" directive in the request. Set it to ``true``
+        *                            for compliance with RFC 2616. (default: false)
+        * 
+        *   * allow_revalidate       Specifies whether the client can force a cache revalidate by including
+        *                            a Cache-Control "max-age=0" directive in the request. Set it to ``true``
+        *                            for compliance with RFC 2616. (default: false)
+        * 
+        *   * stale_while_revalidate Specifies the default number of seconds (the granularity is the second as the
+        *                            Response TTL precision is a second) during which the cache can immediately return
+        *                            a stale response while it revalidates it in the background (default: 2).
+        *                            This setting is overridden by the stale-while-revalidate HTTP Cache-Control
+        *                            extension (see RFC 5861).
+        * 
+        *   * stale_if_error         Specifies the default number of seconds (the granularity is the second) during which
+        *                            the cache can serve a stale response when an error is encountered (default: 60).
+        *                            This setting is overridden by the stale-if-error HTTP Cache-Control extension
+        *                            (see RFC 5861).
+        *
+        * @generated
+        */
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $kernel, \Symfony\Component\HttpKernel\HttpCache\StoreInterface $store, ?\Symfony\Component\HttpKernel\HttpCache\SurrogateInterface $surrogate = null, array $options = []): void;
+        /**
+        * Gets the current store.
+        *
+        * @generated
+        */
+        public function getStore(): \Symfony\Component\HttpKernel\HttpCache\StoreInterface;
+        /**
+        * Returns an array of events that took place during processing of the last request.
+        *
+        * @generated
+        */
+        public function getTraces(): array;
+        /**
+        * Returns a log message for the events of the last request processing.
+        *
+        * @generated
+        */
+        public function getLog(): string;
+        /**
+        * Gets the Request instance associated with the main request.
+        *
+        * @generated
+        */
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        /**
+        * Gets the Kernel instance.
+        *
+        * @generated
+        */
+        public function getKernel(): \Symfony\Component\HttpKernel\HttpKernelInterface;
+        /**
+        * Gets the Surrogate instance.
+        *
+        * @throws \LogicException
+        * @generated
+        */
+        public function getSurrogate(): \Symfony\Component\HttpKernel\HttpCache\SurrogateInterface;
+        public function handle(\Symfony\Component\HttpFoundation\Request $request, int $type = \Symfony\Component\HttpKernel\HttpKernelInterface::MAIN_REQUEST, bool $catch = true): \Symfony\Component\HttpFoundation\Response;
+        public function terminate(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+        /**
+        * Forwards the Request to the backend without storing the Response in the cache.
+        *
+        * @param bool $catch Whether to process exceptions
+        * @generated
+        */
+        protected function pass(\Symfony\Component\HttpFoundation\Request $request, bool $catch = false): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Invalidates non-safe methods (like POST, PUT, and DELETE).
+        *
+        * @param bool $catch Whether to process exceptions
+        * @throws \Exception
+        * @see RFC2616 13.10
+        * @generated
+        */
+        protected function invalidate(\Symfony\Component\HttpFoundation\Request $request, bool $catch = false): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Lookups a Response from the cache for the given Request.
+        *
+        * When a matching cache entry is found and is fresh, it uses it as the
+        * response without forwarding any request to the backend. When a matching
+        * cache entry is found but is stale, it attempts to "validate" the entry with
+        * the backend using conditional GET. When no matching cache entry is found,
+        * it triggers "miss" processing.
+        *
+        * @param bool $catch Whether to process exceptions
+        * @throws \Exception
+        * @generated
+        */
+        protected function lookup(\Symfony\Component\HttpFoundation\Request $request, bool $catch = false): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Validates that a cache entry is fresh.
+        *
+        * The original request is used as a template for a conditional
+        * GET request with the backend.
+        *
+        * @param bool $catch Whether to process exceptions
+        * @generated
+        */
+        protected function validate(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $entry, bool $catch = false): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Unconditionally fetches a fresh response from the backend and
+        *
+        * stores it in the cache if is cacheable.
+        *
+        * @param bool $catch Whether to process exceptions
+        * @generated
+        */
+        protected function fetch(\Symfony\Component\HttpFoundation\Request $request, bool $catch = false): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Forwards the Request to the backend and returns the Response.
+        *
+        * All backend requests (cache passes, fetches, cache validations)
+        * run through this method.
+        *
+        * @param bool $catch Whether to catch exceptions or not
+        * @param ?\Symfony\Component\HttpFoundation\Response $entry A Response instance (the stale entry if present, null otherwise)
+        * @generated
+        */
+        protected function forward(\Symfony\Component\HttpFoundation\Request $request, bool $catch = false, ?\Symfony\Component\HttpFoundation\Response $entry = null): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Checks whether the cache entry is "fresh enough" to satisfy the Request.
+        *
+        * @generated
+        */
+        protected function isFreshEnough(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $entry): bool;
+        /**
+        * Locks a Request during the call to the backend.
+        *
+        * @return bool true if the cache entry can be returned even if it is staled, false otherwise
+        * @generated
+        */
+        protected function lock(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $entry): bool;
+        /**
+        * Writes the Response to the cache.
+        *
+        * @throws \Exception
+        * @generated
+        */
+        protected function store(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+        protected function processResponseBody(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+    }
+    /**
+    * ResponseCacheStrategy knows how to compute the Response cache HTTP header
+    *
+    * based on the different response cache headers.
+    * 
+    * This implementation changes the main response TTL to the smallest TTL received
+    * or force validation if one of the surrogates has validation cache strategy.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ResponseCacheStrategy implements \Symfony\Component\HttpKernel\HttpCache\ResponseCacheStrategyInterface {
+        public function add(\Symfony\Component\HttpFoundation\Response $response): void;
+        public function update(\Symfony\Component\HttpFoundation\Response $response): void;
+    }
+    /**
+    * ResponseCacheStrategyInterface implementations know how to compute the
+    *
+    * Response cache HTTP header based on the different response cache headers.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ResponseCacheStrategyInterface {
+        /**
+        * Adds a Response.
+        *
+        * @generated
+        */
+        public function add(\Symfony\Component\HttpFoundation\Response $response): void;
+        /**
+        * Updates the Response HTTP headers based on the embedded Responses.
+        *
+        * @generated
+        */
+        public function update(\Symfony\Component\HttpFoundation\Response $response): void;
+    }
+    /**
+    * Ssi implements the SSI capabilities to Request and Response instances.
+    *
+    * @author Sebastian Krebs <krebs.seb@gmail.com>
+    * @generated
+    */
+    class Ssi extends \Symfony\Component\HttpKernel\HttpCache\AbstractSurrogate {
+        public function getName(): string;
+        public function addSurrogateControl(\Symfony\Component\HttpFoundation\Response $response): void;
+        public function renderIncludeTag(string $uri, ?string $alt = null, bool $ignoreErrors = true, string $comment = ''): string;
+        public function process(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Store implements all the logic for storing cache metadata (Request and Response headers).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Store implements \Symfony\Component\HttpKernel\HttpCache\StoreInterface {
+        protected string $root;
+        /**
+        * Constructor.
+        *
+        * The available options are:
+        * 
+        *   * private_headers  Set of response headers that should not be stored
+        *                      when a response is cached. (default: Set-Cookie)
+        *
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function __construct(string $root, array $options = []): void;
+        /**
+        * Cleanups storage.
+        *
+        * @generated
+        */
+        public function cleanup(): void;
+        /**
+        * Tries to lock the cache for a given Request, without blocking.
+        *
+        * @return bool|string true if the lock is acquired, the path to the current lock otherwise
+        * @generated
+        */
+        public function lock(\Symfony\Component\HttpFoundation\Request $request): bool|string;
+        /**
+        * Releases the lock for the given Request.
+        *
+        * @return bool False if the lock file does not exist or cannot be unlocked, true otherwise
+        * @generated
+        */
+        public function unlock(\Symfony\Component\HttpFoundation\Request $request): bool;
+        public function isLocked(\Symfony\Component\HttpFoundation\Request $request): bool;
+        /**
+        * Locates a cached Response for the Request provided.
+        *
+        * @generated
+        */
+        public function lookup(\Symfony\Component\HttpFoundation\Request $request): ?\Symfony\Component\HttpFoundation\Response;
+        /**
+        * Writes a cache entry to the store for the given Request and Response.
+        *
+        * Existing entries are read and any that match the response are removed. This
+        * method calls write with the new list of cache entries.
+        *
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function write(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): string;
+        /**
+        * Returns content digest for $response.
+        *
+        * @generated
+        */
+        protected function generateContentDigest(\Symfony\Component\HttpFoundation\Response $response): string;
+        /**
+        * Invalidates all cache entries that match the request.
+        *
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function invalidate(\Symfony\Component\HttpFoundation\Request $request): void;
+        /**
+        * Purges data for the given URL.
+        *
+        * This method purges both the HTTP and the HTTPS version of the cache entry.
+        *
+        * @return bool true if the URL exists with either HTTP or HTTPS scheme and has been purged, false otherwise
+        * @generated
+        */
+        public function purge(string $url): bool;
+        public function getPath(string $key): string;
+        /**
+        * Generates a cache key for the given Request.
+        *
+        * This method should return a key that must only depend on a
+        * normalized version of the request URI.
+        * 
+        * If the same URI can have more than one representation, based on some
+        * headers, use a Vary header to indicate them, and each representation will
+        * be stored independently under the same cache key.
+        *
+        * @generated
+        */
+        protected function generateCacheKey(\Symfony\Component\HttpFoundation\Request $request): string;
+    }
+    /**
+    * Interface implemented by HTTP cache stores.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface StoreInterface {
+        /**
+        * Locates a cached Response for the Request provided.
+        *
+        * @generated
+        */
+        public function lookup(\Symfony\Component\HttpFoundation\Request $request): ?\Symfony\Component\HttpFoundation\Response;
+        /**
+        * Writes a cache entry to the store for the given Request and Response.
+        *
+        * Existing entries are read and any that match the response are removed. This
+        * method calls write with the new list of cache entries.
+        *
+        * @return string The key under which the response is stored
+        * @generated
+        */
+        public function write(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): string;
+        /**
+        * Invalidates all cache entries that match the request.
+        *
+        * @generated
+        */
+        public function invalidate(\Symfony\Component\HttpFoundation\Request $request): void;
+        /**
+        * Locks the cache for a given Request.
+        *
+        * @return bool|string true if the lock is acquired, the path to the current lock otherwise
+        * @generated
+        */
+        public function lock(\Symfony\Component\HttpFoundation\Request $request): bool|string;
+        /**
+        * Releases the lock for the given Request.
+        *
+        * @return bool False if the lock file does not exist or cannot be unlocked, true otherwise
+        * @generated
+        */
+        public function unlock(\Symfony\Component\HttpFoundation\Request $request): bool;
+        /**
+        * Returns whether or not a lock exists.
+        *
+        * @return bool true if lock exists, false otherwise
+        * @generated
+        */
+        public function isLocked(\Symfony\Component\HttpFoundation\Request $request): bool;
+        /**
+        * Purges data for the given URL.
+        *
+        * @return bool true if the URL exists and has been purged, false otherwise
+        * @generated
+        */
+        public function purge(string $url): bool;
+        /**
+        * Cleanups storage.
+        *
+        * @generated
+        */
+        public function cleanup(): void;
+    }
+    interface SurrogateInterface {
+        /**
+        * Returns surrogate name.
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Returns a new cache strategy instance.
+        *
+        * @generated
+        */
+        public function createCacheStrategy(): \Symfony\Component\HttpKernel\HttpCache\ResponseCacheStrategyInterface;
+        /**
+        * Checks that at least one surrogate has Surrogate capability.
+        *
+        * @generated
+        */
+        public function hasSurrogateCapability(\Symfony\Component\HttpFoundation\Request $request): bool;
+        /**
+        * Adds Surrogate-capability to the given Request.
+        *
+        * @generated
+        */
+        public function addSurrogateCapability(\Symfony\Component\HttpFoundation\Request $request): void;
+        /**
+        * Adds HTTP headers to specify that the Response needs to be parsed for Surrogate.
+        *
+        * This method only adds an Surrogate HTTP header if the Response has some Surrogate tags.
+        *
+        * @generated
+        */
+        public function addSurrogateControl(\Symfony\Component\HttpFoundation\Response $response): void;
+        /**
+        * Checks that the Response needs to be parsed for Surrogate tags.
+        *
+        * @generated
+        */
+        public function needsParsing(\Symfony\Component\HttpFoundation\Response $response): bool;
+        /**
+        * Renders a Surrogate tag.
+        *
+        * @param ?string $alt An alternate URI
+        * @param string $comment A comment to add as an esi:include tag
+        * @generated
+        */
+        public function renderIncludeTag(string $uri, ?string $alt = null, bool $ignoreErrors = true, string $comment = ''): string;
+        /**
+        * Replaces a Response Surrogate tags with the included resource content.
+        *
+        * @generated
+        */
+        public function process(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handles a Surrogate from the cache.
+        *
+        * @param string $alt An alternative URI
+        * @throws \RuntimeException
+        * @throws \Exception
+        * @generated
+        */
+        public function handle(\Symfony\Component\HttpKernel\HttpCache\HttpCache $cache, string $uri, string $alt, bool $ignoreErrors): string;
+    }
+}
+namespace Symfony\Component\HttpKernel\Log {
+    /**
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class DebugLoggerConfigurator {
+        public function __construct(callable $processor, ?bool $enable = null): void;
+        public function pushDebugLogger(\Monolog\Logger $logger): void;
+        public static function getDebugLogger(mixed $logger): ?\Symfony\Component\HttpKernel\Log\DebugLoggerInterface;
+    }
+    /**
+    * DebugLoggerInterface.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface DebugLoggerInterface {
+        /**
+        * Returns an array of logs.
+        *
+        * @return array<array>
+        * @generated
+        */
+        public function getLogs(?\Symfony\Component\HttpFoundation\Request $request = null): array<array>;
+        /**
+        * Returns the number of errors.
+        *
+        * @generated
+        */
+        public function countErrors(?\Symfony\Component\HttpFoundation\Request $request = null): int;
+        /**
+        * Removes all log records.
+        *
+        * @generated
+        */
+        public function clear(): void;
+    }
+    /**
+    * Minimalist PSR-3 logger designed to write in stderr or any other stream.
+    *
+    * @author Kévin Dunglas <dunglas@gmail.com>
+    * @generated
+    */
+    class Logger extends \Psr\Log\AbstractLogger implements \Symfony\Component\HttpKernel\Log\DebugLoggerInterface {
+        /**
+        * @param string|resource|null $output
+        * @generated
+        */
+        public function __construct(?string $minLevel = null, string|resource|null $output = null, ?callable $formatter = null, ?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null, bool $debug = false): void;
+        public function enableDebug(): void;
+        public function log(mixed $level, mixed $message, array $context = []): void;
+        public function getLogs(?\Symfony\Component\HttpFoundation\Request $request = null): array;
+        public function countErrors(?\Symfony\Component\HttpFoundation\Request $request = null): int;
+        public function clear(): void;
+    }
+}
+namespace Symfony\Component\HttpKernel\Profiler {
+    /**
+    * Storage for profiler using files.
+    *
+    * @author Alexandre Salomé <alexandre.salome@gmail.com>
+    * @generated
+    */
+    class FileProfilerStorage implements \Symfony\Component\HttpKernel\Profiler\ProfilerStorageInterface {
+        /**
+        * Constructs the file storage using a "dsn-like" path.
+        *
+        * Example : "file:/path/to/the/storage/folder"
+        *
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function __construct(string $dsn): void;
+        public function find(?string $ip, ?string $url, ?int $limit, ?string $method, ?int $start = null, ?int $end = null, ?string $statusCode = null, ?\Closure $filter = null): array;
+        public function purge(): void;
+        public function read(string $token): ?\Symfony\Component\HttpKernel\Profiler\Profile;
+        /**
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function write(\Symfony\Component\HttpKernel\Profiler\Profile $profile): bool;
+        /**
+        * Gets filename to store data, associated to the token.
+        *
+        * @throws \InvalidArgumentException when the token cannot be used as a file name
+        * @generated
+        */
+        protected function getFilename(string $token): string;
+        /**
+        * Gets the index filename.
+        *
+        * @generated
+        */
+        protected function getIndexFilename(): string;
+        /**
+        * Reads a line in the file, backward.
+        *
+        * This function automatically skips the empty lines and do not include the line return in result value.
+        *
+        * @param resource $file The file resource, with the pointer placed at the end of the line to read
+        * @generated
+        */
+        protected function readLineFromFile(resource $file): mixed;
+        protected function createProfileFromData(string $token, array $data, ?\Symfony\Component\HttpKernel\Profiler\Profile $parent = null): \Symfony\Component\HttpKernel\Profiler\Profile;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final since Symfony 7.4
+    * @generated
+    */
+    class Profile {
+        public function __construct(string $token): void;
+        public function setToken(string $token): void;
+        /**
+        * Gets the token.
+        *
+        * @generated
+        */
+        public function getToken(): string;
+        /**
+        * Sets the parent token.
+        *
+        * @generated
+        */
+        public function setParent(self $parent): void;
+        /**
+        * Returns the parent profile.
+        *
+        * @generated
+        */
+        public function getParent(): ?self;
+        /**
+        * Returns the parent token.
+        *
+        * @generated
+        */
+        public function getParentToken(): ?string;
+        /**
+        * Returns the IP.
+        *
+        * @generated
+        */
+        public function getIp(): ?string;
+        public function setIp(?string $ip): void;
+        /**
+        * Returns the request method.
+        *
+        * @generated
+        */
+        public function getMethod(): ?string;
+        public function setMethod(string $method): void;
+        /**
+        * Returns the URL.
+        *
+        * @generated
+        */
+        public function getUrl(): ?string;
+        public function setUrl(?string $url): void;
+        public function getTime(): int;
+        public function setTime(int $time): void;
+        public function setStatusCode(int $statusCode): void;
+        public function getStatusCode(): ?int;
+        /**
+        * Finds children profilers.
+        *
+        * @return array<int, self>
+        * @generated
+        */
+        public function getChildren(): array<int, self>;
+        /**
+        * Sets children profiler.
+        *
+        * @param array<int, Profile> $children
+        * @generated
+        */
+        public function setChildren(array<int, \Symfony\Component\HttpKernel\Profiler\Profile> $children): void;
+        /**
+        * Adds the child token.
+        *
+        * @generated
+        */
+        public function addChild(self $child): void;
+        public function getChildByToken(string $token): ?self;
+        /**
+        * Gets a Collector by name.
+        *
+        * @throws \InvalidArgumentException if the collector does not exist
+        * @generated
+        */
+        public function getCollector(string $name): \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface;
+        /**
+        * Gets the Collectors associated with this profile.
+        *
+        * @return array<int, \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface>
+        * @generated
+        */
+        public function getCollectors(): array<int, \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface>;
+        /**
+        * Sets the Collectors associated with this profile.
+        *
+        * @param array<int, \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface> $collectors
+        * @generated
+        */
+        public function setCollectors(array<int, \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface> $collectors): void;
+        /**
+        * Adds a Collector.
+        *
+        * @generated
+        */
+        public function addCollector(\Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface $collector): void;
+        public function hasCollector(string $name): bool;
+    }
+    /**
+    * Profiler.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Profiler implements \Symfony\Contracts\Service\ResetInterface {
+        public function __construct(\Symfony\Component\HttpKernel\Profiler\ProfilerStorageInterface $storage, ?\Psr\Log\LoggerInterface $logger = null, bool $enabled = true): void;
+        /**
+        * Disables the profiler.
+        *
+        * @generated
+        */
+        public function disable(): void;
+        /**
+        * Enables the profiler.
+        *
+        * @generated
+        */
+        public function enable(): void;
+        public function isEnabled(): bool;
+        /**
+        * Loads the Profile for the given Response.
+        *
+        * @generated
+        */
+        public function loadProfileFromResponse(\Symfony\Component\HttpFoundation\Response $response): ?\Symfony\Component\HttpKernel\Profiler\Profile;
+        /**
+        * Loads the Profile for the given token.
+        *
+        * @generated
+        */
+        public function loadProfile(string $token): ?\Symfony\Component\HttpKernel\Profiler\Profile;
+        /**
+        * Saves a Profile.
+        *
+        * @generated
+        */
+        public function saveProfile(\Symfony\Component\HttpKernel\Profiler\Profile $profile): bool;
+        /**
+        * Purges all data from the storage.
+        *
+        * @generated
+        */
+        public function purge(): void;
+        /**
+        * Finds profiler tokens for the given criteria.
+        *
+        * @param ?int $limit The maximum number of tokens to return
+        * @param ?string $start The start date to search from
+        * @param ?string $end The end date to search to
+        * @param ?\Closure $filter A filter to apply on the list of tokens
+        * @see https://php.net/datetime.formats for the supported date/time formats
+        * @generated
+        */
+        public function find(?string $ip, ?string $url, ?int $limit, ?string $method, ?string $start, ?string $end, ?string $statusCode = null, ?\Closure $filter = null): array;
+        /**
+        * Collects data for the given Response.
+        *
+        * @generated
+        */
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): ?\Symfony\Component\HttpKernel\Profiler\Profile;
+        public function reset(): void;
+        /**
+        * Gets the Collectors associated with this profiler.
+        *
+        * @generated
+        */
+        public function all(): array;
+        /**
+        * Sets the Collectors associated with this profiler.
+        *
+        * @param array<int, \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface> $collectors An array of collectors
+        * @generated
+        */
+        public function set(array<int, \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface> $collectors = []): void;
+        /**
+        * Adds a Collector.
+        *
+        * @generated
+        */
+        public function add(\Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface $collector): void;
+        /**
+        * Returns true if a Collector for the given name exists.
+        *
+        * @param string $name A collector name
+        * @generated
+        */
+        public function has(string $name): bool;
+        /**
+        * Gets a Collector by name.
+        *
+        * @param string $name A collector name
+        * @throws \InvalidArgumentException if the collector does not exist
+        * @generated
+        */
+        public function get(string $name): \Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface;
+    }
+    class ProfilerStateChecker {
+        public function __construct(\Psr\Container\ContainerInterface $container, bool $defaultEnabled): void;
+        public function isProfilerEnabled(): bool;
+        public function isProfilerDisabled(): bool;
+    }
+}

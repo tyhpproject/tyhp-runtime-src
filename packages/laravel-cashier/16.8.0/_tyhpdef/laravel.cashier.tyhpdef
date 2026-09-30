@@ -1,0 +1,4984 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Laravel\Cashier {
+    trait Billable {
+        use \Laravel\Cashier\Concerns\HandlesTaxes, \Laravel\Cashier\Concerns\ManagesCustomer, \Laravel\Cashier\Concerns\ManagesInvoices, \Laravel\Cashier\Concerns\ManagesPaymentMethods, \Laravel\Cashier\Concerns\ManagesSubscriptions, \Laravel\Cashier\Concerns\ManagesUsageBilling, \Laravel\Cashier\Concerns\PerformsCharges;
+    }
+    class Cashier {
+        /**
+        * The Cashier library version.
+        *
+        * @var string
+        * @generated
+        */
+        public const string VERSION ?? '16.8.0';
+        /**
+        * The Stripe API version.
+        *
+        * @var string
+        * @generated
+        */
+        public const string STRIPE_VERSION ?? \Stripe\Util\ApiVersion::CURRENT;
+        /**
+        * The base URL for the Stripe API.
+        *
+        * @var string
+        * @generated
+        */
+        public static string $apiBaseUrl ?? \Stripe\BaseStripeClient::DEFAULT_API_BASE;
+        /**
+        * The custom currency formatter.
+        *
+        * @var callable
+        * @generated
+        */
+        protected static callable $formatCurrencyUsing;
+        /**
+        * Indicates if Cashier routes will be registered.
+        *
+        * @var bool
+        * @generated
+        */
+        public static bool $registersRoutes ?? true;
+        /**
+        * Indicates if Cashier will mark past due subscriptions as inactive.
+        *
+        * @var bool
+        * @generated
+        */
+        public static bool $deactivatePastDue ?? true;
+        /**
+        * Indicates if Cashier will mark incomplete subscriptions as inactive.
+        *
+        * @var bool
+        * @generated
+        */
+        public static bool $deactivateIncomplete ?? true;
+        /**
+        * Indicates if Cashier will automatically calculate taxes using Stripe Tax.
+        *
+        * @var bool
+        * @generated
+        */
+        public static bool $calculatesTaxes ?? false;
+        /**
+        * The default customer model class name.
+        *
+        * @var string
+        * @generated
+        */
+        public static string $customerModel ?? 'App\\Models\\User';
+        /**
+        * The subscription model class name.
+        *
+        * @var string
+        * @generated
+        */
+        public static string $subscriptionModel ?? \Laravel\Cashier\Subscription::class;
+        /**
+        * The subscription item model class name.
+        *
+        * @var string
+        * @generated
+        */
+        public static string $subscriptionItemModel ?? \Laravel\Cashier\SubscriptionItem::class;
+        /**
+        * Get the customer instance by its Stripe ID.
+        *
+        * @param \Stripe\Customer|string|null $stripeId
+        * @return \Laravel\Cashier\Billable|null
+        * @generated
+        */
+        public static function findBillable(\Stripe\Customer|string|null $stripeId): \Laravel\Cashier\Billable|null;
+        /**
+        * Get the Stripe SDK client.
+        *
+        * @param array $options
+        * @return \Stripe\StripeClient
+        * @generated
+        */
+        public static function stripe(array $options = []): \Stripe\StripeClient;
+        /**
+        * Set the custom currency formatter.
+        *
+        * @param callable $callback
+        * @return void
+        * @generated
+        */
+        public static function formatCurrencyUsing(callable $callback): void;
+        /**
+        * Format the given amount into a displayable currency.
+        *
+        * @param int $amount
+        * @param ?string $currency
+        * @param ?string $locale
+        * @param array $options
+        * @return string
+        * @generated
+        */
+        public static function formatAmount(int $amount, ?string $currency = null, ?string $locale = null, array $options = []): string;
+        /**
+        * Configure Cashier to not register its routes.
+        *
+        * @return static
+        * @generated
+        */
+        public static function ignoreRoutes(): static;
+        /**
+        * Configure Cashier to maintain past due subscriptions as active.
+        *
+        * @return static
+        * @generated
+        */
+        public static function keepPastDueSubscriptionsActive(): static;
+        /**
+        * Configure Cashier to maintain incomplete subscriptions as active.
+        *
+        * @return static
+        * @generated
+        */
+        public static function keepIncompleteSubscriptionsActive(): static;
+        /**
+        * Configure Cashier to automatically calculate taxes using Stripe Tax.
+        *
+        * @return static
+        * @generated
+        */
+        public static function calculateTaxes(): static;
+        /**
+        * Set the customer model class name.
+        *
+        * @param string $customerModel
+        * @return void
+        * @generated
+        */
+        public static function useCustomerModel(string $customerModel): void;
+        /**
+        * Set the subscription model class name.
+        *
+        * @param string $subscriptionModel
+        * @return void
+        * @generated
+        */
+        public static function useSubscriptionModel(string $subscriptionModel): void;
+        /**
+        * Set the subscription item model class name.
+        *
+        * @param string $subscriptionItemModel
+        * @return void
+        * @generated
+        */
+        public static function useSubscriptionItemModel(string $subscriptionItemModel): void;
+    }
+    class CashierServiceProvider extends \Illuminate\Support\ServiceProvider {
+        /**
+        * Bootstrap any package services.
+        *
+        * @return void
+        * @generated
+        */
+        public function boot(): void;
+        /**
+        * Register any application services.
+        *
+        * @return void
+        * @generated
+        */
+        public function register(): void;
+        /**
+        * Setup the configuration for Cashier.
+        *
+        * @return void
+        * @generated
+        */
+        protected function configure(): void;
+        /**
+        * Bind the Stripe logger interface to the Cashier logger.
+        *
+        * @return void
+        * @generated
+        */
+        protected function bindLogger(): void;
+        /**
+        * Bind the default invoice renderer.
+        *
+        * @return void
+        * @generated
+        */
+        protected function bindInvoiceRenderer(): void;
+        /**
+        * Register the Stripe logger.
+        *
+        * @return void
+        * @generated
+        */
+        protected function registerLogger(): void;
+        /**
+        * Register the package routes.
+        *
+        * @return void
+        * @generated
+        */
+        protected function registerRoutes(): void;
+        /**
+        * Register the package resources.
+        *
+        * @return void
+        * @generated
+        */
+        protected function registerResources(): void;
+        /**
+        * Register the package's publishable resources.
+        *
+        * @return void
+        * @generated
+        */
+        protected function registerPublishing(): void;
+        /**
+        * Register the package's commands.
+        *
+        * @return void
+        * @generated
+        */
+        protected function registerCommands(): void;
+    }
+    class Checkout implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable, \Illuminate\Contracts\Support\Responsable {
+        protected \Illuminate\Database\Eloquent\Model|null $owner;
+        protected \Stripe\Checkout\Session $session;
+        /**
+        * Create a new checkout session instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model|null $owner
+        * @param \Stripe\Checkout\Session $session
+        * @return void
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model|null $owner, \Stripe\Checkout\Session $session): void;
+        /**
+        * Begin a new guest checkout session.
+        *
+        * @return \Laravel\Cashier\CheckoutBuilder
+        * @generated
+        */
+        public static function guest(): \Laravel\Cashier\CheckoutBuilder;
+        /**
+        * Begin a new customer checkout session.
+        *
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @param object|null $parentInstance
+        * @return \Laravel\Cashier\CheckoutBuilder
+        * @generated
+        */
+        public static function customer(\Illuminate\Database\Eloquent\Model $owner, object|null $parentInstance = null): \Laravel\Cashier\CheckoutBuilder;
+        /**
+        * Begin a new checkout session.
+        *
+        * @param \Illuminate\Database\Eloquent\Model|null $owner
+        * @param array $sessionOptions
+        * @param array $customerOptions
+        * @return \Laravel\Cashier\Checkout
+        * @generated
+        */
+        public static function create(\Illuminate\Database\Eloquent\Model|null $owner, array $sessionOptions = [], array $customerOptions = []): \Laravel\Cashier\Checkout;
+        /**
+        * Redirect to the checkout session.
+        *
+        * @return \Illuminate\Http\RedirectResponse
+        * @generated
+        */
+        public function redirect(): \Illuminate\Http\RedirectResponse;
+        /**
+        * Create an HTTP response that represents the object.
+        *
+        * @param \Illuminate\Http\Request $request
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        public function toResponse(\Illuminate\Http\Request $request): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Get the Checkout Session as a Stripe Checkout Session object.
+        *
+        * @return \Stripe\Checkout\Session
+        * @generated
+        */
+        public function asStripeCheckoutSession(): \Stripe\Checkout\Session;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class CheckoutBuilder {
+        use \Laravel\Cashier\Concerns\AllowsCoupons, \Laravel\Cashier\Concerns\HandlesTaxes;
+        protected \Illuminate\Database\Eloquent\Model|null $owner ?? null;
+        /**
+        * Create a new checkout builder instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model|null $owner
+        * @param object|null $parentInstance
+        * @return void
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model|null $owner = null, object|null $parentInstance = null): void;
+        /**
+        * Create a new checkout builder instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model|null $owner
+        * @param object|null $instance
+        * @return \Laravel\Cashier\CheckoutBuilder
+        * @generated
+        */
+        public static function make(\Illuminate\Database\Eloquent\Model|null $owner = null, object|null $instance = null): \Laravel\Cashier\CheckoutBuilder;
+        /**
+        * Create a new checkout session.
+        *
+        * @param string|array $items
+        * @param array $sessionOptions
+        * @param array $customerOptions
+        * @return \Laravel\Cashier\Checkout
+        * @generated
+        */
+        public function create(string|array $items, array $sessionOptions = [], array $customerOptions = []): \Laravel\Cashier\Checkout;
+    }
+    class Coupon implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        protected \Stripe\Coupon $coupon;
+        /**
+        * Create a new Coupon instance.
+        *
+        * @param \Stripe\Coupon $coupon
+        * @return void
+        * @generated
+        */
+        public function __construct(\Stripe\Coupon $coupon): void;
+        /**
+        * Get the readable name for the Coupon.
+        *
+        * @return string
+        * @generated
+        */
+        public function name(): string;
+        /**
+        * Determine if the coupon is a percentage.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isPercentage(): bool;
+        /**
+        * Get the discount percentage for the invoice.
+        *
+        * @return ?float
+        * @generated
+        */
+        public function percentOff(): ?float;
+        /**
+        * Get the amount off for the coupon.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function amountOff(): ?string;
+        /**
+        * Get the raw amount off for the coupon.
+        *
+        * @return ?int
+        * @generated
+        */
+        public function rawAmountOff(): ?int;
+        /**
+        * Determine if this is an amount_off coupon with forever duration.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isForeverAmountOff(): bool;
+        /**
+        * Get the duration of the coupon.
+        *
+        * @return string
+        * @generated
+        */
+        public function duration(): string;
+        /**
+        * Format the given amount into a displayable currency.
+        *
+        * @param int $amount
+        * @return string
+        * @generated
+        */
+        protected function formatAmount(int $amount): string;
+        /**
+        * Get the Stripe Coupon instance.
+        *
+        * @return \Stripe\Coupon
+        * @generated
+        */
+        public function asStripeCoupon(): \Stripe\Coupon;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class CustomerBalanceTransaction {
+        protected \Illuminate\Database\Eloquent\Model $owner;
+        protected \Stripe\CustomerBalanceTransaction $transaction;
+        /**
+        * Create a new CustomerBalanceTransaction instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @param \Stripe\CustomerBalanceTransaction $transaction
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCustomerBalanceTransaction
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model $owner, \Stripe\CustomerBalanceTransaction $transaction): void;
+        /**
+        * Get the total transaction amount.
+        *
+        * @return string
+        * @generated
+        */
+        public function amount(): string;
+        /**
+        * Get the raw total transaction amount.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawAmount(): int;
+        /**
+        * Get the ending balance.
+        *
+        * @return string
+        * @generated
+        */
+        public function endingBalance(): string;
+        /**
+        * Get the raw ending balance.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawEndingBalance(): int;
+        /**
+        * Get the balance type of the transaction.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function balanceType(): ?string;
+        /**
+        * Get the checkout session ID for this transaction.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function checkoutSession(): ?string;
+        /**
+        * Determine if this transaction is a checkout session subscription payment.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isCheckoutSessionSubscriptionPayment(): bool;
+        /**
+        * Determine if this transaction is a canceled checkout session subscription payment.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isCheckoutSessionSubscriptionPaymentCanceled(): bool;
+        /**
+        * Format the given amount into a displayable currency.
+        *
+        * @param int $amount
+        * @return string
+        * @generated
+        */
+        protected function formatAmount(int $amount): string;
+        /**
+        * Return the related invoice for this transaction.
+        *
+        * @return \Laravel\Cashier\Invoice
+        * @generated
+        */
+        public function invoice(): \Laravel\Cashier\Invoice;
+        /**
+        * Get the Stripe CustomerBalanceTransaction instance.
+        *
+        * @return \Stripe\CustomerBalanceTransaction
+        * @generated
+        */
+        public function asStripeCustomerBalanceTransaction(): \Stripe\CustomerBalanceTransaction;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class Discount implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        use \Laravel\Cashier\Concerns\InteractsWithStripe;
+        protected \Stripe\Discount $discount;
+        /**
+        * Create a new Discount instance.
+        *
+        * @param \Stripe\Discount $discount
+        * @return void
+        * @generated
+        */
+        public function __construct(\Stripe\Discount $discount): void;
+        /**
+        * Get the coupon applied to the discount.
+        *
+        * @return \Laravel\Cashier\Coupon
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function coupon(): \Laravel\Cashier\Coupon;
+        /**
+        * Get the promotion code applied to create this discount.
+        *
+        * @return ?\Laravel\Cashier\PromotionCode
+        * @generated
+        */
+        public function promotionCode(): ?\Laravel\Cashier\PromotionCode;
+        /**
+        * Get the date that the coupon was applied.
+        *
+        * @return \Carbon\CarbonInterface
+        * @generated
+        */
+        public function start(): \Carbon\CarbonInterface;
+        /**
+        * Get the date that this discount will end.
+        *
+        * @return ?\Carbon\CarbonInterface
+        * @generated
+        */
+        public function end(): ?\Carbon\CarbonInterface;
+        /**
+        * Get the Stripe Discount instance.
+        *
+        * @return \Stripe\Discount
+        * @generated
+        */
+        public function asStripeDiscount(): \Stripe\Discount;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class Invoice implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        /**
+        * The Stripe invoice line items.
+        *
+        * @var array<int, \Laravel\Cashier\InvoiceLineItem>
+        * @generated
+        */
+        protected array<int, \Laravel\Cashier\InvoiceLineItem> $items ?? [];
+        /**
+        * The taxes applied to the invoice.
+        *
+        * @var array<int, \Laravel\Cashier\Tax>|null
+        * @generated
+        */
+        protected array<int, \Laravel\Cashier\Tax>|null $taxes ?? null;
+        /**
+        * The payments associated with the invoice.
+        *
+        * @var array<int, \Laravel\Cashier\InvoicePayment>
+        * @generated
+        */
+        protected array<int, \Laravel\Cashier\InvoicePayment> $payments ?? [];
+        /**
+        * The discounts applied to the invoice.
+        *
+        * @var array<int, \Laravel\Cashier\Discount>|null
+        * @generated
+        */
+        protected array<int, \Laravel\Cashier\Discount>|null $discounts ?? null;
+        /**
+        * Indicate if the Stripe Object was refreshed with extra data.
+        *
+        * @var bool
+        * @generated
+        */
+        protected bool $refreshed ?? false;
+        protected \Illuminate\Database\Eloquent\Model $owner;
+        protected \Stripe\Invoice $invoice;
+        protected array $refreshData ?? [];
+        /**
+        * Create a new invoice instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @param \Stripe\Invoice $invoice
+        * @param array $refreshData
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidInvoice
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model $owner, \Stripe\Invoice $invoice, array $refreshData = []): void;
+        /**
+        * Get a Carbon instance for the invoicing date.
+        *
+        * @param \DateTimeZone|string|int|null $timezone
+        * @return \Carbon\CarbonInterface
+        * @generated
+        */
+        public function date(\DateTimeZone|string|int|null $timezone = null): \Carbon\CarbonInterface;
+        /**
+        * Get a Carbon instance for the invoice's due date.
+        *
+        * @param \DateTimeZone|string|int|null $timezone
+        * @return ?\Carbon\CarbonInterface
+        * @generated
+        */
+        public function dueDate(\DateTimeZone|string|int|null $timezone = null): ?\Carbon\CarbonInterface;
+        /**
+        * Get the total amount minus the starting balance that was paid (or will be paid).
+        *
+        * @return string
+        * @generated
+        */
+        public function total(): string;
+        /**
+        * Get the raw total amount minus the starting balance that was paid (or will be paid).
+        *
+        * @return int
+        * @generated
+        */
+        public function rawTotal(): int;
+        /**
+        * Get the total amount that was paid (or will be paid).
+        *
+        * @return string
+        * @generated
+        */
+        public function realTotal(): string;
+        /**
+        * Get the raw total amount that was paid (or will be paid).
+        *
+        * @return int
+        * @generated
+        */
+        public function rawRealTotal(): int;
+        /**
+        * Get the total of the invoice (before discounts).
+        *
+        * @return string
+        * @generated
+        */
+        public function subtotal(): string;
+        /**
+        * Get the amount due for the invoice.
+        *
+        * @return string
+        * @generated
+        */
+        public function amountDue(): string;
+        /**
+        * Get the raw amount due for the invoice.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawAmountDue(): int;
+        /**
+        * Determine if the account had a starting balance.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasStartingBalance(): bool;
+        /**
+        * Get the starting balance for the invoice.
+        *
+        * @return string
+        * @generated
+        */
+        public function startingBalance(): string;
+        /**
+        * Get the raw starting balance for the invoice.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawStartingBalance(): int;
+        /**
+        * Determine if the account had an ending balance.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasEndingBalance(): bool;
+        /**
+        * Get the ending balance for the invoice.
+        *
+        * @return string
+        * @generated
+        */
+        public function endingBalance(): string;
+        /**
+        * Get the raw ending balance for the invoice.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawEndingBalance(): int;
+        /**
+        * Determine if the invoice has balance applied.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasAppliedBalance(): bool;
+        /**
+        * Get the applied balance for the invoice.
+        *
+        * @return string
+        * @generated
+        */
+        public function appliedBalance(): string;
+        /**
+        * Get the raw applied balance for the invoice.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawAppliedBalance(): int;
+        /**
+        * Determine if the invoice has one or more discounts applied.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasDiscount(): bool;
+        /**
+        * Get all of the discount objects from the Stripe invoice.
+        *
+        * @return array<int, \Laravel\Cashier\Discount>
+        * @generated
+        */
+        public function discounts(): array<int, \Laravel\Cashier\Discount>;
+        /**
+        * Calculate the amount for a given discount.
+        *
+        * @param \Laravel\Cashier\Discount $discount
+        * @return ?string
+        * @generated
+        */
+        public function discountFor(\Laravel\Cashier\Discount $discount): ?string;
+        /**
+        * Calculate the raw amount for a given discount.
+        *
+        * @param \Laravel\Cashier\Discount $discount
+        * @return ?int
+        * @generated
+        */
+        public function rawDiscountFor(\Laravel\Cashier\Discount $discount): ?int;
+        /**
+        * Get the total discount amount.
+        *
+        * @return string
+        * @generated
+        */
+        public function discount(): string;
+        /**
+        * Get the raw total discount amount.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawDiscount(): int;
+        /**
+        * Get the total tax amount.
+        *
+        * @return string
+        * @generated
+        */
+        public function tax(): string;
+        /**
+        * Determine if the invoice has tax applied.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasTax(): bool;
+        /**
+        * Get the taxes applied to the invoice.
+        *
+        * @return array<int, \Laravel\Cashier\Tax>
+        * @generated
+        */
+        public function taxes(): array<int, \Laravel\Cashier\Tax>;
+        /**
+        * Get the tax rate from tax rate details, fetching from Stripe if needed.
+        *
+        * @param object $taxRateDetails
+        * @return ?\Stripe\TaxRate
+        * @generated
+        */
+        protected function getTaxRate(object $taxRateDetails): ?\Stripe\TaxRate;
+        /**
+        * Determine if the customer is not exempted from taxes.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isNotTaxExempt(): bool;
+        /**
+        * Determine if the customer is exempted from taxes.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isTaxExempt(): bool;
+        /**
+        * Determine if reverse charge applies to the customer.
+        *
+        * @return bool
+        * @generated
+        */
+        public function reverseChargeApplies(): bool;
+        /**
+        * Determine if the invoice will charge the customer automatically.
+        *
+        * @return bool
+        * @generated
+        */
+        public function chargesAutomatically(): bool;
+        /**
+        * Determine if the invoice will send an invoice to the customer.
+        *
+        * @return bool
+        * @generated
+        */
+        public function sendsInvoice(): bool;
+        /**
+        * Get all of the "invoice item" line items.
+        *
+        * @return array<int, \Laravel\Cashier\InvoiceLineItem>
+        * @generated
+        */
+        public function invoiceItems(): array<int, \Laravel\Cashier\InvoiceLineItem>;
+        /**
+        * Get all of the "subscription" line items.
+        *
+        * @return array<int, \Laravel\Cashier\InvoiceLineItem>
+        * @generated
+        */
+        public function subscriptions(): array<int, \Laravel\Cashier\InvoiceLineItem>;
+        /**
+        * Get all of the invoice line items.
+        *
+        * @param array $params
+        * @return array<int, \Laravel\Cashier\InvoiceLineItem>
+        * @generated
+        */
+        public function invoiceLineItems(array $params = []): array<int, \Laravel\Cashier\InvoiceLineItem>;
+        /**
+        * Add an invoice item to this invoice.
+        *
+        * @param string $description
+        * @param int $amount
+        * @param array $options
+        * @return \Stripe\InvoiceItem
+        * @generated
+        */
+        public function tab(string $description, int $amount, array $options = []): \Stripe\InvoiceItem;
+        /**
+        * Add an invoice item for a specific Price ID to this invoice.
+        *
+        * @param \Stripe\Price|string $price
+        * @param int $quantity
+        * @param array $options
+        * @return \Stripe\InvoiceItem
+        * @generated
+        */
+        public function tabPrice(\Stripe\Price|string $price, int $quantity = 1, array $options = []): \Stripe\InvoiceItem;
+        /**
+        * Refresh the invoice instance from Stripe.
+        *
+        * @param array<int, string> $expand
+        * @return static
+        * @generated
+        */
+        public function refresh(array<int, string> $expand = []): static;
+        /**
+        * Refresh the invoice with expanded objects.
+        *
+        * @return void
+        * @generated
+        */
+        protected function refreshWithExpandedData(): void;
+        /**
+        * Format the given amount into a displayable currency.
+        *
+        * @param int $amount
+        * @return string
+        * @generated
+        */
+        protected function formatAmount(int $amount): string;
+        /**
+        * Return the Tax Ids of the account.
+        *
+        * @return array<int, \Stripe\TaxId>
+        * @generated
+        */
+        public function accountTaxIds(): array<int, \Stripe\TaxId>;
+        /**
+        * Return the Tax Ids of the customer.
+        *
+        * @return array
+        * @generated
+        */
+        public function customerTaxIds(): array;
+        /**
+        * Finalize the Stripe invoice.
+        *
+        * @param array $options
+        * @return static
+        * @generated
+        */
+        public function finalize(array $options = []): static;
+        /**
+        * Pay the Stripe invoice.
+        *
+        * @param array $options
+        * @return static
+        * @generated
+        */
+        public function pay(array $options = []): static;
+        /**
+        * Send the Stripe invoice to the customer.
+        *
+        * @param array $options
+        * @return static
+        * @generated
+        */
+        public function send(array $options = []): static;
+        /**
+        * Void the Stripe invoice.
+        *
+        * @param array $options
+        * @return static
+        * @generated
+        */
+        public function void(array $options = []): static;
+        /**
+        * Mark an invoice as uncollectible.
+        *
+        * @param array $options
+        * @return static
+        * @generated
+        */
+        public function markUncollectible(array $options = []): static;
+        /**
+        * Delete the Stripe invoice.
+        *
+        * @param array $options
+        * @return static
+        * @generated
+        */
+        public function delete(array $options = []): static;
+        /**
+        * Determine if the invoice is open.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isOpen(): bool;
+        /**
+        * Determine if the invoice is a draft.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isDraft(): bool;
+        /**
+        * Determine if the invoice is paid.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isPaid(): bool;
+        /**
+        * Get the invoice payments.
+        *
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function payments(): \Illuminate\Support\Collection;
+        /**
+        * Get the amount paid on the invoice.
+        *
+        * @return string
+        * @generated
+        */
+        public function amountPaid(): string;
+        /**
+        * Get the raw amount paid on the invoice.
+        *
+        * @return int
+        * @see https://docs.stripe.com/api/invoices/object#invoice_object-amount_paid
+        * @generated
+        */
+        public function rawAmountPaid(): int;
+        /**
+        * Get the confirmation secret for Payment Element integrations.
+        *
+        * @return ?string
+        * @see https://docs.stripe.com/api/invoices/object#invoice_object-confirmation_secret
+        * @generated
+        */
+        public function confirmationSecret(): ?string;
+        /**
+        * Get the subscription ID associated with this invoice.
+        *
+        * @return ?string
+        * @see https://docs.stripe.com/api/invoices/object#invoice_object-parent-subscription_details-subscription
+        * @generated
+        */
+        public function subscriptionId(): ?string;
+        /**
+        * Get the quote ID associated with this invoice.
+        *
+        * @return ?string
+        * @see https://stripe.com/docs/api/invoices/object#invoice_object-parent
+        * @generated
+        */
+        public function quoteId(): ?string;
+        /**
+        * Get the subscription details for this invoice.
+        *
+        * @return object|null
+        * @see https://docs.stripe.com/api/invoices/object#invoice_object-parent-subscription_details
+        * @generated
+        */
+        public function subscriptionDetails(): object|null;
+        /**
+        * Get the subscription proration date for this invoice.
+        *
+        * @return ?int
+        * @see https://docs.stripe.com/api/invoices/object#invoice_object-parent-subscription_details-subscription_proration_date
+        * @generated
+        */
+        public function subscriptionProrationDate(): ?int;
+        /**
+        * Apply a coupon to this invoice.
+        *
+        * @param string $couponId
+        * @return static
+        * @see https://docs.stripe.com/api/invoices/update#update_invoice-discounts
+        * @generated
+        */
+        public function applyCoupon(string $couponId, array $options = []): static;
+        /**
+        * Apply a discount to this invoice.
+        *
+        * @param array<string, mixed> $discounts
+        * @return static
+        * @see https://docs.stripe.com/api/invoices/update#update_invoice-discounts
+        * @generated
+        */
+        public function applyDiscount(array<string, mixed> $discounts): static;
+        /**
+        * Get the parent information for this invoice.
+        *
+        * @return object|null
+        * @see https://docs.stripe.com/api/invoices/object#invoice_object-parent
+        * @generated
+        */
+        public function parent(): object|null;
+        /**
+        * Determine if the invoice is uncollectible.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isUncollectible(): bool;
+        /**
+        * Determine if the invoice is void.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isVoid(): bool;
+        /**
+        * Get the View instance for the invoice.
+        *
+        * @param array $data
+        * @return \Illuminate\Contracts\View\View
+        * @generated
+        */
+        public function view(array $data = []): \Illuminate\Contracts\View\View;
+        /**
+        * Capture the invoice as a PDF and return the raw bytes.
+        *
+        * @param array $data
+        * @return string
+        * @generated
+        */
+        public function pdf(array $data = []): string;
+        /**
+        * Create an invoice download response.
+        *
+        * @param array $data
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        public function download(array $data = []): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Create an invoice download response with a specific filename.
+        *
+        * @param string $filename
+        * @param array $data
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        public function downloadAs(string $filename, array $data = []): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Get the Stripe model instance.
+        *
+        * @return \Illuminate\Database\Eloquent\Model
+        * @generated
+        */
+        public function owner(): \Illuminate\Database\Eloquent\Model;
+        /**
+        * Get the Stripe invoice instance.
+        *
+        * @return \Stripe\Invoice
+        * @generated
+        */
+        public function asStripeInvoice(): \Stripe\Invoice;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class InvoiceLineItem implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        protected \Laravel\Cashier\Invoice $invoice;
+        protected \Stripe\InvoiceLineItem $item;
+        /**
+        * Create a new invoice line item instance.
+        *
+        * @param \Laravel\Cashier\Invoice $invoice
+        * @param \Stripe\InvoiceLineItem $item
+        * @return void
+        * @generated
+        */
+        public function __construct(\Laravel\Cashier\Invoice $invoice, \Stripe\InvoiceLineItem $item): void;
+        /**
+        * Get the total for the invoice line item.
+        *
+        * @return string
+        * @generated
+        */
+        public function total(): string;
+        /**
+        * Get the unit amount excluding tax for the invoice line item.
+        *
+        * @return string
+        * @generated
+        */
+        public function unitAmountExcludingTax(): string;
+        /**
+        * Get the unit amount from the pricing structure.
+        *
+        * @return ?int
+        * @generated
+        */
+        public function unitAmount(): ?int;
+        /**
+        * Get the formatted unit amount.
+        *
+        * @return string
+        * @generated
+        */
+        public function formattedUnitAmount(): string;
+        /**
+        * Determine if the line item has both inclusive and exclusive tax.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasBothInclusiveAndExclusiveTax(): bool;
+        /**
+        * Get the total percentage of the default inclusive tax for the invoice line item.
+        *
+        * @return float|int|null
+        * @generated
+        */
+        public function inclusiveTaxPercentage(): float|int|null;
+        /**
+        * Get the total percentage of the default exclusive tax for the invoice line item.
+        *
+        * @return float|int
+        * @generated
+        */
+        public function exclusiveTaxPercentage(): float|int;
+        /**
+        * Calculate the total tax percentage for either the inclusive or exclusive tax by tax rate.
+        *
+        * @param bool $inclusive
+        * @return float|int
+        * @generated
+        */
+        protected function calculateTaxPercentageByTaxRate(bool $inclusive): float|int;
+        /**
+        * Calculate the total tax percentage for either the inclusive or exclusive tax by tax amount.
+        *
+        * @param bool $inclusive
+        * @return float|int
+        * @generated
+        */
+        protected function calculateTaxPercentageByTaxAmount(bool $inclusive): float|int;
+        /**
+        * Determine if the invoice line item has tax rates.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasTaxRates(): bool;
+        /**
+        * Get all taxes applied to this line item.
+        *
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function taxes(): \Illuminate\Support\Collection;
+        /**
+        * Get tax rate details from the taxes array.
+        *
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function taxRateDetails(): \Illuminate\Support\Collection;
+        /**
+        * Get the tax rate from tax rate details, fetching from Stripe if needed.
+        *
+        * @param object $taxRateDetails
+        * @return \Stripe\TaxRate|null
+        * @generated
+        */
+        protected function getTaxRate(object $taxRateDetails): \Stripe\TaxRate|null;
+        /**
+        * Get the total tax amount for this line item.
+        *
+        * @return int
+        * @generated
+        */
+        public function totalTaxAmount(): int;
+        /**
+        * Get the tax behavior from the pricing structure.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function taxBehavior(): ?string;
+        /**
+        * Get a human readable date for the start date.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function startDate(): ?string;
+        /**
+        * Get a human readable date for the end date.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function endDate(): ?string;
+        /**
+        * Get a Carbon instance for the start date.
+        *
+        * @return ?\Carbon\CarbonInterface
+        * @generated
+        */
+        public function startDateAsCarbon(): ?\Carbon\CarbonInterface;
+        /**
+        * Get a Carbon instance for the end date.
+        *
+        * @return ?\Carbon\CarbonInterface
+        * @generated
+        */
+        public function endDateAsCarbon(): ?\Carbon\CarbonInterface;
+        /**
+        * Determine if the invoice line item has a defined period.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasPeriod(): bool;
+        /**
+        * Determine if the invoice line item has a period with the same start and end date.
+        *
+        * @return bool
+        * @generated
+        */
+        public function periodStartAndEndAreEqual(): bool;
+        /**
+        * Determine if the invoice line item is for a subscription.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isSubscription(): bool;
+        /**
+        * Determine if the invoice line item is for an invoice item.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isInvoiceItem(): bool;
+        /**
+        * Get the subscription ID associated with this line item.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function subscriptionId(): ?string;
+        /**
+        * Get the subscription item ID associated with this line item.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function subscriptionItemId(): ?string;
+        /**
+        * Get the invoice item ID associated with this line item.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function invoiceItemId(): ?string;
+        /**
+        * Determine if this line item is a proration.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isProration(): bool;
+        /**
+        * Get proration details for this line item.
+        *
+        * @return object|null
+        * @generated
+        */
+        public function prorationDetails(): object|null;
+        /**
+        * Get the price ID from the pricing structure.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function priceId(): ?string;
+        /**
+        * Get the full price object from Stripe.
+        *
+        * @return object|null
+        * @generated
+        */
+        public function price(): object|null;
+        /**
+        * Get the parent information for this line item.
+        *
+        * @return object|null
+        * @generated
+        */
+        public function parent(): object|null;
+        /**
+        * Format the given amount into a displayable currency.
+        *
+        * @param int $amount
+        * @return string
+        * @generated
+        */
+        protected function formatAmount(int $amount): string;
+        /**
+        * Get the Stripe model instance.
+        *
+        * @return \Laravel\Cashier\Invoice
+        * @generated
+        */
+        public function invoice(): \Laravel\Cashier\Invoice;
+        /**
+        * Get the underlying Stripe invoice line item.
+        *
+        * @return \Stripe\InvoiceLineItem
+        * @generated
+        */
+        public function asStripeInvoiceLineItem(): \Stripe\InvoiceLineItem;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically access the Stripe invoice line item instance.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class InvoicePayment implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        protected \Stripe\InvoicePayment $invoicePayment;
+        /**
+        * Create a new InvoicePayment instance.
+        *
+        * @param \Stripe\InvoicePayment $invoicePayment
+        * @return void
+        * @generated
+        */
+        public function __construct(\Stripe\InvoicePayment $invoicePayment): void;
+        /**
+        * Get the allocated amount.
+        *
+        * @return string
+        * @generated
+        */
+        public function amount(): string;
+        /**
+        * Get the raw allocated amount.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawAmount(): int;
+        /**
+        * Get the currency of the payment.
+        *
+        * @return string
+        * @generated
+        */
+        public function currency(): string;
+        /**
+        * Get the payment status.
+        *
+        * @return string
+        * @generated
+        */
+        public function status(): string;
+        /**
+        * Determine if the payment is completed.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isCompleted(): bool;
+        /**
+        * Get the Stripe InvoicePayment instance.
+        *
+        * @return \Stripe\InvoicePayment
+        * @generated
+        */
+        public function asStripeInvoicePayment(): \Stripe\InvoicePayment;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class Logger implements \Stripe\Util\LoggerInterface {
+        protected \Psr\Log\LoggerInterface $logger;
+        /**
+        * Create a new Logger instance.
+        *
+        * @param \Psr\Log\LoggerInterface $logger
+        * @return void
+        * @generated
+        */
+        public function __construct(\Psr\Log\LoggerInterface $logger): void;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function error(mixed $message, array $context = []): mixed;
+    }
+    class Payment implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        use \Illuminate\Support\Traits\ForwardsCalls;
+        /**
+        * The related customer instance.
+        *
+        * @var \Laravel\Cashier\Billable
+        * @generated
+        */
+        protected \Laravel\Cashier\Billable $customer;
+        protected \Stripe\PaymentIntent $paymentIntent;
+        /**
+        * Create a new Payment instance.
+        *
+        * @param \Stripe\PaymentIntent $paymentIntent
+        * @return void
+        * @generated
+        */
+        public function __construct(\Stripe\PaymentIntent $paymentIntent): void;
+        /**
+        * Get the total amount that will be paid.
+        *
+        * @return string
+        * @generated
+        */
+        public function amount(): string;
+        /**
+        * Get the raw total amount that will be paid.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawAmount(): int;
+        /**
+        * The Stripe PaymentIntent client secret.
+        *
+        * @return string
+        * @generated
+        */
+        public function clientSecret(): string;
+        /**
+        * Capture a payment that is being held for the customer.
+        *
+        * @param array $options
+        * @return \Stripe\PaymentIntent
+        * @generated
+        */
+        public function capture(array $options = []): \Stripe\PaymentIntent;
+        /**
+        * Determine if the payment needs a valid payment method.
+        *
+        * @return bool
+        * @generated
+        */
+        public function requiresPaymentMethod(): bool;
+        /**
+        * Determine if the payment needs an extra action like 3D Secure.
+        *
+        * @return bool
+        * @generated
+        */
+        public function requiresAction(): bool;
+        /**
+        * Determine if the payment needs to be confirmed.
+        *
+        * @return bool
+        * @generated
+        */
+        public function requiresConfirmation(): bool;
+        /**
+        * Determine if the payment needs to be captured.
+        *
+        * @return bool
+        * @generated
+        */
+        public function requiresCapture(): bool;
+        /**
+        * Cancel the payment.
+        *
+        * @param array $options
+        * @return \Stripe\PaymentIntent
+        * @generated
+        */
+        public function cancel(array $options = []): \Stripe\PaymentIntent;
+        /**
+        * Determine if the payment was canceled.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isCanceled(): bool;
+        /**
+        * Determine if the payment was successful.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isSucceeded(): bool;
+        /**
+        * Determine if the payment is processing.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isProcessing(): bool;
+        /**
+        * Validate if the payment intent was successful and throw an exception if not.
+        *
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function validate(): void;
+        /**
+        * Retrieve the related customer for the payment intent if one exists.
+        *
+        * @return \Laravel\Cashier\Billable|null
+        * @generated
+        */
+        public function customer(): \Laravel\Cashier\Billable|null;
+        /**
+        * The Stripe PaymentIntent instance.
+        *
+        * @param array $expand
+        * @return \Stripe\PaymentIntent
+        * @generated
+        */
+        public function asStripePaymentIntent(array $expand = []): \Stripe\PaymentIntent;
+        /**
+        * Refresh the PaymentIntent instance from the Stripe API.
+        *
+        * @param array $expand
+        * @return static
+        * @generated
+        */
+        public function refresh(array $expand = []): static;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+        /**
+        * Dynamically pass missing methods to the PaymentIntent instance.
+        *
+        * @param string $method
+        * @param array $parameters
+        * @return mixed
+        * @generated
+        */
+        public function __call(string $method, array $parameters): mixed;
+    }
+    class PaymentMethod implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        protected \Illuminate\Database\Eloquent\Model $owner;
+        protected \Stripe\PaymentMethod $paymentMethod;
+        /**
+        * Create a new PaymentMethod instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @param \Stripe\PaymentMethod $paymentMethod
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidPaymentMethod
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model $owner, \Stripe\PaymentMethod $paymentMethod): void;
+        /**
+        * Delete the payment method.
+        *
+        * @return void
+        * @generated
+        */
+        public function delete(): void;
+        /**
+        * Get the Stripe model instance.
+        *
+        * @return \Illuminate\Database\Eloquent\Model
+        * @generated
+        */
+        public function owner(): \Illuminate\Database\Eloquent\Model;
+        /**
+        * Get the Stripe PaymentMethod instance.
+        *
+        * @return \Stripe\PaymentMethod
+        * @generated
+        */
+        public function asStripePaymentMethod(): \Stripe\PaymentMethod;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    class PromotionCode implements \Illuminate\Contracts\Support\Arrayable, \Illuminate\Contracts\Support\Jsonable, \JsonSerializable {
+        use \Laravel\Cashier\Concerns\InteractsWithStripe;
+        protected \Stripe\PromotionCode $promotionCode;
+        /**
+        * Create a new PromotionCode instance.
+        *
+        * @param \Stripe\PromotionCode $promotionCode
+        * @return void
+        * @generated
+        */
+        public function __construct(\Stripe\PromotionCode $promotionCode): void;
+        /**
+        * Get the coupon that belongs to the promotion code.
+        *
+        * @return \Laravel\Cashier\Coupon
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function coupon(): \Laravel\Cashier\Coupon;
+        /**
+        * Get the Stripe PromotionCode instance.
+        *
+        * @return \Stripe\PromotionCode
+        * @generated
+        */
+        public function asStripePromotionCode(): \Stripe\PromotionCode;
+        /**
+        * Get the instance as an array.
+        *
+        * @return array
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * Convert the object to its JSON representation.
+        *
+        * @param int $options
+        * @return string
+        * @generated
+        */
+        public function toJson(int $options = 0): string;
+        /**
+        * Convert the object into something JSON serializable.
+        *
+        * @return array
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+    /**
+    * @property \Laravel\Cashier\Billable&\Illuminate\Database\Eloquent\Model $owner
+    * @generated
+    */
+    class Subscription extends \Illuminate\Database\Eloquent\Model {
+        use \Laravel\Cashier\Concerns\AllowsCoupons, \Laravel\Cashier\Concerns\HandlesPaymentFailures, \Illuminate\Database\Eloquent\Factories\HasFactory, \Laravel\Cashier\Concerns\InteractsWithPaymentBehavior, \Laravel\Cashier\Concerns\Prorates;
+        /**
+        * The attributes that are not mass assignable.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $guarded ?? [];
+        /**
+        * The relations to eager load on every query.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $with ?? [];
+        /**
+        * The attributes that should be cast to native types.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $casts ?? [];
+        /**
+        * The date on which the billing cycle should be anchored.
+        *
+        * @var ?string
+        * @generated
+        */
+        protected ?string $billingCycleAnchor ?? null;
+        /**
+        * The billing thresholds for the subscription.
+        *
+        * @var array|null
+        * @generated
+        */
+        protected array|null $billingThresholds ?? null;
+        public \Laravel\Cashier\Billable&\Illuminate\Database\Eloquent\Model $owner;
+        /**
+        * Get the user that owns the subscription.
+        *
+        * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+        * @generated
+        */
+        public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo;
+        /**
+        * Get the model related to the subscription.
+        *
+        * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+        * @generated
+        */
+        public function owner(): \Illuminate\Database\Eloquent\Relations\BelongsTo;
+        /**
+        * Get the subscription items related to the subscription.
+        *
+        * @return \Illuminate\Database\Eloquent\Relations\HasMany
+        * @generated
+        */
+        public function items(): \Illuminate\Database\Eloquent\Relations\HasMany;
+        /**
+        * Determine if the subscription has multiple prices.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasMultiplePrices(): bool;
+        /**
+        * Determine if the subscription has a single price.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSinglePrice(): bool;
+        /**
+        * Determine if the subscription has a specific product.
+        *
+        * @param string $product
+        * @return bool
+        * @generated
+        */
+        public function hasProduct(string $product): bool;
+        /**
+        * Determine if the subscription has a specific price.
+        *
+        * @param string $price
+        * @return bool
+        * @generated
+        */
+        public function hasPrice(string $price): bool;
+        /**
+        * Get the subscription item for the given price.
+        *
+        * @param string $price
+        * @return \Laravel\Cashier\SubscriptionItem
+        * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+        * @generated
+        */
+        public function findItemOrFail(string $price): \Laravel\Cashier\SubscriptionItem;
+        /**
+        * Determine if the subscription is active, on trial, or within its grace period.
+        *
+        * @return bool
+        * @generated
+        */
+        public function valid(): bool;
+        /**
+        * Determine if the subscription is incomplete.
+        *
+        * @return bool
+        * @generated
+        */
+        public function incomplete(): bool;
+        /**
+        * Filter query by incomplete.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeIncomplete(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the subscription is past due.
+        *
+        * @return bool
+        * @generated
+        */
+        public function pastDue(): bool;
+        /**
+        * Filter query by past due.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopePastDue(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the subscription is active.
+        *
+        * @return bool
+        * @generated
+        */
+        public function active(): bool;
+        /**
+        * Filter query by active.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeActive(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Sync the Stripe status of the subscription.
+        *
+        * @return void
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function syncStripeStatus(): void;
+        /**
+        * Determine if the subscription is recurring and not on trial.
+        *
+        * @return bool
+        * @generated
+        */
+        public function recurring(): bool;
+        /**
+        * Filter query by recurring.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeRecurring(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the subscription is no longer active.
+        *
+        * @return bool
+        * @generated
+        */
+        public function canceled(): bool;
+        /**
+        * Filter query by canceled.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeCanceled(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Filter query by not canceled.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeNotCanceled(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the subscription has ended and the grace period has expired.
+        *
+        * @return bool
+        * @generated
+        */
+        public function ended(): bool;
+        /**
+        * Filter query by ended.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeEnded(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the subscription is within its trial period.
+        *
+        * @return bool
+        * @generated
+        */
+        public function onTrial(): bool;
+        /**
+        * Filter query by on trial.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeOnTrial(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the subscription's trial has expired.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasExpiredTrial(): bool;
+        /**
+        * Filter query by expired trial.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeExpiredTrial(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Filter query by not on trial.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeNotOnTrial(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the subscription is within its grace period after cancellation.
+        *
+        * @return bool
+        * @generated
+        */
+        public function onGracePeriod(): bool;
+        /**
+        * Filter query by on grace period.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeOnGracePeriod(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Filter query by not on grace period.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeNotOnGracePeriod(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Increment the quantity of the subscription.
+        *
+        * @param int $count
+        * @param ?string $price
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function incrementQuantity(int $count = 1, ?string $price = null): static;
+        /**
+        * Increment the quantity of the subscription, and invoice immediately.
+        *
+        * @param int $count
+        * @param ?string $price
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function incrementAndInvoice(int $count = 1, ?string $price = null): static;
+        /**
+        * Decrement the quantity of the subscription.
+        *
+        * @param int $count
+        * @param ?string $price
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function decrementQuantity(int $count = 1, ?string $price = null): static;
+        /**
+        * Update the quantity of the subscription.
+        *
+        * @param int $quantity
+        * @param ?string $price
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function updateQuantity(int $quantity, ?string $price = null): static;
+        /**
+        * Report usage for a metered product.
+        *
+        * @param int $quantity
+        * @param \DateTimeInterface|int|null $timestamp
+        * @param ?string $price
+        * @return \Stripe\V2\Billing\MeterEvent
+        * @generated
+        */
+        public function reportUsage(int $quantity = 1, \DateTimeInterface|int|null $timestamp = null, ?string $price = null): \Stripe\V2\Billing\MeterEvent;
+        /**
+        * Report usage for specific price of a metered product.
+        *
+        * @param string $price
+        * @param int $quantity
+        * @param \DateTimeInterface|int|null $timestamp
+        * @return \Stripe\V2\Billing\MeterEvent
+        * @generated
+        */
+        public function reportUsageFor(string $price, int $quantity = 1, \DateTimeInterface|int|null $timestamp = null): \Stripe\V2\Billing\MeterEvent;
+        /**
+        * Get the usage records for a metered product.
+        *
+        * @param array $options
+        * @param ?string $price
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function usageRecords(array $options = [], ?string $price = null): \Illuminate\Support\Collection;
+        /**
+        * Get the usage records for a specific price of a metered product.
+        *
+        * @param string $price
+        * @param array $options
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function usageRecordsFor(string $price, array $options = []): \Illuminate\Support\Collection;
+        /**
+        * Change the billing cycle anchor on a price change.
+        *
+        * @param \DateTimeInterface|int|string $date
+        * @return static
+        * @generated
+        */
+        public function anchorBillingCycleOn(\DateTimeInterface|int|string $date = 'now'): static;
+        /**
+        * Set billing thresholds for the subscription.
+        *
+        * @param array $thresholds
+        * @return static
+        * @generated
+        */
+        public function withBillingThresholds(array $thresholds): static;
+        /**
+        * Force the trial to end immediately.
+        *
+        * This method must be combined with swap, resume, etc.
+        *
+        * @return static
+        * @generated
+        */
+        public function skipTrial(): static;
+        /**
+        * Force the subscription's trial to end immediately.
+        *
+        * @return static
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function endTrial(): static;
+        /**
+        * Extend an existing subscription's trial period.
+        *
+        * @param \Carbon\CarbonInterface $date
+        * @return static
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function extendTrial(\Carbon\CarbonInterface $date): static;
+        /**
+        * Swap the subscription to new Stripe prices.
+        *
+        * @param string|array $prices
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function swap(string|array $prices, array $options = []): static;
+        /**
+        * Swap the subscription to new Stripe prices, and invoice immediately.
+        *
+        * @param string|array $prices
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function swapAndInvoice(string|array $prices, array $options = []): static;
+        /**
+        * Parse the given prices for a swap operation.
+        *
+        * @param array $prices
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function parseSwapPrices(array $prices): \Illuminate\Support\Collection;
+        /**
+        * Merge the items that should be deleted during swap into the given items collection.
+        *
+        * @param \Illuminate\Support\Collection $items
+        * @return \Illuminate\Support\Collection
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        protected function mergeItemsThatShouldBeDeletedDuringSwap(\Illuminate\Support\Collection $items): \Illuminate\Support\Collection;
+        /**
+        * Get the options array for a swap operation.
+        *
+        * @param \Illuminate\Support\Collection $items
+        * @param array $options
+        * @return array
+        * @generated
+        */
+        protected function getSwapOptions(\Illuminate\Support\Collection $items, array $options = []): array;
+        /**
+        * Add a new Stripe price to the subscription.
+        *
+        * @param string $price
+        * @param ?int $quantity
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function addPrice(string $price, ?int $quantity = 1, array $options = []): static;
+        /**
+        * Add a new Stripe price to the subscription, and invoice immediately.
+        *
+        * @param string $price
+        * @param int $quantity
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function addPriceAndInvoice(string $price, int $quantity = 1, array $options = []): static;
+        /**
+        * Add a new Stripe metered price to the subscription.
+        *
+        * @param string $price
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function addMeteredPrice(string $price, array $options = []): static;
+        /**
+        * Add a new Stripe metered price to the subscription, and invoice immediately.
+        *
+        * @param string $price
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function addMeteredPriceAndInvoice(string $price, array $options = []): static;
+        /**
+        * Remove a Stripe price from the subscription.
+        *
+        * @param string $price
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function removePrice(string $price): static;
+        /**
+        * Cancel the subscription at the end of the billing period.
+        *
+        * @return static
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function cancel(): static;
+        /**
+        * Cancel the subscription at a specific moment in time.
+        *
+        * @param \DateTimeInterface|int $endsAt
+        * @return static
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function cancelAt(\DateTimeInterface|int $endsAt): static;
+        /**
+        * Cancel the subscription immediately without invoicing.
+        *
+        * @return static
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function cancelNow(): static;
+        /**
+        * Cancel the subscription immediately and invoice.
+        *
+        * @return static
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function cancelNowAndInvoice(): static;
+        /**
+        * Resume the canceled subscription.
+        *
+        * @return static
+        * @throws \LogicException
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function resume(): static;
+        /**
+        * Determine if the subscription has pending updates.
+        *
+        * @return bool
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function pending(): bool;
+        /**
+        * Get the current period start date for the subscription.
+        *
+        * For multi-item subscriptions, returns the earliest start date.
+        *
+        * @param \DateTimeZone|string|int|null $timezone
+        * @return ?\Carbon\CarbonInterface
+        * @generated
+        */
+        public function currentPeriodStart(\DateTimeZone|string|int|null $timezone = null): ?\Carbon\CarbonInterface;
+        /**
+        * Get the current period end date for the subscription.
+        *
+        * For multi-item subscriptions, returns the latest end date.
+        *
+        * @param \DateTimeZone|string|int|null $timezone
+        * @return ?\Carbon\CarbonInterface
+        * @generated
+        */
+        public function currentPeriodEnd(\DateTimeZone|string|int|null $timezone = null): ?\Carbon\CarbonInterface;
+        /**
+        * Invoice the subscription outside of the regular billing cycle.
+        *
+        * @param array $options
+        * @return \Laravel\Cashier\Invoice
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function invoice(array $options = []): \Laravel\Cashier\Invoice;
+        /**
+        * Get the latest invoice for the subscription.
+        *
+        * @return ?\Laravel\Cashier\Invoice
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function latestInvoice(array $expand = []): ?\Laravel\Cashier\Invoice;
+        /**
+        * Fetches upcoming invoice for this subscription.
+        *
+        * @param array $options
+        * @return ?\Laravel\Cashier\Invoice
+        * @generated
+        */
+        public function upcomingInvoice(array $options = []): ?\Laravel\Cashier\Invoice;
+        /**
+        * Preview the upcoming invoice with new Stripe prices.
+        *
+        * @param string|array $prices
+        * @param array $options
+        * @return ?\Laravel\Cashier\Invoice
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function previewInvoice(string|array $prices, array $options = []): ?\Laravel\Cashier\Invoice;
+        /**
+        * Get a collection of the subscription's invoices.
+        *
+        * @param bool $includePending
+        * @param array $parameters
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function invoices(bool $includePending = false, array $parameters = []): \Illuminate\Support\Collection;
+        /**
+        * Get an array of the subscription's invoices, including pending invoices.
+        *
+        * @param array $parameters
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function invoicesIncludingPending(array $parameters = []): \Illuminate\Support\Collection;
+        /**
+        * Sync the tax rates of the user to the subscription.
+        *
+        * @return void
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function syncTaxRates(): void;
+        /**
+        * Get the price tax rates for the Stripe payload.
+        *
+        * @param string $price
+        * @return array|null
+        * @generated
+        */
+        public function getPriceTaxRatesForPayload(string $price): array|null;
+        /**
+        * Determine if the subscription has an incomplete payment.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasIncompletePayment(): bool;
+        /**
+        * Get the latest payment for a Subscription.
+        *
+        * @return ?\Laravel\Cashier\Payment
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function latestPayment(): ?\Laravel\Cashier\Payment;
+        /**
+        * The discount that applies to the subscription, if applicable.
+        *
+        * @return ?\Laravel\Cashier\Discount
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function discount(): ?\Laravel\Cashier\Discount;
+        /**
+        * Get all discounts that apply to the subscription.
+        *
+        * @return \Illuminate\Support\Collection
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function discounts(): \Illuminate\Support\Collection;
+        /**
+        * Apply a coupon to the subscription.
+        *
+        * @param string $couponId
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @throws \Stripe\Exception\InvalidRequestException
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function applyCoupon(string $couponId): void;
+        /**
+        * Validate that a coupon can be applied to a subscription.
+        *
+        * @param string $couponId
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        protected function validateCouponForSubscriptionApplication(string $couponId): void;
+        /**
+        * Apply a promotion code to the subscription.
+        *
+        * @param string $promotionCodeId
+        * @return void
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function applyPromotionCode(string $promotionCodeId): void;
+        /**
+        * Make sure a subscription is not incomplete when performing changes.
+        *
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @generated
+        */
+        public function guardAgainstIncomplete(): void;
+        /**
+        * Make sure a price argument is provided when the subscription is a subscription with multiple prices.
+        *
+        * @return void
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function guardAgainstMultiplePrices(): void;
+        /**
+        * Update the underlying Stripe subscription information for the model.
+        *
+        * @param array $options
+        * @return \Stripe\Subscription
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function updateStripeSubscription(array $options = []): \Stripe\Subscription;
+        /**
+        * Get the subscription as a Stripe subscription object.
+        *
+        * @param array $expand
+        * @return \Stripe\Subscription
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function asStripeSubscription(array $expand = []): \Stripe\Subscription;
+        /**
+        * Ascertain if the subscription uses the new flexible billing mode.
+        *
+        * @param ?\Stripe\Subscription $subscription
+        * @return bool
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        public function usesFlexibleBilling(?\Stripe\Subscription $subscription = null): bool;
+        /**
+        * Create a new factory instance for the model.
+        *
+        * @return \Illuminate\Database\Eloquent\Factories\Factory
+        * @generated
+        */
+        protected static function newFactory(): \Illuminate\Database\Eloquent\Factories\Factory;
+    }
+    class SubscriptionBuilder {
+        use \Laravel\Cashier\Concerns\AllowsCoupons, \Illuminate\Support\Traits\Conditionable, \Laravel\Cashier\Concerns\HandlesPaymentFailures, \Laravel\Cashier\Concerns\HandlesTaxes, \Laravel\Cashier\Concerns\InteractsWithPaymentBehavior, \Laravel\Cashier\Concerns\InteractsWithStripe, \Laravel\Cashier\Concerns\Prorates;
+        /**
+        * The model that is subscribing.
+        *
+        * @var \Laravel\Cashier\Billable|\Illuminate\Database\Eloquent\Model
+        * @generated
+        */
+        protected \Laravel\Cashier\Billable|\Illuminate\Database\Eloquent\Model $owner;
+        /**
+        * The type of the subscription.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $type;
+        /**
+        * The prices the customer is being subscribed to.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $items ?? [];
+        /**
+        * The date and time the trial will expire.
+        *
+        * @var ?\Carbon\CarbonInterface
+        * @generated
+        */
+        protected ?\Carbon\CarbonInterface $trialExpires ?? null;
+        /**
+        * Indicates that the trial should end immediately.
+        *
+        * @var bool
+        * @generated
+        */
+        protected bool $skipTrial ?? false;
+        /**
+        * The date on which the billing cycle should be anchored.
+        *
+        * @var ?int
+        * @generated
+        */
+        protected ?int $billingCycleAnchor ?? null;
+        /**
+        * The billing thresholds for the subscription.
+        *
+        * @var array|null
+        * @generated
+        */
+        protected array|null $billingThresholds ?? null;
+        /**
+        * The metadata to apply to the subscription.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $metadata ?? [];
+        /**
+        * Create a new subscription builder instance.
+        *
+        * @param mixed $owner
+        * @param string $type
+        * @param string|array $prices
+        * @return void
+        * @generated
+        */
+        public function __construct(mixed $owner, string $type, string|array $prices = []): void;
+        /**
+        * Set a price on the subscription builder.
+        *
+        * @param string|array $price
+        * @param ?int $quantity
+        * @return static
+        * @generated
+        */
+        public function price(string|array $price, ?int $quantity = 1): static;
+        /**
+        * Set a metered price on the subscription builder.
+        *
+        * @param string $price
+        * @return static
+        * @generated
+        */
+        public function meteredPrice(string $price): static;
+        /**
+        * Specify the quantity of a subscription item.
+        *
+        * @param ?int $quantity
+        * @param ?string $price
+        * @return static
+        * @generated
+        */
+        public function quantity(?int $quantity, ?string $price = null): static;
+        /**
+        * Specify the number of days of the trial.
+        *
+        * @param int $trialDays
+        * @return static
+        * @generated
+        */
+        public function trialDays(int $trialDays): static;
+        /**
+        * Specify the ending date of the trial.
+        *
+        * @param \Carbon\CarbonInterface $trialUntil
+        * @return static
+        * @generated
+        */
+        public function trialUntil(\Carbon\CarbonInterface $trialUntil): static;
+        /**
+        * Force the trial to end immediately.
+        *
+        * @return static
+        * @generated
+        */
+        public function skipTrial(): static;
+        /**
+        * Change the billing cycle anchor on a subscription creation.
+        *
+        * @param \DateTimeInterface|int $date
+        * @return static
+        * @generated
+        */
+        public function anchorBillingCycleOn(\DateTimeInterface|int $date): static;
+        /**
+        * Set billing thresholds for the subscription.
+        *
+        * @param array $thresholds
+        * @return static
+        * @generated
+        */
+        public function withBillingThresholds(array $thresholds): static;
+        /**
+        * The metadata to apply to a new subscription.
+        *
+        * @param array $metadata
+        * @return static
+        * @generated
+        */
+        public function withMetadata(array $metadata): static;
+        /**
+        * Add a new Stripe subscription to the Stripe model.
+        *
+        * @param array $customerOptions
+        * @param array $subscriptionOptions
+        * @return \Laravel\Cashier\Subscription
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function add(array $customerOptions = [], array $subscriptionOptions = []): \Laravel\Cashier\Subscription;
+        /**
+        * Create a new Stripe subscription.
+        *
+        * @param \Stripe\PaymentMethod|string|null $paymentMethod
+        * @param array $customerOptions
+        * @param array $subscriptionOptions
+        * @return \Laravel\Cashier\Subscription
+        * @throws \Exception
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function create(\Stripe\PaymentMethod|string|null $paymentMethod = null, array $customerOptions = [], array $subscriptionOptions = []): \Laravel\Cashier\Subscription;
+        /**
+        * Create a new Stripe subscription and send an invoice to the customer.
+        *
+        * @param array $customerOptions
+        * @param array $subscriptionOptions
+        * @return \Laravel\Cashier\Subscription
+        * @throws \Exception
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function createAndSendInvoice(array $customerOptions = [], array $subscriptionOptions = []): \Laravel\Cashier\Subscription;
+        /**
+        * Create the Eloquent Subscription.
+        *
+        * @param \Stripe\Subscription $stripeSubscription
+        * @return \Laravel\Cashier\Subscription
+        * @generated
+        */
+        protected function createSubscription(\Stripe\Subscription $stripeSubscription): \Laravel\Cashier\Subscription;
+        /**
+        * Begin a new Checkout Session.
+        *
+        * @param array $sessionOptions
+        * @param array $customerOptions
+        * @return \Laravel\Cashier\Checkout
+        * @generated
+        */
+        public function checkout(array $sessionOptions = [], array $customerOptions = []): \Laravel\Cashier\Checkout;
+        /**
+        * Get the Stripe customer instance for the current user and payment method.
+        *
+        * @param \Stripe\PaymentMethod|string|null $paymentMethod
+        * @param array $options
+        * @return \Stripe\Customer
+        * @generated
+        */
+        protected function getStripeCustomer(\Stripe\PaymentMethod|string|null $paymentMethod = null, array $options = []): \Stripe\Customer;
+        /**
+        * Build the payload for subscription creation.
+        *
+        * @return array
+        * @generated
+        */
+        protected function buildPayload(): array;
+        /**
+        * Get the trial ending date for the Stripe payload.
+        *
+        * @return int|string|null
+        * @generated
+        */
+        protected function getTrialEndForPayload(): int|string|null;
+        /**
+        * Get the tax rates for the Stripe payload.
+        *
+        * @return array|null
+        * @generated
+        */
+        protected function getTaxRatesForPayload(): array|null;
+        /**
+        * Get the price tax rates for the Stripe payload.
+        *
+        * @param string|array $price
+        * @return array|null
+        * @generated
+        */
+        protected function getPriceTaxRatesForPayload(string|array $price): array|null;
+        /**
+        * Validate that a coupon can be applied to a subscription.
+        *
+        * @param string $couponId
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        protected function validateCouponForSubscriptionApplication(string $couponId): void;
+        /**
+        * Get the billing mode for the Stripe payload.
+        *
+        * @generated
+        */
+        protected function getBillingModeForPayload(): ?array;
+        /**
+        * Get the items set on the subscription builder.
+        *
+        * @return array
+        * @generated
+        */
+        public function getItems(): array;
+    }
+    /**
+    * @property \Laravel\Cashier\Subscription|null $subscription
+    * @generated
+    */
+    class SubscriptionItem extends \Illuminate\Database\Eloquent\Model {
+        use \Laravel\Cashier\Concerns\HandlesPaymentFailures, \Illuminate\Database\Eloquent\Factories\HasFactory, \Laravel\Cashier\Concerns\InteractsWithPaymentBehavior, \Laravel\Cashier\Concerns\Prorates;
+        /**
+        * The attributes that are not mass assignable.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $guarded ?? [];
+        /**
+        * The attributes that should be cast to native types.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $casts ?? [];
+        public \Laravel\Cashier\Subscription|null $subscription;
+        /**
+        * Get the subscription that the item belongs to.
+        *
+        * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+        * @generated
+        */
+        public function subscription(): \Illuminate\Database\Eloquent\Relations\BelongsTo;
+        /**
+        * Increment the quantity of the subscription item.
+        *
+        * @param int $count
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @generated
+        */
+        public function incrementQuantity(int $count = 1): static;
+        /**
+        * Increment the quantity of the subscription item, and invoice immediately.
+        *
+        * @param int $count
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @generated
+        */
+        public function incrementAndInvoice(int $count = 1): static;
+        /**
+        * Decrement the quantity of the subscription item.
+        *
+        * @param int $count
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @generated
+        */
+        public function decrementQuantity(int $count = 1): static;
+        /**
+        * Update the quantity of the subscription item.
+        *
+        * @param int $quantity
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @generated
+        */
+        public function updateQuantity(int $quantity): static;
+        /**
+        * Swap the subscription item to a new Stripe price.
+        *
+        * @param string $price
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @generated
+        */
+        public function swap(string $price, array $options = []): static;
+        /**
+        * Swap the subscription item to a new Stripe price, and invoice immediately.
+        *
+        * @param string $price
+        * @param array $options
+        * @return static
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @throws \Laravel\Cashier\Exceptions\SubscriptionUpdateFailure
+        * @generated
+        */
+        public function swapAndInvoice(string $price, array $options = []): static;
+        /**
+        * Report usage for a metered product.
+        *
+        * @param int $quantity
+        * @param \DateTimeInterface|int|null $timestamp
+        * @return \Stripe\V2\Billing\MeterEvent
+        * @generated
+        */
+        public function reportUsage(int $quantity = 1, \DateTimeInterface|int|null $timestamp = null): \Stripe\V2\Billing\MeterEvent;
+        /**
+        * Get the usage records for a metered product.
+        *
+        * @param array $options
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function usageRecords(array $options = []): \Illuminate\Support\Collection;
+        /**
+        * Get the current period start date for this subscription item.
+        *
+        * @param ?string $timezone
+        * @return \Illuminate\Support\Carbon|null
+        * @generated
+        */
+        public function currentPeriodStart(?string $timezone = null): \Illuminate\Support\Carbon|null;
+        /**
+        * Get the current period end date for this subscription item.
+        *
+        * @param ?string $timezone
+        * @return \Illuminate\Support\Carbon|null
+        * @generated
+        */
+        public function currentPeriodEnd(?string $timezone = null): \Illuminate\Support\Carbon|null;
+        /**
+        * Determine if the subscription item is currently within its trial period.
+        *
+        * @return bool
+        * @generated
+        */
+        public function onTrial(): bool;
+        /**
+        * Determine if the subscription item is on a grace period after cancellation.
+        *
+        * @return bool
+        * @generated
+        */
+        public function onGracePeriod(): bool;
+        /**
+        * Update the underlying Stripe subscription item information for the model.
+        *
+        * @param array $options
+        * @return \Stripe\SubscriptionItem
+        * @generated
+        */
+        public function updateStripeSubscriptionItem(array $options = []): \Stripe\SubscriptionItem;
+        /**
+        * Get the subscription as a Stripe subscription item object.
+        *
+        * @param array $expand
+        * @return \Stripe\SubscriptionItem
+        * @generated
+        */
+        public function asStripeSubscriptionItem(array $expand = []): \Stripe\SubscriptionItem;
+        /**
+        * Create a new factory instance for the model.
+        *
+        * @return \Illuminate\Database\Eloquent\Factories\Factory
+        * @generated
+        */
+        protected static function newFactory(): \Illuminate\Database\Eloquent\Factories\Factory;
+    }
+    class Tax {
+        protected int $amount;
+        protected string $currency;
+        protected ?\Stripe\TaxRate $taxRate ?? null;
+        /**
+        * Create a new Tax instance.
+        *
+        * @param int $amount
+        * @param string $currency
+        * @param ?\Stripe\TaxRate $taxRate
+        * @return void
+        * @generated
+        */
+        public function __construct(int $amount, string $currency, ?\Stripe\TaxRate $taxRate = null): void;
+        /**
+        * Get the applied currency.
+        *
+        * @return string
+        * @generated
+        */
+        public function currency(): string;
+        /**
+        * Get the total tax that was paid (or will be paid).
+        *
+        * @return string
+        * @generated
+        */
+        public function amount(): string;
+        /**
+        * Get the raw total tax that was paid (or will be paid).
+        *
+        * @return int
+        * @generated
+        */
+        public function rawAmount(): int;
+        /**
+        * Format the given amount into a displayable currency.
+        *
+        * @param int $amount
+        * @return string
+        * @generated
+        */
+        protected function formatAmount(int $amount): string;
+        /**
+        * Determine if the tax is inclusive or not.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isInclusive(): bool;
+        /**
+        * Get the Stripe TaxRate object.
+        *
+        * @return ?\Stripe\TaxRate
+        * @generated
+        */
+        public function taxRate(): ?\Stripe\TaxRate;
+        /**
+        * Dynamically get values from the Stripe object.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function __get(string $key): mixed;
+    }
+}
+namespace Laravel\Cashier\Concerns {
+    trait AllowsCoupons {
+        use \Laravel\Cashier\Concerns\InteractsWithStripe;
+        /**
+        * The coupon ID being applied.
+        *
+        * @generated
+        */
+        public ?string $couponId ?? null;
+        /**
+        * The promotion code ID being applied.
+        *
+        * @generated
+        */
+        public ?string $promotionCodeId ?? null;
+        /**
+        * Determines if user redeemable promotion codes are available in Stripe Checkout.
+        *
+        * @var bool
+        * @generated
+        */
+        public bool $allowPromotionCodes ?? false;
+        /**
+        * The coupon ID to be applied.
+        *
+        * @return static
+        * @generated
+        */
+        public function withCoupon(?string $couponId): static;
+        /**
+        * The promotion code ID to apply.
+        *
+        * @return static
+        * @generated
+        */
+        public function withPromotionCode(?string $promotionCodeId): static;
+        /**
+        * Enables user redeemable promotion codes for a Stripe Checkout session.
+        *
+        * @return static
+        * @generated
+        */
+        public function allowPromotionCodes(): static;
+        /**
+        * Return the discounts for a Stripe Checkout session.
+        *
+        * @return array<int, array>|null
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @generated
+        */
+        protected function checkoutDiscounts(): array<int, array>|null;
+        /**
+        * Validate that a coupon can be used in checkout sessions.
+        *
+        * @param string $couponId
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        protected function validateCouponForCheckout(string $couponId): void;
+    }
+    trait HandlesPaymentFailures {
+        /**
+        * Indicates if incomplete payments should be confirmed automatically.
+        *
+        * @var bool
+        * @generated
+        */
+        protected bool $confirmIncompletePayment ?? true;
+        /**
+        * The options to be used when confirming a payment intent.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $paymentConfirmationOptions ?? [];
+        /**
+        * Prevent automatic confirmation of incomplete payments.
+        *
+        * @return static
+        * @generated
+        */
+        public function ignoreIncompletePayments(): static;
+        /**
+        * Specify the options to be used when confirming a payment intent.
+        *
+        * @param array $options
+        * @return static
+        * @generated
+        */
+        public function withPaymentConfirmationOptions(array $options): static;
+    }
+    trait HandlesTaxes {
+        /**
+        * The IP address of the customer used to determine the tax location.
+        *
+        * @var ?string
+        * @generated
+        */
+        public ?string $customerIpAddress ?? null;
+        /**
+        * The pre-collected billing address used to estimate tax rates when performing "one-off" charges.
+        *
+        * @var array
+        * @generated
+        */
+        public array $estimationBillingAddress ?? [];
+        /**
+        * Indicates if Tax IDs should be collected during a Stripe Checkout session.
+        *
+        * @var bool
+        * @generated
+        */
+        public bool $collectTaxIds ?? false;
+        /**
+        * Set the IP address of the customer used to determine the tax location.
+        *
+        * @param string $ipAddress
+        * @return static
+        * @generated
+        */
+        public function withTaxIpAddress(string $ipAddress): static;
+        /**
+        * Set a pre-collected billing address used to estimate tax rates when performing "one-off" charges.
+        *
+        * @param string $country
+        * @param ?string $postalCode
+        * @param ?string $state
+        * @return static
+        * @generated
+        */
+        public function withTaxAddress(string $country, ?string $postalCode = null, ?string $state = null): static;
+        /**
+        * Get the payload for Stripe automatic tax calculation.
+        *
+        * @return array|null
+        * @generated
+        */
+        protected function automaticTaxPayload(): array|null;
+        /**
+        * Determine if automatic tax is enabled.
+        *
+        * @return bool
+        * @generated
+        */
+        protected function isAutomaticTaxEnabled(): bool;
+        /**
+        * Indicate that Tax IDs should be collected during a Stripe Checkout session.
+        *
+        * @return static
+        * @generated
+        */
+        public function collectTaxIds(): static;
+    }
+    trait InteractsWithPaymentBehavior {
+        /**
+        * Set the payment behavior for any subscription updates.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $paymentBehavior ?? \Stripe\Subscription::PAYMENT_BEHAVIOR_DEFAULT_INCOMPLETE;
+        /**
+        * Set any new subscription as incomplete when created.
+        *
+        * @return static
+        * @generated
+        */
+        public function defaultIncomplete(): static;
+        /**
+        * Allow subscription changes even if payment fails.
+        *
+        * @return static
+        * @generated
+        */
+        public function allowPaymentFailures(): static;
+        /**
+        * Set any subscription change as pending until payment is successful.
+        *
+        * @return static
+        * @generated
+        */
+        public function pendingIfPaymentFails(): static;
+        /**
+        * Prevent any subscription change if payment is unsuccessful.
+        *
+        * @return static
+        * @generated
+        */
+        public function errorIfPaymentFails(): static;
+        /**
+        * Determine the payment behavior when updating the subscription.
+        *
+        * @return string
+        * @generated
+        */
+        public function paymentBehavior(): string;
+        /**
+        * Set the payment behavior for any subscription updates.
+        *
+        * @param string $paymentBehavior
+        * @return static
+        * @generated
+        */
+        public function setPaymentBehavior(string $paymentBehavior): static;
+    }
+    trait InteractsWithStripe {
+        /**
+        * Get the Stripe SDK client.
+        *
+        * @param array $options
+        * @return \Stripe\StripeClient
+        * @generated
+        */
+        public static function stripe(array $options = []): \Stripe\StripeClient;
+    }
+    trait ManagesCustomer {
+        use \Laravel\Cashier\Concerns\InteractsWithStripe;
+        /**
+        * Retrieve the Stripe customer ID.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function stripeId(): ?string;
+        /**
+        * Determine if the customer has a Stripe customer ID.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasStripeId(): bool;
+        /**
+        * Determine if the customer has a Stripe customer ID and throw an exception if not.
+        *
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCustomer
+        * @generated
+        */
+        protected function assertCustomerExists(): void;
+        /**
+        * Create a Stripe customer for the given model.
+        *
+        * @param array $options
+        * @param array $requestOptions
+        * @return \Stripe\Customer
+        * @throws \Laravel\Cashier\Exceptions\CustomerAlreadyCreated
+        * @generated
+        */
+        public function createAsStripeCustomer(array $options = [], array $requestOptions = []): \Stripe\Customer;
+        /**
+        * Update the underlying Stripe customer information for the model.
+        *
+        * @param array $options
+        * @return \Stripe\Customer
+        * @generated
+        */
+        public function updateStripeCustomer(array $options = []): \Stripe\Customer;
+        /**
+        * Get the Stripe customer instance for the current user or create one.
+        *
+        * @param array $options
+        * @param array $requestOptions
+        * @return \Stripe\Customer
+        * @generated
+        */
+        public function createOrGetStripeCustomer(array $options = [], array $requestOptions = []): \Stripe\Customer;
+        /**
+        * Update the Stripe customer information for the current user or create one.
+        *
+        * @param array $options
+        * @return \Stripe\Customer
+        * @generated
+        */
+        public function updateOrCreateStripeCustomer(array $options = []): \Stripe\Customer;
+        /**
+        * Sync the customer's information to Stripe for the current user or create one.
+        *
+        * @param array $options
+        * @return \Stripe\Customer
+        * @generated
+        */
+        public function syncOrCreateStripeCustomer(array $options = []): \Stripe\Customer;
+        /**
+        * Get the Stripe customer for the model.
+        *
+        * @param array $expand
+        * @return \Stripe\Customer
+        * @generated
+        */
+        public function asStripeCustomer(array $expand = []): \Stripe\Customer;
+        /**
+        * Get the name that should be synced to Stripe.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function stripeName(): string|null;
+        /**
+        * Get the email address that should be synced to Stripe.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function stripeEmail(): ?string;
+        /**
+        * Get the phone number that should be synced to Stripe.
+        *
+        * @return ?string
+        * @generated
+        */
+        public function stripePhone(): ?string;
+        /**
+        * Get the address that should be synced to Stripe.
+        *
+        * @return array|null
+        * @generated
+        */
+        public function stripeAddress(): array|null;
+        /**
+        * Get the locales that should be synced to Stripe.
+        *
+        * @return array|null
+        * @generated
+        */
+        public function stripePreferredLocales(): array|null;
+        /**
+        * Get the metadata that should be synced to Stripe.
+        *
+        * @return array|null
+        * @generated
+        */
+        public function stripeMetadata(): array|null;
+        /**
+        * Sync the customer's information to Stripe.
+        *
+        * @return \Stripe\Customer
+        * @generated
+        */
+        public function syncStripeCustomerDetails(): \Stripe\Customer;
+        /**
+        * The discount that applies to the customer's primary subscription, if applicable.
+        *
+        * @return ?\Laravel\Cashier\Discount
+        * @generated
+        */
+        public function discount(): ?\Laravel\Cashier\Discount;
+        /**
+        * Get all discounts that apply to the customer's subscriptions.
+        *
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function discounts(): \Illuminate\Support\Collection;
+        /**
+        * Apply a coupon to the customer's subscriptions.
+        *
+        * By default, applies to the primary subscription only.
+        *
+        * @param string $couponId
+        * @param string|array|null $subscriptionTypes
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @generated
+        */
+        public function applyCoupon(string $couponId, string|array|null $subscriptionTypes = null): void;
+        /**
+        * Apply a promotion code to the customer's subscriptions.
+        *
+        * By default, applies to the primary subscription only for safety.
+        *
+        * @param string $promotionCodeId
+        * @param string|array|null $subscriptionTypes
+        * @return void
+        * @generated
+        */
+        public function applyPromotionCode(string $promotionCodeId, string|array|null $subscriptionTypes = null): void;
+        /**
+        * Apply a coupon to all active subscriptions.
+        *
+        * @param string $couponId
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @generated
+        */
+        public function applyCouponToAllSubscriptions(string $couponId): void;
+        /**
+        * Apply a promotion code to all active subscriptions.
+        *
+        * @param string $promotionCodeId
+        * @return void
+        * @generated
+        */
+        public function applyPromotionCodeToAllSubscriptions(string $promotionCodeId): void;
+        /**
+        * Get the target subscriptions based on the provided criteria.
+        *
+        * @param string|array|null $subscriptionTypes
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function getTargetSubscriptions(string|array|null $subscriptionTypes = null): \Illuminate\Support\Collection;
+        /**
+        * Validate that a coupon can be applied to a customer.
+        *
+        * @param string $couponId
+        * @return void
+        * @throws \Laravel\Cashier\Exceptions\InvalidCoupon
+        * @throws \Stripe\Exception\ApiErrorException
+        * @generated
+        */
+        protected function validateCouponForCustomerApplication(string $couponId): void;
+        /**
+        * Retrieve a promotion code by its code.
+        *
+        * @param string $code
+        * @param array $options
+        * @return ?\Laravel\Cashier\PromotionCode
+        * @generated
+        */
+        public function findPromotionCode(string $code, array $options = []): ?\Laravel\Cashier\PromotionCode;
+        /**
+        * Retrieve a promotion code by its code.
+        *
+        * @param string $code
+        * @param array $options
+        * @return ?\Laravel\Cashier\PromotionCode
+        * @generated
+        */
+        public function findActivePromotionCode(string $code, array $options = []): ?\Laravel\Cashier\PromotionCode;
+        /**
+        * Get the total balance of the customer.
+        *
+        * @return string
+        * @generated
+        */
+        public function balance(): string;
+        /**
+        * Get the raw total balance of the customer.
+        *
+        * @return int
+        * @generated
+        */
+        public function rawBalance(): int;
+        /**
+        * Return a customer's balance transactions.
+        *
+        * @param int $limit
+        * @param array $options
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function balanceTransactions(int $limit = 10, array $options = []): \Illuminate\Support\Collection;
+        /**
+        * Credit a customer's balance.
+        *
+        * @param int $amount
+        * @param ?string $description
+        * @param array $options
+        * @return \Laravel\Cashier\CustomerBalanceTransaction
+        * @generated
+        */
+        public function creditBalance(int $amount, ?string $description = null, array $options = []): \Laravel\Cashier\CustomerBalanceTransaction;
+        /**
+        * Debit a customer's balance.
+        *
+        * @param int $amount
+        * @param ?string $description
+        * @param array $options
+        * @return \Laravel\Cashier\CustomerBalanceTransaction
+        * @generated
+        */
+        public function debitBalance(int $amount, ?string $description = null, array $options = []): \Laravel\Cashier\CustomerBalanceTransaction;
+        /**
+        * Apply a new amount to the customer's balance.
+        *
+        * @param int $amount
+        * @param ?string $description
+        * @param array $options
+        * @return \Laravel\Cashier\CustomerBalanceTransaction
+        * @generated
+        */
+        public function applyBalance(int $amount, ?string $description = null, array $options = []): \Laravel\Cashier\CustomerBalanceTransaction;
+        /**
+        * Get the Stripe supported currency used by the customer.
+        *
+        * @return string
+        * @generated
+        */
+        public function preferredCurrency(): string;
+        /**
+        * Format the given amount into a displayable currency.
+        *
+        * @param int $amount
+        * @return string
+        * @generated
+        */
+        protected function formatAmount(int $amount): string;
+        /**
+        * Get the Stripe billing portal for this customer.
+        *
+        * @param ?string $returnUrl
+        * @param array $options
+        * @return string
+        * @generated
+        */
+        public function billingPortalUrl(?string $returnUrl = null, array $options = []): string;
+        /**
+        * Generate a redirect response to the customer's Stripe billing portal.
+        *
+        * @param ?string $returnUrl
+        * @param array $options
+        * @return \Illuminate\Http\RedirectResponse
+        * @generated
+        */
+        public function redirectToBillingPortal(?string $returnUrl = null, array $options = []): \Illuminate\Http\RedirectResponse;
+        /**
+        * Get a collection of the customer's TaxID's.
+        *
+        * @param array $options
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function taxIds(array $options = []): \Illuminate\Support\Collection;
+        /**
+        * Find a TaxID by ID.
+        *
+        * @param string $id
+        * @return \Stripe\TaxId|null
+        * @generated
+        */
+        public function findTaxId(string $id): \Stripe\TaxId|null;
+        /**
+        * Create a TaxID for the customer.
+        *
+        * @param string $type
+        * @param string $value
+        * @return \Stripe\TaxId
+        * @generated
+        */
+        public function createTaxId(string $type, string $value): \Stripe\TaxId;
+        /**
+        * Delete a TaxID for the customer.
+        *
+        * @param string $id
+        * @return void
+        * @generated
+        */
+        public function deleteTaxId(string $id): void;
+        /**
+        * Determine if the customer is not exempted from taxes.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isNotTaxExempt(): bool;
+        /**
+        * Determine if the customer is exempted from taxes.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isTaxExempt(): bool;
+        /**
+        * Determine if reverse charge applies to the customer.
+        *
+        * @return bool
+        * @generated
+        */
+        public function reverseChargeApplies(): bool;
+    }
+    trait ManagesInvoices {
+        use \Laravel\Cashier\Concerns\InteractsWithStripe;
+        /**
+        * Add an invoice item to the customer's upcoming invoice.
+        *
+        * @param string $description
+        * @param ?int $amount
+        * @param array $options
+        * @return \Stripe\InvoiceItem
+        * @generated
+        */
+        public function tab(string $description, ?int $amount, array $options = []): \Stripe\InvoiceItem;
+        /**
+        * Invoice the customer for the given amount and generate an invoice immediately.
+        *
+        * @param string $description
+        * @param int $amount
+        * @param array $tabOptions
+        * @param array $invoiceOptions
+        * @return \Laravel\Cashier\Invoice
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function invoiceFor(string $description, int $amount, array $tabOptions = [], array $invoiceOptions = []): \Laravel\Cashier\Invoice;
+        /**
+        * Add an invoice item for a specific Price ID to the customer's upcoming invoice.
+        *
+        * @param \Stripe\Price|string $price
+        * @param int $quantity
+        * @param array $options
+        * @return \Stripe\InvoiceItem
+        * @generated
+        */
+        public function tabPrice(\Stripe\Price|string $price, int $quantity = 1, array $options = []): \Stripe\InvoiceItem;
+        /**
+        * Invoice the customer for the given Price ID and generate an invoice immediately.
+        *
+        * @param \Stripe\Price|string $price
+        * @param int $quantity
+        * @param array $tabOptions
+        * @param array $invoiceOptions
+        * @return \Laravel\Cashier\Invoice
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function invoicePrice(\Stripe\Price|string $price, int $quantity = 1, array $tabOptions = [], array $invoiceOptions = []): \Laravel\Cashier\Invoice;
+        /**
+        * Invoice the customer outside of the regular billing cycle.
+        *
+        * @param array $options
+        * @return \Laravel\Cashier\Invoice
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function invoice(array $options = []): \Laravel\Cashier\Invoice;
+        /**
+        * Create an invoice within Stripe.
+        *
+        * @param array $options
+        * @return \Laravel\Cashier\Invoice
+        * @generated
+        */
+        public function createInvoice(array $options = []): \Laravel\Cashier\Invoice;
+        /**
+        * Get the customer's upcoming invoice.
+        *
+        * @param array $options
+        * @return ?\Laravel\Cashier\Invoice
+        * @generated
+        */
+        public function upcomingInvoice(array $options = []): ?\Laravel\Cashier\Invoice;
+        /**
+        * Check if the parameters contain the required details for the Create Preview Invoice API.
+        *
+        * @param array $parameters
+        * @return bool
+        * @generated
+        */
+        protected function hasRequiredPreviewDetails(array $parameters): bool;
+        /**
+        * Find an invoice by ID.
+        *
+        * @param string $id
+        * @return ?\Laravel\Cashier\Invoice
+        * @generated
+        */
+        public function findInvoice(string $id): ?\Laravel\Cashier\Invoice;
+        /**
+        * Find an invoice or throw a 404 or 403 error.
+        *
+        * @param string $id
+        * @return \Laravel\Cashier\Invoice
+        * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+        * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+        * @generated
+        */
+        public function findInvoiceOrFail(string $id): \Laravel\Cashier\Invoice;
+        /**
+        * Create an invoice download Response.
+        *
+        * @param string $id
+        * @param array $data
+        * @param ?string $filename
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        public function downloadInvoice(string $id, array $data = [], ?string $filename = null): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Get a collection of the customer's invoices.
+        *
+        * @param bool $includePending
+        * @param array $parameters
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function invoices(bool $includePending = false, array $parameters = []): \Illuminate\Support\Collection;
+        /**
+        * Get an array of the customer's invoices, including pending invoices.
+        *
+        * @param array $parameters
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function invoicesIncludingPending(array $parameters = []): \Illuminate\Support\Collection;
+        /**
+        * Get a cursor paginator for the customer's invoices.
+        *
+        * @param ?int $perPage
+        * @param array $parameters
+        * @param string $cursorName
+        * @param \Illuminate\Pagination\Cursor|string|null $cursor
+        * @return \Illuminate\Pagination\CursorPaginator
+        * @generated
+        */
+        public function cursorPaginateInvoices(?int $perPage = 24, array $parameters = [], string $cursorName = 'cursor', \Illuminate\Pagination\Cursor|string|null $cursor = null): \Illuminate\Pagination\CursorPaginator;
+        /**
+        * Get invoice payments for a specific payment intent.
+        *
+        * @param string $paymentIntentId
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function invoicePaymentsForPaymentIntent(string $paymentIntentId): \Illuminate\Support\Collection;
+        /**
+        * Get invoice payments for a specific invoice.
+        *
+        * @param string $invoiceId
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function invoicePaymentsForInvoice(string $invoiceId): \Illuminate\Support\Collection;
+    }
+    trait ManagesPaymentMethods {
+        /**
+        * Create a new SetupIntent instance.
+        *
+        * @param array $options
+        * @return \Stripe\SetupIntent
+        * @generated
+        */
+        public function createSetupIntent(array $options = []): \Stripe\SetupIntent;
+        /**
+        * Retrieve a SetupIntent from Stripe.
+        *
+        * @param string $id
+        * @param array $params
+        * @param array $options
+        * @return \Stripe\SetupIntent
+        * @generated
+        */
+        public function findSetupIntent(string $id, array $params = [], array $options = []): \Stripe\SetupIntent;
+        /**
+        * Determines if the customer currently has a default payment method.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasDefaultPaymentMethod(): bool;
+        /**
+        * Determines if the customer currently has at least one payment method of an optional type.
+        *
+        * @param ?string $type
+        * @return bool
+        * @generated
+        */
+        public function hasPaymentMethod(?string $type = null): bool;
+        /**
+        * Get a collection of the customer's payment methods of an optional type.
+        *
+        * @param ?string $type
+        * @param array $parameters
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function paymentMethods(?string $type = null, array $parameters = []): \Illuminate\Support\Collection;
+        /**
+        * Add a payment method to the customer.
+        *
+        * @param \Stripe\PaymentMethod|string $paymentMethod
+        * @return \Laravel\Cashier\PaymentMethod
+        * @generated
+        */
+        public function addPaymentMethod(\Stripe\PaymentMethod|string $paymentMethod): \Laravel\Cashier\PaymentMethod;
+        /**
+        * Delete a payment method from the customer.
+        *
+        * @param \Stripe\PaymentMethod|string $paymentMethod
+        * @return void
+        * @generated
+        */
+        public function deletePaymentMethod(\Stripe\PaymentMethod|string $paymentMethod): void;
+        /**
+        * Get the default payment method for the customer.
+        *
+        * @return \Laravel\Cashier\PaymentMethod|\Stripe\Card|\Stripe\BankAccount|null
+        * @generated
+        */
+        public function defaultPaymentMethod(): \Laravel\Cashier\PaymentMethod|\Stripe\Card|\Stripe\BankAccount|null;
+        /**
+        * Update customer's default payment method.
+        *
+        * @param \Stripe\PaymentMethod|string $paymentMethod
+        * @return \Laravel\Cashier\PaymentMethod
+        * @generated
+        */
+        public function updateDefaultPaymentMethod(\Stripe\PaymentMethod|string $paymentMethod): \Laravel\Cashier\PaymentMethod;
+        /**
+        * Synchronises the customer's default payment method from Stripe back into the database.
+        *
+        * @return static
+        * @generated
+        */
+        public function updateDefaultPaymentMethodFromStripe(): static;
+        /**
+        * Fills the model's properties with the payment method from Stripe.
+        *
+        * @param \Laravel\Cashier\PaymentMethod|\Stripe\PaymentMethod|null $paymentMethod
+        * @return static
+        * @generated
+        */
+        protected function fillPaymentMethodDetails(\Laravel\Cashier\PaymentMethod|\Stripe\PaymentMethod|null $paymentMethod): static;
+        /**
+        * Fills the model's properties with the source from Stripe.
+        *
+        * @param \Stripe\Card|\Stripe\BankAccount|\Stripe\Source|null $source
+        * @return static
+        * @deprecated Will be removed in a future Cashier update. You should use the new payment methods API instead.
+        * @generated
+        */
+        deprecated protected function fillSourceDetails(\Stripe\Card|\Stripe\BankAccount|\Stripe\Source|null $source): static;
+        /**
+        * Deletes the customer's payment methods of the given type.
+        *
+        * @param string|null $type
+        * @return void
+        * @generated
+        */
+        public function deletePaymentMethods(string|null $type = null): void;
+        /**
+        * Find a PaymentMethod by ID.
+        *
+        * @param \Stripe\PaymentMethod|string $paymentMethod
+        * @return ?\Laravel\Cashier\PaymentMethod
+        * @generated
+        */
+        public function findPaymentMethod(\Stripe\PaymentMethod|string $paymentMethod): ?\Laravel\Cashier\PaymentMethod;
+        /**
+        * Resolve a PaymentMethod ID to a Stripe PaymentMethod object.
+        *
+        * @param \Stripe\PaymentMethod|string $paymentMethod
+        * @return \Stripe\PaymentMethod
+        * @generated
+        */
+        protected function resolveStripePaymentMethod(\Stripe\PaymentMethod|string $paymentMethod): \Stripe\PaymentMethod;
+    }
+    trait ManagesSubscriptions {
+        /**
+        * Begin creating a new subscription.
+        *
+        * @param string $type
+        * @param string|array $prices
+        * @return \Laravel\Cashier\SubscriptionBuilder
+        * @generated
+        */
+        public function newSubscription(string $type, string|array $prices = []): \Laravel\Cashier\SubscriptionBuilder;
+        /**
+        * Determine if the Stripe model is on trial.
+        *
+        * @param string $type
+        * @param ?string $price
+        * @return bool
+        * @generated
+        */
+        public function onTrial(string $type = 'default', ?string $price = null): bool;
+        /**
+        * Determine if the Stripe model's trial has ended.
+        *
+        * @param string $type
+        * @param ?string $price
+        * @return bool
+        * @generated
+        */
+        public function hasExpiredTrial(string $type = 'default', ?string $price = null): bool;
+        /**
+        * Determine if the Stripe model is on a "generic" trial at the model level.
+        *
+        * @return bool
+        * @generated
+        */
+        public function onGenericTrial(): bool;
+        /**
+        * Filter the given query for generic trials.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeOnGenericTrial(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Determine if the Stripe model's "generic" trial at the model level has expired.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasExpiredGenericTrial(): bool;
+        /**
+        * Filter the given query for expired generic trials.
+        *
+        * @param \Illuminate\Contracts\Database\Eloquent\Builder $query
+        * @return void
+        * @generated
+        */
+        public function scopeHasExpiredGenericTrial(\Illuminate\Contracts\Database\Eloquent\Builder $query): void;
+        /**
+        * Get the ending date of the trial.
+        *
+        * @param string $type
+        * @return \Illuminate\Support\Carbon|null
+        * @generated
+        */
+        public function trialEndsAt(string $type = 'default'): \Illuminate\Support\Carbon|null;
+        /**
+        * Determine if the Stripe model has a given subscription.
+        *
+        * @param string $type
+        * @param ?string $price
+        * @return bool
+        * @generated
+        */
+        public function subscribed(string $type = 'default', ?string $price = null): bool;
+        /**
+        * Get a subscription instance by $type.
+        *
+        * @param string $type
+        * @return ?\Laravel\Cashier\Subscription
+        * @generated
+        */
+        public function subscription(string $type = 'default'): ?\Laravel\Cashier\Subscription;
+        /**
+        * Get all of the subscriptions for the Stripe model.
+        *
+        * @return \Illuminate\Database\Eloquent\Relations\HasMany
+        * @generated
+        */
+        public function subscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany;
+        /**
+        * Determine if the customer's subscription has an incomplete payment.
+        *
+        * @param string $type
+        * @return bool
+        * @generated
+        */
+        public function hasIncompletePayment(string $type = 'default'): bool;
+        /**
+        * Determine if the Stripe model is actively subscribed to one of the given products.
+        *
+        * @param string|array $products
+        * @param string $type
+        * @return bool
+        * @generated
+        */
+        public function subscribedToProduct(string|array $products, string $type = 'default'): bool;
+        /**
+        * Determine if the Stripe model is actively subscribed to one of the given prices.
+        *
+        * @param string|array $prices
+        * @param string $type
+        * @return bool
+        * @generated
+        */
+        public function subscribedToPrice(string|array $prices, string $type = 'default'): bool;
+        /**
+        * Determine if the customer has a valid subscription on the given product.
+        *
+        * @param string $product
+        * @return bool
+        * @generated
+        */
+        public function onProduct(string $product): bool;
+        /**
+        * Determine if the customer has a valid subscription on the given price.
+        *
+        * @param string $price
+        * @return bool
+        * @generated
+        */
+        public function onPrice(string $price): bool;
+        /**
+        * Get the tax rates to apply to the subscription.
+        *
+        * @return array
+        * @generated
+        */
+        public function taxRates(): array;
+        /**
+        * Get the tax rates to apply to individual subscription items.
+        *
+        * @return array
+        * @generated
+        */
+        public function priceTaxRates(): array;
+    }
+    trait ManagesUsageBilling {
+        use \Laravel\Cashier\Concerns\InteractsWithStripe;
+        /**
+        * Get all of the defined billing meters.
+        *
+        * @param array $options
+        * @param array $requestOptions
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function meters(array $options = [], array $requestOptions = []): \Illuminate\Support\Collection;
+        /**
+        * Report usage for a metered product.
+        *
+        * @param string $meter
+        * @param int $quantity
+        * @param string|null $price
+        * @param array $options
+        * @param array $requestOptions
+        * @return \Stripe\V2\Billing\MeterEvent
+        * @generated
+        */
+        public function reportMeterEvent(string $meter, int $quantity = 1, array $options = [], array $requestOptions = []): \Stripe\V2\Billing\MeterEvent;
+        /**
+        * Get the usage records for a meter using its ID.
+        *
+        * @param string $meterId
+        * @param array $options
+        * @param array $requestOptions
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function meterEventSummaries(string $meterId, int $startTime = 1, ?int $endTime = null, array $options = [], array $requestOptions = []): \Illuminate\Support\Collection;
+    }
+    trait PerformsCharges {
+        use \Laravel\Cashier\Concerns\AllowsCoupons, \Laravel\Cashier\Concerns\InteractsWithStripe;
+        /**
+        * Make a "one off" charge on the customer for the given amount.
+        *
+        * @param int $amount
+        * @param string $paymentMethod
+        * @param array $options
+        * @return \Laravel\Cashier\Payment
+        * @throws \Laravel\Cashier\Exceptions\IncompletePayment
+        * @generated
+        */
+        public function charge(int $amount, string $paymentMethod, array $options = []): \Laravel\Cashier\Payment;
+        /**
+        * Create a new PaymentIntent instance.
+        *
+        * @param int $amount
+        * @param array $options
+        * @return \Laravel\Cashier\Payment
+        * @generated
+        */
+        public function pay(int $amount, array $options = []): \Laravel\Cashier\Payment;
+        /**
+        * Create a new PaymentIntent instance for the given payment method types.
+        *
+        * @param int $amount
+        * @param array $paymentMethods
+        * @param array $options
+        * @return \Laravel\Cashier\Payment
+        * @generated
+        */
+        public function payWith(int $amount, array $paymentMethods, array $options = []): \Laravel\Cashier\Payment;
+        /**
+        * Create a new Payment instance with a Stripe PaymentIntent.
+        *
+        * @param int $amount
+        * @param array $options
+        * @return \Laravel\Cashier\Payment
+        * @generated
+        */
+        public function createPayment(int $amount, array $options = []): \Laravel\Cashier\Payment;
+        /**
+        * Find a payment intent by ID.
+        *
+        * @param string $id
+        * @return ?\Laravel\Cashier\Payment
+        * @generated
+        */
+        public function findPayment(string $id): ?\Laravel\Cashier\Payment;
+        /**
+        * Refund a customer for a charge.
+        *
+        * @param string $paymentIntent
+        * @param array $options
+        * @return \Stripe\Refund
+        * @generated
+        */
+        public function refund(string $paymentIntent, array $options = []): \Stripe\Refund;
+        /**
+        * Begin a new checkout session for existing prices.
+        *
+        * @param string|array $items
+        * @param array $sessionOptions
+        * @param array $customerOptions
+        * @return \Laravel\Cashier\Checkout
+        * @generated
+        */
+        public function checkout(string|array $items, array $sessionOptions = [], array $customerOptions = []): \Laravel\Cashier\Checkout;
+        /**
+        * Begin a new checkout session for a "one-off" charge.
+        *
+        * @param int $amount
+        * @param string $name
+        * @param int $quantity
+        * @param array $sessionOptions
+        * @param array $customerOptions
+        * @param array $productData
+        * @return \Laravel\Cashier\Checkout
+        * @generated
+        */
+        public function checkoutCharge(int $amount, string $name, int $quantity = 1, array $sessionOptions = [], array $customerOptions = [], array $productData = []): \Laravel\Cashier\Checkout;
+    }
+    trait Prorates {
+        /**
+        * Indicates if the price change should be prorated.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $prorationBehavior ?? 'create_prorations';
+        /**
+        * Indicate that the price change should not be prorated.
+        *
+        * @return static
+        * @generated
+        */
+        public function noProrate(): static;
+        /**
+        * Indicate that the price change should be prorated.
+        *
+        * @return static
+        * @generated
+        */
+        public function prorate(): static;
+        /**
+        * Indicate that the price change should always be invoiced.
+        *
+        * @return static
+        * @generated
+        */
+        public function alwaysInvoice(): static;
+        /**
+        * Set the prorating behavior.
+        *
+        * @param string $prorationBehavior
+        * @return static
+        * @generated
+        */
+        public function setProrationBehavior(string $prorationBehavior): static;
+        /**
+        * Determine the prorating behavior when updating the subscription.
+        *
+        * @return string
+        * @generated
+        */
+        public function prorateBehavior(): string;
+    }
+}
+namespace Laravel\Cashier\Console {
+    class WebhookCommand extends \Illuminate\Console\Command {
+        public const array DEFAULT_EVENTS ?? [];
+        /**
+        * The name and signature of the console command.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $signature;
+        /**
+        * The console command description.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Create the Stripe webhook to interact with Cashier';
+        /**
+        * Execute the console command.
+        *
+        * @return void
+        * @generated
+        */
+        public function handle(): void;
+    }
+}
+namespace Laravel\Cashier\Contracts {
+    interface InvoiceRenderer {
+        /**
+        * Render the invoice as a PDF and return the raw bytes.
+        *
+        * @param \Laravel\Cashier\Invoice $invoice
+        * @param array $data
+        * @param array $options
+        * @return string
+        * @generated
+        */
+        public function render(\Laravel\Cashier\Invoice $invoice, array $data = [], array $options = []): string;
+    }
+}
+namespace Laravel\Cashier\Database\Factories {
+    class SubscriptionFactory extends \Illuminate\Database\Eloquent\Factories\Factory {
+        /**
+        * The name of the factory's corresponding model.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $model ?? \Laravel\Cashier\Subscription::class;
+        /**
+        * Define the model's default state.
+        *
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function definition(): array<string, mixed>;
+        /**
+        * Add a price identifier to the model.
+        *
+        * @return static
+        * @generated
+        */
+        public function withPrice(\Stripe\Price|string $price): static;
+        /**
+        * Mark the subscription as active.
+        *
+        * @return static
+        * @generated
+        */
+        public function active(): static;
+        /**
+        * Mark the subscription as being within a trial period.
+        *
+        * @return static
+        * @generated
+        */
+        public function trialing(?\DateTimeInterface $trialEndsAt = null): static;
+        /**
+        * Mark the subscription as canceled.
+        *
+        * @return static
+        * @generated
+        */
+        public function canceled(): static;
+        /**
+        * Mark the subscription as incomplete.
+        *
+        * @return static
+        * @generated
+        */
+        public function incomplete(): static;
+        /**
+        * Mark the subscription as incomplete where the allowed completion period has expired.
+        *
+        * @return static
+        * @generated
+        */
+        public function incompleteAndExpired(): static;
+        /**
+        * Mark the subscription as being past the due date.
+        *
+        * @return static
+        * @generated
+        */
+        public function pastDue(): static;
+        /**
+        * Mark the subscription as unpaid.
+        *
+        * @return static
+        * @generated
+        */
+        public function unpaid(): static;
+    }
+    class SubscriptionItemFactory extends \Illuminate\Database\Eloquent\Factories\Factory {
+        /**
+        * The name of the factory's corresponding model.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $model ?? \Laravel\Cashier\SubscriptionItem::class;
+        /**
+        * Define the model's default state.
+        *
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function definition(): array<string, mixed>;
+    }
+}
+namespace Laravel\Cashier\Enums {
+    enum StripeApiVersions: string {
+        case DAHLIA = 'dahlia';
+        case CLOVER = 'clover';
+        case BASIL = 'basil';
+        /**
+        * Resolve current version.
+        *
+        * @return static
+        * @generated
+        */
+        public static function current(): static;
+        /**
+        * Get coupon information from `Stripe\Discount` for the current API.
+        *
+        * @generated
+        */
+        public function couponFromDiscount(\Stripe\Discount $discount): \Stripe\Coupon|string|null;
+        /**
+        * Get coupon information from `Stripe\PromotionCode` for the current API.
+        *
+        * @generated
+        */
+        public function couponFromPromotionCode(\Stripe\PromotionCode $promotionCode): \Stripe\Coupon|string|null;
+        /**
+        * Transform `ui_mode` for the current API.
+        *
+        * @generated
+        */
+        public function transformUiMode(string $uiMode): string;
+    }
+}
+namespace Laravel\Cashier\Events {
+    class WebhookHandled {
+        use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
+        /**
+        * The webhook payload.
+        *
+        * @var array
+        * @generated
+        */
+        public array $payload;
+        /**
+        * Create a new event instance.
+        *
+        * @param array $payload
+        * @return void
+        * @generated
+        */
+        public function __construct(array $payload): void;
+    }
+    class WebhookReceived {
+        use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
+        /**
+        * The webhook payload.
+        *
+        * @var array
+        * @generated
+        */
+        public array $payload;
+        /**
+        * Create a new event instance.
+        *
+        * @param array $payload
+        * @return void
+        * @generated
+        */
+        public function __construct(array $payload): void;
+    }
+}
+namespace Laravel\Cashier\Exceptions {
+    class CustomerAlreadyCreated extends \Exception {
+        /**
+        * Create a new CustomerAlreadyCreated instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @return static
+        * @generated
+        */
+        public static function exists(\Illuminate\Database\Eloquent\Model $owner): static;
+    }
+    class IncompletePayment extends \Exception {
+        /**
+        * The Cashier Payment object.
+        *
+        * @var \Laravel\Cashier\Payment
+        * @generated
+        */
+        public \Laravel\Cashier\Payment $payment;
+        /**
+        * Create a new IncompletePayment instance.
+        *
+        * @param \Laravel\Cashier\Payment $payment
+        * @param string $message
+        * @param int $code
+        * @param ?\Throwable $previous
+        * @return void
+        * @generated
+        */
+        public function __construct(\Laravel\Cashier\Payment $payment, string $message = '', int $code = 0, ?\Throwable $previous = null): void;
+        /**
+        * Create a new IncompletePayment instance with a `payment_action_required` type.
+        *
+        * @param \Laravel\Cashier\Payment $payment
+        * @return static
+        * @generated
+        */
+        public static function paymentMethodRequired(\Laravel\Cashier\Payment $payment): static;
+        /**
+        * Create a new IncompletePayment instance with a `requires_action` type.
+        *
+        * @param \Laravel\Cashier\Payment $payment
+        * @return static
+        * @generated
+        */
+        public static function requiresAction(\Laravel\Cashier\Payment $payment): static;
+        /**
+        * Create a new IncompletePayment instance with a `requires_confirmation` type.
+        *
+        * @param \Laravel\Cashier\Payment $payment
+        * @return static
+        * @generated
+        */
+        public static function requiresConfirmation(\Laravel\Cashier\Payment $payment): static;
+    }
+    class InvalidCoupon extends \Exception {
+        /**
+        * Create a new InvalidCoupon instance.
+        *
+        * @param string $couponId
+        * @return static
+        * @generated
+        */
+        public static function foreverAmountOffCouponNotAllowed(string $couponId): static;
+        /**
+        * Create a new InvalidCoupon instance for subscription context.
+        *
+        * @param string $couponId
+        * @return static
+        * @generated
+        */
+        public static function cannotApplyForeverAmountOffToSubscription(string $couponId): static;
+        /**
+        * Create a new InvalidCoupon instance for checkout context.
+        *
+        * @param string $couponId
+        * @return static
+        * @generated
+        */
+        public static function cannotUseForeverAmountOffInCheckout(string $couponId): static;
+    }
+    class InvalidCustomer extends \Exception {
+        /**
+        * Create a new InvalidCustomer instance.
+        *
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @return static
+        * @generated
+        */
+        public static function notYetCreated(\Illuminate\Database\Eloquent\Model $owner): static;
+    }
+    class InvalidCustomerBalanceTransaction extends \Exception {
+        /**
+        * Create a new CustomerBalanceTransaction instance.
+        *
+        * @param \Stripe\CustomerBalanceTransaction $transaction
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @return static
+        * @generated
+        */
+        public static function invalidOwner(\Stripe\CustomerBalanceTransaction $transaction, \Illuminate\Database\Eloquent\Model $owner): static;
+    }
+    class InvalidInvoice extends \Exception {
+        /**
+        * Create a new InvalidInvoice instance.
+        *
+        * @param \Stripe\Invoice $invoice
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @return static
+        * @generated
+        */
+        public static function invalidOwner(\Stripe\Invoice $invoice, \Illuminate\Database\Eloquent\Model $owner): static;
+    }
+    class InvalidPaymentMethod extends \Exception {
+        /**
+        * Create a new InvalidPaymentMethod instance.
+        *
+        * @param \Stripe\PaymentMethod $paymentMethod
+        * @param \Illuminate\Database\Eloquent\Model $owner
+        * @return static
+        * @generated
+        */
+        public static function invalidOwner(\Stripe\PaymentMethod $paymentMethod, \Illuminate\Database\Eloquent\Model $owner): static;
+    }
+    class SubscriptionUpdateFailure extends \Exception {
+        /**
+        * Create a new SubscriptionUpdateFailure instance.
+        *
+        * @param \Laravel\Cashier\Subscription $subscription
+        * @return static
+        * @generated
+        */
+        public static function incompleteSubscription(\Laravel\Cashier\Subscription $subscription): static;
+        /**
+        * Create a new SubscriptionUpdateFailure instance.
+        *
+        * @param \Laravel\Cashier\Subscription $subscription
+        * @param string $price
+        * @return static
+        * @generated
+        */
+        public static function duplicatePrice(\Laravel\Cashier\Subscription $subscription, string $price): static;
+        /**
+        * Create a new SubscriptionUpdateFailure instance.
+        *
+        * @param \Laravel\Cashier\Subscription $subscription
+        * @return static
+        * @generated
+        */
+        public static function cannotDeleteLastPrice(\Laravel\Cashier\Subscription $subscription): static;
+    }
+}
+namespace Laravel\Cashier\Http\Controllers {
+    class PaymentController extends \Illuminate\Routing\Controller {
+        /**
+        * Create a new PaymentController instance.
+        *
+        * @return void
+        * @generated
+        */
+        public function __construct(): void;
+        /**
+        * Display the form to gather additional payment verification for the given payment.
+        *
+        * @param string $id
+        * @return \Illuminate\Contracts\View\View
+        * @generated
+        */
+        public function show(string $id): \Illuminate\Contracts\View\View;
+    }
+    class WebhookController extends \Illuminate\Routing\Controller {
+        /**
+        * Create a new WebhookController instance.
+        *
+        * @return void
+        * @generated
+        */
+        public function __construct(): void;
+        /**
+        * Handle a Stripe webhook call.
+        *
+        * @param \Illuminate\Http\Request $request
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        public function handleWebhook(\Illuminate\Http\Request $request): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handle customer subscription created.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function handleCustomerSubscriptionCreated(array $payload): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Determines the type that should be used when new subscriptions are created from the Stripe dashboard.
+        *
+        * @param array $payload
+        * @return string
+        * @generated
+        */
+        protected function newSubscriptionType(array $payload): string;
+        /**
+        * Handle customer subscription updated.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response|null
+        * @generated
+        */
+        protected function handleCustomerSubscriptionUpdated(array $payload): \Symfony\Component\HttpFoundation\Response|null;
+        /**
+        * Handle the cancellation of a customer subscription.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function handleCustomerSubscriptionDeleted(array $payload): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handle customer updated.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function handleCustomerUpdated(array $payload): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handle deleted customer.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function handleCustomerDeleted(array $payload): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handle payment method automatically updated by vendor.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function handlePaymentMethodAutomaticallyUpdated(array $payload): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handle payment action required for invoice.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function handleInvoicePaymentActionRequired(array $payload): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handle invoice payment succeeded.
+        *
+        * @param array $payload
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function handleInvoicePaymentSucceeded(array $payload): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Get the customer instance by Stripe ID.
+        *
+        * @param string|null $stripeId
+        * @return \Laravel\Cashier\Billable|null
+        * @generated
+        */
+        protected function getUserByStripeId(string|null $stripeId): \Laravel\Cashier\Billable|null;
+        /**
+        * Determine whether the invoice belongs to an on-session checkout.
+        *
+        * @param array $payload
+        * @return bool
+        * @generated
+        */
+        protected function invoiceIsOnSessionCheckout(array $payload): bool;
+        /**
+        * Handle successful calls on the controller.
+        *
+        * @param array $parameters
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function successMethod(array $parameters = []): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Handle calls to missing methods on the controller.
+        *
+        * @param array $parameters
+        * @return \Symfony\Component\HttpFoundation\Response
+        * @generated
+        */
+        protected function missingMethod(array $parameters = []): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Set the number of automatic retries due to an object lock timeout from Stripe.
+        *
+        * @param int $retries
+        * @return void
+        * @generated
+        */
+        protected function setMaxNetworkRetries(int $retries = 3): void;
+    }
+}
+namespace Laravel\Cashier\Http\Middleware {
+    class VerifyRedirectUrl {
+        /**
+        * Handle the incoming request.
+        *
+        * @param \Illuminate\Http\Request $request
+        * @param \Closure $next
+        * @return \Illuminate\Http\Response
+        * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+        * @generated
+        */
+        public function handle(\Illuminate\Http\Request $request, \Closure $next): \Illuminate\Http\Response;
+    }
+    class VerifyWebhookSignature {
+        /**
+        * Handle the incoming request.
+        *
+        * @param \Illuminate\Http\Request $request
+        * @param \Closure $next
+        * @return \Illuminate\Http\Response
+        * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+        * @generated
+        */
+        public function handle(\Illuminate\Http\Request $request, \Closure $next): \Illuminate\Http\Response;
+    }
+}
+namespace Laravel\Cashier\Invoices {
+    class DompdfInvoiceRenderer implements \Laravel\Cashier\Contracts\InvoiceRenderer {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function render(\Laravel\Cashier\Invoice $invoice, array $data = [], array $options = []): string;
+    }
+    class LaravelPdfInvoiceRenderer implements \Laravel\Cashier\Contracts\InvoiceRenderer {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function render(\Laravel\Cashier\Invoice $invoice, array $data = [], array $options = []): string;
+        /**
+        * Render the invoice view to HTML.
+        *
+        * @generated
+        */
+        protected function renderInvoice(\Laravel\Cashier\Invoice $invoice, array $data): string;
+    }
+}
+namespace Laravel\Cashier\Jobs {
+    class SyncCustomerDetails implements \Illuminate\Contracts\Queue\ShouldQueue {
+        use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+        /**
+        * The billable model instance.
+        *
+        * @var \Laravel\Cashier\Billable
+        * @generated
+        */
+        public \Laravel\Cashier\Billable $billable;
+        /**
+        * Create a new job instance.
+        *
+        * @param \Laravel\Cashier\Billable $billable
+        * @return void
+        * @generated
+        */
+        public function __construct(\Laravel\Cashier\Billable $billable): void;
+        /**
+        * Execute the job.
+        *
+        * @return void
+        * @generated
+        */
+        public function handle(): void;
+    }
+}
+namespace Laravel\Cashier\Notifications {
+    class ConfirmPayment extends \Illuminate\Notifications\Notification implements \Illuminate\Contracts\Queue\ShouldQueue {
+        use \Illuminate\Bus\Queueable;
+        /**
+        * The PaymentIntent identifier.
+        *
+        * @var string
+        * @generated
+        */
+        public string $paymentId;
+        /**
+        * The payment amount.
+        *
+        * @var string
+        * @generated
+        */
+        public string $amount;
+        /**
+        * Create a new payment confirmation notification.
+        *
+        * @param \Laravel\Cashier\Payment $payment
+        * @return void
+        * @generated
+        */
+        public function __construct(\Laravel\Cashier\Payment $payment): void;
+        /**
+        * Get the notification's delivery channels.
+        *
+        * @param mixed $notifiable
+        * @return array
+        * @generated
+        */
+        public function via(mixed $notifiable): array;
+        /**
+        * Get the mail representation of the notification.
+        *
+        * @param mixed $notifiable
+        * @return \Illuminate\Notifications\Messages\MailMessage
+        * @generated
+        */
+        public function toMail(mixed $notifiable): \Illuminate\Notifications\Messages\MailMessage;
+    }
+}

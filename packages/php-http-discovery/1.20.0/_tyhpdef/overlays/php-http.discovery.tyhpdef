@@ -1,0 +1,150 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Discovery strategy class-strings, candidate structs, and `$_SERVER`-shaped
+ * PSR-17 helpers. Deprecated find() returns use tyhpdef/php-http-message-factory.
+ */
+
+namespace Http\Discovery {
+    /**
+     * Overlay: strategies are class names of `DiscoveryStrategy`.
+     */
+    // @overlay-against: class ClassDiscovery
+    partial class ClassDiscovery {
+        /**
+         * @param array<int|string, \__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy>> $strategies
+         */
+        // @overlay-against: function setStrategies(array $strategies): mixed
+        public static function setStrategies(array<int|string, \__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy>> $strategies): void;
+
+        /**
+         * @return array<int, \__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy>>
+         */
+        // @overlay-against: function getStrategies(): array
+        public static function getStrategies(): array<int, \__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy>>;
+
+        /**
+         * @param \__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy> $strategy
+         */
+        // @overlay-against: function appendStrategy(string $strategy): mixed
+        public static function appendStrategy(\__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy> $strategy): void;
+
+        /**
+         * @param \__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy> $strategy
+         */
+        // @overlay-against: function prependStrategy(string $strategy): mixed
+        public static function prependStrategy(\__ClassName<\Http\Discovery\Strategy\DiscoveryStrategy> $strategy): void;
+
+        // @overlay-against: function clearCache(): mixed
+        public static function clearCache(): void;
+
+        /**
+         * @param \__ClassName<T>|string $class
+         */
+        // @overlay-against: function safeClassExists(string $class): bool
+        public static function safeClassExists<T = mixed>(string $class): bool;
+    }
+
+    /**
+     * Overlay: globals helpers use PSR-7 request maps.
+     */
+    // @overlay-against: class Psr17Factory implements \Psr\Http\Message\RequestFactoryInterface, \Psr\Http\Message\ResponseFactoryInterface, \Psr\Http\Message\ServerRequestFactoryInterface, \Psr\Http\Message\StreamFactoryInterface, \Psr\Http\Message\UploadedFileFactoryInterface, \Psr\Http\Message\UriFactoryInterface
+    partial class Psr17Factory {
+        /**
+         * @param \Psr\Http\Message\ServerParams|null $server
+         * @param \Psr\Http\Message\QueryParams|null $get
+         * @param \Psr\Http\Message\ParsedBody $post
+         * @param \Psr\Http\Message\CookieParams|null $cookie
+         * @param \Psr\Http\Message\UploadedFileTree|null $files
+         */
+        // @overlay-against: function createServerRequestFromGlobals(?array $server, ?array $get, ?array $post, ?array $cookie, ?array $files, ?\Psr\Http\Message\StreamInterface $body): \Psr\Http\Message\ServerRequestInterface
+        public function createServerRequestFromGlobals(
+            ?\Psr\Http\Message\ServerParams $server = null,
+            ?\Psr\Http\Message\QueryParams $get = null,
+            array<string, mixed>|object|null $post = null,
+            ?\Psr\Http\Message\CookieParams $cookie = null,
+            ?\Psr\Http\Message\UploadedFileTree $files = null,
+            ?\Psr\Http\Message\StreamInterface $body = null
+        ): \Psr\Http\Message\ServerRequestInterface;
+
+        /**
+         * @param \Psr\Http\Message\ServerParams|null $server
+         */
+        // @overlay-against: function createUriFromGlobals(?array $server): \Psr\Http\Message\UriInterface
+        public function createUriFromGlobals(?\Psr\Http\Message\ServerParams $server = null): \Psr\Http\Message\UriInterface;
+
+        /**
+         * @param \Psr\Http\Message\ServerParams $serverParams
+         */
+        // @overlay-against: function createServerRequest(string $method, \Psr\Http\Message\UriInterface|string $uri, array $serverParams): \Psr\Http\Message\ServerRequestInterface
+        public function createServerRequest(string $method, \Psr\Http\Message\UriInterface|string $uri, \Psr\Http\Message\ServerParams $serverParams = []): \Psr\Http\Message\ServerRequestInterface;
+
+        /**
+         * @param int $error One of the `UPLOAD_ERR_*` constants.
+         */
+        // @overlay-against: function createUploadedFile(\Psr\Http\Message\StreamInterface $stream, ?int $size, int $error, ?string $clientFilename, ?string $clientMediaType): \Psr\Http\Message\UploadedFileInterface
+        public function createUploadedFile(\Psr\Http\Message\StreamInterface $stream, ?int $size = null, int $error = \UPLOAD_ERR_OK, ?string $clientFilename = null, ?string $clientMediaType = null): \Psr\Http\Message\UploadedFileInterface;
+    }
+}
+
+namespace Http\Discovery\Exception {
+    /**
+     * Overlay: factory returns this exception. The list is the failures from each strategy.
+     */
+    // @overlay-against: class DiscoveryFailedException extends \Exception implements \Http\Discovery\Exception
+    partial class DiscoveryFailedException {
+        /**
+         * @param array<int|string, \Exception> $exceptions
+         */
+        // @overlay-against: function create(array $exceptions): mixed
+        public static function create(array<int|string, \Exception> $exceptions): \Http\Discovery\Exception\DiscoveryFailedException;
+    }
+
+    /**
+     * Overlay: candidates are the `{class, condition}` maps strategies return.
+     */
+    // @overlay-against: class NoCandidateFoundException extends \Exception implements \Http\Discovery\Exception
+    partial class NoCandidateFoundException {
+        /**
+         * @param array<int|string, \Http\Discovery\Strategy\DiscoveryCandidate> $candidates
+         */
+        // @overlay-against: function __construct(string $strategy, array $candidates): void
+        public function __construct(string $strategy, array<int|string, \Http\Discovery\Strategy\DiscoveryCandidate> $candidates): void;
+    }
+}
+
+namespace Http\Discovery\Strategy {
+    /**
+     * One discovery candidate: a class name plus an optional condition.
+     */
+    type DiscoveryCandidate = struct {
+        string $class;
+        mixed $condition;
+    };
+
+    /**
+     * Overlay: candidates are `{class, condition}` maps.
+     */
+    // @overlay-against: interface DiscoveryStrategy
+    partial interface DiscoveryStrategy {
+        /**
+         * @param string $type FQCN of the type to discover.
+         * @return array<int, \Http\Discovery\Strategy\DiscoveryCandidate>
+         */
+        // @overlay-against: function getCandidates(string $type): array
+        public static function getCandidates(string $type): array<int, \Http\Discovery\Strategy\DiscoveryCandidate>;
+    }
+
+    /**
+     * Overlay: mock strategy returns the same candidate shape.
+     */
+    // @overlay-against: class MockClientStrategy implements \Http\Discovery\Strategy\DiscoveryStrategy
+    partial class MockClientStrategy {
+        /**
+         * @return array<int, \Http\Discovery\Strategy\DiscoveryCandidate>
+         */
+        // @overlay-against: function getCandidates(mixed $type): mixed
+        public static function getCandidates(mixed $type): array<int, \Http\Discovery\Strategy\DiscoveryCandidate>;
+    }
+}

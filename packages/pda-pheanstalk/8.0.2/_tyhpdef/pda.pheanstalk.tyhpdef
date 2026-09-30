@@ -1,0 +1,1173 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Pheanstalk {
+    /**
+    * A connection to a beanstalkd server, backed by any type of socket.
+    *
+    * The connection is responsible for:
+    * - managing the connection to the server via its socket factory
+    * - dispatching commands
+    * - parsing the response into a RawResponse object
+    *
+    * @generated
+    */
+    final class Connection {
+        public function __construct(\Pheanstalk\Contract\SocketFactoryInterface $factory): void;
+        /**
+        * Connect the socket, this is done automatically when dispatching commands
+        *
+        * @generated
+        */
+        public function connect(): void;
+        /**
+        * Disconnect the socket.
+        *
+        * Subsequent socket operations will create a new connection.
+        *
+        * @generated
+        */
+        public function disconnect(): void;
+        public function dispatchCommand(\Pheanstalk\Contract\CommandInterface $command, ?\Pheanstalk\Values\Timeout $timeout = null): \Pheanstalk\Values\RawResponse;
+    }
+    /**
+    * An exception originating from the Pheanstalk package.
+    *
+    * @extensible
+    * @generated
+    */
+    class Exception extends \Exception {
+    }
+    /**
+    * Pheanstalk is a PHP client for the beanstalkd work queue.
+    *
+    * This class implements all functionality in one big object.
+    * It is recommended to instead inject instances of the more specific interface implementations.
+    * For example, your frontend is unlikely to subscribe to requests so probably does not need `PheanstalkPublisherInterface`
+    * or `PheanstalkManagerInterface`.
+    *
+    * @generated
+    */
+    final class Pheanstalk implements \Pheanstalk\Contract\PheanstalkManagerInterface, \Pheanstalk\Contract\PheanstalkPublisherInterface, \Pheanstalk\Contract\PheanstalkSubscriberInterface {
+        public function __construct(\Pheanstalk\Connection $connection): void;
+        /**
+        * Static constructor that uses auto-detection to choose an underlying socket implementation
+        *
+        * @generated
+        */
+        public static function create(string $host, int $port = 11300, ?\Pheanstalk\Values\Timeout $connectTimeout = null, ?\Pheanstalk\Values\Timeout $receiveTimeout = null): static;
+        /**
+        * Static constructor that uses a given socket factory for underlying connections
+        *
+        * @generated
+        */
+        public static function createWithFactory(\Pheanstalk\Contract\SocketFactoryInterface $factory): static;
+        public function kick(int $max): int;
+        public function kickJob(\Pheanstalk\Contract\JobIdInterface $job): void;
+        public function listTubes(): \Pheanstalk\Values\TubeList;
+        public function pauseTube(\Pheanstalk\Values\TubeName $tube, int $delay): void;
+        public function resumeTube(\Pheanstalk\Values\TubeName $tube): void;
+        public function peek(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\Job;
+        public function peekReady(): ?\Pheanstalk\Values\Job;
+        public function peekDelayed(): ?\Pheanstalk\Values\Job;
+        public function peekBuried(): ?\Pheanstalk\Values\Job;
+        public function statsJob(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\JobStats;
+        public function statsTube(\Pheanstalk\Values\TubeName $tube): \Pheanstalk\Values\TubeStats;
+        public function stats(): \Pheanstalk\Values\ServerStats;
+        public function disconnect(): void;
+        public function bury(\Pheanstalk\Contract\JobIdInterface $job, int $priority = self::DEFAULT_PRIORITY): void;
+        public function listTubeUsed(): \Pheanstalk\Values\TubeName;
+        public function put(string $data, int $priority = self::DEFAULT_PRIORITY, int $delay = self::DEFAULT_DELAY, int $timeToRelease = self::DEFAULT_TTR): \Pheanstalk\Contract\JobIdInterface;
+        public function useTube(\Pheanstalk\Values\TubeName $tube): void;
+        public function delete(\Pheanstalk\Contract\JobIdInterface $job): void;
+        public function ignore(\Pheanstalk\Values\TubeName $tube): int;
+        public function listTubesWatched(): \Pheanstalk\Values\TubeList;
+        public function release(\Pheanstalk\Contract\JobIdInterface $job, int $priority = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_PRIORITY, int $delay = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_DELAY): void;
+        public function reserve(): \Pheanstalk\Values\Job;
+        public function reserveJob(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\Job;
+        public function reserveWithTimeout(int $timeout): ?\Pheanstalk\Values\Job;
+        public function touch(\Pheanstalk\Contract\JobIdInterface $job): void;
+        public function watch(\Pheanstalk\Values\TubeName $tube): int;
+    }
+    /**
+    * This class implements "management" functions for the beanstalk protocol.
+    *
+    * @generated
+    */
+    final class PheanstalkManager implements \Pheanstalk\Contract\PheanstalkManagerInterface {
+        use \Pheanstalk\StaticFactoryTrait;
+        public function kick(int $max): int;
+        public function kickJob(\Pheanstalk\Contract\JobIdInterface $job): void;
+        public function listTubes(): \Pheanstalk\Values\TubeList;
+        public function pauseTube(\Pheanstalk\Values\TubeName $tube, int $delay): void;
+        public function resumeTube(\Pheanstalk\Values\TubeName $tube): void;
+        public function peek(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\Job;
+        public function peekReady(): null|\Pheanstalk\Values\Job;
+        public function peekDelayed(): null|\Pheanstalk\Values\Job;
+        public function peekBuried(): null|\Pheanstalk\Values\Job;
+        public function statsJob(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\JobStats;
+        public function statsTube(\Pheanstalk\Values\TubeName $tube): \Pheanstalk\Values\TubeStats;
+        public function stats(): \Pheanstalk\Values\ServerStats;
+        public function disconnect(): void;
+    }
+    /**
+    * Implements the methods in the dispatcher interface.
+    *
+    * @generated
+    */
+    final class PheanstalkPublisher implements \Pheanstalk\Contract\PheanstalkPublisherInterface {
+        use \Pheanstalk\StaticFactoryTrait;
+        public function listTubeUsed(): \Pheanstalk\Values\TubeName;
+        public function useTube(\Pheanstalk\Values\TubeName $tube): void;
+        public function put(string $data, int $priority = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_PRIORITY, int $delay = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_DELAY, int $timeToRelease = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_TTR): \Pheanstalk\Contract\JobIdInterface;
+        public function disconnect(): void;
+    }
+    final class PheanstalkSubscriber implements \Pheanstalk\Contract\PheanstalkSubscriberInterface {
+        use \Pheanstalk\StaticFactoryTrait;
+        public function delete(\Pheanstalk\Contract\JobIdInterface $job): void;
+        public function ignore(\Pheanstalk\Values\TubeName $tube): int;
+        public function listTubesWatched(): \Pheanstalk\Values\TubeList;
+        public function release(\Pheanstalk\Contract\JobIdInterface $job, int $priority = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_PRIORITY, int $delay = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_DELAY): void;
+        public function reserve(): \Pheanstalk\Values\Job;
+        /**
+        * @param int $timeout
+        * @throws Exception\UnsupportedResponseException|Exception\MalformedResponseException|Exception\DeadlineSoonException
+        * @generated
+        */
+        public function reserveWithTimeout(int $timeout): null|\Pheanstalk\Values\Job;
+        public function touch(\Pheanstalk\Contract\JobIdInterface $job): void;
+        public function watch(\Pheanstalk\Values\TubeName $tube): int;
+        public function bury(\Pheanstalk\Contract\JobIdInterface $job, int $priority = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_PRIORITY): void;
+        public function reserveJob(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\Job;
+        public function disconnect(): void;
+    }
+    final class SocketFactory implements \Pheanstalk\Contract\SocketFactoryInterface {
+        public readonly \Pheanstalk\Values\SocketImplementation $implementation;
+        /**
+        * @param string $host
+        * @param int $port
+        * @param null|\Pheanstalk\Values\SocketImplementation $implementation
+        * @param ?\Pheanstalk\Values\Timeout $connectTimeout
+        * @param ?\Pheanstalk\Values\Timeout $receiveTimeout
+        * @param ?\Pheanstalk\Values\Timeout $sendTimeout the timeout used for sending data, not supported by all implementations
+        * @throws NoImplementationException
+        * @generated
+        */
+        public function __construct(string $host, int $port = self::DEFAULT_PORT, null|\Pheanstalk\Values\SocketImplementation $implementation = null, ?\Pheanstalk\Values\Timeout $connectTimeout = null, ?\Pheanstalk\Values\Timeout $receiveTimeout = null, ?\Pheanstalk\Values\Timeout $sendTimeout = null): void;
+        /**
+        * This function must return a connected socket that is ready for reading / writing.
+        *
+        * @return \Pheanstalk\Contract\SocketInterface
+        * @generated
+        */
+        public function create(): \Pheanstalk\Contract\SocketInterface;
+    }
+}
+namespace Pheanstalk\Command {
+    /**
+    * The 'bury' command.
+    *
+    * Puts a job into a 'buried' state, revived only by 'kick' command.
+    *
+    * @generated
+    */
+    final class BuryCommand extends \Pheanstalk\Command\JobCommand {
+        public function __construct(\Pheanstalk\Contract\JobIdInterface $jobId, int $priority): void;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Success;
+    }
+    /**
+    * The 'delete' command.
+    *
+    * Permanently deletes an already-reserved job.
+    *
+    * @generated
+    */
+    final class DeleteCommand extends \Pheanstalk\Command\JobCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Success;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+    }
+    /**
+    * The 'ignore' command.
+    *
+    * Removes a tube from the watch list to reserve jobs from.
+    *
+    * @generated
+    */
+    final class IgnoreCommand extends \Pheanstalk\Command\TubeCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): int;
+        protected function getCommandTemplate(): \Pheanstalk\Values\TubeCommandTemplate;
+    }
+    /**
+    * The 'kick' command.
+    *
+    * Kicks buried or delayed jobs into a 'ready' state.
+    * If there are buried jobs, it will kick up to $max of them.
+    * Otherwise, it will kick up to $max delayed jobs.
+    *
+    * @generated
+    */
+    final class KickCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function __construct(int $max): void;
+        public function getCommandLine(): string;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): int;
+    }
+    /**
+    * The 'kick-job' command.
+    *
+    * Kicks a specific buried or delayed job into a 'ready' state.
+    * 
+    * A variant of kick that operates with a single job. If the given job
+    * exists and is in a buried or delayed state, it will be moved to the
+    * ready queue of the same tube where it currently belongs.
+    *
+    * @generated
+    */
+    final class KickJobCommand extends \Pheanstalk\Command\JobCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Success;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+    }
+    /**
+    * The 'list-tubes' command.
+    *
+    * List all existing tubes.
+    *
+    * @generated
+    */
+    final class ListTubesCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function getCommandLine(): string;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\TubeList;
+    }
+    /**
+    * The 'list-tubes-watched' command.
+    *
+    * Lists the tubes on the watchlist.
+    *
+    * @generated
+    */
+    final class ListTubesWatchedCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\TubeList;
+        public function getCommandLine(): string;
+    }
+    /**
+    * The 'list-tube-used' command.
+    *
+    * Returns the tube currently being used by the client.
+    *
+    * @generated
+    */
+    final class ListTubeUsedCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\TubeName;
+        public function getCommandLine(): string;
+    }
+    /**
+    * The 'pause-tube' command.
+    *
+    * Temporarily prevent jobs being reserved from the given tube.
+    *
+    * @generated
+    */
+    final class PauseTubeCommand extends \Pheanstalk\Command\TubeCommand {
+        /**
+        * @param int $delay Seconds before jobs may be reserved from this queue.
+        * @generated
+        */
+        public function __construct(\Pheanstalk\Values\TubeName $tube, int $delay): void;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Success;
+        protected function getCommandTemplate(): \Pheanstalk\Values\TubeCommandTemplate;
+    }
+    /**
+    * The 'peek', 'peek-ready', 'peek-delayed' and 'peek-buried' commands.
+    *
+    * The peek commands let the client inspect a job in the system. There are four
+    * variations. All but the first (peek) operate only on the currently used tube.
+    *
+    * @generated
+    */
+    final class PeekCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function __construct(\Pheanstalk\Values\JobState $state): void;
+        public function getCommandLine(): string;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Job|\Pheanstalk\Values\Success;
+    }
+    /**
+    * The 'peek' command.
+    *
+    * The peek command let the client inspect a specific job in the system.
+    *
+    * @generated
+    */
+    final class PeekJobCommand extends \Pheanstalk\Command\JobCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Job;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+    }
+    /**
+    * The 'put' command.
+    *
+    * Inserts a job into the client's currently used tube.
+    *
+    * @see UseCommand
+    * @generated
+    */
+    final class PutCommand implements \Pheanstalk\Contract\CommandInterface, \Pheanstalk\Contract\CommandWithDataInterface {
+        /**
+        * Puts a job on the queue.
+        *
+        * @param string $data The job data
+        * @param int $priority From 0 (most urgent) to 0xFFFFFFFF (least urgent)
+        * @param int $delay Seconds to wait before job becomes ready
+        * @param int $ttr Time To Run: seconds a job can be reserved for
+        * @generated
+        */
+        public function __construct(string $data, int $priority, int $delay, int $ttr): void;
+        public function getCommandLine(): string;
+        public function getData(): string;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\JobId;
+    }
+    /**
+    * The 'release' command.
+    *
+    * Releases a reserved job back onto the ready queue.
+    *
+    * @generated
+    */
+    final class ReleaseCommand extends \Pheanstalk\Command\JobCommand {
+        public function __construct(\Pheanstalk\Contract\JobIdInterface $job, int $priority, int $delay): void;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Success;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+    }
+    /**
+    * The 'reserve' command.
+    *
+    * Reserves/locks a ready job in a watched tube.
+    *
+    * @generated
+    */
+    final class ReserveCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function getCommandLine(): string;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Job;
+    }
+    /**
+    * The 'reserve-job' command.
+    *
+    * @generated
+    */
+    final class ReserveJobCommand extends \Pheanstalk\Command\JobCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Job;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+    }
+    /**
+    * The 'reserve' command.
+    *
+    * Reserves/locks a ready job in a watched tube.
+    *
+    * @generated
+    */
+    final class ReserveWithTimeoutCommand implements \Pheanstalk\Contract\CommandInterface {
+        /**
+        * A timeout value of 0 will cause the server to immediately return either a
+        *
+        * response or TIMED_OUT.  A positive value of timeout will limit the amount of
+        * time the client will block on the reserve request until a job becomes
+        * available.
+        *
+        * @param int $timeout
+        * @generated
+        */
+        public function __construct(int $timeout): void;
+        public function getCommandLine(): string;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Success|\Pheanstalk\Values\Job;
+    }
+    /**
+    * The 'stats' command.
+    *
+    * Statistical information about the system as a whole.
+    *
+    * @generated
+    */
+    final class StatsCommand implements \Pheanstalk\Contract\CommandInterface {
+        public function getCommandLine(): string;
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\ServerStats;
+    }
+    /**
+    * The 'stats-job' command.
+    *
+    * Gives statistical information about the specified job if it exists.
+    *
+    * @generated
+    */
+    final class StatsJobCommand extends \Pheanstalk\Command\JobCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\JobStats;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+    }
+    /**
+    * The 'stats-tube' command.
+    *
+    * Gives statistical information about the specified tube if it exists.
+    *
+    * @generated
+    */
+    final class StatsTubeCommand extends \Pheanstalk\Command\TubeCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\TubeStats;
+        protected function getCommandTemplate(): \Pheanstalk\Values\TubeCommandTemplate;
+    }
+    /**
+    * The 'touch' command.
+    *
+    * The 'touch' command allows a worker to request more time to work on a job.
+    * This is useful for jobs that potentially take a long time, but you still want
+    * the benefits of a TTR pulling a job away from an unresponsive worker.  A worker
+    * may periodically tell the server that it's still alive and processing a job
+    * (e.g. it may do this on DEADLINE_SOON).
+    *
+    * @generated
+    */
+    final class TouchCommand extends \Pheanstalk\Command\JobCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\Success;
+        protected function getCommandTemplate(): \Pheanstalk\Values\JobCommandTemplate;
+    }
+    /**
+    * The 'use' command.
+    *
+    * The "use" command is for producers. Subsequent put commands will put jobs into
+    * the tube specified by this command. If no use command has been issued, jobs
+    * will be put into the tube named "default".
+    *
+    * @generated
+    */
+    final class UseCommand extends \Pheanstalk\Command\TubeCommand {
+        public function interpret(\Pheanstalk\Values\RawResponse $response): \Pheanstalk\Values\TubeName;
+        protected function getCommandTemplate(): \Pheanstalk\Values\TubeCommandTemplate;
+    }
+    /**
+    * The 'watch' command.
+    *
+    * Adds a tube to the watchlist to reserve jobs from.
+    *
+    * @generated
+    */
+    final class WatchCommand extends \Pheanstalk\Command\TubeCommand {
+        /**
+        * @param \Pheanstalk\Values\RawResponse $response
+        * @return int The number of tubes currently in the watch list
+        * @throws MalformedResponseException
+        * @throws UnsupportedResponseException
+        * @generated
+        */
+        public function interpret(\Pheanstalk\Values\RawResponse $response): int;
+        protected function getCommandTemplate(): \Pheanstalk\Values\TubeCommandTemplate;
+    }
+}
+namespace Pheanstalk\Contract {
+    /**
+    * Some commands carry data besides their command line. Commands carrying data implement this interface so that it can
+    *
+    * be detected and sent by the dispatching code in Connection
+    *
+    * @generated
+    */
+    interface CommandWithDataInterface extends \Pheanstalk\Contract\CommandInterface {
+        /**
+        * The binary data to follow the command.
+        *
+        * @generated
+        */
+        public function getData(): string;
+    }
+    interface DispatcherInterface {
+        public function dispatch(\Pheanstalk\Contract\CommandInterface $command): \Pheanstalk\Values\RawResponse;
+    }
+    interface JobIdInterface {
+        /**
+        * This is a string to support 64bit numbers on 32bit systems.
+        *
+        * @return string A numeric string representing the ID.
+        * @generated
+        */
+        public function getId(): string;
+    }
+    interface JobIdResponseInterface extends \Pheanstalk\Contract\ResponseInterface {
+        public function getId(): \Pheanstalk\Contract\JobIdInterface;
+    }
+    /**
+    * A response from the beanstalkd server.
+    *
+    * @generated
+    */
+    interface JobResponseInterface extends \Pheanstalk\Contract\JobIdResponseInterface {
+        public function getData(): string;
+    }
+    interface PheanstalkClientInterface {
+        /**
+        * Closes the current connection and releases all associated resources.
+        *
+        * This method ensures that after the call, no resources are held by the client,
+        * allowing garbage collection to safely reclaim memory. If no connection is open,
+        * this method does nothing (noop). Future command dispatches will automatically
+        * establish a new connection if needed.
+        * 
+        * Note: If the client has any reserved jobs at the time of disconnection, beanstalkd
+        * will automatically release them back into the ready queue.
+        *
+        * @generated
+        */
+        public function disconnect(): void;
+    }
+    interface PheanstalkManagerInterface extends \Pheanstalk\Contract\PheanstalkClientInterface {
+        /**
+        * Kicks buried or delayed jobs into a 'ready' state.
+        *
+        * If there are buried jobs, it will kick up to $max of them.
+        * Otherwise, it will kick up to $max delayed jobs.
+        *
+        * @param int $max The maximum jobs to kick
+        * @return int Number of jobs kicked
+        * @generated
+        */
+        public function kick(int $max): int;
+        /**
+        * A variant of kick that operates with a single job. If the given job
+        *
+        * exists and is in a buried or delayed state, it will be moved to the
+        * ready queue of the the same tube where it currently belongs.
+        *
+        * @generated
+        */
+        public function kickJob(\Pheanstalk\Contract\JobIdInterface $job): void;
+        /**
+        * The names of all tubes on the server.
+        *
+        * @generated
+        */
+        public function listTubes(): \Pheanstalk\Values\TubeList;
+        /**
+        * Temporarily prevent jobs being reserved from the given tube.
+        *
+        * @param int $delay Seconds before jobs may be reserved from this queue.
+        * @generated
+        */
+        public function pauseTube(\Pheanstalk\Values\TubeName $tube, int $delay): void;
+        /**
+        * Resume jobs for a given paused tube.
+        *
+        * @generated
+        */
+        public function resumeTube(\Pheanstalk\Values\TubeName $tube): void;
+        /**
+        * Inspect a job in the system, regardless of what tube it is in.
+        *
+        * @generated
+        */
+        public function peek(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\Job;
+        /**
+        * Inspect the next ready job in the currently used tube.
+        *
+        * @generated
+        */
+        public function peekReady(): ?\Pheanstalk\Values\Job;
+        /**
+        * Inspect the shortest-remaining-delayed job in the currently used tube.
+        *
+        * @return ?\Pheanstalk\Values\Job
+        * @generated
+        */
+        public function peekDelayed(): ?\Pheanstalk\Values\Job;
+        /**
+        * Inspect the next job in the list of buried jobs in the currently used tube.
+        *
+        * @generated
+        */
+        public function peekBuried(): ?\Pheanstalk\Values\Job;
+        /**
+        * Gives statistical information about the specified job if it exists.
+        *
+        * @generated
+        */
+        public function statsJob(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\JobStats;
+        /**
+        * Gives statistical information about the specified tube if it exists.
+        *
+        * @generated
+        */
+        public function statsTube(\Pheanstalk\Values\TubeName $tube): \Pheanstalk\Values\TubeStats;
+        /**
+        * Gives statistical information about the beanstalkd system as a whole.
+        *
+        * @generated
+        */
+        public function stats(): \Pheanstalk\Values\ServerStats;
+    }
+    interface PheanstalkPublisherInterface extends \Pheanstalk\Contract\PheanstalkClientInterface {
+        public const int DEFAULT_DELAY ?? 0;
+        public const int DEFAULT_PRIORITY ?? 1024;
+        public const int DEFAULT_TTR ?? 60;
+        /**
+        * The name of the current tube used for publishing jobs to.
+        *
+        * Always queries the server
+        *
+        * @generated
+        */
+        public function listTubeUsed(): \Pheanstalk\Values\TubeName;
+        /**
+        * Puts a job on the queue.
+        *
+        * @param string $data The job data
+        * @param int $priority From 0 (most urgent) to 0xFFFFFFFF (least urgent)
+        * @param int $delay Seconds to wait before job becomes ready
+        * @param int $timeToRelease Time To Run: seconds a job can be reserved for
+        * @generated
+        */
+        public function put(string $data, int $priority = self::DEFAULT_PRIORITY, int $delay = self::DEFAULT_DELAY, int $timeToRelease = self::DEFAULT_TTR): \Pheanstalk\Contract\JobIdInterface;
+        /**
+        * Change to the specified tube name for publishing jobs to.
+        *
+        * @generated
+        */
+        public function useTube(\Pheanstalk\Values\TubeName $tube): void;
+    }
+    interface PheanstalkSubscriberInterface extends \Pheanstalk\Contract\PheanstalkClientInterface {
+        /**
+        * Permanently deletes a job.
+        *
+        * @generated
+        */
+        public function delete(\Pheanstalk\Contract\JobIdInterface $job): void;
+        /**
+        * Remove the specified tube from the watchlist.
+        *
+        * @return int The number of watched tubes for the connection
+        * @generated
+        */
+        public function ignore(\Pheanstalk\Values\TubeName $tube): int;
+        /**
+        * The names of the tubes being watched, to reserve jobs from.
+        *
+        * Returns the watchlist, always queries the server
+        *
+        * @generated
+        */
+        public function listTubesWatched(): \Pheanstalk\Values\TubeList;
+        /**
+        * Puts a reserved job back into the ready queue.
+        *
+        * Marks the jobs state as "ready" to be run by any client.
+        * It is normally used when the job fails because of a transitory error.
+        *
+        * @param \Pheanstalk\Contract\JobIdInterface $job
+        * @param int $priority From 0 (most urgent) to 0xFFFFFFFF (least urgent)
+        * @param int $delay Seconds to wait before job becomes ready
+        * @generated
+        */
+        public function release(\Pheanstalk\Contract\JobIdInterface $job, int $priority = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_PRIORITY, int $delay = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_DELAY): void;
+        /**
+        * Reserves/locks a ready job in a watched tube.
+        *
+        * @generated
+        */
+        public function reserve(): \Pheanstalk\Values\Job;
+        /**
+        * Puts a job into a 'buried' state, revived only by 'kick' command.
+        *
+        * @generated
+        */
+        public function bury(\Pheanstalk\Contract\JobIdInterface $job, int $priority = \Pheanstalk\Contract\PheanstalkPublisherInterface::DEFAULT_PRIORITY): void;
+        /**
+        * Reserves/locks a specific job
+        *
+        * @param \Pheanstalk\Contract\JobIdInterface $job
+        * @return \Pheanstalk\Values\Job
+        * @generated
+        */
+        public function reserveJob(\Pheanstalk\Contract\JobIdInterface $job): \Pheanstalk\Values\Job;
+        /**
+        * Reserves/locks a ready job in a watched tube, uses the 'reserve-with-timeout' instead of 'reserve'.
+        *
+        * A timeout value of 0 will cause the server to immediately return either a
+        * response or TIMED_OUT.  A positive value of timeout will limit the amount of
+        * time the client will block on the reserve request until a job becomes
+        * available.
+        *
+        * @param int $timeout
+        * @generated
+        */
+        public function reserveWithTimeout(int $timeout): ?\Pheanstalk\Values\Job;
+        /**
+        * Allows a worker to request more time to work on a job.
+        *
+        * This is useful for jobs that potentially take a long time, but you still want
+        * the benefits of a TTR pulling a job away from an unresponsive worker.  A worker
+        * may periodically tell the server that it's still alive and processing a job
+        * (e.g. it may do this on DEADLINE_SOON).
+        *
+        * @generated
+        */
+        public function touch(\Pheanstalk\Contract\JobIdInterface $job): void;
+        /**
+        * Add the specified tube to the watchlist, to reserve jobs from.
+        *
+        * @return int The number of watched tubes for the connection
+        * @generated
+        */
+        public function watch(\Pheanstalk\Values\TubeName $tube): int;
+    }
+    /**
+    * A response from the beanstalkd server.
+    *
+    * @generated
+    */
+    interface ResponseInterface {
+    }
+    interface SocketFactoryInterface {
+        public const int DEFAULT_PORT ?? 11300;
+        /**
+        * This function must return a connected socket that is ready for reading / writing.
+        *
+        * @return \Pheanstalk\Contract\SocketInterface
+        * @throws ConnectionException when the underlying implementation is not able to create a connection
+        * @generated
+        */
+        public function create(): \Pheanstalk\Contract\SocketInterface;
+    }
+    interface SocketInterface {
+        /**
+        * Writes data to the socket.
+        *
+        * @generated
+        */
+        public function write(string $data): void;
+        /**
+        * Reads up to $length bytes from the socket.
+        *
+        * @param int $length
+        * @generated
+        */
+        public function read(int $length): string;
+        /**
+        * Reads up to the next new-line.
+        *
+        * Trailing whitespace is trimmed.
+        *
+        * @param ?\Pheanstalk\Values\Timeout $readTimeout
+        * @generated
+        */
+        public function getLine(?\Pheanstalk\Values\Timeout $readTimeout = null): string;
+        /**
+        * Disconnect the socket; subsequent usage of the socket will fail.
+        *
+        * @generated
+        */
+        public function disconnect(): void;
+    }
+}
+namespace Pheanstalk\Exception {
+    /**
+    * An exception originating from the beanstalkd client.
+    *
+    * @extensible
+    * @generated
+    */
+    class ClientException extends \Pheanstalk\Exception {
+    }
+    /**
+    * An exception relating to the client connection to the beanstalkd server.
+    *
+    * @generated
+    */
+    final class ConnectionException extends \Pheanstalk\Exception\ClientException {
+        /**
+        * @param int $errno The connection error code
+        * @param string $errstr The connection error message
+        * @generated
+        */
+        public function __construct(int $errno, string $errstr): void;
+    }
+    final class DeadlineSoonException extends \Pheanstalk\Exception\ClientException {
+    }
+    final class ExpectedCrlfException extends \Pheanstalk\Exception\ClientException {
+    }
+    /**
+    * Indicates that the given job body was buried due to the server being OOM
+    *
+    * @generated
+    */
+    final class JobBuriedException extends \Pheanstalk\Exception\ClientException {
+        public readonly \Pheanstalk\Contract\JobIdInterface $jobId;
+        public function __construct(\Pheanstalk\Contract\JobIdInterface $jobId): void;
+    }
+    /**
+    * Indicates that the given job was not found by the server
+    *
+    * @generated
+    */
+    final class JobNotFoundException extends \Pheanstalk\Exception\ClientException {
+    }
+    /**
+    * Indicates that the given job body is larger than the servers configured max-job-size
+    *
+    * @generated
+    */
+    final class JobTooBigException extends \Pheanstalk\Exception\ClientException {
+    }
+    /**
+    * An exception indicating that the beanstalkd server sent a response in an incorrect or unsupported format
+    *
+    * @generated
+    */
+    final class MalformedResponseException extends \Pheanstalk\Exception\ClientException {
+        public static function expectedDataAndIntegerArgument(): self;
+        public static function negativeDataLength(): self;
+        public static function expectedData(): self;
+        public static function expectedIntegerArgument(): self;
+        public static function expectedStringArgument(): self;
+        public static function expectedArgument(): self;
+    }
+    final class NoImplementationException extends \Pheanstalk\Exception\ClientException {
+    }
+    /**
+    * Exception thrown when a client tries to ignore the only tube in its watch list
+    *
+    * @generated
+    */
+    final class NotIgnoredException extends \Pheanstalk\Exception\ClientException {
+    }
+    /**
+    * An exception originating as a beanstalkd server error.
+    *
+    * @generated
+    */
+    final class ServerBadFormatException extends \Pheanstalk\Exception\ServerException {
+        public function __construct(string $commandLine): void;
+    }
+    /**
+    * An exception originating as a beanstalkd server error.
+    *
+    * @generated
+    */
+    final class ServerDrainingException extends \Pheanstalk\Exception\ServerException {
+    }
+    /**
+    * An exception originating as a beanstalkd server error.
+    *
+    * @extensible
+    * @generated
+    */
+    class ServerException extends \Pheanstalk\Exception {
+    }
+    /**
+    * An exception originating as a beanstalkd server error.
+    *
+    * @generated
+    */
+    final class ServerInternalErrorException extends \Pheanstalk\Exception\ServerException {
+    }
+    /**
+    * An exception originating as a beanstalkd server error.
+    *
+    * @generated
+    */
+    final class ServerOutOfMemoryException extends \Pheanstalk\Exception\ServerException {
+    }
+    /**
+    * An exception originating as a beanstalkd server error.
+    *
+    * @generated
+    */
+    final class ServerUnknownCommandException extends \Pheanstalk\Exception\ServerException {
+    }
+    final class TimedOutException extends \Pheanstalk\Exception\ClientException {
+    }
+    final class TubeNotFoundException extends \Pheanstalk\Exception\ClientException {
+        public readonly string $tube;
+        public function __construct(string|\Pheanstalk\Values\TubeName $message = '', int $code = 0, ?\Throwable $previous = null): void;
+    }
+    final class UnsupportedResponseException extends \Pheanstalk\Exception\ClientException {
+        public function __construct(\Pheanstalk\Values\ResponseType|null $type = null): void;
+    }
+}
+namespace Pheanstalk\Values {
+    enum CommandType: string {
+        case PUT = 'put';
+        case USE = 'use';
+        case RESERVE = 'reserve';
+        case RESERVE_WITH_TIMEOUT = 'reserve-with-timeout';
+        case RESERVE_JOB = 'reserve-job';
+        case DELETE = 'delete';
+        case RELEASE = 'release';
+        case TOUCH = 'touch';
+        case BURY = 'bury';
+        case WATCH = 'watch';
+        case IGNORE = 'ignore';
+        case PEEK = 'peek';
+        case PEEK_READY = 'peek-ready';
+        case PEEK_BURIED = 'peek-buried';
+        case PEEK_DELAYED = 'peek-delayed';
+        case KICK = 'kick';
+        case KICK_JOB = 'kick-job';
+        case STATS_JOB = 'stats-job';
+        case STATS = 'stats';
+        case STATS_TUBE = 'stats-tube';
+        case LIST_TUBES = 'list-tubes';
+        case LIST_TUBE_USED = 'list-tube-used';
+        case LIST_TUBES_WATCHED = 'list-tubes-watched';
+        case PAUSE_TUBE = 'pause-tube';
+    }
+    /**
+    * A job in a beanstalkd server.
+    *
+    * @generated
+    */
+    final class Job implements \Pheanstalk\Contract\JobIdInterface {
+        public function __construct(\Pheanstalk\Contract\JobIdInterface $id, string $data): void;
+        /**
+        * The job ID, unique on the beanstalkd server.
+        *
+        * @generated
+        */
+        public function getId(): string;
+        /**
+        * The job data.
+        *
+        * @return string
+        * @generated
+        */
+        public function getData(): string;
+    }
+    /**
+    * Simple value object that has a very basic render function
+    *
+    * @generated
+    */
+    final class JobCommandTemplate {
+        public function __construct(string $value): void;
+        public function render(\Pheanstalk\Contract\JobIdInterface $jobId): string;
+    }
+    /**
+    * This class implements a value object for beanstalkd job IDs.
+    *
+    * @generated
+    */
+    final class JobId implements \Pheanstalk\Contract\JobIdInterface {
+        public function __construct(int|string|\Pheanstalk\Contract\JobIdInterface $id): void;
+        public function getId(): string;
+    }
+    enum JobState: string {
+        case DELAYED = "delayed";
+        case READY = "ready";
+        case BURIED = "buried";
+        case RESERVED = "reserved";
+    }
+    final class JobStats {
+        public readonly \Pheanstalk\Values\JobId $id;
+        public readonly \Pheanstalk\Values\TubeName $tube;
+        public readonly \Pheanstalk\Values\JobState $state;
+        public readonly int $priority;
+        public readonly int $age;
+        public readonly int $delay;
+        public readonly int $timeToRelease;
+        public readonly int $timeLeft;
+        public readonly int $file;
+        public readonly int $reserves;
+        public readonly int $timeouts;
+        public readonly int $releases;
+        public readonly int $buries;
+        public readonly int $kicks;
+        public function __construct(\Pheanstalk\Values\JobId $id, \Pheanstalk\Values\TubeName $tube, \Pheanstalk\Values\JobState $state, int $priority, int $age, int $delay, int $timeToRelease, int $timeLeft, int $file, int $reserves, int $timeouts, int $releases, int $buries, int $kicks): void;
+        /**
+        * @param array<string, scalar> $data
+        * @throws \InvalidArgumentException
+        * @psalm-suppress PossiblyUndefinedArrayOffset
+        * @psalm-suppress ArgumentTypeCoercion
+        * @psalm-suppress PossiblyInvalidArgument
+        * @generated
+        */
+        public static function fromBeanstalkArray(array<string, scalar> $data): self;
+    }
+    /**
+    * Wraps the parts of a response to a beanstalkd command
+    *
+    * @generated
+    */
+    final class RawResponse {
+        public readonly int|string|null $argument;
+        public readonly \Pheanstalk\Values\ResponseType $type;
+        public readonly null|string $data ?? null;
+        public function __construct(\Pheanstalk\Values\ResponseType $type, string|null $argument = null, null|string $data = null): void;
+    }
+    enum ResponseType: string {
+        case OutOfMemory = 'OUT_OF_MEMORY';
+        case InternalError = 'INTERNAL_ERROR';
+        case Draining = 'DRAINING';
+        case BadFormat = 'BAD_FORMAT';
+        case UnknownCommand = 'UNKNOWN_COMMAND';
+        case Inserted = 'INSERTED';
+        case Buried = 'BURIED';
+        case ExpectedCrlf = 'EXPECTED_CRLF';
+        case JobTooBig = 'JOB_TOO_BIG';
+        case Using = 'USING';
+        case DeadlineSoon = 'DEADLINE_SOON';
+        case Reserved = 'RESERVED';
+        case Deleted = 'DELETED';
+        case NotFound = 'NOT_FOUND';
+        case Released = 'RELEASED';
+        case Watching = 'WATCHING';
+        case NotIgnored = 'NOT_IGNORED';
+        case Found = 'FOUND';
+        case Kicked = 'KICKED';
+        case Ok = 'OK';
+        case TimedOut = 'TIMED_OUT';
+        case Touched = 'TOUCHED';
+        case Paused = 'PAUSED';
+        /**
+        * @x-codecoverageignore this is configuration and there is no useful way to cover it
+        * @generated
+        */
+        public function hasData(): bool;
+    }
+    final class ServerStats {
+        public readonly int $currentJobsUrgent;
+        public readonly int $currentJobsReady;
+        public readonly int $currentJobsReserved;
+        public readonly int $currentJobsDelayed;
+        public readonly int $currentJobsBuried;
+        public readonly int $cmdPut;
+        public readonly int $cmdPeek;
+        public readonly int $cmdPeekReady;
+        public readonly int $cmdPeekDelayed;
+        public readonly int $cmdReserveWithTimeout;
+        public readonly int $cmdPeekBuried;
+        public readonly int $cmdReserve;
+        public readonly int $cmdUse;
+        public readonly int $cmdWatch;
+        public readonly int $cmdIgnore;
+        public readonly int $cmdDelete;
+        public readonly int $cmdRelease;
+        public readonly int $cmdBury;
+        public readonly int $cmdKick;
+        public readonly int $cmdStats;
+        public readonly int $cmdStatsJob;
+        public readonly int $cmdStatsTube;
+        public readonly int $cmdListTubes;
+        public readonly int $cmdListTubeUsed;
+        public readonly int $cmdListTubesWatched;
+        public readonly int $cmdPauseTube;
+        public readonly int $jobTimeouts;
+        public readonly int $totalJobs;
+        public readonly int $maxJobSize;
+        public readonly int $currentTubes;
+        public readonly int $currentConnections;
+        public readonly int $currentProducers;
+        public readonly int $currentWorkers;
+        public readonly int $currentWaiting;
+        public readonly int $totalConnections;
+        public readonly int $pid;
+        public readonly string $version;
+        public readonly float $rusageUtime;
+        public readonly float $rusageStime;
+        public readonly int $binlogOldestIndex;
+        public readonly int $binlogCurrentIndex;
+        public readonly int $binlogMaxSize;
+        public readonly int $binlogRecordsWritten;
+        public readonly bool $draining;
+        public readonly string $id;
+        public readonly string $hostname;
+        public readonly string $os;
+        public readonly string $platform;
+        public readonly int $cmdTouch;
+        public readonly int $uptime;
+        public readonly int $binlogRecordsMigrated;
+        public function __construct(int $currentJobsUrgent, int $currentJobsReady, int $currentJobsReserved, int $currentJobsDelayed, int $currentJobsBuried, int $cmdPut, int $cmdPeek, int $cmdPeekReady, int $cmdPeekDelayed, int $cmdReserveWithTimeout, int $cmdPeekBuried, int $cmdReserve, int $cmdUse, int $cmdWatch, int $cmdIgnore, int $cmdDelete, int $cmdRelease, int $cmdBury, int $cmdKick, int $cmdStats, int $cmdStatsJob, int $cmdStatsTube, int $cmdListTubes, int $cmdListTubeUsed, int $cmdListTubesWatched, int $cmdPauseTube, int $jobTimeouts, int $totalJobs, int $maxJobSize, int $currentTubes, int $currentConnections, int $currentProducers, int $currentWorkers, int $currentWaiting, int $totalConnections, int $pid, string $version, float $rusageUtime, float $rusageStime, int $binlogOldestIndex, int $binlogCurrentIndex, int $binlogMaxSize, int $binlogRecordsWritten, bool $draining, string $id, string $hostname, string $os, string $platform, int $cmdTouch, int $uptime, int $binlogRecordsMigrated): void;
+        /**
+        * @param array<string, string|int|bool|float> $data
+        * @psalm-suppress ArgumentTypeCoercion
+        * @generated
+        */
+        public static function fromBeanstalkArray(array<string, string|int|bool|float> $data): self;
+    }
+    enum SocketImplementation {
+        case STREAM;
+        case SOCKET;
+        case FSOCKOPEN;
+    }
+    /**
+    * This class indicates a successful operation with no (relevant) data
+    *
+    * We don't use `null` for this because we cannot narrow return values to just null.
+    * For example a command that either succeeds or throws an exception would look like this:
+    * `public function interpret(RawResponse $response): null`, which is not valid.
+    * Instead we use this class so that we get:
+    * `public function interpret(RawResponse $response): Success`
+    *
+    * @generated
+    */
+    final class Success {
+    }
+    final class Timeout {
+        public readonly int $seconds;
+        public readonly int $microSeconds;
+        public function __construct(int $seconds, int $microSeconds = 0): void;
+        /**
+        * @return array Array for usage in socket functions
+        * @generated
+        */
+        public function toArray(): array;
+        /**
+        * @param ?\Pheanstalk\Values\Timeout $other
+        * @return static
+        * @generated
+        */
+        public function add(?\Pheanstalk\Values\Timeout $other = null): static;
+        public function toFloat(): float;
+    }
+    /**
+    * Simple value object that has a very basic render function
+    *
+    * @generated
+    */
+    final class TubeCommandTemplate {
+        public function __construct(string $value): void;
+        public function render(\Pheanstalk\Values\TubeName $tubeName): string;
+    }
+    /**
+    * This class wraps a list of tube names
+    *
+    * @codecoverageignore Remove this annotation if any significant functionality gets added to this class.
+    * @implements \IteratorAggregate<int, TubeName>
+    * @generated
+    */
+    final class TubeList implements \IteratorAggregate {
+        public function __construct(\Pheanstalk\Values\TubeName ...$tubes): void;
+        public function getIterator(): \Traversable;
+    }
+    final readonly class TubeName implements \Stringable {
+        public string $value;
+        public function __construct(int|string $value): void;
+        public function __toString(): string;
+        public static function default(): self;
+    }
+    final class TubeStats {
+        public readonly \Pheanstalk\Values\TubeName $name;
+        public readonly int $currentJobsUrgent;
+        public readonly int $currentJobsReady;
+        public readonly int $currentJobsReserved;
+        public readonly int $currentJobsDelayed;
+        public readonly int $currentJobsBuried;
+        public readonly int $totalJobs;
+        public readonly int $currentUsing;
+        public readonly int $currentWaiting;
+        public readonly int $currentWatching;
+        public readonly int $pause;
+        public readonly int $cmdDelete;
+        public readonly int $cmdPauseTube;
+        public readonly int $pauseTimeLeft;
+        public function __construct(\Pheanstalk\Values\TubeName $name, int $currentJobsUrgent, int $currentJobsReady, int $currentJobsReserved, int $currentJobsDelayed, int $currentJobsBuried, int $totalJobs, int $currentUsing, int $currentWaiting, int $currentWatching, int $pause, int $cmdDelete, int $cmdPauseTube, int $pauseTimeLeft): void;
+        /**
+        * @param array<string, string|int|bool|float> $data
+        * @psalm-suppress ArgumentTypeCoercion
+        * @psalm-suppress PossiblyUndefinedArrayOffset
+        * @generated
+        */
+        public static function fromBeanstalkArray(array<string, string|int|bool|float> $data): self;
+    }
+}

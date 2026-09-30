@@ -1,0 +1,631 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace ZipStream {
+    /**
+    * @api
+    * @generated
+    */
+    enum CompressionMethod: int {
+        /**
+        * The file is stored (no compression)
+        */
+        case STORE = 0;
+        /**
+        * The file is Deflated
+        */
+        case DEFLATE = 8;
+    }
+    /**
+    * @api
+    * @generated
+    */
+    abstract class Exception extends \Exception {
+    }
+    /**
+    * ZipStream execution operation modes
+    *
+    * @api
+    * @generated
+    */
+    enum OperationMode {
+        /**
+        * Stream file into output stream
+        */
+        case NORMAL;
+        /**
+        * Simulate the zip to figure out the resulting file size
+        *
+        * This only supports entries where the file size is known beforehand and
+        * deflation is disabled.
+        */
+        case SIMULATE_STRICT;
+        /**
+        * Simulate the zip to figure out the resulting file size
+        *
+        * If the file size is not known beforehand or deflation is enabled, the
+        * entry streams will be read and rewound.
+        *
+        * If the entry does not support rewinding either, you will not be able to
+        * use the same stream in a later operation mode like `NORMAL`.
+        */
+        case SIMULATE_LAX;
+    }
+    /**
+    * @api
+    * @generated
+    */
+    enum Version: int {
+        case STORE = 10;
+        case DEFLATE = 20;
+        case ZIP64 = 45;
+    }
+    /**
+    * Streamed, dynamically generated zip archives.
+    *
+    * ## Usage
+    * 
+    * Streaming zip archives is a simple, three-step process:
+    * 
+    * 1.  Create the zip stream:
+    * 
+    * ```php
+    * $zip = new ZipStream(outputName: 'example.zip');
+    * ```
+    * 
+    * 2.  Add one or more files to the archive:
+    * 
+    * ```php
+    * // add first file
+    * $zip->addFile(fileName: 'world.txt', data: 'Hello World');
+    * 
+    * // add second file
+    * $zip->addFile(fileName: 'moon.txt', data: 'Hello Moon');
+    * ```
+    * 
+    * 3.  Finish the zip stream:
+    * 
+    * ```php
+    * $zip->finish();
+    * ```
+    * 
+    * You can also add an archive comment, add comments to individual files,
+    * and adjust the timestamp of files. See the API documentation for each
+    * method below for additional information.
+    * 
+    * ## Example
+    * 
+    * ```php
+    * // create a new zip stream object
+    * $zip = new ZipStream(outputName: 'some_files.zip');
+    * 
+    * // list of local files
+    * $files = array('foo.txt', 'bar.jpg');
+    * 
+    * // read and add each file to the archive
+    * foreach ($files as $path)
+    *   $zip->addFileFromPath(fileName: $path, $path);
+    * 
+    * // write archive footer to stream
+    * $zip->finish();
+    * ```
+    *
+    * @api
+    * @generated
+    */
+    class ZipStream {
+        /**
+        * Create a new ZipStream object.
+        *
+        * ##### Examples
+        * 
+        * ```php
+        * // create a new zip file named 'foo.zip'
+        * $zip = new ZipStream(outputName: 'foo.zip');
+        * 
+        * // create a new zip file named 'bar.zip' with a comment
+        * $zip = new ZipStream(
+        *   outputName: 'bar.zip',
+        *   comment: 'this is a comment for the zip file.',
+        * );
+        * ```
+        *
+        * @param \ZipStream\OperationMode $operationMode The mode can be used to switch between `NORMAL` and `SIMULATION_*` modes.
+        *  *     For details see the `OperationMode` documentation.
+        *  *     
+        *  *     Default to `NORMAL`.
+        * @param string $comment Archive Level Comment
+        * @param \Psr\Http\Message\StreamInterface|resource|null $outputStream Override the output of the archive to a different target.
+        *  *     
+        *  *     By default the archive is sent to `STDOUT`.
+        * @param \ZipStream\CompressionMethod $defaultCompressionMethod How to handle file compression. Legal values are
+        *  *     `CompressionMethod::DEFLATE` (the default), or
+        *  *     `CompressionMethod::STORE`. `STORE` sends the file raw and is
+        *  *     significantly faster, while `DEFLATE` compresses the file and
+        *  *     is much, much slower.
+        * @param int $defaultDeflateLevel Default deflation level. Only relevant if `compressionMethod`
+        *  *     is `DEFLATE`.
+        *  *     
+        *  *     See details of [`deflate_init`](https://www.php.net/manual/en/function.deflate-init.php#refsect1-function.deflate-init-parameters)
+        * @param bool $enableZip64 Enable Zip64 extension, supporting very large
+        *  *     archives (any size > 4 GB or file count > 64k)
+        * @param bool $defaultEnableZeroHeader Enable streaming files with single read.
+        *  *     
+        *  *     When the zero header is set, the file is streamed into the output
+        *  *     and the size & checksum are added at the end of the file. This is the
+        *  *     fastest method and uses the least memory. Unfortunately not all
+        *  *     ZIP clients fully support this and can lead to clients reporting
+        *  *     the generated ZIP files as corrupted in combination with other
+        *  *     circumstances. (Zip64 enabled, using UTF8 in comments / names etc.)
+        *  *     
+        *  *     When the zero header is not set, the length & checksum need to be
+        *  *     defined before the file is actually added. To prevent loading all
+        *  *     the data into memory, the data has to be read twice. If the data
+        *  *     which is added is not seekable, this call will fail.
+        * @param bool $sendHttpHeaders Boolean indicating whether or not to send
+        *  *     the HTTP headers for this file.
+        * @param ?\Closure $httpHeaderCallback The method called to send HTTP headers
+        * @param ?string $outputName The name of the created archive.
+        *  *     
+        *  *     Only relevant if `$sendHttpHeaders = true`.
+        * @param string $contentDisposition HTTP Content-Disposition
+        *  *     
+        *  *     Only relevant if `sendHttpHeaders = true`.
+        * @param string $contentType HTTP Content Type
+        *  *     
+        *  *     Only relevant if `sendHttpHeaders = true`.
+        * @param bool $flushOutput Enable flush after every write to output stream.
+        * @return self
+        * @generated
+        */
+        public function __construct(\ZipStream\OperationMode $operationMode = \ZipStream\OperationMode::NORMAL, string $comment = '', \Psr\Http\Message\StreamInterface|resource|null $outputStream = null, \ZipStream\CompressionMethod $defaultCompressionMethod = \ZipStream\CompressionMethod::DEFLATE, int $defaultDeflateLevel = 6, bool $enableZip64 = true, bool $defaultEnableZeroHeader = true, bool $sendHttpHeaders = true, ?\Closure $httpHeaderCallback = null, ?string $outputName = null, string $contentDisposition = 'attachment', string $contentType = 'application/x-zip', bool $flushOutput = false): self;
+        /**
+        * Add a file to the archive.
+        *
+        * ##### File Options
+        * 
+        * See {@see addFileFromPsr7Stream()}
+        * 
+        * ##### Examples
+        * 
+        * ```php
+        * // add a file named 'world.txt'
+        * $zip->addFile(fileName: 'world.txt', data: 'Hello World!');
+        * 
+        * // add a file named 'bar.jpg' with a comment and a last-modified
+        * // time of two hours ago
+        * $zip->addFile(
+        *   fileName: 'bar.jpg',
+        *   data: $data,
+        *   comment: 'this is a comment about bar.jpg',
+        *   lastModificationDateTime: new DateTime('2 hours ago'),
+        * );
+        * ```
+        *
+        * @param string $data contents of file
+        * @generated
+        */
+        public function addFile(string $fileName, string $data, string $comment = '', ?\ZipStream\CompressionMethod $compressionMethod = null, ?int $deflateLevel = null, ?\DateTimeInterface $lastModificationDateTime = null, ?int $maxSize = null, ?int $exactSize = null, ?bool $enableZeroHeader = null): void;
+        /**
+        * Add a file at path to the archive.
+        *
+        * ##### File Options
+        * 
+        * See {@see addFileFromPsr7Stream()}
+        * 
+        * ###### Examples
+        * 
+        * ```php
+        * // add a file named 'foo.txt' from the local file '/tmp/foo.txt'
+        * $zip->addFileFromPath(
+        *   fileName: 'foo.txt',
+        *   path: '/tmp/foo.txt',
+        * );
+        * 
+        * // add a file named 'bigfile.rar' from the local file
+        * // '/usr/share/bigfile.rar' with a comment and a last-modified
+        * // time of two hours ago
+        * $zip->addFileFromPath(
+        *   fileName: 'bigfile.rar',
+        *   path: '/usr/share/bigfile.rar',
+        *   comment: 'this is a comment about bigfile.rar',
+        *   lastModificationDateTime: new DateTime('2 hours ago'),
+        * );
+        * ```
+        *
+        * @throws \ZipStream\Exception\FileNotFoundException
+        * @throws \ZipStream\Exception\FileNotReadableException
+        * @generated
+        */
+        public function addFileFromPath(string $fileName, string $path, string $comment = '', ?\ZipStream\CompressionMethod $compressionMethod = null, ?int $deflateLevel = null, ?\DateTimeInterface $lastModificationDateTime = null, ?int $maxSize = null, ?int $exactSize = null, ?bool $enableZeroHeader = null): void;
+        /**
+        * Add an open stream (resource) to the archive.
+        *
+        * ##### File Options
+        * 
+        * See {@see addFileFromPsr7Stream()}
+        * 
+        * ##### Examples
+        * 
+        * ```php
+        * // create a temporary file stream and write text to it
+        * $filePointer = tmpfile();
+        * fwrite($filePointer, 'The quick brown fox jumped over the lazy dog.');
+        * 
+        * // add a file named 'streamfile.txt' from the content of the stream
+        * $archive->addFileFromStream(
+        *   fileName: 'streamfile.txt',
+        *   stream: $filePointer,
+        * );
+        * ```
+        *
+        * @param resource $stream contents of file as a stream resource
+        * @generated
+        */
+        public function addFileFromStream(string $fileName, resource $stream, string $comment = '', ?\ZipStream\CompressionMethod $compressionMethod = null, ?int $deflateLevel = null, ?\DateTimeInterface $lastModificationDateTime = null, ?int $maxSize = null, ?int $exactSize = null, ?bool $enableZeroHeader = null): void;
+        /**
+        * Add an open stream to the archive.
+        *
+        * ##### Examples
+        * 
+        * ```php
+        * $stream = $response->getBody();
+        * // add a file named 'streamfile.txt' from the content of the stream
+        * $archive->addFileFromPsr7Stream(
+        *   fileName: 'streamfile.txt',
+        *   stream: $stream,
+        * );
+        * ```
+        *
+        * @param string $fileName path of file in archive (including directory)
+        * @param \Psr\Http\Message\StreamInterface $stream contents of file as a stream resource
+        * @param string $comment ZIP comment for this file
+        * @param ?\ZipStream\CompressionMethod $compressionMethod Override `defaultCompressionMethod`
+        *  *     
+        *  *     See {@see __construct()}
+        * @param ?int $deflateLevel Override `defaultDeflateLevel`
+        *  *     
+        *  *     See {@see __construct()}
+        * @param ?\DateTimeInterface $lastModificationDateTime Set last modification time of file.
+        *  *     
+        *  *     Default: `now`
+        * @param ?int $maxSize Only read `maxSize` bytes from file.
+        *  *     
+        *  *     The file is considered done when either reaching `EOF`
+        *  *     or the `maxSize`.
+        * @param ?int $exactSize Read exactly `exactSize` bytes from file.
+        *  *     If `EOF` is reached before reading `exactSize` bytes, an error will be
+        *  *     thrown. The parameter allows for faster size calculations if the `stream`
+        *  *     does not support `fstat` size or is slow and otherwise known beforehand.
+        * @param ?bool $enableZeroHeader Override `defaultEnableZeroHeader`
+        *  *     
+        *  *     See {@see __construct()}
+        * @generated
+        */
+        public function addFileFromPsr7Stream(string $fileName, \Psr\Http\Message\StreamInterface $stream, string $comment = '', ?\ZipStream\CompressionMethod $compressionMethod = null, ?int $deflateLevel = null, ?\DateTimeInterface $lastModificationDateTime = null, ?int $maxSize = null, ?int $exactSize = null, ?bool $enableZeroHeader = null): void;
+        /**
+        * Add a file based on a callback.
+        *
+        * This is useful when you want to simulate a lot of files without keeping
+        * all of the file handles open at the same time.
+        * 
+        * ##### Examples
+        * 
+        * ```php
+        * foreach($files as $name => $size) {
+        *   $archive->addFileFromCallback(
+        *     fileName: 'streamfile.txt',
+        *     exactSize: $size,
+        *     callback: function() use($name): Psr\Http\Message\StreamInterface {
+        *       $response = download($name);
+        *       return $response->getBody();
+        *     }
+        *   );
+        * }
+        * ```
+        *
+        * @param string $fileName path of file in archive (including directory)
+        * @param \Closure $callback
+        * @param string $comment ZIP comment for this file
+        * @param ?\ZipStream\CompressionMethod $compressionMethod Override `defaultCompressionMethod`
+        *  *     
+        *  *     See {@see __construct()}
+        * @param ?int $deflateLevel Override `defaultDeflateLevel`
+        *  *     
+        *  *     See {@see __construct()}
+        * @param ?\DateTimeInterface $lastModificationDateTime Set last modification time of file.
+        *  *     
+        *  *     Default: `now`
+        * @param ?int $maxSize Only read `maxSize` bytes from file.
+        *  *     
+        *  *     The file is considered done when either reaching `EOF`
+        *  *     or the `maxSize`.
+        * @param ?int $exactSize Read exactly `exactSize` bytes from file.
+        *  *     If `EOF` is reached before reading `exactSize` bytes, an error will be
+        *  *     thrown. The parameter allows for faster size calculations if the `stream`
+        *  *     does not support `fstat` size or is slow and otherwise known beforehand.
+        * @param ?bool $enableZeroHeader Override `defaultEnableZeroHeader`
+        *  *     
+        *  *     See {@see __construct()}
+        * @generated
+        */
+        public function addFileFromCallback(string $fileName, \Closure $callback, string $comment = '', ?\ZipStream\CompressionMethod $compressionMethod = null, ?int $deflateLevel = null, ?\DateTimeInterface $lastModificationDateTime = null, ?int $maxSize = null, ?int $exactSize = null, ?bool $enableZeroHeader = null): void;
+        /**
+        * Add a directory to the archive.
+        *
+        * ##### File Options
+        * 
+        * See {@see addFileFromPsr7Stream()}
+        * 
+        * ##### Examples
+        * 
+        * ```php
+        * // add a directory named 'world/'
+        * $zip->addDirectory(fileName: 'world/');
+        * ```
+        *
+        * @generated
+        */
+        public function addDirectory(string $fileName, string $comment = '', ?\DateTimeInterface $lastModificationDateTime = null): void;
+        /**
+        * Executes a previously calculated simulation.
+        *
+        * ##### Example
+        * 
+        * ```php
+        * $zip = new ZipStream(
+        *   outputName: 'foo.zip',
+        *   operationMode: OperationMode::SIMULATE_STRICT,
+        * );
+        * 
+        * $zip->addFile('test.txt', 'Hello World');
+        * 
+        * $size = $zip->finish();
+        * 
+        * header('Content-Length: '. $size);
+        * 
+        * $zip->executeSimulation();
+        * ```
+        *
+        * @generated
+        */
+        public function executeSimulation(): void;
+        /**
+        * Write zip footer to stream.
+        *
+        * The class is left in an unusable state after `finish`.
+        * 
+        * ##### Example
+        * 
+        * ```php
+        * // write footer to stream
+        * $zip->finish();
+        * ```
+        *
+        * @generated
+        */
+        public function finish(): int;
+    }
+}
+namespace ZipStream\Exception {
+    /**
+    * This Exception gets invoked if a DOS time is overflowing
+    *
+    * @api
+    * @generated
+    */
+    class DosTimeOverflowException extends \ZipStream\Exception {
+    }
+    /**
+    * This Exception gets invoked if a file wasn't found
+    *
+    * @api
+    * @generated
+    */
+    class FileNotFoundException extends \ZipStream\Exception {
+    }
+    /**
+    * This Exception gets invoked if a file isn't readable
+    *
+    * @api
+    * @generated
+    */
+    class FileNotReadableException extends \ZipStream\Exception {
+    }
+    /**
+    * This Exception gets invoked if a file is not as large as it was specified.
+    *
+    * @api
+    * @generated
+    */
+    class FileSizeIncorrectException extends \ZipStream\Exception {
+    }
+    /**
+    * This Exception gets invoked if a counter value exceeds storage size
+    *
+    * @api
+    * @generated
+    */
+    class OverflowException extends \ZipStream\Exception {
+    }
+    /**
+    * This Exception gets invoked if a resource like `fread` returns false
+    *
+    * @api
+    * @generated
+    */
+    class ResourceActionException extends \ZipStream\Exception {
+        /**
+        * @var ?resource
+        * @generated
+        */
+        public ?resource $resource;
+        public readonly string $function;
+        /**
+        * @param resource $resource
+        * @generated
+        */
+        public function __construct(string $function, resource $resource = null): void;
+    }
+    /**
+    * This Exception gets invoked if a strict simulation is executed and the file
+    *
+    * information can't be determined without reading the entire file.
+    *
+    * @api
+    * @generated
+    */
+    class SimulationFileUnknownException extends \ZipStream\Exception {
+        public function __construct(): void;
+    }
+    /**
+    * This Exception gets invoked if a stream can't be read.
+    *
+    * @api
+    * @generated
+    */
+    class StreamNotReadableException extends \ZipStream\Exception {
+    }
+    /**
+    * This Exception gets invoked if a non seekable stream is
+    *
+    * provided and zero headers are disabled.
+    *
+    * @api
+    * @generated
+    */
+    class StreamNotSeekableException extends \ZipStream\Exception {
+    }
+}
+namespace ZipStream\Stream {
+    /**
+    * Stream wrapper that allows writing data to a callback function.
+    *
+    * This wrapper creates a virtual stream that forwards all written data
+    * to a provided callback function, enabling custom output handling
+    * such as streaming to HTTP responses, files, or other destinations.
+    *
+    * @psalm-suppress UnusedClass Used dynamically through stream_wrapper_register
+    * @generated
+    */
+    final class CallbackStreamWrapper {
+        public const string PROTOCOL ?? 'zipcb';
+        /**
+        * @var resource|null
+        * @generated
+        */
+        public resource|null $context;
+        /**
+        * Destructor - ensures cleanup even if stream_close() isn't called.
+        *
+        * Prevents memory leaks in long-running processes.
+        *
+        * @generated
+        */
+        public function __destruct(): void;
+        /**
+        * Create a new callback stream.
+        *
+        * @param callable $callback Function to call with written data
+        * @return resource|false Stream resource or false on failure
+        * @generated
+        */
+        public static function open(callable $callback): resource|false;
+        /**
+        * Open the stream.
+        *
+        * @param string $path Stream path containing the callback ID
+        * @param string $mode File mode (must contain 'w' for writing)
+        * @param int $options Stream options (required by interface, unused)
+        * @param ?string $opened_path Opened path reference (required by interface, unused)
+        * @return bool True if stream opened successfully
+        * @psalm-suppress UnusedParam $options and $opened_path are required by the stream wrapper interface
+        * @generated
+        */
+        public function stream_open(string $path, string $mode, int $options, ?string &$opened_path): bool;
+        /**
+        * Write data to the callback.
+        *
+        * @param string $data Data to write
+        * @return int Number of bytes written
+        * @throws RuntimeException If callback execution fails
+        * @generated
+        */
+        public function stream_write(string $data): int;
+        /**
+        * Get current position in stream.
+        *
+        * @return int Current position
+        * @generated
+        */
+        public function stream_tell(): int;
+        /**
+        * Check if stream has reached end of file.
+        *
+        * @return bool Always false for write-only streams
+        * @generated
+        */
+        public function stream_eof(): bool;
+        /**
+        * Flush stream buffers.
+        *
+        * @return bool Always true (no buffering)
+        * @generated
+        */
+        public function stream_flush(): bool;
+        /**
+        * Close the stream and clean up callback.
+        *
+        * @generated
+        */
+        public function stream_close(): void;
+        /**
+        * Get stream statistics.
+        *
+        * @return array<string, mixed> Stream statistics
+        * @generated
+        */
+        public function stream_stat(): array<string, mixed>;
+        /**
+        * Read data from stream (not supported - write-only stream).
+        *
+        * @param int $count Number of bytes to read (required by interface, unused)
+        * @return string Always empty string
+        * @psalm-suppress UnusedParam $count is required by the stream wrapper interface
+        * @generated
+        */
+        public function stream_read(int $count): string;
+        /**
+        * Seek to position in stream (not supported).
+        *
+        * @param int $offset Offset to seek to (required by interface, unused)
+        * @param int $whence Seek mode (required by interface, unused)
+        * @return bool Always false
+        * @psalm-suppress UnusedParam $offset and $whence are required by the stream wrapper interface
+        * @generated
+        */
+        public function stream_seek(int $offset, int $whence): bool;
+        /**
+        * Set options on stream (not supported).
+        *
+        * @param int $option Option to set (required by interface, unused)
+        * @param int $arg1 First argument (required by interface, unused)
+        * @param int $arg2 Second argument (required by interface, unused)
+        * @return bool Always false
+        * @psalm-suppress UnusedParam All parameters are required by the stream wrapper interface
+        * @generated
+        */
+        public function stream_set_option(int $option, int $arg1, int $arg2): bool;
+        /**
+        * Truncate stream (not supported).
+        *
+        * @param int $new_size New size (required by interface, unused)
+        * @return bool Always false
+        * @psalm-suppress UnusedParam $new_size is required by the stream wrapper interface
+        * @generated
+        */
+        public function stream_truncate(int $new_size): bool;
+    }
+}

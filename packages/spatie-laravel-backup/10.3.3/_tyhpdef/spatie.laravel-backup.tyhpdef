@@ -1,0 +1,1093 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+function backupLogger(): \Spatie\Backup\Support\BackupLogger;
+namespace Spatie\Backup {
+    class BackupServiceProvider extends \Spatie\LaravelPackageTools\PackageServiceProvider {
+        public function configurePackage(\Spatie\LaravelPackageTools\Package $package): void;
+        public function packageBooted(): void;
+        public function packageRegistered(): void;
+        protected function registerNotificationChannels(): void;
+    }
+}
+namespace Spatie\Backup\BackupDestination {
+    class Backup {
+        public bool $exists ?? true;
+        protected \Illuminate\Contracts\Filesystem\Filesystem $disk;
+        protected string $path;
+        public function __construct(\Illuminate\Contracts\Filesystem\Filesystem $disk, string $path): void;
+        public function disk(): \Illuminate\Contracts\Filesystem\Filesystem;
+        public function path(): string;
+        public function exists(): bool;
+        public function date(): \Carbon\Carbon;
+        public function sizeInBytes(): float;
+        /**
+        * @return resource
+        * @generated
+        */
+        public function stream(): resource;
+        public function delete(): void;
+    }
+    /**
+    * @extends Collection<int,Backup>
+    * @generated
+    */
+    class BackupCollection extends \Illuminate\Support\Collection {
+        protected ?float $sizeCache ?? null;
+        /**
+        * @param array<string> $files
+        * @generated
+        */
+        public static function createFromFiles(?\Illuminate\Contracts\Filesystem\Filesystem $disk, array<string> $files): self;
+        public function newest(): ?\Spatie\Backup\BackupDestination\Backup;
+        public function oldest(): ?\Spatie\Backup\BackupDestination\Backup;
+        public function size(): float;
+    }
+    class BackupDestination {
+        public ?\Exception $connectionError ?? null;
+        protected ?\Spatie\Backup\BackupDestination\BackupCollection $backupCollectionCache ?? null;
+        protected ?\Illuminate\Contracts\Filesystem\Filesystem $disk;
+        protected string $backupName;
+        protected string $diskName;
+        public function __construct(?\Illuminate\Contracts\Filesystem\Filesystem $disk, string $backupName, string $diskName): void;
+        public function disk(): \Illuminate\Contracts\Filesystem\Filesystem;
+        public function diskName(): string;
+        public function filesystemType(): string;
+        public static function create(string $diskName, string $backupName): self;
+        public function write(string $file): void;
+        public function backupName(): string;
+        public function setBackupName(string $backupName): self;
+        public function backups(): \Spatie\Backup\BackupDestination\BackupCollection;
+        public function connectionError(): ?\Exception;
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function getDiskOptions(): array<string, string>;
+        public function isReachable(): bool;
+        public function usedStorage(): float;
+        public function newestBackup(): ?\Spatie\Backup\BackupDestination\Backup;
+        public function oldestBackup(): ?\Spatie\Backup\BackupDestination\Backup;
+        /**
+        * @deprecated Will be removed in the next major version.
+        * @generated
+        */
+        deprecated public function newestBackupIsOlderThan(\Carbon\Carbon $date): bool;
+        public function fresh(): self;
+    }
+    class BackupDestinationFactory {
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public static function createFromArray(\Spatie\Backup\Config\Config $config): \Illuminate\Support\Collection;
+    }
+}
+namespace Spatie\Backup\Commands {
+    class BackupCommand extends \Spatie\Backup\Commands\BaseCommand implements \Illuminate\Contracts\Console\Isolatable {
+        use \Spatie\Backup\Traits\Retryable;
+        protected mixed $signature;
+        protected mixed $description ?? 'Run the backup.';
+        protected \Spatie\Backup\Config\Config $config;
+        public function __construct(\Spatie\Backup\Config\Config $config): void;
+        public function handle(): int;
+        protected function guardAgainstInvalidOptions(): void;
+    }
+    abstract class BaseCommand extends \Spatie\SignalAwareCommand\SignalAwareCommand {
+        /**
+        * @var array<int>
+        * @generated
+        */
+        protected array<int> $handlesSignals ?? [];
+        public function __construct(): void;
+        public function run(\Symfony\Component\Console\Input\InputInterface $input, \Symfony\Component\Console\Output\OutputInterface $output): int;
+        /**
+        * Make the config file passed via `--config` the active backup config for
+        *
+        * the rest of this process. Everything that resolves the config from the
+        * container (`app(Config::class)`) or reads `config('backup.*')` directly
+        * needs to see the alternate config as well, not just the command itself.
+        *
+        * @generated
+        */
+        protected function resolveConfig(): \Spatie\Backup\Config\Config;
+        protected function runningInConsole(): bool;
+        /**
+        * @return array<int>
+        * @generated
+        */
+        public function getSubscribedSignals(): array<int>;
+    }
+    class CleanupCommand extends \Spatie\Backup\Commands\BaseCommand implements \Illuminate\Contracts\Console\Isolatable {
+        use \Spatie\Backup\Traits\Retryable;
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $signature ?? 'backup:clean {--disable-notifications} {--tries=} {--config=}';
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Remove all backups older than specified number of days in config.';
+        protected \Spatie\Backup\Tasks\Cleanup\CleanupStrategy $strategy;
+        protected \Spatie\Backup\Config\Config $config;
+        public function __construct(\Spatie\Backup\Tasks\Cleanup\CleanupStrategy $strategy, \Spatie\Backup\Config\Config $config): void;
+        public function handle(): int;
+    }
+    class ListCommand extends \Spatie\Backup\Commands\BaseCommand {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $signature ?? 'backup:list';
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Display a list of all backups.';
+        protected \Spatie\Backup\Config\Config $config;
+        public function __construct(\Spatie\Backup\Config\Config $config): void;
+        public function handle(): int;
+        /**
+        * @param \Illuminate\Support\Collection $backupDestinationStatuses
+        * @generated
+        */
+        protected function displayOverview(\Illuminate\Support\Collection $backupDestinationStatuses): static;
+        /**
+        * @return array
+        * @generated
+        */
+        public function convertToRow(\Spatie\Backup\Tasks\Monitor\BackupDestinationStatus $backupDestinationStatus): array;
+        /**
+        * @param \Illuminate\Support\Collection $backupDestinationStatuses
+        * @generated
+        */
+        protected function displayFailures(\Illuminate\Support\Collection $backupDestinationStatuses): static;
+        protected function getFormattedBackupDate(?\Spatie\Backup\BackupDestination\Backup $backup = null): string;
+    }
+    class MonitorCommand extends \Spatie\Backup\Commands\BaseCommand implements \Illuminate\Contracts\Console\Isolatable {
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $signature ?? 'backup:monitor';
+        /**
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Monitor the health of all backups.';
+        protected \Spatie\Backup\Config\Config $config;
+        public function __construct(\Spatie\Backup\Config\Config $config): void;
+        public function handle(): int;
+    }
+}
+namespace Spatie\Backup\Config {
+    class BackupConfig extends \Spatie\Backup\Support\Data {
+        public string $name;
+        public \Spatie\Backup\Config\SourceConfig $source;
+        public ?string $databaseDumpCompressor;
+        public ?string $databaseDumpFileTimestampFormat;
+        public \Spatie\Backup\Enums\DumpFilenameBase $databaseDumpFilenameBase;
+        public string $databaseDumpFileExtension;
+        public \Spatie\Backup\Config\DestinationConfig $destination;
+        public ?string $temporaryDirectory;
+        public ?string $password;
+        public \Spatie\Backup\Enums\Encryption $encryption;
+        public int $tries;
+        public int $retryDelay;
+        public ?\Spatie\Backup\Config\MonitoredBackupsConfig $monitoredBackups;
+        public bool $verifyBackup;
+        protected function __construct(string $name, \Spatie\Backup\Config\SourceConfig $source, ?string $databaseDumpCompressor, ?string $databaseDumpFileTimestampFormat, \Spatie\Backup\Enums\DumpFilenameBase $databaseDumpFilenameBase, string $databaseDumpFileExtension, \Spatie\Backup\Config\DestinationConfig $destination, ?string $temporaryDirectory, ?string $password, \Spatie\Backup\Enums\Encryption $encryption, int $tries, int $retryDelay, ?\Spatie\Backup\Config\MonitoredBackupsConfig $monitoredBackups, bool $verifyBackup): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class CleanupConfig extends \Spatie\Backup\Support\Data {
+        public string $strategy;
+        public \Spatie\Backup\Config\StrategyConfig $defaultStrategy;
+        public int $tries;
+        public int $retryDelay;
+        /**
+        * @param string $strategy
+        * @generated
+        */
+        protected function __construct(string $strategy, \Spatie\Backup\Config\StrategyConfig $defaultStrategy, int $tries, int $retryDelay): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class Config extends \Spatie\Backup\Support\Data {
+        public \Spatie\Backup\Config\BackupConfig $backup;
+        public \Spatie\Backup\Config\NotificationsConfig $notifications;
+        public \Spatie\Backup\Config\MonitoredBackupsConfig $monitoredBackups;
+        public \Spatie\Backup\Config\CleanupConfig $cleanup;
+        protected function __construct(\Spatie\Backup\Config\BackupConfig $backup, \Spatie\Backup\Config\NotificationsConfig $notifications, \Spatie\Backup\Config\MonitoredBackupsConfig $monitoredBackups, \Spatie\Backup\Config\CleanupConfig $cleanup): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class DestinationConfig extends \Spatie\Backup\Support\Data {
+        public int $compressionMethod;
+        public int $compressionLevel;
+        public string $filenamePrefix;
+        public array<string> $disks;
+        public bool $continueOnFailure;
+        /**
+        * @param int $compressionLevel
+        * @param array<string> $disks
+        * @generated
+        */
+        protected function __construct(int $compressionMethod, int $compressionLevel, string $filenamePrefix, array<string> $disks, bool $continueOnFailure): void;
+        /**
+        * @param array<string, mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<string, mixed> $data): self;
+    }
+    class MonitoredBackupConfig extends \Spatie\Backup\Support\Data {
+        public string $name;
+        public array<string> $disks;
+        public array<string, int> $healthChecks;
+        /**
+        * @param array<string> $disks
+        * @param array<string, int> $healthChecks
+        * @generated
+        */
+        protected function __construct(string $name, array<string> $disks, array<string, int> $healthChecks): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class MonitoredBackupsConfig extends \Spatie\Backup\Support\Data {
+        public array<\Spatie\Backup\Config\MonitoredBackupConfig> $monitorBackups;
+        /**
+        * @param array<MonitoredBackupConfig> $monitorBackups
+        * @generated
+        */
+        protected function __construct(array<\Spatie\Backup\Config\MonitoredBackupConfig> $monitorBackups): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class NotificationDiscordConfig extends \Spatie\Backup\Support\Data {
+        public string $webhookUrl;
+        public string $username;
+        public string $avatar_url;
+        protected function __construct(string $webhookUrl, string $username, string $avatar_url): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class NotificationMailConfig extends \Spatie\Backup\Support\Data {
+        public string|array $to;
+        public \Spatie\Backup\Config\NotificationMailSenderConfig $from;
+        /**
+        * @param string|array $to
+        * @generated
+        */
+        protected function __construct(string|array $to, \Spatie\Backup\Config\NotificationMailSenderConfig $from): void;
+        /**
+        * @param array<mixed> $data
+        * @throws InvalidConfig
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class NotificationMailSenderConfig extends \Spatie\Backup\Support\Data {
+        public string $address;
+        public ?string $name;
+        protected function __construct(string $address, ?string $name): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class NotificationsConfig extends \Spatie\Backup\Support\Data {
+        public array<string, array<string>> $notifications;
+        public string $notifiable;
+        public \Spatie\Backup\Config\NotificationMailConfig $mail;
+        public \Spatie\Backup\Config\NotificationSlackConfig $slack;
+        public ?\Spatie\Backup\Config\NotificationDiscordConfig $discord;
+        public ?\Spatie\Backup\Config\NotificationWebhookConfig $webhook;
+        /**
+        * @param array<string, array<string>> $notifications
+        * @param string $notifiable
+        * @generated
+        */
+        protected function __construct(array<string, array<string>> $notifications, string $notifiable, \Spatie\Backup\Config\NotificationMailConfig $mail, \Spatie\Backup\Config\NotificationSlackConfig $slack, ?\Spatie\Backup\Config\NotificationDiscordConfig $discord, ?\Spatie\Backup\Config\NotificationWebhookConfig $webhook): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class NotificationSlackConfig extends \Spatie\Backup\Support\Data {
+        public string $webhookUrl;
+        public ?string $channel;
+        public ?string $username;
+        public ?string $icon;
+        protected function __construct(string $webhookUrl, ?string $channel, ?string $username, ?string $icon): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class NotificationWebhookConfig extends \Spatie\Backup\Support\Data {
+        public string $url;
+        protected function __construct(string $url): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class SourceConfig extends \Spatie\Backup\Support\Data {
+        public \Spatie\Backup\Config\SourceFilesConfig $files;
+        public array<string> $databases;
+        /**
+        * @param array<string> $databases
+        * @generated
+        */
+        protected function __construct(\Spatie\Backup\Config\SourceFilesConfig $files, array<string> $databases): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class SourceFilesConfig extends \Spatie\Backup\Support\Data {
+        public array<string> $include;
+        public array<string> $exclude;
+        public bool $followLinks;
+        public bool $ignoreUnreadableDirectories;
+        public ?string $relativePath;
+        /**
+        * @param array<string> $include
+        * @param array<string> $exclude
+        * @generated
+        */
+        protected function __construct(array<string> $include, array<string> $exclude, bool $followLinks, bool $ignoreUnreadableDirectories, ?string $relativePath): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+    class StrategyConfig extends \Spatie\Backup\Support\Data {
+        public int $keepAllBackupsForDays;
+        public int $keepDailyBackupsForDays;
+        public int $keepWeeklyBackupsForWeeks;
+        public int $keepMonthlyBackupsForMonths;
+        public int $keepYearlyBackupsForYears;
+        public ?int $deleteOldestBackupsWhenUsingMoreMegabytesThan;
+        protected function __construct(int $keepAllBackupsForDays, int $keepDailyBackupsForDays, int $keepWeeklyBackupsForWeeks, int $keepMonthlyBackupsForMonths, int $keepYearlyBackupsForYears, ?int $deleteOldestBackupsWhenUsingMoreMegabytesThan): void;
+        /**
+        * @param array<mixed> $data
+        * @generated
+        */
+        public static function fromArray(array<mixed> $data): self;
+    }
+}
+namespace Spatie\Backup\Enums {
+    enum DumpFilenameBase: string {
+        case Database = 'database';
+        case Connection = 'connection';
+    }
+    enum Encryption: string {
+        case None = 'none';
+        case Default = 'default';
+        case Aes128 = 'aes128';
+        case Aes192 = 'aes192';
+        case Aes256 = 'aes256';
+        public function algorithm(): ?int;
+        public function shouldEncrypt(): bool;
+    }
+}
+namespace Spatie\Backup\Events {
+    class BackupHasFailed {
+        public \Exception $exception;
+        public ?string $diskName ?? null;
+        public ?string $backupName ?? null;
+        public function __construct(\Exception $exception, ?string $diskName = null, ?string $backupName = null): void;
+    }
+    class BackupManifestWasCreated {
+        public \Spatie\Backup\Tasks\Backup\Manifest $manifest;
+        public function __construct(\Spatie\Backup\Tasks\Backup\Manifest $manifest): void;
+    }
+    class BackupWasSuccessful {
+        public string $diskName;
+        public string $backupName;
+        public function __construct(string $diskName, string $backupName): void;
+    }
+    class BackupZipWasCreated {
+        public string $pathToZip;
+        public function __construct(string $pathToZip): void;
+    }
+    class CleanupHasFailed {
+        public \Exception $exception;
+        public ?string $diskName ?? null;
+        public ?string $backupName ?? null;
+        public function __construct(\Exception $exception, ?string $diskName = null, ?string $backupName = null): void;
+    }
+    class CleanupWasSuccessful {
+        public string $diskName;
+        public string $backupName;
+        public function __construct(string $diskName, string $backupName): void;
+    }
+    class DumpingDatabase {
+        public \Spatie\DbDumper\DbDumper $dbDumper;
+        public function __construct(\Spatie\DbDumper\DbDumper $dbDumper): void;
+    }
+    class HealthyBackupWasFound {
+        public string $diskName;
+        public string $backupName;
+        public function __construct(string $diskName, string $backupName): void;
+    }
+    class UnhealthyBackupWasFound {
+        public string $diskName;
+        public string $backupName;
+        public \Illuminate\Support\Collection $failureMessages;
+        /**
+        * @param \Illuminate\Support\Collection $failureMessages
+        * @generated
+        */
+        public function __construct(string $diskName, string $backupName, \Illuminate\Support\Collection $failureMessages): void;
+    }
+}
+namespace Spatie\Backup\Exceptions {
+    /**
+    * @method Exception getPrevious()
+    * @generated
+    */
+    class BackupFailed extends \Exception {
+        public ?\Spatie\Backup\BackupDestination\BackupDestination $backupDestination ?? null;
+        public static function from(\Exception $exception): static;
+        public function destination(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination): static;
+        public function getPrevious(): \Exception;
+    }
+    class BackupVerificationFailed extends \Exception {
+        public static function couldNotOpenZip(string $pathToZip, int $errorCode): self;
+        public static function zipIsEmpty(string $pathToZip): self;
+        public static function unexpectedFileCount(int $expectedFileCount, int $actualFileCount): self;
+    }
+    class CannotCreateDbDumper extends \Exception {
+        public static function unsupportedDriver(string $driver): static;
+    }
+    class InvalidBackupDestination extends \Exception {
+        public static function diskNotSet(string $backupName): self;
+        public static function connectionError(string $diskName): self;
+        public static function writeError(string $diskName): self;
+    }
+    class InvalidBackupFile extends \Exception {
+        public static function writeError(string $backupName): self;
+        public static function readError(\Spatie\Backup\BackupDestination\Backup $backup): self;
+    }
+    class InvalidBackupJob extends \Exception {
+        public static function noDestinationsSpecified(): self;
+        public static function destinationDoesNotExist(string $diskName): self;
+        public static function noFilesToBeBackedUp(): self;
+    }
+    class InvalidCommand extends \Exception {
+        public static function create(string $reason): self;
+    }
+    class InvalidConfig extends \Exception {
+        public static function invalidEmail(string $email): static;
+        public static function missingSender(): static;
+        public static function integerMustBePositive(string $name): static;
+        public static function integerMustBeBetween(string $name, int $low, int $high): static;
+        public static function invalidStrategy(string $class): static;
+    }
+    class InvalidHealthCheck extends \Exception {
+        public static function because(string $message): self;
+    }
+    class NotificationCouldNotBeSent extends \Exception {
+        public static function noNotificationClassForEvent(object $event): static;
+    }
+}
+namespace Spatie\Backup\Helpers {
+    class File {
+        /**
+        * @var array<string>
+        * @generated
+        */
+        protected static array<string> $allowedMimeTypes ?? [];
+        public function isZipFile(?\Illuminate\Contracts\Filesystem\Filesystem $disk, string $path): bool;
+        protected function hasZipExtension(string $path): bool;
+        protected function hasAllowedMimeType(?\Illuminate\Contracts\Filesystem\Filesystem $disk, string $path): bool;
+        protected function mimeType(?\Illuminate\Contracts\Filesystem\Filesystem $disk, string $path): bool|string;
+    }
+    class Format {
+        public static function humanReadableSize(float $sizeInBytes): string;
+        public static function emoji(bool $bool): string;
+        public static function ageInDays(\Carbon\Carbon $date): string;
+    }
+    class RightAlignedTableStyle extends \Symfony\Component\Console\Helper\TableStyle {
+        public function __construct(): void;
+    }
+}
+namespace Spatie\Backup\Listeners {
+    /**
+    * @deprecated Encryption is now applied by {@see Zip} while the archive
+    *             is built. This listener is no longer registered.
+    * @generated
+    */
+    deprecated class EncryptBackupArchive {
+        protected \Spatie\Backup\Config\Config $config;
+        public function __construct(\Spatie\Backup\Config\Config $config): void;
+        public function handle(\Spatie\Backup\Events\BackupZipWasCreated $event): void;
+        protected function encrypt(\ZipArchive $zip): void;
+        public function shouldEncrypt(): bool;
+    }
+}
+namespace Spatie\Backup\Notifications {
+    abstract class BaseNotification extends \Illuminate\Notifications\Notification {
+        /**
+        * @return array<string, string>
+        * @generated
+        */
+        public function via(): array<string, string>;
+        public function config(): \Spatie\Backup\Config\Config;
+        public function applicationName(): string;
+        protected function diskName(): ?string;
+        protected function backupName(): ?string;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function backupDestinationProperties(): \Illuminate\Support\Collection;
+    }
+    class EventHandler {
+        protected static bool $enabled ?? true;
+        /**
+        * @var array<string, string>
+        * @generated
+        */
+        protected static array<string, string> $eventToNotificationMap ?? [];
+        protected \Illuminate\Contracts\Config\Repository $config;
+        public static function disable(): void;
+        public static function enable(): void;
+        public function __construct(\Illuminate\Contracts\Config\Repository $config): void;
+        public function subscribe(\Illuminate\Contracts\Events\Dispatcher $events): void;
+        protected function determineNotifiable(): \Spatie\Backup\Notifications\Notifiable;
+        protected function determineNotification(object $event): \Illuminate\Notifications\Notification;
+    }
+    class Notifiable {
+        use \Illuminate\Notifications\Notifiable;
+        /**
+        * @return string|array
+        * @generated
+        */
+        public function routeNotificationForMail(): string|array;
+        public function routeNotificationForSlack(): string;
+        public function routeNotificationForDiscord(): string;
+        public function routeNotificationForWebhook(): string;
+        public function getKey(): int;
+        protected function config(): \Spatie\Backup\Config\Config;
+    }
+}
+namespace Spatie\Backup\Notifications\Channels\Discord {
+    class DiscordChannel {
+        public function send(\Spatie\Backup\Notifications\Notifiable $notifiable, \Illuminate\Notifications\Notification $notification): void;
+    }
+    class DiscordMessage {
+        public const string COLOR_SUCCESS ?? '0b6623';
+        public const string COLOR_WARNING ?? 'fD6a02';
+        public const string COLOR_ERROR ?? 'e32929';
+        protected string $username ?? 'Laravel Backup';
+        protected ?string $avatarUrl ?? null;
+        protected string $title ?? '';
+        protected string $description ?? '';
+        /**
+        * @var array<array>
+        * @generated
+        */
+        protected array<array> $fields ?? [];
+        protected ?string $timestamp ?? null;
+        protected ?string $footer ?? null;
+        protected ?string $color ?? null;
+        protected string $url ?? '';
+        public function from(string $username, ?string $avatarUrl = null): self;
+        public function url(string $url): self;
+        public function title(string $title): self;
+        public function description(string $description): self;
+        public function timestamp(\Carbon\Carbon $carbon): self;
+        public function footer(string $footer): self;
+        public function success(): self;
+        public function warning(): self;
+        public function error(): self;
+        /**
+        * @param array<string, string> $fields
+        * @generated
+        */
+        public function fields(array<string, string> $fields, bool $inline = true): self;
+        public function toArray(): array;
+    }
+}
+namespace Spatie\Backup\Notifications\Channels\Webhook {
+    class WebhookChannel {
+        public function send(\Spatie\Backup\Notifications\Notifiable $notifiable, \Illuminate\Notifications\Notification $notification): void;
+    }
+}
+namespace Spatie\Backup\Notifications\Notifications {
+    class BackupHasFailedNotification extends \Spatie\Backup\Notifications\BaseNotification {
+        public \Spatie\Backup\Events\BackupHasFailed $event;
+        public function __construct(\Spatie\Backup\Events\BackupHasFailed $event): void;
+        public function toMail(): \Illuminate\Notifications\Messages\MailMessage;
+        public function toSlack(): mixed;
+        public function toDiscord(): \Spatie\Backup\Notifications\Channels\Discord\DiscordMessage;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function toWebhook(): array<string, mixed>;
+    }
+    class BackupWasSuccessfulNotification extends \Spatie\Backup\Notifications\BaseNotification {
+        public \Spatie\Backup\Events\BackupWasSuccessful $event;
+        public function __construct(\Spatie\Backup\Events\BackupWasSuccessful $event): void;
+        public function toMail(): \Illuminate\Notifications\Messages\MailMessage;
+        public function toSlack(): mixed;
+        public function toDiscord(): \Spatie\Backup\Notifications\Channels\Discord\DiscordMessage;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function toWebhook(): array<string, mixed>;
+    }
+    class CleanupHasFailedNotification extends \Spatie\Backup\Notifications\BaseNotification {
+        public \Spatie\Backup\Events\CleanupHasFailed $event;
+        public function __construct(\Spatie\Backup\Events\CleanupHasFailed $event): void;
+        public function toMail(): \Illuminate\Notifications\Messages\MailMessage;
+        public function toSlack(): mixed;
+        public function toDiscord(): \Spatie\Backup\Notifications\Channels\Discord\DiscordMessage;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function toWebhook(): array<string, mixed>;
+    }
+    class CleanupWasSuccessfulNotification extends \Spatie\Backup\Notifications\BaseNotification {
+        public \Spatie\Backup\Events\CleanupWasSuccessful $event;
+        public function __construct(\Spatie\Backup\Events\CleanupWasSuccessful $event): void;
+        public function toMail(): \Illuminate\Notifications\Messages\MailMessage;
+        public function toSlack(): mixed;
+        public function toDiscord(): \Spatie\Backup\Notifications\Channels\Discord\DiscordMessage;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function toWebhook(): array<string, mixed>;
+    }
+    class HealthyBackupWasFoundNotification extends \Spatie\Backup\Notifications\BaseNotification {
+        public \Spatie\Backup\Events\HealthyBackupWasFound $event;
+        public function __construct(\Spatie\Backup\Events\HealthyBackupWasFound $event): void;
+        public function toMail(): \Illuminate\Notifications\Messages\MailMessage;
+        public function toSlack(): mixed;
+        public function toDiscord(): \Spatie\Backup\Notifications\Channels\Discord\DiscordMessage;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function toWebhook(): array<string, mixed>;
+    }
+    class UnhealthyBackupWasFoundNotification extends \Spatie\Backup\Notifications\BaseNotification {
+        public \Spatie\Backup\Events\UnhealthyBackupWasFound $event;
+        public function __construct(\Spatie\Backup\Events\UnhealthyBackupWasFound $event): void;
+        public function toMail(): \Illuminate\Notifications\Messages\MailMessage;
+        public function toSlack(): mixed;
+        public function toDiscord(): \Spatie\Backup\Notifications\Channels\Discord\DiscordMessage;
+        /**
+        * @return array<string, mixed>
+        * @generated
+        */
+        public function toWebhook(): array<string, mixed>;
+    }
+}
+namespace Spatie\Backup\Support {
+    class BackupLogger {
+        protected ?\Psr\Log\LoggerInterface $logger ?? null;
+        /**
+        * @var array<callable>
+        * @generated
+        */
+        protected array<callable> $listeners ?? [];
+        public function useLogger(\Psr\Log\LoggerInterface $logger): void;
+        public function onMessage(callable $listener): void;
+        public function clearListeners(): void;
+        public function info(string $message): void;
+        public function error(string $message): void;
+        public function comment(string $message): void;
+        public function warn(string $message): void;
+        protected function log(string $level, string $message): void;
+    }
+    /**
+    * @implements Arrayable<string, mixed>
+    * @generated
+    */
+    class Data implements \Illuminate\Contracts\Support\Arrayable {
+        public function toArray(): array;
+    }
+}
+namespace Spatie\Backup\Tasks\Backup {
+    class BackupJob {
+        public const string FILENAME_FORMAT ?? 'Y-m-d-H-i-s.\z\i\p';
+        protected \Spatie\Backup\Tasks\Backup\FileSelection $fileSelection;
+        /**
+        * @var \Illuminate\Support\Collection
+        * @generated
+        */
+        protected \Illuminate\Support\Collection $dbDumpers;
+        /**
+        * @var \Illuminate\Support\Collection
+        * @generated
+        */
+        protected \Illuminate\Support\Collection $backupDestinations;
+        protected string $filename;
+        protected \Spatie\TemporaryDirectory\TemporaryDirectory $temporaryDirectory;
+        protected bool $signals ?? true;
+        protected \Spatie\Backup\Config\Config $config;
+        /**
+        * @throws BindingResolutionException
+        * @generated
+        */
+        public function __construct(\Spatie\Backup\Config\Config $config): void;
+        public function dontBackupFilesystem(): self;
+        /**
+        * @param array<string> $allowedDbNames
+        * @generated
+        */
+        public function onlyDbName(array<string> $allowedDbNames): self;
+        public function dontBackupDatabases(): self;
+        public function disableSignals(): self;
+        public function setDefaultFilename(): self;
+        public function fileSelection(): \Spatie\Backup\Tasks\Backup\FileSelection;
+        public function setFileSelection(\Spatie\Backup\Tasks\Backup\FileSelection $fileSelection): self;
+        /**
+        * @param \Illuminate\Support\Collection $dbDumpers
+        * @return self
+        * @generated
+        */
+        public function setDbDumpers(\Illuminate\Support\Collection $dbDumpers): self;
+        public function setFilename(string $filename): self;
+        public function appendToFilename(string $suffix): self;
+        public function setDestinationPath(string $path): self;
+        public function onlyBackupTo(string $diskName): self;
+        /**
+        * @param \Illuminate\Support\Collection $backupDestinations
+        * @generated
+        */
+        public function setBackupDestinations(\Illuminate\Support\Collection $backupDestinations): self;
+        /**
+        * @throws Exception
+        * @generated
+        */
+        public function run(): void;
+        protected function createBackupManifest(): \Spatie\Backup\Tasks\Backup\Manifest;
+        public function filesToBeBackedUp(): \Generator;
+        /**
+        * @return array<string>
+        * @generated
+        */
+        protected function directoriesUsedByBackupJob(): array<string>;
+        protected function createZipContainingEveryFileInManifest(\Spatie\Backup\Tasks\Backup\Manifest $manifest): string;
+        protected function verifyBackup(string $pathToZip, int $expectedFileCount): void;
+        /**
+        * Dumps the databases to the given directory.
+        *
+        * Returns an array with paths to the dump files.
+        *
+        * @return array<string, string>
+        * @generated
+        */
+        protected function dumpDatabases(): array<string, string>;
+        /**
+        * @throws Exception
+        * @generated
+        */
+        protected function copyToBackupDestinations(string $path): void;
+        protected function getExtension(\Spatie\DbDumper\DbDumper $dbDumper): string;
+    }
+    class BackupJobFactory {
+        public static function createFromConfig(\Spatie\Backup\Config\Config $config): \Spatie\Backup\Tasks\Backup\BackupJob;
+        protected static function createFileSelection(\Spatie\Backup\Config\SourceFilesConfig $sourceFiles): \Spatie\Backup\Tasks\Backup\FileSelection;
+        /**
+        * @param array<int, string> $dbConnectionNames
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected static function createDbDumpers(array<int, string> $dbConnectionNames): \Illuminate\Support\Collection;
+    }
+    class DbDumperFactory {
+        /**
+        * @var array<\Spatie\DbDumper\DbDumper>
+        * @generated
+        */
+        protected static array<\Spatie\DbDumper\DbDumper> $custom ?? [];
+        public static function createFromConnection(string $dbConnectionName): \Spatie\DbDumper\DbDumper;
+        public static function extend(string $driver, callable $callback): void;
+        protected static function forDriver(string $dbDriver): \Spatie\DbDumper\DbDumper;
+        /**
+        * @param array<string, string|array<string>> $dumpConfiguration
+        * @generated
+        */
+        protected static function processExtraDumpParameters(array<string, string|array<string>> $dumpConfiguration, \Spatie\DbDumper\DbDumper $dbDumper): \Spatie\DbDumper\DbDumper;
+        protected static function callMethodOnDumper(\Spatie\DbDumper\DbDumper $dbDumper, string $methodName, mixed $methodValue): \Spatie\DbDumper\DbDumper;
+        protected static function determineValidMethodName(\Spatie\DbDumper\DbDumper $dbDumper, string $methodName): string;
+    }
+    class FileSelection {
+        /**
+        * @var \Illuminate\Support\Collection
+        * @generated
+        */
+        protected \Illuminate\Support\Collection $includeFilesAndDirectories;
+        /**
+        * @var \Illuminate\Support\Collection
+        * @generated
+        */
+        protected \Illuminate\Support\Collection $excludeFilesAndDirectories;
+        protected bool $shouldFollowLinks ?? false;
+        protected bool $shouldIgnoreUnreadableDirs ?? false;
+        /**
+        * @param array|string $includeFilesAndDirectories
+        * @generated
+        */
+        public static function create(array|string $includeFilesAndDirectories = []): static;
+        /**
+        * @param array|string $includeFilesAndDirectories
+        * @generated
+        */
+        public function __construct(array|string $includeFilesAndDirectories = []): void;
+        /**
+        * @param array|string $excludeFilesAndDirectories
+        * @generated
+        */
+        public function excludeFilesFrom(array|string $excludeFilesAndDirectories): self;
+        public function shouldFollowLinks(bool $shouldFollowLinks): self;
+        public function shouldIgnoreUnreadableDirs(bool $ignoreUnreadableDirs): self;
+        /**
+        * @return \Generator|array
+        * @generated
+        */
+        public function selectedFiles(): \Generator|array;
+        /**
+        * @return array<string>
+        * @generated
+        */
+        protected function includedFiles(): array<string>;
+        /**
+        * @return array<string>
+        * @generated
+        */
+        protected function includedDirectories(): array<string>;
+        protected function shouldExclude(string $path): bool;
+        /**
+        * @param string|array $paths
+        * @generated
+        */
+        protected function sanitize(string|array $paths): \Illuminate\Support\Collection;
+        /**
+        * @return array<string>
+        * @generated
+        */
+        protected function getMatchingPaths(string $path): array<string>;
+        protected function canUseGlobBrace(string $path): bool;
+    }
+    class Manifest implements \Countable {
+        protected string $manifestPath;
+        public static function create(string $manifestPath): self;
+        public function __construct(string $manifestPath): void;
+        public function path(): string;
+        /**
+        * @param array|string|\Generator $filePaths
+        * @generated
+        */
+        public function addFiles(array|string|\Generator $filePaths): self;
+        public function files(): \Generator|array;
+        public function count(): int;
+    }
+    class Zip {
+        protected \ZipArchive $zipFile;
+        protected int $fileCount ?? 0;
+        protected \Spatie\Backup\Config\Config $config;
+        protected ?int $encryptionAlgorithm ?? null;
+        protected string $pathToZip;
+        public function __construct(string $pathToZip): void;
+        public static function createForManifest(\Spatie\Backup\Tasks\Backup\Manifest $manifest, string $pathToZip): self;
+        protected static function determineNameOfFileInZip(string $pathToFile, string $pathToZip, string $relativePath): string;
+        public function path(): string;
+        public function size(): float;
+        public function humanReadableSize(): string;
+        public function open(): void;
+        public function close(): void;
+        public function add(string|iterable $files, ?string $nameInZip = null): self;
+        public function count(): int;
+    }
+}
+namespace Spatie\Backup\Tasks\Cleanup {
+    class CleanupJob {
+        protected \Illuminate\Support\Collection $backupDestinations;
+        protected \Spatie\Backup\Tasks\Cleanup\CleanupStrategy $strategy;
+        /**
+        * @param \Illuminate\Support\Collection $backupDestinations
+        * @generated
+        */
+        public function __construct(\Illuminate\Support\Collection $backupDestinations, \Spatie\Backup\Tasks\Cleanup\CleanupStrategy $strategy): void;
+        public function run(): void;
+    }
+    abstract class CleanupStrategy {
+        protected \Spatie\Backup\BackupDestination\BackupDestination $backupDestination;
+        protected \Spatie\Backup\Config\Config $config;
+        public function __construct(\Spatie\Backup\Config\Config $config): void;
+        public abstract function deleteOldBackups(\Spatie\Backup\BackupDestination\BackupCollection $backups): void;
+        public function setBackupDestination(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination): self;
+        public function backupDestination(): \Spatie\Backup\BackupDestination\BackupDestination;
+    }
+    class Period {
+        protected \Carbon\Carbon $startDate;
+        protected \Carbon\Carbon $endDate;
+        public function __construct(\Carbon\Carbon $startDate, \Carbon\Carbon $endDate): void;
+        public function startDate(): \Carbon\Carbon;
+        public function endDate(): \Carbon\Carbon;
+    }
+}
+namespace Spatie\Backup\Tasks\Cleanup\Strategies {
+    class DefaultStrategy extends \Spatie\Backup\Tasks\Cleanup\CleanupStrategy {
+        protected ?\Spatie\Backup\BackupDestination\Backup $newestBackup ?? null;
+        public function deleteOldBackups(\Spatie\Backup\BackupDestination\BackupCollection $backups): void;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        protected function calculateDateRanges(): \Illuminate\Support\Collection;
+        protected function groupByDateFormat(\Spatie\Backup\BackupDestination\BackupCollection $backups, string $dateFormat): \Spatie\Backup\BackupDestination\BackupCollection;
+        /**
+        * @param \Illuminate\Support\Collection $backupsPerPeriod
+        * @generated
+        */
+        protected function removeBackupsForAllPeriodsExceptOne(\Illuminate\Support\Collection $backupsPerPeriod): void;
+        protected function removeBackupsOlderThan(\Carbon\Carbon $endDate, \Spatie\Backup\BackupDestination\BackupCollection $backups): void;
+        protected function removeOldBackupsUntilUsingLessThanMaximumStorage(\Spatie\Backup\BackupDestination\BackupCollection $backups): void;
+        protected function shouldRemoveOldestBackup(\Spatie\Backup\BackupDestination\BackupCollection $backups, int $maximumSizeInMB): bool;
+    }
+}
+namespace Spatie\Backup\Tasks\Monitor {
+    class BackupDestinationStatus {
+        /**
+        * @var \Illuminate\Support\Collection
+        * @generated
+        */
+        protected \Illuminate\Support\Collection $healthCheckFailures;
+        protected \Spatie\Backup\BackupDestination\BackupDestination $backupDestination;
+        protected array<int, \Spatie\Backup\Tasks\Monitor\HealthCheck> $healthChecks ?? [];
+        /**
+        * @param array<int, HealthCheck> $healthChecks
+        * @generated
+        */
+        public function __construct(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination, array<int, \Spatie\Backup\Tasks\Monitor\HealthCheck> $healthChecks = []): void;
+        public function backupDestination(): \Spatie\Backup\BackupDestination\BackupDestination;
+        public function check(\Spatie\Backup\Tasks\Monitor\HealthCheck $check): bool|\Spatie\Backup\Tasks\Monitor\HealthCheckFailure;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function getHealthChecks(): \Illuminate\Support\Collection;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function getHealthCheckFailures(): \Illuminate\Support\Collection;
+        public function getHealthCheckFailure(): ?\Spatie\Backup\Tasks\Monitor\HealthCheckFailure;
+        public function isHealthy(): bool;
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public function failureMessages(): \Illuminate\Support\Collection;
+    }
+    class BackupDestinationStatusFactory {
+        /**
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public static function createForMonitorConfig(\Spatie\Backup\Config\MonitoredBackupsConfig $monitorConfiguration): \Illuminate\Support\Collection;
+        /**
+        * @param array $monitorConfig
+        * @return \Illuminate\Support\Collection
+        * @generated
+        */
+        public static function createForSingleMonitor(array $monitorConfig): \Illuminate\Support\Collection;
+        /**
+        * @param array $monitorConfig
+        * @return array<HealthCheck>
+        * @generated
+        */
+        protected static function buildHealthChecks(array $monitorConfig): array<\Spatie\Backup\Tasks\Monitor\HealthCheck>;
+        /**
+        * @param string|array $options
+        * @generated
+        */
+        protected static function buildHealthCheck(string $class, string|array $options): \Spatie\Backup\Tasks\Monitor\HealthCheck;
+    }
+    abstract class HealthCheck {
+        public abstract function checkHealth(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination): void;
+        public function name(): string;
+        protected function fail(string $message): void;
+        protected function failIf(bool $condition, string $message): void;
+        protected function failUnless(bool $condition, string $message): void;
+    }
+    class HealthCheckFailure {
+        protected \Spatie\Backup\Tasks\Monitor\HealthCheck $healthCheck;
+        protected \Exception $exception;
+        public function __construct(\Spatie\Backup\Tasks\Monitor\HealthCheck $healthCheck, \Exception $exception): void;
+        public function healthCheck(): \Spatie\Backup\Tasks\Monitor\HealthCheck;
+        public function exception(): \Exception;
+        public function wasUnexpected(): bool;
+    }
+}
+namespace Spatie\Backup\Tasks\Monitor\HealthChecks {
+    class IsReachable extends \Spatie\Backup\Tasks\Monitor\HealthCheck {
+        public function checkHealth(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination): void;
+    }
+    class MaximumAgeInDays extends \Spatie\Backup\Tasks\Monitor\HealthCheck {
+        protected int $days ?? 1;
+        public function __construct(int $days = 1): void;
+        public function checkHealth(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination): void;
+        protected function hasNoBackups(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination): bool;
+        protected function isTooOld(\Spatie\Backup\BackupDestination\Backup $backup): bool;
+    }
+    class MaximumStorageInMegabytes extends \Spatie\Backup\Tasks\Monitor\HealthCheck {
+        protected int $maximumSizeInMegaBytes ?? 5000;
+        public function __construct(int $maximumSizeInMegaBytes = 5000): void;
+        public function checkHealth(\Spatie\Backup\BackupDestination\BackupDestination $backupDestination): void;
+        protected function exceedsAllowance(float $usageInBytes): bool;
+        protected function bytes(int $megaBytes): int;
+        protected function humanReadableSize(float $sizeInBytes): string;
+    }
+}
+namespace Spatie\Backup\Traits {
+    trait Retryable {
+        protected int $tries ?? 1;
+        protected int $currentTry ?? 1;
+        protected function shouldRetry(): bool;
+        protected function hasRetryDelay(string $type): bool;
+        protected function sleepFor(int $seconds = 0): void;
+        protected function setTries(string $type): void;
+        protected function getRetryDelay(string $type): int;
+    }
+}

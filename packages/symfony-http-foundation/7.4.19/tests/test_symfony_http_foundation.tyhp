@@ -1,0 +1,70 @@
+<?tyhp
+
+function test_http_foundation_request_create(): \Symfony\Component\HttpFoundation\Request
+{
+    return \Symfony\Component\HttpFoundation\Request::create('https://example.com/submit', 'POST', ['name' => 'tyhp']);
+}
+
+function test_http_foundation_request_query_string(\Symfony\Component\HttpFoundation\Request $request): string
+{
+    return $request->query->get('q', '');
+}
+
+function test_http_foundation_request_method(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\HttpFoundation\HttpMethod
+{
+    $request->setMethod('PATCH');
+    if ($request->isMethod('PATCH')) {
+        return $request->getMethod();
+    }
+    return $request->getRealMethod();
+}
+
+function test_http_foundation_request_content(\Symfony\Component\HttpFoundation\Request $request): string|false
+{
+    return $request->getContent();
+}
+
+function test_http_foundation_request_headers(\Symfony\Component\HttpFoundation\Request $request): string
+{
+    $request->headers->set('X-Test', ['a', 'b']);
+    $line = $request->headers->get('X-Test', '');
+    return $line ?? '';
+}
+
+function test_http_foundation_response(): int
+{
+    $response = new \Symfony\Component\HttpFoundation\Response('ok', 200, ['Content-Type' => 'text/plain']);
+    return $response->setContent('done')->getStatusCode();
+}
+
+function test_http_foundation_json_response(): \Symfony\Component\HttpFoundation\JsonResponse
+{
+    return \Symfony\Component\HttpFoundation\JsonResponse::fromJsonString('{"ok":true}', 201);
+}
+
+function test_http_foundation_redirect(): string
+{
+    return (new \Symfony\Component\HttpFoundation\RedirectResponse('/next', 302))->getTargetUrl();
+}
+
+function test_http_foundation_cookie(): \Symfony\Component\HttpFoundation\SameSite
+{
+    $cookie = \Symfony\Component\HttpFoundation\Cookie::create('sid', 'abc', 0, '/', null, true, true, false, 'lax');
+    return $cookie->getSameSite();
+}
+
+function test_http_foundation_parameter_bag_all(): \Symfony\Component\HttpFoundation\ParameterMap
+{
+    $bag = new \Symfony\Component\HttpFoundation\ParameterBag(['a' => 1, 'b' => 'x']);
+    return $bag->all();
+}
+
+function test_http_foundation_session_get(\Symfony\Component\HttpFoundation\Session\SessionInterface $session): int
+{
+    return $session->get('count', 0);
+}
+
+function test_http_foundation_ip_utils(): bool
+{
+    return \Symfony\Component\HttpFoundation\IpUtils::checkIp('127.0.0.1', ['127.0.0.1/8']);
+}

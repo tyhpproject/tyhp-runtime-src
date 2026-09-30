@@ -1,0 +1,47 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * `ZipArchive::statIndex()` / `statName()` entry details, and
+ * `addGlob()` / `addPattern()` added-file lists.
+ * Declaration order: TYHPDEF_ORDERING.md.
+ */
+
+/**
+ * Overlay: optional keys for `ZipArchive::addGlob()` / `addPattern()` `$options`.
+ */
+type ZipArchiveAddOptions = struct {
+    ?string $add_path;
+    ?string $remove_path;
+    ?bool $remove_all_path;
+    ?int $flags;
+};
+
+/**
+ * Overlay: `ZipArchive::statIndex()` / `statName()` entry details.
+ */
+type ZipArchiveStat = struct {
+    string $name;
+    int $index;
+    int $crc;
+    int $size;
+    int $mtime;
+    int $comp_size;
+    int $comp_method;
+    int $encryption_method;
+};
+
+// @overlay-against: class ZipArchive implements \Countable
+partial class ZipArchive {
+    // @overlay-against: function addGlob(string $pattern, int $flags, array $options): array|false
+    public function addGlob(string $pattern, int $flags = 0, ZipArchiveAddOptions|array<string, string|int|bool> $options = []): array<int, string>|false;
+
+    // @overlay-against: function addPattern(string $pattern, string $path, array $options): array|false
+    public function addPattern(string $pattern, string $path = '.', ZipArchiveAddOptions|array<string, string|int|bool> $options = []): array<int, string>|false;
+
+    // @overlay-against: function statIndex(int $index, int $flags): array|false
+    public function statIndex(int $index, int $flags = 0): ZipArchiveStat|false;
+
+    // @overlay-against: function statName(string $name, int $flags): array|false
+    public function statName(string $name, int $flags = 0): ZipArchiveStat|false;
+}

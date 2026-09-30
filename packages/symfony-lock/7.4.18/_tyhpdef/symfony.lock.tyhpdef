@@ -1,0 +1,806 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Lock {
+    /**
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface BlockingSharedLockStoreInterface extends \Symfony\Component\Lock\SharedLockStoreInterface {
+        /**
+        * Waits until a key becomes free for reading, then stores the resource.
+        *
+        * @throws LockConflictedException
+        * @generated
+        */
+        public function waitAndSaveRead(\Symfony\Component\Lock\Key $key): void;
+    }
+    /**
+    * @author Hamza Amrouche <hamza.simperfit@gmail.com>
+    * @generated
+    */
+    interface BlockingStoreInterface extends \Symfony\Component\Lock\PersistingStoreInterface {
+        /**
+        * Waits until a key becomes free, then stores the resource.
+        *
+        * @throws LockConflictedException
+        * @generated
+        */
+        public function waitAndSave(\Symfony\Component\Lock\Key $key): void;
+    }
+    /**
+    * Key is a container for the state of the locks in stores.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    final class Key implements \Stringable {
+        public function __construct(string $resource): void;
+        public function __toString(): string;
+        public function hasState(string $stateKey): bool;
+        public function setState(string $stateKey, mixed $state): void;
+        public function removeState(string $stateKey): void;
+        public function getState(string $stateKey): mixed;
+        public function markUnserializable(): void;
+        public function resetLifetime(): void;
+        /**
+        * @param float $ttl the expiration delay of locks in seconds
+        * @generated
+        */
+        public function reduceLifetime(float $ttl): void;
+        /**
+        * Returns the remaining lifetime in seconds.
+        *
+        * @generated
+        */
+        public function getRemainingLifetime(): ?float;
+        public function isExpired(): bool;
+        public function __unserialize(array $data): void;
+        public function __serialize(): array;
+    }
+    /**
+    * Lock is the default implementation of the LockInterface.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    final class Lock implements \Symfony\Component\Lock\SharedLockInterface, \Psr\Log\LoggerAwareInterface {
+        use \Psr\Log\LoggerAwareTrait;
+        /**
+        * @param ?float $ttl Maximum expected lock duration in seconds
+        * @param bool $autoRelease Whether to automatically release the lock or not when the lock instance is destroyed
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Lock\Key $key, \Symfony\Component\Lock\PersistingStoreInterface $store, ?float $ttl = null, bool $autoRelease = true): void;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        /**
+        * Automatically releases the underlying lock when the object is destructed.
+        *
+        * @generated
+        */
+        public function __destruct(): void;
+        public function acquire(bool $blocking = false): bool;
+        public function acquireRead(bool $blocking = false): bool;
+        public function refresh(?float $ttl = null): void;
+        public function isAcquired(): bool;
+        public function release(): void;
+        public function isExpired(): bool;
+        public function getRemainingLifetime(): ?float;
+    }
+    /**
+    * Factory provides method to create locks.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @author Hamza Amrouche <hamza.simperfit@gmail.com>
+    * @generated
+    */
+    class LockFactory implements \Psr\Log\LoggerAwareInterface {
+        use \Psr\Log\LoggerAwareTrait;
+        public function __construct(\Symfony\Component\Lock\PersistingStoreInterface $store): void;
+        /**
+        * Creates a lock for the given resource.
+        *
+        * @param string $resource The resource to lock
+        * @param ?float $ttl Maximum expected lock duration in seconds
+        * @param bool $autoRelease Whether to automatically release the lock or not when the lock instance is destroyed
+        * @generated
+        */
+        public function createLock(string $resource, ?float $ttl = 300.0, bool $autoRelease = true): \Symfony\Component\Lock\SharedLockInterface;
+        /**
+        * Creates a lock from the given key.
+        *
+        * @param \Symfony\Component\Lock\Key $key The key containing the lock's state
+        * @param ?float $ttl Maximum expected lock duration in seconds
+        * @param bool $autoRelease Whether to automatically release the lock or not when the lock instance is destroyed
+        * @generated
+        */
+        public function createLockFromKey(\Symfony\Component\Lock\Key $key, ?float $ttl = 300.0, bool $autoRelease = true): \Symfony\Component\Lock\SharedLockInterface;
+    }
+    /**
+    * LockInterface defines an interface to manipulate the status of a lock.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface LockInterface {
+        /**
+        * Acquires the lock. If the lock is acquired by someone else, the parameter `blocking` determines whether or not
+        *
+        * the call should block until the release of the lock.
+        *
+        * @throws LockConflictedException If the lock is acquired by someone else in blocking mode
+        * @throws LockAcquiringException  If the lock cannot be acquired
+        * @generated
+        */
+        public function acquire(bool $blocking = false): bool;
+        /**
+        * Increase the duration of an acquired lock.
+        *
+        * @param ?float $ttl Maximum expected lock duration in seconds
+        * @throws LockConflictedException If the lock is acquired by someone else
+        * @throws LockAcquiringException  If the lock cannot be refreshed
+        * @generated
+        */
+        public function refresh(?float $ttl = null): void;
+        /**
+        * Returns whether or not the lock is acquired.
+        *
+        * @generated
+        */
+        public function isAcquired(): bool;
+        /**
+        * Release the lock.
+        *
+        * @throws LockReleasingException If the lock cannot be released
+        * @generated
+        */
+        public function release(): void;
+        public function isExpired(): bool;
+        /**
+        * Returns the remaining lifetime in seconds.
+        *
+        * @generated
+        */
+        public function getRemainingLifetime(): ?float;
+    }
+    /**
+    * A non locking lock.
+    *
+    * This can be used to disable locking in classes
+    * requiring a lock.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class NoLock implements \Symfony\Component\Lock\SharedLockInterface {
+        public function acquireRead(bool $blocking = false): bool;
+        public function acquire(bool $blocking = false): bool;
+        public function refresh(?float $ttl = null): void;
+        public function isAcquired(): bool;
+        public function release(): void;
+        public function isExpired(): bool;
+        public function getRemainingLifetime(): ?float;
+    }
+    /**
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface PersistingStoreInterface {
+        /**
+        * Stores the resource if it's not locked by someone else.
+        *
+        * @throws LockAcquiringException
+        * @throws LockConflictedException
+        * @generated
+        */
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        /**
+        * Removes a resource from the storage.
+        *
+        * @throws LockReleasingException
+        * @generated
+        */
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        /**
+        * Returns whether or not the resource exists in the storage.
+        *
+        * @generated
+        */
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+        /**
+        * Extends the TTL of a resource.
+        *
+        * @param float $ttl amount of seconds to keep the lock in the store
+        * @throws LockConflictedException
+        * @generated
+        */
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+    }
+    /**
+    * SharedLockInterface defines an interface to manipulate the status of a shared lock.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface SharedLockInterface extends \Symfony\Component\Lock\LockInterface {
+        /**
+        * Acquires the lock for reading. If the lock is acquired by someone else in write mode, the parameter `blocking`
+        *
+        * determines whether or not the call should block until the release of the lock.
+        *
+        * @throws LockConflictedException If the lock is acquired by someone else in blocking mode
+        * @throws LockAcquiringException  If the lock cannot be acquired
+        * @generated
+        */
+        public function acquireRead(bool $blocking = false): bool;
+    }
+    /**
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface SharedLockStoreInterface extends \Symfony\Component\Lock\PersistingStoreInterface {
+        /**
+        * Stores the resource if it's not locked for reading by someone else.
+        *
+        * @throws LockConflictedException
+        * @generated
+        */
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+    }
+}
+namespace Symfony\Component\Lock\Exception {
+    /**
+    * Base ExceptionInterface for the Lock Component.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface ExceptionInterface extends \Throwable {
+    }
+    /**
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class InvalidArgumentException extends \InvalidArgumentException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+    /**
+    * @author Amrouche Hamza <hamza.simperfit@gmail.com>
+    * @generated
+    */
+    class InvalidTtlException extends \Symfony\Component\Lock\Exception\InvalidArgumentException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+    /**
+    * LockAcquiringException is thrown when an issue happens during the acquisition of a lock.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class LockAcquiringException extends \RuntimeException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+    /**
+    * LockConflictedException is thrown when a lock is acquired by someone else.
+    *
+    * In non-blocking mode it is caught by {@see Lock::acquire()} and {@see Lock::acquireRead()}.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class LockConflictedException extends \RuntimeException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+    /**
+    * LockExpiredException is thrown when a lock may conflict due to a TTL expiration.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class LockExpiredException extends \RuntimeException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+    /**
+    * LockReleasingException is thrown when an issue happens during the release of a lock.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class LockReleasingException extends \RuntimeException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+    /**
+    * LockStorageException is thrown when an issue happens during the manipulation of a lock in a store.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class LockStorageException extends \RuntimeException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+    /**
+    * UnserializableKeyException is thrown when the key contains state that can no
+    *
+    * be serialized and the user try to serialize it.
+    * ie. Connection with a database, flock, semaphore, ...
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class UnserializableKeyException extends \RuntimeException implements \Symfony\Component\Lock\Exception\ExceptionInterface {
+    }
+}
+namespace Symfony\Component\Lock\Serializer {
+    /**
+    * Normalize {@see Key} instance to transfer an acquired lock between processes.
+    *
+    * @author Valtteri R <valtzu@gmail.com>
+    * @generated
+    */
+    final class LockKeyNormalizer implements \Symfony\Component\Serializer\Normalizer\NormalizerInterface, \Symfony\Component\Serializer\Normalizer\DenormalizerInterface {
+        public function getSupportedTypes(?string $format): array;
+        /**
+        * @param \Symfony\Component\Lock\Key $data
+        * @generated
+        */
+        public function normalize(\Symfony\Component\Lock\Key $data, ?string $format = null, array $context = []): array;
+        public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool;
+        public function denormalize(mixed $data, string $type, ?string $format = null, array $context = []): \Symfony\Component\Lock\Key;
+        public function supportsDenormalization(mixed $data, string $type, ?string $format = null, array $context = []): bool;
+    }
+}
+namespace Symfony\Component\Lock\Store {
+    /**
+    * CombinedStore is a PersistingStoreInterface implementation able to manage and synchronize several StoreInterfaces.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class CombinedStore implements \Symfony\Component\Lock\SharedLockStoreInterface, \Psr\Log\LoggerAwareInterface {
+        use \Symfony\Component\Lock\Store\ExpiringStoreTrait, \Psr\Log\LoggerAwareTrait;
+        /**
+        * @param array<int, \Symfony\Component\Lock\PersistingStoreInterface> $stores The list of synchronized stores
+        * @throws InvalidArgumentException
+        * @generated
+        */
+        public function __construct(array<int, \Symfony\Component\Lock\PersistingStoreInterface> $stores, \Symfony\Component\Lock\Strategy\StrategyInterface $strategy): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+    }
+    /**
+    * DoctrineDbalPostgreSqlStore is a PersistingStoreInterface implementation using
+    *
+    * PostgreSql advisory locks with a Doctrine DBAL Connection.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class DoctrineDbalPostgreSqlStore implements \Symfony\Component\Lock\BlockingSharedLockStoreInterface, \Symfony\Component\Lock\BlockingStoreInterface {
+        /**
+        * You can either pass an existing database connection a Doctrine DBAL Connection
+        *
+        * or a URL that will be used to connect to the database.
+        *
+        * @throws InvalidArgumentException When first argument is not Connection nor string
+        * @generated
+        */
+        public function __construct(\Doctrine\DBAL\Connection|string $connOrUrl): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+        public function waitAndSave(\Symfony\Component\Lock\Key $key): void;
+        public function waitAndSaveRead(\Symfony\Component\Lock\Key $key): void;
+    }
+    /**
+    * DbalStore is a PersistingStoreInterface implementation using a Doctrine DBAL connection.
+    *
+    * Lock metadata are stored in a table. You can use createTable() to initialize
+    * a correctly defined table.
+    * 
+    * CAUTION: This store relies on all client and server nodes to have
+    * synchronized clocks for lock expiry to occur at the correct time.
+    * To ensure locks don't expire prematurely; the TTLs should be set with enough
+    * extra time to account for any clock drift between nodes.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class DoctrineDbalStore implements \Symfony\Component\Lock\PersistingStoreInterface {
+        use \Symfony\Component\Lock\Store\DatabaseTableTrait, \Symfony\Component\Lock\Store\ExpiringStoreTrait;
+        /**
+        * List of available options:
+        *
+        *  * db_table: The name of the table [default: lock_keys]
+        *  * db_id_col: The column where to store the lock key [default: key_id]
+        *  * db_token_col: The column where to store the lock token [default: key_token]
+        *  * db_expiration_col: The column where to store the expiration [default: key_expiration].
+        *
+        * @param \Doctrine\DBAL\Connection|string $connOrUrl A DBAL Connection instance or Doctrine URL
+        * @param array $options An associative array of options
+        * @param float $gcProbability Probability expressed as floating number between 0 and 1 to clean old locks
+        * @param int $initialTtl The expiration delay of locks in seconds
+        * @throws InvalidArgumentException When namespace contains invalid characters
+        * @throws InvalidArgumentException When the initial ttl is not valid
+        * @generated
+        */
+        public function __construct(\Doctrine\DBAL\Connection|string $connOrUrl, array $options = [], float $gcProbability = 0.01, int $initialTtl = 300): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, mixed $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+        /**
+        * Creates the table to store lock keys which can be called once for setup.
+        *
+        * @throws DBALException When the table already exists
+        * @generated
+        */
+        public function createTable(): void;
+        /**
+        * Adds the Table to the Schema if it doesn't exist.
+        *
+        * @return \Doctrine\DBAL\Schema\Schema The (possibly new) schema with the table added
+        * @generated
+        */
+        public function configureSchema(\Doctrine\DBAL\Schema\Schema $schema, \Closure $isSameDatabase): \Doctrine\DBAL\Schema\Schema;
+    }
+    trait ExpiringStoreTrait {
+    }
+    /**
+    * FlockStore is a PersistingStoreInterface implementation using the FileSystem flock.
+    *
+    * Original implementation in \Symfony\Component\Filesystem\LockHandler.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @author Romain Neutron <imprec@gmail.com>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    class FlockStore implements \Symfony\Component\Lock\BlockingStoreInterface, \Symfony\Component\Lock\SharedLockStoreInterface {
+        /**
+        * @param ?string $lockPath the directory to store the lock, defaults to the system's temporary directory
+        * @throws LockStorageException If the lock directory doesn’t exist or is not writable
+        * @generated
+        */
+        public function __construct(?string $lockPath = null): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+        public function waitAndSave(\Symfony\Component\Lock\Key $key): void;
+        public function waitAndSaveRead(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+    }
+    /**
+    * InMemoryStore is a PersistingStoreInterface implementation using
+    *
+    * php-array to manage locks.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class InMemoryStore implements \Symfony\Component\Lock\SharedLockStoreInterface {
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+    }
+    /**
+    * MemcachedStore is a PersistingStoreInterface implementation using Memcached as store engine.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class MemcachedStore implements \Symfony\Component\Lock\PersistingStoreInterface {
+        use \Symfony\Component\Lock\Store\ExpiringStoreTrait;
+        public static function isSupported(): bool;
+        /**
+        * @param int $initialTtl the expiration delay of locks in seconds
+        * @generated
+        */
+        public function __construct(\Memcached $memcached, int $initialTtl = 300): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+    }
+    /**
+    * MongoDbStore is a StoreInterface implementation using MongoDB as a storage
+    *
+    * engine. Support for MongoDB server >=2.2 due to use of TTL indexes.
+    * 
+    * CAUTION: TTL Indexes are used so this store relies on all client and server
+    * nodes to have synchronized clocks for lock expiry to occur at the correct
+    * time. To ensure locks don't expire prematurely; the TTLs should be set with
+    * enough extra time to account for any clock drift between nodes.
+    * 
+    * CAUTION: The locked resource name is indexed in the _id field of the lock
+    * collection. An indexed field's value in MongoDB can be a maximum of 1024
+    * bytes in length inclusive of structural overhead.
+    *
+    * @see https://docs.mongodb.com/manual/reference/limits/#Index-Key-Limit
+    * @author Joe Bennett <joe@assimtech.com>
+    * @author Jérôme Tamarelle <jerome@tamarelle.net>
+    * @generated
+    */
+    class MongoDbStore implements \Symfony\Component\Lock\PersistingStoreInterface {
+        use \Symfony\Component\Lock\Store\ExpiringStoreTrait;
+        /**
+        * @param \MongoDB\Collection|\MongoDB\Database|\MongoDB\Client|\MongoDB\Driver\Manager|string $mongo An instance of a Collection or Client or URI @see https://docs.mongodb.com/manual/reference/connection-string/
+        * @param array $options See below
+        * @param float $initialTtl The expiration delay of locks in seconds
+        * @throws InvalidArgumentException If required options are not provided
+        * @throws InvalidTtlException      When the initial ttl is not valid
+        * 
+        * Options:
+        *      gcProbability: Should a TTL Index be created expressed as a probability from 0.0 to 1.0 [default: 0.001]
+        *      database:      The name of the database [required when $mongo is a Client]
+        *      collection:    The name of the collection [required when $mongo is a Client]
+        *      uriOptions:    Array of uri options. [used when $mongo is a URI]
+        *      driverOptions: Array of driver options. [used when $mongo is a URI]
+        * 
+        * When using a URI string:
+        *      The database is determined from the uri's path, otherwise the "database" option is used. To specify an alternate authentication database; "authSource" uriOption or querystring parameter must be used.
+        *      The collection is determined from the uri's "collection" querystring parameter, otherwise the "collection" option is used.
+        * 
+        * For example: mongodb://myuser:mypass@myhost/mydatabase?collection=mycollection
+        * @see https://docs.mongodb.com/php-library/current/reference/method/MongoDBClient__construct/
+        * 
+        * If gcProbability is set to a value greater than 0.0 there is a chance
+        * this store will attempt to create a TTL index on self::save().
+        * If you prefer to create your TTL Index manually you can set gcProbability
+        * to 0.0 and optionally leverage
+        * self::createTtlIndex(int $expireAfterSeconds = 0).
+        * 
+        * readConcern is not specified by MongoDbStore meaning the connection's settings will take effect.
+        * writeConcern is majority for all update queries.
+        * readPreference is primary for all read queries.
+        * @see https://docs.mongodb.com/manual/applications/replication/
+        * @generated
+        */
+        public function __construct(\MongoDB\Collection|\MongoDB\Database|\MongoDB\Client|\MongoDB\Driver\Manager|string $mongo, array $options = [], float $initialTtl = 300.0): void;
+        /**
+        * Creates a TTL index to automatically remove expired locks.
+        *
+        * If the gcProbability option is set higher than 0.0 (defaults to 0.001);
+        * there is a chance this will be called on self::save().
+        * 
+        * Otherwise; this should be called once manually during database setup.
+        * 
+        * Alternatively the TTL index can be created manually on the database:
+        * 
+        *  db.lock.createIndex(
+        *      { "expires_at": 1 },
+        *      { "expireAfterSeconds": 0 }
+        *  )
+        * 
+        * Please note, expires_at is based on the application server. If the
+        * database time differs; a lock could be cleaned up before it has expired.
+        * To ensure locks don't expire prematurely; the lock TTL should be set
+        * with enough extra time to account for any clock drift between nodes.
+        * 
+        * A TTL index MUST BE used to automatically clean up expired locks.
+        *
+        * @see http://docs.mongodb.org/manual/tutorial/expire-data/
+        * @throws UnsupportedException          if options are not supported by the selected server
+        * @throws MongoInvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException        for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function createTtlIndex(int $expireAfterSeconds = 0): void;
+        /**
+        * @throws LockExpiredException when save is called on an expired lock
+        * @generated
+        */
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        /**
+        * @throws LockStorageException
+        * @throws LockExpiredException
+        * @generated
+        */
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+    }
+    class NullStore implements \Symfony\Component\Lock\BlockingSharedLockStoreInterface {
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+        public function waitAndSaveRead(\Symfony\Component\Lock\Key $key): void;
+    }
+    /**
+    * PdoStore is a PersistingStoreInterface implementation using a PDO connection.
+    *
+    * Lock metadata are stored in a table. You can use createTable() to initialize
+    * a correctly defined table.
+    * 
+    * CAUTION: This store relies on all client and server nodes to have
+    * synchronized clocks for lock expiry to occur at the correct time.
+    * To ensure locks don't expire prematurely; the TTLs should be set with enough
+    * extra time to account for any clock drift between nodes.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class PdoStore implements \Symfony\Component\Lock\PersistingStoreInterface {
+        use \Symfony\Component\Lock\Store\DatabaseTableTrait, \Symfony\Component\Lock\Store\ExpiringStoreTrait;
+        /**
+        * You can either pass an existing database connection as PDO instance
+        *
+        * or a DSN string that will be used to lazy-connect to the database
+        * when the lock is actually used.
+        * 
+        * List of available options:
+        *  * db_table: The name of the table [default: lock_keys]
+        *  * db_id_col: The column where to store the lock key [default: key_id]
+        *  * db_token_col: The column where to store the lock token [default: key_token]
+        *  * db_expiration_col: The column where to store the expiration [default: key_expiration]
+        *  * db_username: The username when lazy-connect [default: '']
+        *  * db_password: The password when lazy-connect [default: '']
+        *  * db_connection_options: An array of driver-specific connection options [default: []]
+        *
+        * @param array $options An associative array of options
+        * @param float $gcProbability Probability expressed as floating number between 0 and 1 to clean old locks
+        * @param int $initialTtl The expiration delay of locks in seconds
+        * @throws InvalidArgumentException When first argument is not PDO nor Connection nor string
+        * @throws InvalidArgumentException When PDO error mode is not PDO::ERRMODE_EXCEPTION
+        * @throws InvalidArgumentException When the initial ttl is not valid
+        * @generated
+        */
+        public function __construct(\PDO|string $connOrDsn, array $options = [], float $gcProbability = 0.01, int $initialTtl = 300): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+        /**
+        * Creates the table to store lock keys which can be called once for setup.
+        *
+        * @throws \PDOException    When the table already exists
+        * @throws \DomainException When an unsupported PDO driver is used
+        * @generated
+        */
+        public function createTable(): void;
+    }
+    /**
+    * PostgreSqlStore is a PersistingStoreInterface implementation using
+    *
+    * PostgreSql advisory locks.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class PostgreSqlStore implements \Symfony\Component\Lock\BlockingSharedLockStoreInterface, \Symfony\Component\Lock\BlockingStoreInterface {
+        /**
+        * You can either pass an existing database connection as PDO instance or
+        *
+        * a DSN string that will be used to lazy-connect to the database when the
+        * lock is actually used.
+        * 
+        * List of available options:
+        *  * db_username: The username when lazy-connect [default: '']
+        *  * db_password: The password when lazy-connect [default: '']
+        *  * db_connection_options: An array of driver-specific connection options [default: []]
+        *
+        * @param array $options An associative array of options
+        * @throws InvalidArgumentException When first argument is not PDO nor Connection nor string
+        * @throws InvalidArgumentException When PDO error mode is not PDO::ERRMODE_EXCEPTION
+        * @throws InvalidArgumentException When namespace contains invalid characters
+        * @generated
+        */
+        public function __construct(\PDO|string $connOrDsn, array $options = []): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+        public function waitAndSave(\Symfony\Component\Lock\Key $key): void;
+        public function waitAndSaveRead(\Symfony\Component\Lock\Key $key): void;
+    }
+    /**
+    * RedisStore is a PersistingStoreInterface implementation using Redis as store engine.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @author Grégoire Pineau <lyrixx@lyrixx.info>
+    * @generated
+    */
+    class RedisStore implements \Symfony\Component\Lock\SharedLockStoreInterface {
+        use \Symfony\Component\Lock\Store\ExpiringStoreTrait;
+        /**
+        * @param float $initialTtl The expiration delay of locks in seconds
+        * @generated
+        */
+        public function __construct(\Redis|\Relay\Relay|\Relay\Cluster|\RedisArray|\RedisCluster|\Predis\ClientInterface $redis, float $initialTtl = 300.0): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function saveRead(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+    }
+    /**
+    * SemaphoreStore is a PersistingStoreInterface implementation using Semaphore as store engine.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class SemaphoreStore implements \Symfony\Component\Lock\BlockingStoreInterface {
+        public function __construct(): void;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function waitAndSave(\Symfony\Component\Lock\Key $key): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+    }
+    /**
+    * StoreFactory create stores and connections.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class StoreFactory {
+        public static function createStore(object|string $connection): \Symfony\Component\Lock\PersistingStoreInterface;
+    }
+    /**
+    * ZookeeperStore is a PersistingStoreInterface implementation using Zookeeper as store engine.
+    *
+    * @author Ganesh Chandrasekaran <gchandrasekaran@wayfair.com>
+    * @generated
+    */
+    class ZookeeperStore implements \Symfony\Component\Lock\PersistingStoreInterface {
+        use \Symfony\Component\Lock\Store\ExpiringStoreTrait;
+        public function __construct(\Zookeeper $zookeeper): void;
+        public static function createConnection(string $dsn): \Zookeeper;
+        public function save(\Symfony\Component\Lock\Key $key): void;
+        public function delete(\Symfony\Component\Lock\Key $key): void;
+        public function exists(\Symfony\Component\Lock\Key $key): bool;
+        public function putOffExpiration(\Symfony\Component\Lock\Key $key, float $ttl): void;
+    }
+}
+namespace Symfony\Component\Lock\Strategy {
+    /**
+    * ConsensusStrategy is a StrategyInterface implementation where strictly more than 50% items should be successful.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class ConsensusStrategy implements \Symfony\Component\Lock\Strategy\StrategyInterface {
+        public function isMet(int $numberOfSuccess, int $numberOfItems): bool;
+        public function canBeMet(int $numberOfFailure, int $numberOfItems): bool;
+    }
+    /**
+    * StrategyInterface defines an interface to indicate when a quorum is met and can be met.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    interface StrategyInterface {
+        /**
+        * Returns whether or not the quorum is met.
+        *
+        * @generated
+        */
+        public function isMet(int $numberOfSuccess, int $numberOfItems): bool;
+        /**
+        * Returns whether or not the quorum *could* be met.
+        *
+        * This method does not mean the quorum *would* be met for sure, but can be useful to stop a process early when you
+        * known there is no chance to meet the quorum.
+        *
+        * @generated
+        */
+        public function canBeMet(int $numberOfFailure, int $numberOfItems): bool;
+    }
+    /**
+    * UnanimousStrategy is a StrategyInterface implementation where 100% of elements should be successful.
+    *
+    * @author Jérémy Derussé <jeremy@derusse.com>
+    * @generated
+    */
+    class UnanimousStrategy implements \Symfony\Component\Lock\Strategy\StrategyInterface {
+        public function isMet(int $numberOfSuccess, int $numberOfItems): bool;
+        public function canBeMet(int $numberOfFailure, int $numberOfItems): bool;
+    }
+}

@@ -21,27 +21,27 @@ use Tyhp\Exceptions\TimeoutException;
 final class EventLoop {
     private static ?EventLoop $instance = null;
 
-    private \SplQueue $microtaskQueue;
+    private \SplQueue<callable(): void> $microtaskQueue;
     private \SplPriorityQueue $timerQueue;
 
-    private array<int, mixed> $readStreams = [];
-    private array<int, mixed> $writeStreams = [];
-    private array<int, callable> $readCallbacks = [];
-    private array<int, callable> $writeCallbacks = [];
+    private array<int, resource> $readStreams = [];
+    private array<int, resource> $writeStreams = [];
+    private array<int, callable(resource): void> $readCallbacks = [];
+    private array<int, callable(resource): void> $writeCallbacks = [];
 
-    private \SplQueue $fiberResumeQueue;
+    private \SplQueue<EventLoopFiberItem> $fiberResumeQueue;
 
     private bool $running = false;
     private int $nextTimerId = 0;
     private array<string, bool> $activeTimers = [];
 
     private bool $streamsDirty = true;
-    private array<mixed> $cachedReadStreams = [];
-    private array<mixed> $cachedWriteStreams = [];
+    private array<int, resource> $cachedReadStreams = [];
+    private array<int, resource> $cachedWriteStreams = [];
 
     private function __construct() {
-        $this->microtaskQueue = new \SplQueue();
-        $this->fiberResumeQueue = new \SplQueue();
+        $this->microtaskQueue = new \SplQueue<callable(): void>();
+        $this->fiberResumeQueue = new \SplQueue<EventLoopFiberItem>();
         $this->timerQueue = new \SplPriorityQueue();
         $this->timerQueue->setExtractFlags(\SplPriorityQueue::EXTR_DATA);
     }
@@ -60,21 +60,21 @@ final class EventLoop {
     /**
      * Schedules a Fiber to be started on the next microtask drain.
      */
-    public function scheduleFiber(\Fiber $fiber): void {
+    public function scheduleFiber(\Fiber<mixed, callable(): void> $fiber): void {
         $this->fiberResumeQueue->enqueue(new EventLoopFiberItem($fiber, 'start'));
     }
 
     /**
      * Schedules a suspended Fiber to be resumed with a value.
      */
-    public function scheduleFiberResume(\Fiber $fiber, mixed $value = null): void {
+    public function scheduleFiberResume(\Fiber<mixed, callable> $fiber, mixed $value = null): void {
         $this->fiberResumeQueue->enqueue(new EventLoopFiberItem($fiber, 'resume', value: $value));
     }
 
     /**
      * Schedules a suspended Fiber to be resumed with a thrown exception.
      */
-    public function scheduleFiberThrow(\Fiber $fiber, \Throwable $error): void {
+    public function scheduleFiberThrow(\Fiber<mixed, callable> $fiber, \Throwable $error): void {
         $this->fiberResumeQueue->enqueue(new EventLoopFiberItem($fiber, 'throw', error: $error));
     }
 
@@ -84,7 +84,7 @@ final class EventLoop {
      * Schedules a one-shot callback to fire after the given delay.
      * Uses hrtime(true) (nanosecond monotonic clock) for timing precision.
      */
-    public function delay(int $ms, callable $callback): string {
+    public function delay(int $ms, callable(): void $callback): string {
         string $id = 'timer_' . $this->nextTimerId++;
         $this->activeTimers[$id] = true;
 
@@ -109,7 +109,7 @@ final class EventLoop {
     /**
      * Schedules a recurring callback to fire at the given interval.
      */
-    public function interval(int $ms, callable $callback): string {
+    public function interval(int $ms, callable(): void $callback): string {
         string $id = 'timer_' . $this->nextTimerId++;
         $this->activeTimers[$id] = true;
 
@@ -125,7 +125,7 @@ final class EventLoop {
 
     // ── I/O Watchers ─────────────────────────────────────────────────
 
-    public function addReadStream(mixed $stream, callable $callback): void {
+    public function addReadStream(mixed $stream, callable(resource): void $callback): void {
         if (!\is_resource($stream) || \get_resource_type($stream) !== 'stream') {
             throw new \InvalidArgumentException('Expected a valid stream resource');
         }
@@ -135,7 +135,7 @@ final class EventLoop {
         $this->streamsDirty = true;
     }
 
-    public function addWriteStream(mixed $stream, callable $callback): void {
+    public function addWriteStream(mixed $stream, callable(resource): void $callback): void {
         if (!\is_resource($stream) || \get_resource_type($stream) !== 'stream') {
             throw new \InvalidArgumentException('Expected a valid stream resource');
         }
@@ -162,7 +162,7 @@ final class EventLoop {
     /**
      * Defers a callback to run at the start of the next microtask drain.
      */
-    public function defer(callable $callback): void {
+    public function defer(callable(): void $callback): void {
         $this->microtaskQueue->enqueue($callback);
     }
 
@@ -170,7 +170,7 @@ final class EventLoop {
      * Queues a microtask to run before timers and I/O.
      * Microtasks are drained completely before moving to the next phase.
      */
-    public function queueMicrotask(callable $callback): void {
+    public function queueMicrotask(callable(): void $callback): void {
         $this->microtaskQueue->enqueue($callback);
     }
 
@@ -291,10 +291,8 @@ final class EventLoop {
         $this->drainFiberQueue();
 
         while (!$this->microtaskQueue->isEmpty()) {
-            mixed $callback = $this->microtaskQueue->dequeue();
-            if (\is_callable($callback)) {
-                $callback();
-            }
+            callable(): void $callback = $this->microtaskQueue->dequeue();
+            $callback();
             $this->drainFiberQueue();
         }
     }
@@ -398,9 +396,9 @@ final class EventLoop {
             $this->streamsDirty = false;
         }
 
-        ?array $read = $this->cachedReadStreams;
-        ?array $write = $this->cachedWriteStreams;
-        ?array $except = null;
+        ?array<int|string, resource> $read = $this->cachedReadStreams;
+        ?array<int|string, resource> $write = $this->cachedWriteStreams;
+        ?array<int|string, resource> $except = null;
 
         mixed $changed = @\stream_select($read, $write, $except, 0, 0);
 
@@ -409,6 +407,9 @@ final class EventLoop {
         }
 
         foreach ($read as $stream) {
+            if (!\is_resource($stream)) {
+                continue;
+            }
             int $id = (int) $stream;
             if (isset($this->readCallbacks[$id])) {
                 try {
@@ -421,6 +422,9 @@ final class EventLoop {
         }
 
         foreach ($write as $stream) {
+            if (!\is_resource($stream)) {
+                continue;
+            }
             int $id = (int) $stream;
             if (isset($this->writeCallbacks[$id])) {
                 try {
@@ -447,7 +451,7 @@ final class EventLoop {
                 if ($untilNs <= 0) {
                     return;
                 }
-                $timeoutUs = (int) \min($timeoutUs, \max(1, (int) ($untilNs / 1_000)));
+                $timeoutUs = \min($timeoutUs, \max(1, (int) ($untilNs / 1_000)));
             }
         }
 
@@ -456,7 +460,7 @@ final class EventLoop {
             if ($untilDeadlineNs <= 0) {
                 return;
             }
-            $timeoutUs = (int) \min($timeoutUs, \max(1, (int) ($untilDeadlineNs / 1_000)));
+            $timeoutUs = \min($timeoutUs, \max(1, (int) ($untilDeadlineNs / 1_000)));
         }
 
         if (empty($this->readStreams) && empty($this->writeStreams)) {
@@ -470,9 +474,9 @@ final class EventLoop {
             $this->streamsDirty = false;
         }
 
-        ?array $read = $this->cachedReadStreams;
-        ?array $write = $this->cachedWriteStreams;
-        ?array $except = null;
+        ?array<int|string, resource> $read = $this->cachedReadStreams;
+        ?array<int|string, resource> $write = $this->cachedWriteStreams;
+        ?array<int|string, resource> $except = null;
 
         int $seconds = (int) \floor($timeoutUs / 1_000_000);
         int $microseconds = $timeoutUs % 1_000_000;
@@ -484,6 +488,9 @@ final class EventLoop {
         }
 
         foreach ($read as $stream) {
+            if (!\is_resource($stream)) {
+                continue;
+            }
             int $id = (int) $stream;
             if (isset($this->readCallbacks[$id])) {
                 try {
@@ -496,6 +503,9 @@ final class EventLoop {
         }
 
         foreach ($write as $stream) {
+            if (!\is_resource($stream)) {
+                continue;
+            }
             int $id = (int) $stream;
             if (isset($this->writeCallbacks[$id])) {
                 try {

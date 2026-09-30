@@ -1,0 +1,829 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * Filter signature enrichments: `filter_var` / `filter_input` literal-filter
+ * overloads, options structs, and generic `array` replacements. Not Pure.
+ *
+ * Filter-id overloads use integer literals (Decision 18: `const int NAME ?? N`
+ * is literal `N` at the call site). Bitwise `|` of `FILTER_*` constants is not
+ * folded to a literal, so those calls use the `int` catch-all.
+ */
+
+/**
+ * Overlay: names returned by `filter_list()` / accepted by `filter_id()`.
+ */
+type FilterName = 'add_slashes'|'boolean'|'callback'|'email'|'encoded'|'float'|'full_special_chars'|'int'|'number_float'|'number_int'|'special_chars'|'string'|'stripped'|'unsafe_raw'|'url'|'validate_domain'|'validate_email'|'validate_ip'|'validate_mac'|'validate_regexp'|'validate_url';
+
+/**
+ * Overlay: nested `"options"` for a per-key `filter_*_array` spec or `FilterVarOptions`.
+ * Inner bags are filter-specific; `FILTER_CALLBACK` stores the callback on this key.
+ */
+type FilterNestedOptions = FilterIntRangeOptions|FilterFloatRangeOptions|FilterRegexpPattern|(callable(string): mixed);
+
+/**
+ * Overlay: sanitization filter ids and `FILTER_DEFAULT` / `FILTER_UNSAFE_RAW` (`516`).
+ * `FILTER_SANITIZE_STRING` / `FILTER_SANITIZE_STRIPPED` share `513`.
+ */
+type FilterSanitizeId = 513|514|515|516|517|518|519|520|522|523;
+
+/**
+ * Overlay: string-returning validation filter ids (`FILTER_VALIDATE_REGEXP`…`DOMAIN`).
+ */
+type FilterValidateStringId = 272|273|274|275|276|277;
+
+/**
+ * Overlay: `FILTER_CALLBACK` (`1024`) options. The PHP `"options"` key is the callback.
+ * PHP documents `callback(string $value): mixed` — scalars are converted to string
+ * before the callback runs. `T` is the callback's return (the filtered value).
+ *
+ * @template T Callback return type.
+ */
+type FilterCallbackOptions<T = mixed> = struct {
+    callable(string): T $options;
+    ?int $flags;
+};
+
+/**
+ * Overlay: per-key spec in `filter_var_array` / `filter_input_array` option maps.
+ * `$filter` is a `FILTER_*` id; `$options` is that filter's option bag or callback.
+ */
+type FilterFieldSpec = struct {
+    int $filter;
+    ?int $flags;
+    ?FilterNestedOptions $options;
+};
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` option array (`flags` + nested range/decimal).
+ *
+ * @template TDefault Value returned when filtering fails if `"default"` is set.
+ */
+type FilterFloatOptions<TDefault = float> = struct {
+    ?int $flags;
+    ?FilterFloatRangeOptions<TDefault> $options;
+};
+
+/**
+ * Overlay: nested `"options"` for `FILTER_VALIDATE_FLOAT`.
+ *
+ * @template TDefault Value returned when filtering fails if `"default"` is set.
+ */
+type FilterFloatRangeOptions<TDefault = float> = struct {
+    ?string $decimal;
+    ?float $min_range;
+    ?float $max_range;
+    ?TDefault $default;
+};
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` option array (`flags` + nested min/max/default).
+ *
+ * @template TDefault Value returned when filtering fails if `"default"` is set.
+ */
+type FilterIntOptions<TDefault = int> = struct {
+    ?int $flags;
+    ?FilterIntRangeOptions<TDefault> $options;
+};
+
+/**
+ * Overlay: nested `"options"` for `FILTER_VALIDATE_INT`.
+ *
+ * @template TDefault Value returned when filtering fails if `"default"` is set.
+ */
+type FilterIntRangeOptions<TDefault = int> = struct {
+    ?int $min_range;
+    ?int $max_range;
+    ?TDefault $default;
+};
+
+/**
+ * Overlay: `FILTER_VALIDATE_REGEXP` option array. `"regexp"` is required.
+ *
+ * @template TDefault Value returned when filtering fails if `"default"` is set.
+ */
+type FilterRegexpOptions<TDefault = string> = struct {
+    ?int $flags;
+    FilterRegexpPattern<TDefault> $options;
+};
+
+/**
+ * Overlay: nested `"options"` for `FILTER_VALIDATE_REGEXP`.
+ *
+ * @template TDefault Value returned when filtering fails if `"default"` is set.
+ */
+type FilterRegexpPattern<TDefault = string> = struct {
+    string $regexp;
+    ?TDefault $default;
+};
+
+/**
+ * Overlay: generic flags/options bag (`"flags"`, `"options"`, optional `"filter"`).
+ */
+type FilterVarOptions = struct {
+    ?int $flags;
+    ?int $filter;
+    ?FilterNestedOptions $options;
+};
+
+/**
+ * Overlay: known filter names resolve to that filter's id.
+ *
+ * @param FilterName $name A name from `filter_list()`.
+ * @return int Filter id.
+ */
+// @overlay-against: function filter_id(string $name): int|false
+function filter_id(FilterName $name): int;
+
+/**
+ * Overlay: unknown names may be missing (`false`).
+ *
+ * @param string $name Filter name.
+ * @return int|false Filter id, or false if `$name` is not a filter.
+ */
+// @overlay-against: function filter_id(string $name): int|false
+function filter_id(string $name): int|false;
+
+/**
+ * Overlay: default `FILTER_DEFAULT` — raw string, or false/null when missing/failing.
+ *
+ * @param int $type One of `INPUT_GET` / `INPUT_POST` / `INPUT_COOKIE` / `INPUT_SERVER` / `INPUT_ENV`.
+ * @param string $var_name Variable name in that input array.
+ * @return string|false|null Filtered string, false on filter failure, or null if unset.
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name): string|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` (`257`). Unset is null; failure is false.
+ *
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @param 0 $options No flags.
+ * @return int|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, 257 $filter, 0 $options = 0): int|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` with a flags bitmask or options struct.
+ *
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @return int|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, 257 $filter, FilterIntOptions|array<string, mixed>|int $options): int|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` / `FILTER_VALIDATE_BOOLEAN` (`258`).
+ *
+ * @param 258 $filter `FILTER_VALIDATE_BOOL`.
+ * @param 0 $options No flags.
+ * @return bool|null Bool result, or null if unset. Failure is `false` (a bool).
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, 258 $filter, 0 $options = 0): bool|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` with flags or an options struct.
+ *
+ * @param 258 $filter `FILTER_VALIDATE_BOOL`.
+ * @return bool|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, 258 $filter, FilterVarOptions|array<string, mixed>|int $options): bool|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` (`259`).
+ *
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @param 0 $options No flags.
+ * @return float|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, 259 $filter, 0 $options = 0): float|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` with flags or an options struct.
+ *
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @return float|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, 259 $filter, FilterFloatOptions|array<string, mixed>|int $options): float|false|null;
+
+/**
+ * Overlay: string-returning validation filters (`FILTER_VALIDATE_EMAIL`, URL, IP, …).
+ *
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @param 0 $options No flags.
+ * @return string|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, FilterValidateStringId $filter, 0 $options = 0): string|false|null;
+
+/**
+ * Overlay: string-returning validation filters with flags or options.
+ *
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @return string|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, FilterValidateStringId $filter, FilterRegexpOptions|FilterVarOptions|array<string, mixed>|int $options): string|false|null;
+
+/**
+ * Overlay: sanitization filters and `FILTER_DEFAULT`.
+ *
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param 0 $options No flags.
+ * @return string|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, FilterSanitizeId $filter = 516, 0 $options = 0): string|false|null;
+
+/**
+ * Overlay: sanitization filters with flags or options.
+ *
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @return string|false|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, FilterSanitizeId $filter, FilterVarOptions|array<string, mixed>|int $options): string|false|null;
+
+/**
+ * Overlay: `FILTER_CALLBACK` (`1024`). Missing input is null; otherwise the callback's return.
+ *
+ * @template TCallable of callable
+ * @param 1024 $filter `FILTER_CALLBACK`.
+ * @param array<string, TCallable> $options Callback under `"options"`.
+ * @return __CallableReturnType<TCallable>|null
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input<TCallable extends callable>(
+    int $type,
+    string $var_name,
+    1024 $filter,
+    array<string, TCallable> $options
+): __CallableReturnType<TCallable>|null;
+
+/**
+ * Overlay: `FILTER_CALLBACK` with a runtime flags bitmask.
+ *
+ * @param 1024 $filter `FILTER_CALLBACK`.
+ * @return mixed
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, 1024 $filter, int $options): mixed;
+
+/**
+ * Overlay: runtime `int` filter (including unfolded `FILTER_* | FILTER_*`).
+ *
+ * @param int $type One of the `INPUT_*` constants.
+ * @param string $var_name Variable name in that input array.
+ * @param int $filter Any `FILTER_*` id.
+ * @param FilterVarOptions|array<string, mixed>|int $options Flags bitmask or options array.
+ * @return mixed Filtered value, false on failure, or null if unset.
+ */
+// @overlay-against: function filter_input(int $type, string $var_name, int $filter, array|int $options): mixed
+function filter_input(int $type, string $var_name, int $filter = FILTER_DEFAULT, FilterVarOptions|array<string, mixed>|int $options = 0): mixed;
+
+/**
+ * Overlay: per-key filter specs. Result keys match the spec keys.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $options Map of field name → filter id or `FilterFieldSpec`.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, mixed>|false|null
+ */
+// @overlay-against: function filter_input_array(int $type, array|int $options, bool $add_empty): array|false|null
+function filter_input_array<TKey>(
+    int $type,
+    array<TKey, mixed> $options,
+    bool $add_empty = true
+): array<TKey, mixed>|false|null;
+
+/**
+ * Overlay: apply one filter id to every input variable of `$type`.
+ *
+ * @param int $type One of the `INPUT_*` constants.
+ * @param int $options Filter id applied to each entry (`FILTER_DEFAULT` when omitted).
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<string, mixed>|false|null Map of filtered values, false on failure, or null if that input type is empty.
+ */
+// @overlay-against: function filter_input_array(int $type, array|int $options, bool $add_empty): array|false|null
+function filter_input_array(int $type, int $options = FILTER_DEFAULT, bool $add_empty = true): array<string, mixed>|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` applied to every input variable of `$type`.
+ *
+ * @param 257 $options `FILTER_VALIDATE_INT`.
+ * @return array<string, int|false|null>|false|null
+ */
+// @overlay-against: function filter_input_array(int $type, array|int $options, bool $add_empty): array|false|null
+function filter_input_array(int $type, 257 $options, bool $add_empty = true): array<string, int|false|null>|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` applied to every input variable of `$type`.
+ *
+ * @param 258 $options `FILTER_VALIDATE_BOOL`.
+ * @return array<string, bool|null>|false|null
+ */
+// @overlay-against: function filter_input_array(int $type, array|int $options, bool $add_empty): array|false|null
+function filter_input_array(int $type, 258 $options, bool $add_empty = true): array<string, bool|null>|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` applied to every input variable of `$type`.
+ *
+ * @param 259 $options `FILTER_VALIDATE_FLOAT`.
+ * @return array<string, float|false|null>|false|null
+ */
+// @overlay-against: function filter_input_array(int $type, array|int $options, bool $add_empty): array|false|null
+function filter_input_array(int $type, 259 $options, bool $add_empty = true): array<string, float|false|null>|false|null;
+
+/**
+ * Overlay: string-returning validation filter applied to every input variable of `$type`.
+ *
+ * @param FilterValidateStringId $options A `FILTER_VALIDATE_*` string filter.
+ * @return array<string, string|false|null>|false|null
+ */
+// @overlay-against: function filter_input_array(int $type, array|int $options, bool $add_empty): array|false|null
+function filter_input_array(int $type, FilterValidateStringId $options, bool $add_empty = true): array<string, string|false|null>|false|null;
+
+/**
+ * Overlay: sanitization filter / `FILTER_DEFAULT` applied to every input variable of `$type`.
+ *
+ * @param FilterSanitizeId $options A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @return array<string, string|false|null>|false|null
+ */
+// @overlay-against: function filter_input_array(int $type, array|int $options, bool $add_empty): array|false|null
+function filter_input_array(int $type, FilterSanitizeId $options, bool $add_empty = true): array<string, string|false|null>|false|null;
+
+/**
+ * Overlay: supported filter names as a list of strings (indexes are not filter ids).
+ *
+ * @return array<int, FilterName> Filter names.
+ */
+// @overlay-against: function filter_list(): array
+function filter_list(): array<int, FilterName>;
+
+/**
+ * Overlay: `int` input with `FILTER_VALIDATE_INT` (`257`) succeeds as `int`.
+ *
+ * @param int $value Integer to validate.
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @param 0 $options No flags.
+ * @return int The same integer.
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(int $value, 257 $filter, 0 $options = 0): int;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` (`257`). Failure is false.
+ *
+ * @param mixed $value Value to filter.
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @param 0 $options No flags.
+ * @return int|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 257 $filter, 0 $options = 0): int|false;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` + `FILTER_NULL_ON_FAILURE` (`134217728`).
+ *
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @param 134217728 $options `FILTER_NULL_ON_FAILURE`.
+ * @return int|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 257 $filter, 134217728 $options): int|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` + `FILTER_REQUIRE_ARRAY` (`16777216`).
+ *
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @param 16777216 $options `FILTER_REQUIRE_ARRAY`.
+ * @return array<int|string, int|false>|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 257 $filter, 16777216 $options): array<int|string, int|false>|false;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` + `FILTER_FORCE_ARRAY` (`67108864`).
+ *
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @param 67108864 $options `FILTER_FORCE_ARRAY`.
+ * @return array<int|string, int|false>
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 257 $filter, 67108864 $options): array<int|string, int|false>;
+
+/**
+ * Overlay: `FILTER_VALIDATE_INT` with a flags bitmask or options struct.
+ *
+ * @param 257 $filter `FILTER_VALIDATE_INT`.
+ * @return int|false|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 257 $filter, FilterIntOptions|array<string, mixed>|int $options): int|false|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` / `FILTER_VALIDATE_BOOLEAN` (`258`). Failure is false, a valid bool.
+ *
+ * @param mixed $value Value to filter.
+ * @param 258 $filter `FILTER_VALIDATE_BOOL`.
+ * @param 0 $options No flags.
+ * @return bool
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 258 $filter, 0 $options = 0): bool;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` + `FILTER_NULL_ON_FAILURE` (`134217728`).
+ *
+ * @param 258 $filter `FILTER_VALIDATE_BOOL`.
+ * @param 134217728 $options `FILTER_NULL_ON_FAILURE`.
+ * @return bool|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 258 $filter, 134217728 $options): bool|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` + `FILTER_REQUIRE_ARRAY` (`16777216`).
+ *
+ * @param 258 $filter `FILTER_VALIDATE_BOOL`.
+ * @param 16777216 $options `FILTER_REQUIRE_ARRAY`.
+ * @return array<int|string, bool>|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 258 $filter, 16777216 $options): array<int|string, bool>|false;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` + `FILTER_FORCE_ARRAY` (`67108864`).
+ *
+ * @param 258 $filter `FILTER_VALIDATE_BOOL`.
+ * @param 67108864 $options `FILTER_FORCE_ARRAY`.
+ * @return array<int|string, bool>
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 258 $filter, 67108864 $options): array<int|string, bool>;
+
+/**
+ * Overlay: `FILTER_VALIDATE_BOOL` with a flags bitmask or options struct.
+ *
+ * @param 258 $filter `FILTER_VALIDATE_BOOL`.
+ * @return bool|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 258 $filter, FilterVarOptions|array<string, mixed>|int $options): bool|null;
+
+/**
+ * Overlay: `int` / `float` input with `FILTER_VALIDATE_FLOAT` (`259`) succeeds as `float`.
+ *
+ * @param int $value Integer to validate (promoted to float).
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @param 0 $options No flags.
+ * @return float
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(int $value, 259 $filter, 0 $options = 0): float;
+
+/**
+ * Overlay: `float` input with `FILTER_VALIDATE_FLOAT` (`259`) succeeds as `float`.
+ *
+ * @param float $value Float to validate.
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @param 0 $options No flags.
+ * @return float
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(float $value, 259 $filter, 0 $options = 0): float;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` (`259`). Failure is false.
+ *
+ * @param mixed $value Value to filter.
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @param 0 $options No flags.
+ * @return float|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 259 $filter, 0 $options = 0): float|false;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` + `FILTER_NULL_ON_FAILURE` (`134217728`).
+ *
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @param 134217728 $options `FILTER_NULL_ON_FAILURE`.
+ * @return float|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 259 $filter, 134217728 $options): float|null;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` + `FILTER_REQUIRE_ARRAY` (`16777216`).
+ *
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @param 16777216 $options `FILTER_REQUIRE_ARRAY`.
+ * @return array<int|string, float|false>|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 259 $filter, 16777216 $options): array<int|string, float|false>|false;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` + `FILTER_FORCE_ARRAY` (`67108864`).
+ *
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @param 67108864 $options `FILTER_FORCE_ARRAY`.
+ * @return array<int|string, float|false>
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 259 $filter, 67108864 $options): array<int|string, float|false>;
+
+/**
+ * Overlay: `FILTER_VALIDATE_FLOAT` with a flags bitmask or options struct.
+ *
+ * @param 259 $filter `FILTER_VALIDATE_FLOAT`.
+ * @return float|false|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 259 $filter, FilterFloatOptions|array<string, mixed>|int $options): float|false|null;
+
+/**
+ * Overlay: string-returning validation filters (`FILTER_VALIDATE_EMAIL`, URL, IP, MAC, domain, regexp).
+ *
+ * @param mixed $value Value to filter.
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @param 0 $options No flags.
+ * @return string|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(string $value, FilterValidateStringId $filter, 0 $options = 0): string|false;
+
+/**
+ * Overlay: string-returning validation filters on a non-string subject.
+ *
+ * @param mixed $value Value to filter.
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @param 0 $options No flags.
+ * @return string|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterValidateStringId $filter, 0 $options = 0): string|false;
+
+/**
+ * Overlay: string-returning validation + `FILTER_NULL_ON_FAILURE` (`134217728`).
+ *
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @param 134217728 $options `FILTER_NULL_ON_FAILURE`.
+ * @return string|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterValidateStringId $filter, 134217728 $options): string|null;
+
+/**
+ * Overlay: string-returning validation + `FILTER_REQUIRE_ARRAY` (`16777216`).
+ *
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @param 16777216 $options `FILTER_REQUIRE_ARRAY`.
+ * @return array<int|string, string|false>|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterValidateStringId $filter, 16777216 $options): array<int|string, string|false>|false;
+
+/**
+ * Overlay: string-returning validation + `FILTER_FORCE_ARRAY` (`67108864`).
+ *
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @param 67108864 $options `FILTER_FORCE_ARRAY`.
+ * @return array<int|string, string|false>
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterValidateStringId $filter, 67108864 $options): array<int|string, string|false>;
+
+/**
+ * Overlay: string-returning validation with a flags bitmask or options struct.
+ *
+ * @param FilterValidateStringId $filter A `FILTER_VALIDATE_*` string filter.
+ * @return string|false|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterValidateStringId $filter, FilterRegexpOptions|FilterVarOptions|array<string, mixed>|int $options): string|false|null;
+
+/**
+ * Overlay: string subject with a sanitizer / `FILTER_DEFAULT` stays `string`.
+ *
+ * @param string $value String to sanitize.
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param 0 $options No flags.
+ * @return string
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(string $value, FilterSanitizeId $filter = 516, 0 $options = 0): string;
+
+/**
+ * Overlay: sanitization filters and `FILTER_DEFAULT` / `FILTER_UNSAFE_RAW` (`516`). Failure is false.
+ *
+ * @param mixed $value Value to filter.
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param 0 $options No flags.
+ * @return string|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterSanitizeId $filter = 516, 0 $options = 0): string|false;
+
+/**
+ * Overlay: sanitizer / default + `FILTER_NULL_ON_FAILURE` (`134217728`).
+ *
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param 134217728 $options `FILTER_NULL_ON_FAILURE`.
+ * @return string|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterSanitizeId $filter, 134217728 $options): string|null;
+
+/**
+ * Overlay: sanitizer / default + `FILTER_FLAG_EMPTY_STRING_NULL` (`256`).
+ *
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param 256 $options `FILTER_FLAG_EMPTY_STRING_NULL`.
+ * @return string|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterSanitizeId $filter, 256 $options): string|null;
+
+/**
+ * Overlay: sanitizer / default + `FILTER_REQUIRE_ARRAY` (`16777216`).
+ *
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param 16777216 $options `FILTER_REQUIRE_ARRAY`.
+ * @return array<int|string, string>|false
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterSanitizeId $filter, 16777216 $options): array<int|string, string>|false;
+
+/**
+ * Overlay: sanitizer / default + `FILTER_FORCE_ARRAY` (`67108864`).
+ *
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param 67108864 $options `FILTER_FORCE_ARRAY`.
+ * @return array<int|string, string>
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterSanitizeId $filter, 67108864 $options): array<int|string, string>;
+
+/**
+ * Overlay: sanitizer / default with a flags bitmask or options struct.
+ *
+ * @param FilterSanitizeId $filter A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @return string|false|null
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, FilterSanitizeId $filter, FilterVarOptions|array<string, mixed>|int $options): string|false|null;
+
+/**
+ * Overlay: `FILTER_CALLBACK` (`1024`). Return is the callback's return type.
+ *
+ * @template TCallable of callable
+ * @param mixed $value Value passed to the callback.
+ * @param 1024 $filter `FILTER_CALLBACK`.
+ * @param array<string, TCallable> $options Callback under `"options"`.
+ * @return __CallableReturnType<TCallable>
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var<TCallable extends callable>(
+    mixed $value,
+    1024 $filter,
+    array<string, TCallable> $options
+): __CallableReturnType<TCallable>;
+
+/**
+ * Overlay: `FILTER_CALLBACK` with a runtime flags bitmask.
+ *
+ * @param 1024 $filter `FILTER_CALLBACK`.
+ * @return mixed
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, 1024 $filter, int $options): mixed;
+
+/**
+ * Overlay: runtime `int` filter (including unfolded `FILTER_* | FILTER_*`).
+ *
+ * @param mixed $value Value to filter.
+ * @param int $filter Any `FILTER_*` id.
+ * @param FilterVarOptions|array<string, mixed>|int $options Flags bitmask or options array.
+ * @return mixed Filtered value, or false/null on failure.
+ */
+// @overlay-against: function filter_var(mixed $value, int $filter, array|int $options): mixed
+function filter_var(mixed $value, int $filter = FILTER_DEFAULT, FilterVarOptions|array<string, mixed>|int $options = 0): mixed;
+
+/**
+ * Overlay: per-key filter specs. Result keys match the spec / data keys.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $array Data to filter.
+ * @param array<TKey, mixed> $options Map of key → filter id or `FilterFieldSpec`.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, mixed>|false|null
+ */
+// @overlay-against: function filter_var_array(array $array, array|int $options, bool $add_empty): array|false|null
+function filter_var_array<TKey>(
+    array<TKey, mixed> $array,
+    array<TKey, mixed> $options,
+    bool $add_empty = true
+): array<TKey, mixed>|false|null;
+
+/**
+ * Overlay: apply `FILTER_VALIDATE_INT` to every value. Keys are preserved.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $array Data to filter.
+ * @param 257 $options `FILTER_VALIDATE_INT`.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, int|false|null>|false|null
+ */
+// @overlay-against: function filter_var_array(array $array, array|int $options, bool $add_empty): array|false|null
+function filter_var_array<TKey>(
+    array<TKey, mixed> $array,
+    257 $options,
+    bool $add_empty = true
+): array<TKey, int|false|null>|false|null;
+
+/**
+ * Overlay: apply `FILTER_VALIDATE_BOOL` to every value. Keys are preserved.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $array Data to filter.
+ * @param 258 $options `FILTER_VALIDATE_BOOL`.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, bool|null>|false|null
+ */
+// @overlay-against: function filter_var_array(array $array, array|int $options, bool $add_empty): array|false|null
+function filter_var_array<TKey>(
+    array<TKey, mixed> $array,
+    258 $options,
+    bool $add_empty = true
+): array<TKey, bool|null>|false|null;
+
+/**
+ * Overlay: apply `FILTER_VALIDATE_FLOAT` to every value. Keys are preserved.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $array Data to filter.
+ * @param 259 $options `FILTER_VALIDATE_FLOAT`.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, float|false|null>|false|null
+ */
+// @overlay-against: function filter_var_array(array $array, array|int $options, bool $add_empty): array|false|null
+function filter_var_array<TKey>(
+    array<TKey, mixed> $array,
+    259 $options,
+    bool $add_empty = true
+): array<TKey, float|false|null>|false|null;
+
+/**
+ * Overlay: apply a string-returning validation filter to every value.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $array Data to filter.
+ * @param FilterValidateStringId $options A `FILTER_VALIDATE_*` string filter.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, string|false|null>|false|null
+ */
+// @overlay-against: function filter_var_array(array $array, array|int $options, bool $add_empty): array|false|null
+function filter_var_array<TKey>(
+    array<TKey, mixed> $array,
+    FilterValidateStringId $options,
+    bool $add_empty = true
+): array<TKey, string|false|null>|false|null;
+
+/**
+ * Overlay: apply a sanitizer / `FILTER_DEFAULT` to every value.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $array Data to filter.
+ * @param FilterSanitizeId $options A `FILTER_SANITIZE_*` id or `FILTER_DEFAULT`.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, string|false|null>|false|null
+ */
+// @overlay-against: function filter_var_array(array $array, array|int $options, bool $add_empty): array|false|null
+function filter_var_array<TKey>(
+    array<TKey, mixed> $array,
+    FilterSanitizeId $options = 516,
+    bool $add_empty = true
+): array<TKey, string|false|null>|false|null;
+
+/**
+ * Overlay: one runtime filter id applied to every value. Keys are preserved.
+ *
+ * @template TKey
+ * @param array<TKey, mixed> $array Data to filter.
+ * @param int $options Filter id applied to each entry.
+ * @param bool $add_empty Add missing keys as null.
+ * @return array<TKey, mixed>|false|null
+ */
+// @overlay-against: function filter_var_array(array $array, array|int $options, bool $add_empty): array|false|null
+function filter_var_array<TKey>(
+    array<TKey, mixed> $array,
+    int $options = FILTER_DEFAULT,
+    bool $add_empty = true
+): array<TKey, mixed>|false|null;

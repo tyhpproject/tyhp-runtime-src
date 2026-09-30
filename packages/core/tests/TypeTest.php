@@ -60,6 +60,30 @@ class TypeTest extends TestCase
         self::assertFalse(Type::is('nope', Type::float()));
     }
 
+    public function testVoidAcceptsOnlyNull(): void
+    {
+        self::assertFalse(Type::void()->isNullable());
+        self::assertNull(Type::void()->defaultValue());
+        self::assertTrue(Type::is(null, Type::void()));
+        self::assertTrue(Type::is(Type::void()->defaultValue(), Type::void()));
+
+        self::assertFalse(Type::is(0, Type::void()));
+        self::assertFalse(Type::is('', Type::void()));
+        self::assertFalse(Type::is('x', Type::void()));
+        self::assertFalse(Type::is(false, Type::void()));
+        self::assertFalse(Type::is([], Type::void()));
+
+        self::assertTrue(Type::is(null, Type::null()));
+        self::assertFalse(Type::is(null, Type::never()));
+        self::assertTrue(Type::is(null, Type::mixed()));
+
+        $nullableInt = Type::nullable(Type::int());
+        self::assertTrue(Type::is(null, $nullableInt));
+        self::assertTrue(Type::is(0, $nullableInt));
+        self::assertFalse(Type::is('', $nullableInt));
+        self::assertFalse(Type::is('hello', $nullableInt));
+    }
+
     public function testUnionType(): void
     {
         $union = Type::union(Type::int(), Type::string());
@@ -270,6 +294,101 @@ class TypeTest extends TestCase
 
         $named = new NamedType('T', Type::int());
         self::assertSame('generic', Type::generic('Box', $named)->getKind());
+    }
+
+    public function testStructTypeIs(): void
+    {
+        $user = Type::struct(
+            'User',
+            [
+                'name' => Type::string(),
+                'age' => Type::int(),
+            ],
+            ['name', 'age'],
+        );
+
+        self::assertSame('struct', $user->getKind());
+        self::assertSame('User', $user->getName());
+        self::assertTrue(Type::is(['name' => 'Ann', 'age' => 30], $user));
+        self::assertTrue(Type::is(['name' => 'Ann', 'age' => 30, 'extra' => true], $user));
+        self::assertFalse(Type::is(['name' => 'Ann'], $user));
+        self::assertFalse(Type::is(['name' => 'Ann', 'age' => '30'], $user));
+        self::assertFalse(Type::is(new \stdClass(), $user));
+        self::assertSame([], $user->defaultValue());
+    }
+
+    public function testObjectShapeTypeIsExistenceOnly(): void
+    {
+        $clock = Type::objectShape('ClockShape', ['now'], []);
+
+        self::assertSame('objectShape', $clock->getKind());
+        self::assertSame('ClockShape', $clock->getName());
+
+        $withNow = new class {
+            public function now(): int
+            {
+                return 1;
+            }
+        };
+        $withoutNow = new class {
+            public function later(): int
+            {
+                return 1;
+            }
+        };
+
+        $withExtra = new class {
+            public function now(): int
+            {
+                return 1;
+            }
+
+            public function extra(): void
+            {
+            }
+        };
+
+        self::assertTrue(Type::is($withNow, $clock));
+        self::assertTrue(Type::is($withExtra, $clock));
+        self::assertFalse(Type::is($withoutNow, $clock));
+        self::assertFalse(Type::is(['now' => 1], $clock));
+        self::assertFalse(Type::is(null, $clock));
+        self::assertNull($clock->defaultValue());
+    }
+
+    public function testObjectShapeTypeMatchesPublicProperties(): void
+    {
+        $hasTimezone = Type::objectShape('HasTimezone', [], ['timezone']);
+
+        $withTimezone = new class {
+            public string $timezone = 'UTC';
+        };
+        $withoutTimezone = new class {
+            public string $name = 'x';
+        };
+        $privateTimezone = new class {
+            private string $timezone = 'UTC';
+        };
+
+        self::assertTrue(Type::is($withTimezone, $hasTimezone));
+        self::assertFalse(Type::is($withoutTimezone, $hasTimezone));
+        self::assertFalse(Type::is($privateTimezone, $hasTimezone));
+        self::assertFalse(Type::is(['timezone' => 'UTC'], $hasTimezone));
+    }
+
+    public function testCallableShapeTypeIsExistenceOnly(): void
+    {
+        $predicate = Type::callableShape('Predicate');
+
+        self::assertSame('callableShape', $predicate->getKind());
+        self::assertSame('Predicate', $predicate->getName());
+
+        self::assertTrue(Type::is(static fn (int $n): bool => $n > 0, $predicate));
+        self::assertTrue(Type::is('strlen', $predicate));
+        self::assertFalse(Type::is(42, $predicate));
+        self::assertFalse(Type::is(null, $predicate));
+        self::assertFalse(Type::is(new \stdClass(), $predicate));
+        self::assertNull($predicate->defaultValue());
     }
 
     public function testGetName(): void

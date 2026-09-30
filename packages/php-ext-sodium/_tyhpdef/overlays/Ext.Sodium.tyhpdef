@@ -1,0 +1,68 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Sodium array-shape returns Layer 2 left as bare `array`: secretstream init/pull
+ * pairs, and kx session-key tuples (Layer 2 already used `array<int, string>`).
+ * Generichash state is already `string` (serialized BLAKE2); not restated.
+ */
+
+/**
+ * Overlay: `sodium_crypto_kx_*_session_keys()` `[rx, tx]` pair.
+ */
+type SodiumKxSessionKeys = struct {
+    string 0 as $rx;
+    string 1 as $tx;
+};
+
+/**
+ * Overlay: `sodium_crypto_secretstream_xchacha20poly1305_pull()` `[message, tag]`.
+ */
+type SodiumSecretstreamPull = struct {
+    string 0 as $message;
+    int 1 as $tag;
+};
+
+/**
+ * Overlay: `sodium_crypto_secretstream_xchacha20poly1305_init_push()` `[state, header]`.
+ */
+type SodiumSecretstreamPushInit = struct {
+    string 1 as $header;
+    string 0 as $state;
+};
+
+/**
+ * Overlay: `[0] => rx key, [1] => tx key`.
+ */
+// @overlay-against: function sodium_crypto_kx_client_session_keys(string $client_key_pair, string $server_key): array
+function sodium_crypto_kx_client_session_keys(
+    #[\SensitiveParameter] string $client_key_pair,
+    string $server_key
+): SodiumKxSessionKeys;
+
+/**
+ * Overlay: `[0] => rx key, [1] => tx key`.
+ */
+// @overlay-against: function sodium_crypto_kx_server_session_keys(string $server_key_pair, string $client_key): array
+function sodium_crypto_kx_server_session_keys(
+    #[\SensitiveParameter] string $server_key_pair,
+    string $client_key
+): SodiumKxSessionKeys;
+
+/**
+ * Overlay: `[0] => state, [1] => header`.
+ */
+// @overlay-against: function sodium_crypto_secretstream_xchacha20poly1305_init_push(string $key): array
+function sodium_crypto_secretstream_xchacha20poly1305_init_push(
+    #[\SensitiveParameter] string $key
+): SodiumSecretstreamPushInit;
+
+/**
+ * Overlay: `[0] => plaintext, [1] => tag`, or false on authentication failure.
+ */
+// @overlay-against: function sodium_crypto_secretstream_xchacha20poly1305_pull(string $state, string $ciphertext, string $additional_data): array|false
+function sodium_crypto_secretstream_xchacha20poly1305_pull(
+    string &$state,
+    string $ciphertext,
+    string $additional_data = ''
+): SodiumSecretstreamPull|false;

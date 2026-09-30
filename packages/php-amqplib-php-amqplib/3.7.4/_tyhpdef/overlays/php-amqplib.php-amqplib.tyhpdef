@@ -1,0 +1,116 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * AMQP property maps are string-keyed. Consumer and confirm callbacks receive messages.
+ */
+
+namespace PhpAmqpLib\Channel {
+    /**
+     * Consumer callback. Invoked with the delivered message.
+     */
+    type ConsumerCallback = callable(\PhpAmqpLib\Message\AMQPMessage): mixed;
+
+    /**
+     * Publisher confirm handler. Invoked with the published message.
+     */
+    type ConfirmCallback = callable(\PhpAmqpLib\Message\AMQPMessage): mixed;
+
+    /**
+     * basic.return listener: reply code, reply text, exchange, routing key, message.
+     */
+    type ReturnCallback = callable(int, string, string, string, \PhpAmqpLib\Message\AMQPMessage): mixed;
+
+    /**
+     * Overlay: consume and confirm callbacks, and methods that send a frame and return nothing.
+     */
+    // @overlay-against: class AMQPChannel extends \PhpAmqpLib\Channel\AbstractChannel
+    partial class AMQPChannel {
+        // @overlay-against: function basic_ack(int $delivery_tag, bool $multiple): mixed
+        public function basic_ack(int $delivery_tag, bool $multiple = false): void;
+
+        /**
+         * @param \PhpAmqpLib\Channel\ConsumerCallback|null $callback
+         * @param \PhpAmqpLib\Wire\AMQPTable|array<string, mixed> $arguments
+         */
+        // @overlay-against: function basic_consume(string $queue, string $consumer_tag, bool $no_local, bool $no_ack, bool $exclusive, bool $nowait, callable|null $callback, int|null $ticket, \PhpAmqpLib\Wire\AMQPTable|array $arguments): string
+        public function basic_consume(string $queue = '', string $consumer_tag = '', bool $no_local = false, bool $no_ack = false, bool $exclusive = false, bool $nowait = false, ?\PhpAmqpLib\Channel\ConsumerCallback $callback = null, ?int $ticket = null, \PhpAmqpLib\Wire\AMQPTable|array<string, mixed> $arguments = []): string;
+
+        // @overlay-against: function basic_nack(int $delivery_tag, bool $multiple, bool $requeue): mixed
+        public function basic_nack(int $delivery_tag, bool $multiple = false, bool $requeue = false): void;
+
+        // @overlay-against: function basic_reject(int $delivery_tag, bool $requeue): mixed
+        public function basic_reject(int $delivery_tag, bool $requeue): void;
+
+        /**
+         * @param \PhpAmqpLib\Channel\ConfirmCallback $callback
+         */
+        // @overlay-against: function set_ack_handler(callable $callback): mixed
+        public function set_ack_handler(\PhpAmqpLib\Channel\ConfirmCallback $callback): void;
+
+        /**
+         * @param \PhpAmqpLib\Channel\ConfirmCallback $callback
+         */
+        // @overlay-against: function set_nack_handler(callable $callback): mixed
+        public function set_nack_handler(\PhpAmqpLib\Channel\ConfirmCallback $callback): void;
+
+        /**
+         * @param \PhpAmqpLib\Channel\ReturnCallback $callback
+         */
+        // @overlay-against: function set_return_listener(callable $callback): mixed
+        public function set_return_listener(\PhpAmqpLib\Channel\ReturnCallback $callback): void;
+
+        // @overlay-against: function stopConsume(): mixed
+        public function stopConsume(): void;
+    }
+}
+
+namespace PhpAmqpLib\Connection {
+    /**
+     * Overlay: cloning a connection returns nothing.
+     */
+    // @overlay-against: class AbstractConnection extends \PhpAmqpLib\Channel\AbstractChannel
+    partial class AbstractConnection {
+        // @overlay-against: function __clone(): mixed
+        public function __clone(): void;
+    }
+}
+
+namespace PhpAmqpLib\Helper {
+    /**
+     * Thin wrapper around phpseclib BigInteger. Layer 1 omitted this helper.
+     */
+    class BigInteger {
+    }
+}
+
+namespace PhpAmqpLib\Message {
+    /**
+     * Overlay: message properties are a string-keyed map; isTruncated is bool.
+     */
+    // @overlay-against: class AMQPMessage
+    partial class AMQPMessage {
+        /**
+         * @param array<string, mixed> $properties
+         */
+        // @overlay-against: function __construct(string $body, array $properties): void
+        public function __construct(string $body = '', array<string, mixed> $properties = []);
+
+        // @overlay-against: function isTruncated(): boolean
+        public function isTruncated(): bool;
+    }
+}
+
+namespace PhpAmqpLib\Wire {
+    /**
+     * Overlay: PHPDoc `boolean` / `integer` are not Tyhp types.
+     */
+    // @overlay-against: class AMQPAbstractCollection implements \Iterator, \ArrayAccess
+    partial class AMQPAbstractCollection {
+        // @overlay-against: function checkDataTypeIsSupported(string $type, bool $return): boolean
+        public static final function checkDataTypeIsSupported(string $type, bool $return = true): bool;
+
+        // @overlay-against: function getDataTypeForSymbol(string $symbol): integer
+        public static final function getDataTypeForSymbol(string $symbol): int;
+    }
+}

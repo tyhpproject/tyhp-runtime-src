@@ -1,0 +1,775 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace League\Flysystem {
+    trait CalculateChecksumFromStream {
+        /**
+        * @return resource
+        * @generated
+        */
+        public abstract function readStream(string $path): resource;
+    }
+    final class ChecksumAlgoIsNotSupported extends \InvalidArgumentException {
+    }
+    interface ChecksumProvider {
+        /**
+        * @return string MD5 hash of the file contents
+        * @throws UnableToProvideChecksum
+        * @throws ChecksumAlgoIsNotSupported
+        * @generated
+        */
+        public function checksum(string $path, \League\Flysystem\Config $config): string;
+    }
+    class Config {
+        public const string OPTION_COPY_IDENTICAL_PATH ?? 'copy_destination_same_as_source';
+        public const string OPTION_MOVE_IDENTICAL_PATH ?? 'move_destination_same_as_source';
+        public const string OPTION_VISIBILITY ?? 'visibility';
+        public const string OPTION_DIRECTORY_VISIBILITY ?? 'directory_visibility';
+        public const string OPTION_RETAIN_VISIBILITY ?? 'retain_visibility';
+        public function __construct(array $options = []): void;
+        /**
+        * @param mixed $default
+        * @return mixed
+        * @generated
+        */
+        public function get(string $property, mixed $default = null): mixed;
+        public function extend(array $options): \League\Flysystem\Config;
+        public function withDefaults(array $defaults): \League\Flysystem\Config;
+        public function toArray(): array;
+        public function withSetting(string $property, mixed $setting): \League\Flysystem\Config;
+        public function withoutSettings(string ...$settings): \League\Flysystem\Config;
+    }
+    final class CorruptedPathDetected extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public static function forPath(string $path): \League\Flysystem\CorruptedPathDetected;
+    }
+    abstract class DecoratedAdapter implements \League\Flysystem\FilesystemAdapter {
+        protected \League\Flysystem\FilesystemAdapter $adapter;
+        public function __construct(\League\Flysystem\FilesystemAdapter $adapter): void;
+        public function fileExists(string $path): bool;
+        public function directoryExists(string $path): bool;
+        public function write(string $path, string $contents, \League\Flysystem\Config $config): void;
+        public function writeStream(string $path, mixed $contents, \League\Flysystem\Config $config): void;
+        public function read(string $path): string;
+        public function readStream(string $path): mixed;
+        public function delete(string $path): void;
+        public function deleteDirectory(string $path): void;
+        public function createDirectory(string $path, \League\Flysystem\Config $config): void;
+        public function setVisibility(string $path, string $visibility): void;
+        public function visibility(string $path): \League\Flysystem\FileAttributes;
+        public function mimeType(string $path): \League\Flysystem\FileAttributes;
+        public function lastModified(string $path): \League\Flysystem\FileAttributes;
+        public function fileSize(string $path): \League\Flysystem\FileAttributes;
+        public function listContents(string $path, bool $deep): iterable;
+        public function move(string $source, string $destination, \League\Flysystem\Config $config): void;
+        public function copy(string $source, string $destination, \League\Flysystem\Config $config): void;
+    }
+    class DirectoryAttributes implements \League\Flysystem\StorageAttributes {
+        use \League\Flysystem\ProxyArrayAccessToProperties;
+        public function __construct(string $path, ?string $visibility = null, ?int $lastModified = null, array $extraMetadata = []): void;
+        public function path(): string;
+        public function type(): string;
+        public function visibility(): ?string;
+        public function lastModified(): ?int;
+        public function extraMetadata(): array;
+        public function isFile(): bool;
+        public function isDir(): bool;
+        public function withPath(string $path): self;
+        public static function fromArray(array $attributes): self;
+        /**
+        * @inheritdoc
+        * @generated
+        */
+        public function jsonSerialize(): array;
+    }
+    /**
+    * @template T
+    * @generated
+    */
+    class DirectoryListing<T> implements \IteratorAggregate {
+        /**
+        * @param iterable<T> $listing
+        * @generated
+        */
+        public function __construct(iterable<T> $listing): void;
+        /**
+        * @param callable $filter
+        * @return \League\Flysystem\DirectoryListing
+        * @generated
+        */
+        public function filter(callable $filter): \League\Flysystem\DirectoryListing;
+        /**
+        * @template R
+        * @param callable $mapper
+        * @return \League\Flysystem\DirectoryListing
+        * @generated
+        */
+        public function map<R>(callable $mapper): \League\Flysystem\DirectoryListing;
+        /**
+        * @return \League\Flysystem\DirectoryListing
+        * @generated
+        */
+        public function sortByPath(): \League\Flysystem\DirectoryListing;
+        /**
+        * @return \Traversable
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+        /**
+        * @return array<int, T>
+        * @generated
+        */
+        public function toArray(): array<int, T>;
+    }
+    class FileAttributes implements \League\Flysystem\StorageAttributes {
+        use \League\Flysystem\ProxyArrayAccessToProperties;
+        public function __construct(string $path, ?int $fileSize = null, ?string $visibility = null, ?int $lastModified = null, ?string $mimeType = null, array $extraMetadata = []): void;
+        public function type(): string;
+        public function path(): string;
+        public function fileSize(): ?int;
+        public function visibility(): ?string;
+        public function lastModified(): ?int;
+        public function mimeType(): ?string;
+        public function extraMetadata(): array;
+        public function isFile(): bool;
+        public function isDir(): bool;
+        public function withPath(string $path): self;
+        public static function fromArray(array $attributes): self;
+        public function jsonSerialize(): array;
+    }
+    class Filesystem implements \League\Flysystem\FilesystemOperator {
+        use \League\Flysystem\CalculateChecksumFromStream;
+        public function __construct(\League\Flysystem\FilesystemAdapter $adapter, array $config = [], ?\League\Flysystem\PathNormalizer $pathNormalizer = null, ?\League\Flysystem\UrlGeneration\PublicUrlGenerator $publicUrlGenerator = null, ?\League\Flysystem\UrlGeneration\TemporaryUrlGenerator $temporaryUrlGenerator = null): void;
+        public function fileExists(string $location): bool;
+        public function directoryExists(string $location): bool;
+        public function has(string $location): bool;
+        public function write(string $location, string $contents, array $config = []): void;
+        public function writeStream(string $location, mixed $contents, array $config = []): void;
+        public function read(string $location): string;
+        public function readStream(string $location): mixed;
+        public function delete(string $location): void;
+        public function deleteDirectory(string $location): void;
+        public function createDirectory(string $location, array $config = []): void;
+        public function listContents(string $location, bool $deep = self::LIST_SHALLOW): \League\Flysystem\DirectoryListing;
+        public function move(string $source, string $destination, array $config = []): void;
+        public function copy(string $source, string $destination, array $config = []): void;
+        public function lastModified(string $path): int;
+        public function fileSize(string $path): int;
+        public function mimeType(string $path): string;
+        public function setVisibility(string $path, string $visibility): void;
+        public function visibility(string $path): string;
+        public function publicUrl(string $path, array $config = []): string;
+        public function temporaryUrl(string $path, \DateTimeInterface $expiresAt, array $config = []): string;
+        public function checksum(string $path, array $config = []): string;
+    }
+    interface FilesystemAdapter {
+        /**
+        * @throws FilesystemException
+        * @throws UnableToCheckExistence
+        * @generated
+        */
+        public function fileExists(string $path): bool;
+        /**
+        * @throws FilesystemException
+        * @throws UnableToCheckExistence
+        * @generated
+        */
+        public function directoryExists(string $path): bool;
+        /**
+        * @throws UnableToWriteFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function write(string $path, string $contents, \League\Flysystem\Config $config): void;
+        /**
+        * @param resource $contents
+        * @throws UnableToWriteFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function writeStream(string $path, resource $contents, \League\Flysystem\Config $config): void;
+        /**
+        * @throws UnableToReadFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function read(string $path): string;
+        /**
+        * @return resource
+        * @throws UnableToReadFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function readStream(string $path): resource;
+        /**
+        * @throws UnableToDeleteFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function delete(string $path): void;
+        /**
+        * @throws UnableToDeleteDirectory
+        * @throws FilesystemException
+        * @generated
+        */
+        public function deleteDirectory(string $path): void;
+        /**
+        * @throws UnableToCreateDirectory
+        * @throws FilesystemException
+        * @generated
+        */
+        public function createDirectory(string $path, \League\Flysystem\Config $config): void;
+        /**
+        * @throws InvalidVisibilityProvided
+        * @throws FilesystemException
+        * @generated
+        */
+        public function setVisibility(string $path, string $visibility): void;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function visibility(string $path): \League\Flysystem\FileAttributes;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function mimeType(string $path): \League\Flysystem\FileAttributes;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function lastModified(string $path): \League\Flysystem\FileAttributes;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function fileSize(string $path): \League\Flysystem\FileAttributes;
+        /**
+        * @return iterable<StorageAttributes>
+        * @throws FilesystemException
+        * @generated
+        */
+        public function listContents(string $path, bool $deep): iterable<\League\Flysystem\StorageAttributes>;
+        /**
+        * @throws UnableToMoveFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function move(string $source, string $destination, \League\Flysystem\Config $config): void;
+        /**
+        * @throws UnableToCopyFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function copy(string $source, string $destination, \League\Flysystem\Config $config): void;
+    }
+    interface FilesystemException extends \Throwable {
+    }
+    interface FilesystemOperationFailed extends \League\Flysystem\FilesystemException {
+        public const string OPERATION_WRITE ?? 'WRITE';
+        public const string OPERATION_UPDATE ?? 'UPDATE';
+        public const string OPERATION_EXISTENCE_CHECK ?? 'EXISTENCE_CHECK';
+        public const string OPERATION_DIRECTORY_EXISTS ?? 'DIRECTORY_EXISTS';
+        public const string OPERATION_FILE_EXISTS ?? 'FILE_EXISTS';
+        public const string OPERATION_CREATE_DIRECTORY ?? 'CREATE_DIRECTORY';
+        public const string OPERATION_DELETE ?? 'DELETE';
+        public const string OPERATION_DELETE_DIRECTORY ?? 'DELETE_DIRECTORY';
+        public const string OPERATION_MOVE ?? 'MOVE';
+        public const string OPERATION_RETRIEVE_METADATA ?? 'RETRIEVE_METADATA';
+        public const string OPERATION_COPY ?? 'COPY';
+        public const string OPERATION_READ ?? 'READ';
+        public const string OPERATION_SET_VISIBILITY ?? 'SET_VISIBILITY';
+        public const string OPERATION_LIST_CONTENTS ?? 'LIST_CONTENTS';
+        public function operation(): string;
+    }
+    interface FilesystemOperator extends \League\Flysystem\FilesystemReader, \League\Flysystem\FilesystemWriter {
+    }
+    /**
+    * This interface contains everything to read from and inspect
+    *
+    * a filesystem. All methods containing are non-destructive.
+    *
+    * @method string publicUrl(string $path, array $config = []) Will be added in 4.0
+    * @method string temporaryUrl(string $path, DateTimeInterface $expiresAt, array $config = []) Will be added in 4.0
+    * @method string checksum(string $path, array $config = []) Will be added in 4.0
+    * @generated
+    */
+    interface FilesystemReader {
+        public const bool LIST_SHALLOW ?? false;
+        public const bool LIST_DEEP ?? true;
+        /**
+        * @throws FilesystemException
+        * @throws UnableToCheckExistence
+        * @generated
+        */
+        public function fileExists(string $location): bool;
+        /**
+        * @throws FilesystemException
+        * @throws UnableToCheckExistence
+        * @generated
+        */
+        public function directoryExists(string $location): bool;
+        /**
+        * @throws FilesystemException
+        * @throws UnableToCheckExistence
+        * @generated
+        */
+        public function has(string $location): bool;
+        /**
+        * @throws UnableToReadFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function read(string $location): string;
+        /**
+        * @return resource
+        * @throws UnableToReadFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function readStream(string $location): resource;
+        /**
+        * @return \League\Flysystem\DirectoryListing
+        * @throws FilesystemException
+        * @throws UnableToListContents
+        * @generated
+        */
+        public function listContents(string $location, bool $deep = self::LIST_SHALLOW): \League\Flysystem\DirectoryListing;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function lastModified(string $path): int;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function fileSize(string $path): int;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function mimeType(string $path): string;
+        /**
+        * @throws UnableToRetrieveMetadata
+        * @throws FilesystemException
+        * @generated
+        */
+        public function visibility(string $path): string;
+        public function publicUrl(string $path, array $config): string;
+        public function temporaryUrl(string $path, \DateTimeInterface $expiresAt, array $config): string;
+        public function checksum(string $path, array $config): string;
+    }
+    interface FilesystemWriter {
+        /**
+        * @throws UnableToWriteFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function write(string $location, string $contents, array $config = []): void;
+        /**
+        * @param mixed $contents
+        * @throws UnableToWriteFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function writeStream(string $location, mixed $contents, array $config = []): void;
+        /**
+        * @throws UnableToSetVisibility
+        * @throws FilesystemException
+        * @generated
+        */
+        public function setVisibility(string $path, string $visibility): void;
+        /**
+        * @throws UnableToDeleteFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function delete(string $location): void;
+        /**
+        * @throws UnableToDeleteDirectory
+        * @throws FilesystemException
+        * @generated
+        */
+        public function deleteDirectory(string $location): void;
+        /**
+        * @throws UnableToCreateDirectory
+        * @throws FilesystemException
+        * @generated
+        */
+        public function createDirectory(string $location, array $config = []): void;
+        /**
+        * @throws UnableToMoveFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function move(string $source, string $destination, array $config = []): void;
+        /**
+        * @throws UnableToCopyFile
+        * @throws FilesystemException
+        * @generated
+        */
+        public function copy(string $source, string $destination, array $config = []): void;
+    }
+    class InvalidStreamProvided extends \InvalidArgumentException implements \League\Flysystem\FilesystemException {
+    }
+    class InvalidVisibilityProvided extends \InvalidArgumentException implements \League\Flysystem\FilesystemException {
+        public static function withVisibility(string $visibility, string $expectedMessage): \League\Flysystem\InvalidVisibilityProvided;
+    }
+    class MountManager implements \League\Flysystem\FilesystemOperator {
+        /**
+        * MountManager constructor.
+        *
+        * @param array<string, FilesystemOperator> $filesystems
+        * @generated
+        */
+        public function __construct(array<string, \League\Flysystem\FilesystemOperator> $filesystems = [], array $config = []): void;
+        /**
+        * It is not recommended to mount filesystems after creation because interacting
+        *
+        * with the Mount Manager becomes unpredictable. Use this as an escape hatch.
+        *
+        * @generated
+        */
+        public function dangerouslyMountFilesystems(string $key, \League\Flysystem\FilesystemOperator $filesystem): void;
+        /**
+        * @param array<string, FilesystemOperator> $filesystems
+        * @generated
+        */
+        public function extend(array<string, \League\Flysystem\FilesystemOperator> $filesystems, array $config = []): \League\Flysystem\MountManager;
+        public function fileExists(string $location): bool;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function has(string $location): bool;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function directoryExists(string $location): bool;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function read(string $location): string;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function readStream(string $location): mixed;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function listContents(string $location, bool $deep = self::LIST_SHALLOW): \League\Flysystem\DirectoryListing;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function lastModified(string $location): int;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function fileSize(string $location): int;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function mimeType(string $location): string;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function visibility(string $path): string;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function write(string $location, string $contents, array $config = []): void;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function writeStream(string $location, mixed $contents, array $config = []): void;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function setVisibility(string $path, string $visibility): void;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function delete(string $location): void;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function deleteDirectory(string $location): void;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function createDirectory(string $location, array $config = []): void;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function move(string $source, string $destination, array $config = []): void;
+        /**
+        * @var FilesystemOperator $sourceFilesystem
+        * @generated
+        */
+        public function copy(string $source, string $destination, array $config = []): void;
+        /**
+        * @var FilesystemOperator $sourceFilesystem
+        * @generated
+        */
+        public function publicUrl(string $path, array $config = []): string;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function temporaryUrl(string $path, \DateTimeInterface $expiresAt, array $config = []): string;
+        /**
+        * @var FilesystemOperator $filesystem
+        * @generated
+        */
+        public function checksum(string $path, array $config = []): string;
+    }
+    interface PathNormalizer {
+        public function normalizePath(string $path): string;
+    }
+    final class PathPrefixer {
+        public function __construct(string $prefix, string $separator = '/'): void;
+        public function prefixPath(string $path): string;
+        public function stripPrefix(string $path): string;
+        public function stripDirectoryPrefix(string $path): string;
+        public function prefixDirectoryPath(string $path): string;
+    }
+    class PathTraversalDetected extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public function path(): string;
+        public static function forPath(string $path): \League\Flysystem\PathTraversalDetected;
+    }
+    final class PortableVisibilityGuard {
+        public static function guardAgainstInvalidInput(string $visibility): void;
+    }
+    class ResolveIdenticalPathConflict {
+        public const string IGNORE ?? 'ignore';
+        public const string FAIL ?? 'fail';
+        public const string TRY ?? 'try';
+    }
+    interface StorageAttributes extends \JsonSerializable, \ArrayAccess {
+        public const string ATTRIBUTE_PATH ?? 'path';
+        public const string ATTRIBUTE_TYPE ?? 'type';
+        public const string ATTRIBUTE_FILE_SIZE ?? 'file_size';
+        public const string ATTRIBUTE_VISIBILITY ?? 'visibility';
+        public const string ATTRIBUTE_LAST_MODIFIED ?? 'last_modified';
+        public const string ATTRIBUTE_MIME_TYPE ?? 'mime_type';
+        public const string ATTRIBUTE_EXTRA_METADATA ?? 'extra_metadata';
+        public const string TYPE_FILE ?? 'file';
+        public const string TYPE_DIRECTORY ?? 'dir';
+        public function path(): string;
+        public function type(): string;
+        public function visibility(): ?string;
+        public function lastModified(): ?int;
+        public static function fromArray(array $attributes): \League\Flysystem\StorageAttributes;
+        public function isFile(): bool;
+        public function isDir(): bool;
+        public function withPath(string $path): \League\Flysystem\StorageAttributes;
+        public function extraMetadata(): array;
+    }
+    final class SymbolicLinkEncountered extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public function location(): string;
+        public static function atLocation(string $pathName): \League\Flysystem\SymbolicLinkEncountered;
+    }
+    class UnableToCheckDirectoryExistence extends \League\Flysystem\UnableToCheckExistence {
+        public function operation(): string;
+    }
+    class UnableToCheckExistence extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public final function __construct(string $message = "", int $code = 0, ?\Throwable $previous = null): void;
+        public static function forLocation(string $path, ?\Throwable $exception = null): static;
+        public function operation(): string;
+    }
+    class UnableToCheckFileExistence extends \League\Flysystem\UnableToCheckExistence {
+        public function operation(): string;
+    }
+    final class UnableToCopyFile extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public function source(): string;
+        public function destination(): string;
+        public static function fromLocationTo(string $sourcePath, string $destinationPath, ?\Throwable $previous = null): \League\Flysystem\UnableToCopyFile;
+        public static function sourceAndDestinationAreTheSame(string $source, string $destination): \League\Flysystem\UnableToCopyFile;
+        public static function because(string $reason, string $sourcePath, string $destinationPath): \League\Flysystem\UnableToCopyFile;
+        public function operation(): string;
+    }
+    final class UnableToCreateDirectory extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function atLocation(string $dirname, string $errorMessage = '', ?\Throwable $previous = null): \League\Flysystem\UnableToCreateDirectory;
+        public static function dueToFailure(string $dirname, \Throwable $previous): \League\Flysystem\UnableToCreateDirectory;
+        public function operation(): string;
+        public function reason(): string;
+        public function location(): string;
+    }
+    final class UnableToDeleteDirectory extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function atLocation(string $location, string $reason = '', ?\Throwable $previous = null): \League\Flysystem\UnableToDeleteDirectory;
+        public function operation(): string;
+        public function reason(): string;
+        public function location(): string;
+    }
+    final class UnableToDeleteFile extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function atLocation(string $location, string $reason = '', ?\Throwable $previous = null): \League\Flysystem\UnableToDeleteFile;
+        public function operation(): string;
+        public function reason(): string;
+        public function location(): string;
+    }
+    final class UnableToGeneratePublicUrl extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public function __construct(string $reason, string $path, ?\Throwable $previous = null): void;
+        public static function dueToError(string $path, \Throwable $exception): static;
+        public static function noGeneratorConfigured(string $path, string $extraReason = ''): static;
+    }
+    final class UnableToGenerateTemporaryUrl extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public function __construct(string $reason, string $path, ?\Throwable $previous = null): void;
+        public static function dueToError(string $path, \Throwable $exception): static;
+        public static function noGeneratorConfigured(string $path, string $extraReason = ''): static;
+    }
+    final class UnableToListContents extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function atLocation(string $location, bool $deep, \Throwable $previous): \League\Flysystem\UnableToListContents;
+        public function operation(): string;
+    }
+    class UnableToMountFilesystem extends \LogicException implements \League\Flysystem\FilesystemException {
+        /**
+        * @param mixed $key
+        * @generated
+        */
+        public static function becauseTheKeyIsNotValid(mixed $key): \League\Flysystem\UnableToMountFilesystem;
+        /**
+        * @param mixed $filesystem
+        * @generated
+        */
+        public static function becauseTheFilesystemWasNotValid(mixed $filesystem): \League\Flysystem\UnableToMountFilesystem;
+    }
+    final class UnableToMoveFile extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function sourceAndDestinationAreTheSame(string $source, string $destination): \League\Flysystem\UnableToMoveFile;
+        public function source(): string;
+        public function destination(): string;
+        public static function fromLocationTo(string $sourcePath, string $destinationPath, ?\Throwable $previous = null): \League\Flysystem\UnableToMoveFile;
+        public static function because(string $reason, string $sourcePath, string $destinationPath): \League\Flysystem\UnableToMoveFile;
+        public function operation(): string;
+    }
+    final class UnableToProvideChecksum extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public function __construct(string $reason, string $path, ?\Throwable $previous = null): void;
+    }
+    final class UnableToReadFile extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function fromLocation(string $location, string $reason = '', ?\Throwable $previous = null): \League\Flysystem\UnableToReadFile;
+        public function operation(): string;
+        public function reason(): string;
+        public function location(): string;
+    }
+    class UnableToResolveFilesystemMount extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public static function becauseTheSeparatorIsMissing(string $path): \League\Flysystem\UnableToResolveFilesystemMount;
+        public static function becauseTheMountWasNotRegistered(string $mountIdentifier): \League\Flysystem\UnableToResolveFilesystemMount;
+    }
+    final class UnableToRetrieveMetadata extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function lastModified(string $location, string $reason = '', ?\Throwable $previous = null): self;
+        public static function visibility(string $location, string $reason = '', ?\Throwable $previous = null): self;
+        public static function fileSize(string $location, string $reason = '', ?\Throwable $previous = null): self;
+        public static function mimeType(string $location, string $reason = '', ?\Throwable $previous = null): self;
+        public static function create(string $location, string $type, string $reason = '', ?\Throwable $previous = null): self;
+        public function reason(): string;
+        public function location(): string;
+        public function metadataType(): string;
+        public function operation(): string;
+    }
+    final class UnableToSetVisibility extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public function reason(): string;
+        public static function atLocation(string $filename, string $extraMessage = '', ?\Throwable $previous = null): self;
+        public function operation(): string;
+        public function location(): string;
+    }
+    final class UnableToWriteFile extends \RuntimeException implements \League\Flysystem\FilesystemOperationFailed {
+        public static function atLocation(string $location, string $reason = '', ?\Throwable $previous = null): \League\Flysystem\UnableToWriteFile;
+        public function operation(): string;
+        public function reason(): string;
+        public function location(): string;
+    }
+    final class UnreadableFileEncountered extends \RuntimeException implements \League\Flysystem\FilesystemException {
+        public function location(): string;
+        public static function atLocation(string $location): \League\Flysystem\UnreadableFileEncountered;
+    }
+    final class Visibility {
+        public const string PUBLIC ?? 'public';
+        public const string PRIVATE ?? 'private';
+    }
+    class WhitespacePathNormalizer implements \League\Flysystem\PathNormalizer {
+        public function __construct(bool $allowRelativePathTraversal = true): void;
+        public function normalizePath(string $path): string;
+    }
+}
+namespace League\Flysystem\UnixVisibility {
+    class PortableVisibilityConverter implements \League\Flysystem\UnixVisibility\VisibilityConverter {
+        public function __construct(int $filePublic = 644, int $filePrivate = 600, int $directoryPublic = 755, int $directoryPrivate = 700, string $defaultForDirectories = \League\Flysystem\Visibility::PRIVATE): void;
+        public function forFile(string $visibility): int;
+        public function forDirectory(string $visibility): int;
+        public function inverseForFile(int $visibility): string;
+        public function inverseForDirectory(int $visibility): string;
+        public function defaultForDirectories(): int;
+        /**
+        * @param array<mixed> $permissionMap
+        * @generated
+        */
+        public static function fromArray(array<mixed> $permissionMap, string $defaultForDirectories = \League\Flysystem\Visibility::PRIVATE): \League\Flysystem\UnixVisibility\PortableVisibilityConverter;
+    }
+    interface VisibilityConverter {
+        public function forFile(string $visibility): int;
+        public function forDirectory(string $visibility): int;
+        public function inverseForFile(int $visibility): string;
+        public function inverseForDirectory(int $visibility): string;
+        public function defaultForDirectories(): int;
+    }
+}
+namespace League\Flysystem\UrlGeneration {
+    final class ChainedPublicUrlGenerator implements \League\Flysystem\UrlGeneration\PublicUrlGenerator {
+        /**
+        * @param array<int, PublicUrlGenerator> $generators
+        * @generated
+        */
+        public function __construct(array<int, \League\Flysystem\UrlGeneration\PublicUrlGenerator> $generators): void;
+        public function publicUrl(string $path, \League\Flysystem\Config $config): string;
+    }
+    class PrefixPublicUrlGenerator implements \League\Flysystem\UrlGeneration\PublicUrlGenerator {
+        public function __construct(string $urlPrefix): void;
+        public function publicUrl(string $path, \League\Flysystem\Config $config): string;
+    }
+    interface PublicUrlGenerator {
+        /**
+        * @throws UnableToGeneratePublicUrl
+        * @generated
+        */
+        public function publicUrl(string $path, \League\Flysystem\Config $config): string;
+    }
+    final class ShardedPrefixPublicUrlGenerator implements \League\Flysystem\UrlGeneration\PublicUrlGenerator {
+        /**
+        * @param array<int, string> $prefixes
+        * @generated
+        */
+        public function __construct(array<int, string> $prefixes): void;
+        public function publicUrl(string $path, \League\Flysystem\Config $config): string;
+    }
+    interface TemporaryUrlGenerator {
+        /**
+        * @throws UnableToGenerateTemporaryUrl
+        * @generated
+        */
+        public function temporaryUrl(string $path, \DateTimeInterface $expiresAt, \League\Flysystem\Config $config): string;
+    }
+}

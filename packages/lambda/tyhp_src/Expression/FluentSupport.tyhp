@@ -49,7 +49,12 @@ final class FluentSupport {
     }
 
     /**
-     * Build a getter closure for a property chain, honoring per-segment null-safe flags.
+     * Build a getter closure for a property / assoc-key chain, honoring per-segment null-safe flags.
+     *
+     * The source stays {@see mixed}: {@see \Tyhp\PropertyPath::getValue} and comparison
+     * closures pass mixed, and nested hops are untyped even when the builder root is an object.
+     * Each hop narrows to array (including Tyhp structs, which emit as arrays),
+     * {@see \ArrayAccess}, or object before reading.
      *
      * @param array<string> $path
      * @param array<bool> $nullSafeFlags
@@ -59,16 +64,64 @@ final class FluentSupport {
             mixed $value = $source;
             int $count = \count($path);
             for (int $i = 0; $i < $count; $i++) {
-                string $segment = $path[$i];
-                bool $nullSafe = $nullSafeFlags[$i] ?? false;
-                if ($nullSafe) {
-                    $value = $value?->{$segment};
-                } else {
-                    $value = $value->{$segment};
-                }
+                $value = self::readPathSegment($value, $path[$i], $nullSafeFlags[$i] ?? false);
             }
             return $value;
         };
+    }
+
+    /**
+     * Read one path segment from an object property, array/struct key, or ArrayAccess offset.
+     *
+     * Null-safe hops return null when the receiver is null, the key/offset is missing, or the
+     * value is not object-like. Strict hops throw {@see \TypeError} in those cases.
+     */
+    private static function readPathSegment(mixed $value, string $segment, bool $nullSafe): mixed {
+        if ($value === null) {
+            if ($nullSafe) {
+                return null;
+            }
+            throw new \TypeError('Cannot read path segment "' . $segment . '" on null.');
+        }
+
+        // Structs compile to associative arrays; `\is_array` is the runtime (and Tyhp) guard
+        // for both `array<…>` and struct values.
+        if (\is_array($value)) {
+            if (!\array_key_exists($segment, $value)) {
+                if ($nullSafe) {
+                    return null;
+                }
+                throw new \TypeError(
+                    'Cannot read path segment "' . $segment . '" on array: key does not exist.',
+                );
+            }
+            return $value[$segment];
+        }
+
+        if ($value is \ArrayAccess) {
+            if (!$value->offsetExists($segment)) {
+                if ($nullSafe) {
+                    return null;
+                }
+                throw new \TypeError(
+                    'Cannot read path segment "' . $segment . '" on ArrayAccess: offset does not exist.',
+                );
+            }
+            return $value->offsetGet($segment);
+        }
+
+        if (\is_object($value)) {
+            return $value->{$segment};
+        }
+
+        if ($nullSafe) {
+            return null;
+        }
+
+        throw new \TypeError(
+            'Cannot read path segment "' . $segment . '" on ' . \get_debug_type($value)
+            . '; expected object, array, or ArrayAccess.',
+        );
     }
 
     /**
@@ -121,10 +174,10 @@ final class FluentSupport {
      * Combine two expressions with `&&` or `||` into a boolean expression.
      */
     public static function combine(
-        Expression<mixed, mixed> $left,
-        Expression<mixed, mixed> $right,
+        Expression $left,
+        Expression $right,
         string $operator,
-    ): Expression<mixed, bool> {
+    ): Expression<callable(mixed): bool> {
         if ($operator !== '&&' && $operator !== '||') {
             throw new \InvalidArgumentException("Unsupported combinator: {$operator}");
         }
@@ -139,21 +192,21 @@ final class FluentSupport {
             return (bool) $leftCallable(...$args) || (bool) $rightCallable(...$args);
         };
 
-        return new Expression<mixed, bool>($body, $left->parameters, $callable, 'bool');
+        return new Expression<callable(mixed): bool>($body, $left->parameters, $callable, 'bool');
     }
 
     /**
-     * @param array<Expression<mixed, mixed>> $expressions
+     * @param array<Expression<callable(mixed): bool>> $expressions
      */
     public static function combineAll(
-        array<Expression<mixed, bool>> $expressions,
+        array<Expression<callable(mixed): bool>> $expressions,
         string $operator,
-    ): Expression<mixed, bool> {
+    ): Expression<callable(mixed): bool> {
         if ($expressions === []) {
             throw new \InvalidArgumentException('At least one expression is required.');
         }
 
-        Expression<mixed, bool> $result = $expressions[0];
+        Expression<callable(mixed): bool> $result = $expressions[0];
         int $count = \count($expressions);
         for (int $i = 1; $i < $count; $i++) {
             $result = self::combine($result, $expressions[$i], $operator);

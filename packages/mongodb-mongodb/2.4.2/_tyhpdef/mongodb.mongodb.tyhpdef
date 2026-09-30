@@ -1,0 +1,4429 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace MongoDB {
+    /**
+    * Registers a PSR-3 logger to receive log messages from the driver/library.
+    *
+    * Calling this method again with a logger that has already been added will have
+    * no effect.
+    *
+    * @generated
+    */
+    function add_logger(\Psr\Log\LoggerInterface $logger): void;
+    /**
+    * Unregisters a PSR-3 logger.
+    *
+    * Calling this method with a logger that has not been added will have no
+    * effect.
+    *
+    * @generated
+    */
+    function remove_logger(\Psr\Log\LoggerInterface $logger): void;
+    /**
+    * Create a new stdClass instance with the provided properties.
+    *
+    * Use named arguments to specify the property names.
+    *     object( property1: value1, property2: value2 )
+    * 
+    * If property names contain a dot or a dollar characters, use array unpacking syntax.
+    *     object( ...[ 'author.name' => 1, 'array.$' => 1 ] )
+    *
+    * @psalm-suppress MoreSpecificReturnType
+    * @psalm-suppress LessSpecificReturnStatement
+    * @generated
+    */
+    function object(mixed ...$values): \stdClass;
+    /**
+    * Execute a callback within a transaction in the given session
+    *
+    * This helper takes care of retrying the commit operation or the entire
+    * transaction if an error occurs.
+    * 
+    * If the commit fails because of an UnknownTransactionCommitResult error, the
+    * commit is retried without re-invoking the callback.
+    * If the commit fails because of a TransientTransactionError, the entire
+    * transaction will be retried. In this case, the callback will be invoked
+    * again. It is important that the logic inside the callback is idempotent.
+    * 
+    * In case of failures, the commit or transaction are retried until 120 seconds
+    * from the initial call have elapsed. After that, no retries will happen and
+    * the helper will throw the last exception received from the driver.
+    *
+    * @see Client::startSession()
+    * @see Session::startTransaction() for supported transaction options
+    * @param \MongoDB\Driver\Session $session A session object as retrieved by Client::startSession
+    * @param callable $callback A callback that will be invoked within the transaction
+    * @param array $transactionOptions Additional options that are passed to Session::startTransaction
+    * @throws RuntimeException for driver errors while committing the transaction
+    * @throws Exception for any other errors, including those thrown in the callback
+    * @generated
+    */
+    function with_transaction(\MongoDB\Driver\Session $session, callable $callback, array $transactionOptions = []): void;
+    type ChangeStreamResumeCallable = callable;
+    /**
+    * Result class for a bulk write operation.
+    *
+    * @generated
+    */
+    class BulkWriteResult {
+        public function __construct(\MongoDB\Driver\WriteResult $writeResult, array $insertedIds): void;
+        /**
+        * Return the number of documents that were deleted.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see BulkWriteResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getDeletedCount(): int;
+        /**
+        * Return the number of documents that were inserted.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see BulkWriteResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getInsertedCount(): int;
+        /**
+        * Return a map of the inserted documents' IDs.
+        *
+        * The index of each ID in the map corresponds to each document's position
+        * in the bulk operation. If a document had an ID prior to inserting (i.e.
+        * the driver did not generate an ID), the index will contain its "_id"
+        * field value. Any driver-generated ID will be a MongoDB\BSON\ObjectId
+        * instance.
+        *
+        * @generated
+        */
+        public function getInsertedIds(): array;
+        /**
+        * Return the number of documents that were matched by the filter.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see BulkWriteResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getMatchedCount(): int;
+        /**
+        * Return the number of documents that were modified.
+        *
+        * This value is undefined (i.e. null) if the write executed as a legacy
+        * operation instead of command.
+        * 
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see BulkWriteResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getModifiedCount(): int;
+        /**
+        * Return the number of documents that were upserted.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see BulkWriteResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getUpsertedCount(): int;
+        /**
+        * Return a map of the upserted documents' IDs.
+        *
+        * The index of each ID in the map corresponds to each document's position
+        * in bulk operation. If a document had an ID prior to upserting (i.e. the
+        * server did not need to generate an ID), this will contain its "_id". Any
+        * server-generated ID will be a MongoDB\BSON\ObjectId instance.
+        * 
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see BulkWriteResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getUpsertedIds(): array;
+        /**
+        * Return whether this update was acknowledged by the server.
+        *
+        * If the update was not acknowledged, other fields from the WriteResult
+        * (e.g. matchedCount) will be undefined.
+        *
+        * @generated
+        */
+        public function isAcknowledged(): bool;
+    }
+    /**
+    * Iterator for a change stream.
+    *
+    * @see \MongoDB\Collection::watch()
+    * @see https://mongodb.com/docs/manual/reference/method/db.watch/#mongodb-method-db.watch
+    * @template-implements Iterator<int, array|object>
+    * @generated
+    */
+    class ChangeStream implements \Iterator {
+        /**
+        * @see https://php.net/iterator.current
+        * @generated
+        */
+        public function current(): array|object|null;
+        public function getCursorId(): \MongoDB\BSON\Int64;
+        /**
+        * Returns the resume token for the iterator's current position.
+        *
+        * Null may be returned if no change documents have been iterated and the
+        * server did not include a postBatchResumeToken in its aggregate or getMore
+        * command response.
+        *
+        * @generated
+        */
+        public function getResumeToken(): array|object|null;
+        /**
+        * @see https://php.net/iterator.key
+        * @generated
+        */
+        public function key(): ?int;
+        /**
+        * @see https://php.net/iterator.next
+        * @throws ResumeTokenException
+        * @generated
+        */
+        public function next(): void;
+        /**
+        * @see https://php.net/iterator.rewind
+        * @throws ResumeTokenException
+        * @generated
+        */
+        public function rewind(): void;
+        /**
+        * @see https://php.net/iterator.valid
+        * @generated
+        */
+        public function valid(): bool;
+    }
+    /**
+    * @psalm-no-seal-properties
+    * @generated
+    */
+    class Client implements \Stringable {
+        public const string DEFAULT_URI ?? 'mongodb://127.0.0.1/';
+        /**
+        * Constructs a new Client instance.
+        *
+        * This is the preferred class for connecting to a MongoDB server or
+        * cluster of servers. It serves as a gateway for accessing individual
+        * databases and collections.
+        * 
+        * Supported driver-specific options:
+        * 
+        *  * builderEncoder (MongoDB\Codec\Encoder): Encoder for query and
+        *    aggregation builders. If not given, the default encoder will be used.
+        * 
+        *  * typeMap (array): Default type map for cursors and BSON documents.
+        * 
+        * Other options are documented in MongoDB\Driver\Manager::__construct().
+        *
+        * @see https://mongodb.com/docs/manual/reference/connection-string/
+        * @see https://php.net/manual/en/mongodb-driver-manager.construct.php
+        * @see https://php.net/manual/en/mongodb.persistence.php#mongodb.persistence.typemaps
+        * @param ?string $uri MongoDB connection string. If none is provided, this defaults to self::DEFAULT_URI.
+        * @param array $uriOptions Additional connection string options
+        * @param array $driverOptions Driver-specific options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverInvalidArgumentException for parameter/option parsing errors in the driver
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function __construct(?string $uri = null, array $uriOptions = [], array $driverOptions = []): void;
+        /**
+        * Return internal properties for debugging purposes.
+        *
+        * @see https://php.net/manual/en/language.oop5.magic.php#language.oop5.magic.debuginfo
+        * @generated
+        */
+        public function __debugInfo(): array;
+        /**
+        * Select a database.
+        *
+        * Note: databases whose names contain special characters (e.g. "-") may
+        * be selected with complex syntax (e.g. $client->{"that-database"}) or
+        * {@link selectDatabase()}.
+        *
+        * @see https://php.net/oop5.overloading#object.get
+        * @see https://php.net/types.string#language.types.string.parsing.complex
+        * @param string $databaseName Name of the database to select
+        * @generated
+        */
+        public function __get(string $databaseName): \MongoDB\Database;
+        /**
+        * Return the connection string (i.e. URI).
+        *
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Registers a monitoring event subscriber with this Client's Manager
+        *
+        * @see Manager::addSubscriber()
+        * @generated
+        */
+        public final function addSubscriber(\MongoDB\Driver\Monitoring\Subscriber $subscriber): void;
+        /**
+        * Executes multiple write operations across multiple namespaces.
+        *
+        * @param \MongoDB\Driver\BulkWriteCommand|\MongoDB\ClientBulkWrite $bulk Assembled bulk write command or builder
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are unsupported on the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @see ClientBulkWriteCommand::__construct() for supported options
+        * @generated
+        */
+        public function bulkWrite(\MongoDB\Driver\BulkWriteCommand|\MongoDB\ClientBulkWrite $bulk, array $options = []): \MongoDB\Driver\BulkWriteCommandResult;
+        /**
+        * Returns a ClientEncryption instance for explicit encryption and decryption
+        *
+        * @param array $options
+        * @generated
+        */
+        public function createClientEncryption(array $options): \MongoDB\Driver\ClientEncryption;
+        /**
+        * Drop a database.
+        *
+        * @see DropDatabase::__construct() for supported options
+        * @param string $databaseName Database name
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are unsupported on the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function dropDatabase(string $databaseName, array $options = []): void;
+        /**
+        * Returns a collection instance.
+        *
+        * If the collection does not exist in the database, it is not created when
+        * invoking this method.
+        *
+        * @see Collection::__construct() for supported options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function getCollection(string $databaseName, string $collectionName, array $options = []): \MongoDB\Collection;
+        /**
+        * Returns a database instance.
+        *
+        * If the database does not exist on the server, it is not created when
+        * invoking this method.
+        *
+        * @see Database::__construct() for supported options
+        * @generated
+        */
+        public function getDatabase(string $databaseName, array $options = []): \MongoDB\Database;
+        /**
+        * Return the Manager.
+        *
+        * @generated
+        */
+        public function getManager(): \MongoDB\Driver\Manager;
+        /**
+        * Return the read concern for this client.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-readconcern.isdefault.php
+        * @generated
+        */
+        public function getReadConcern(): \MongoDB\Driver\ReadConcern;
+        /**
+        * Return the read preference for this client.
+        *
+        * @generated
+        */
+        public function getReadPreference(): \MongoDB\Driver\ReadPreference;
+        /**
+        * Return the type map for this client.
+        *
+        * @generated
+        */
+        public function getTypeMap(): array;
+        /**
+        * Return the write concern for this client.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-writeconcern.isdefault.php
+        * @generated
+        */
+        public function getWriteConcern(): \MongoDB\Driver\WriteConcern;
+        /**
+        * List database names.
+        *
+        * @see ListDatabaseNames::__construct() for supported options
+        * @return \Iterator
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function listDatabaseNames(array $options = []): \Iterator;
+        /**
+        * List databases.
+        *
+        * @see ListDatabases::__construct() for supported options
+        * @return \Iterator
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function listDatabases(array $options = []): \Iterator;
+        /**
+        * Unregisters a monitoring event subscriber with this Client's Manager
+        *
+        * @see Manager::removeSubscriber()
+        * @generated
+        */
+        public final function removeSubscriber(\MongoDB\Driver\Monitoring\Subscriber $subscriber): void;
+        /**
+        * Select a collection.
+        *
+        * @see Collection::__construct() for supported options
+        * @param string $databaseName Name of the database containing the collection
+        * @param string $collectionName Name of the collection to select
+        * @param array $options Collection constructor options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function selectCollection(string $databaseName, string $collectionName, array $options = []): \MongoDB\Collection;
+        /**
+        * Select a database.
+        *
+        * @see Database::__construct() for supported options
+        * @param string $databaseName Name of the database to select
+        * @param array $options Database constructor options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function selectDatabase(string $databaseName, array $options = []): \MongoDB\Database;
+        /**
+        * Start a new client session.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-manager.startsession.php
+        * @param array $options Session options
+        * @generated
+        */
+        public function startSession(array $options = []): \MongoDB\Driver\Session;
+        /**
+        * Create a change stream for watching changes to the cluster.
+        *
+        * @see Watch::__construct() for supported options
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function watch(array<int, \MongoDB\Builder\Pipelinestage> $pipeline = [], array $options = []): \MongoDB\ChangeStream;
+    }
+    final class ClientBulkWrite {
+        /**
+        * @generated
+        */
+        public static function createWithCollection(\MongoDB\Collection $collection, array $options = []): self;
+        public function deleteMany(array|object $filter, array $options = []): self;
+        public function deleteOne(array|object $filter, array $options = []): self;
+        public function insertOne(array|object $document, mixed &$id = null): self;
+        /**
+        * @var mixed $id
+        * @generated
+        */
+        public function replaceOne(array|object $filter, array|object $replacement, array $options = []): self;
+        public function updateMany(array|object $filter, array|object $update, array $options = []): self;
+        public function updateOne(array|object $filter, array|object $update, array $options = []): self;
+        public function withCollection(\MongoDB\Collection $collection): self;
+    }
+    type CollectionSearchIndexShapeMappings = struct {
+        ?bool $dynamic;
+        array<string, array|array<int, array>>|null $fields;
+    };
+    type CollectionSearchIndexShape = struct {
+        ?string $analyzer;
+        ?array<int, array> $analyzers;
+        ?string $searchAnalyzer;
+        \MongoDB\CollectionSearchIndexShapeMappings $mappings;
+        bool|array|null $storedSource;
+        ?array<int, array> $synonyms;
+    };
+    type CollectionVectorSearchIndexShape = struct {
+        array<int, array> $fields;
+        bool|array|null $storedSource;
+    };
+    type CollectionSearchIndexSpecShape = struct {
+        \MongoDB\CollectionSearchIndexShape|\MongoDB\CollectionVectorSearchIndexShape|object $definition;
+        ?string $name;
+        ?string $type;
+    };
+    /**
+    * @generated
+    */
+    class Collection implements \Stringable {
+        /**
+        * Constructs new Collection instance.
+        *
+        * This class provides methods for collection-specific operations, such as
+        * CRUD (i.e. create, read, update, and delete) and index management.
+        * 
+        * Supported options:
+        * 
+        *  * builderEncoder (MongoDB\Codec\Encoder): Encoder for query and
+        *    aggregation builders. If not given, the default encoder will be used.
+        * 
+        *  * codec (MongoDB\Codec\DocumentCodec): Codec used to decode documents
+        *    from BSON to PHP objects.
+        * 
+        *  * readConcern (MongoDB\Driver\ReadConcern): The default read concern to
+        *    use for collection operations. Defaults to the Manager's read concern.
+        * 
+        *  * readPreference (MongoDB\Driver\ReadPreference): The default read
+        *    preference to use for collection operations. Defaults to the Manager's
+        *    read preference.
+        * 
+        *  * typeMap (array): Default type map for cursors and BSON documents.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): The default write concern
+        *    to use for collection operations. Defaults to the Manager's write
+        *    concern.
+        *
+        * @param \MongoDB\Driver\Manager $manager Manager instance from the driver
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array $options Collection options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(\MongoDB\Driver\Manager $manager, string $databaseName, string $collectionName, array $options = []): void;
+        /**
+        * Return internal properties for debugging purposes.
+        *
+        * @see https://php.net/manual/en/language.oop5.magic.php#language.oop5.magic.debuginfo
+        * @generated
+        */
+        public function __debugInfo(): array;
+        /**
+        * Return the collection namespace (e.g. "db.collection").
+        *
+        * @see https://mongodb.com/docs/manual/core/databases-and-collections/
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Executes an aggregation framework pipeline on the collection.
+        *
+        * @see Aggregate::__construct() for supported options
+        * @param array|\MongoDB\Builder\Pipeline $pipeline Aggregation pipeline
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function aggregate(array|\MongoDB\Builder\Pipeline $pipeline, array $options = []): \MongoDB\Driver\CursorInterface;
+        /**
+        * Executes multiple write operations.
+        *
+        * @param array<int, \MongoDB\Operation\BulkWriteOperationShape> $operations List of write operations
+        * @param array $options Command options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @see BulkWrite::__construct() for supported options
+        * @generated
+        */
+        public function bulkWrite(array<int, \MongoDB\Operation\BulkWriteOperationShape> $operations, array $options = []): \MongoDB\BulkWriteResult;
+        /**
+        * Gets the number of documents matching the filter.
+        *
+        * @see Count::__construct() for supported options
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @deprecated 1.4
+        * @generated
+        */
+        deprecated public function count(array|object $filter = [], array $options = []): int;
+        /**
+        * Gets the number of documents matching the filter.
+        *
+        * @see CountDocuments::__construct() for supported options
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function countDocuments(array|object $filter = [], array $options = []): int;
+        /**
+        * Create a single index for the collection.
+        *
+        * @see Collection::createIndexes()
+        * @see CreateIndexes::__construct() for supported command options
+        * @param array|object $key Document containing fields mapped to values,
+        *  *                                  which denote order or an index type
+        * @param array $options Index and command options
+        * @return string The name of the created index
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function createIndex(array|object $key, array $options = []): string;
+        /**
+        * Create one or more indexes for the collection.
+        *
+        * Each element in the $indexes array must have a "key" document, which
+        * contains fields mapped to an order or type. Other options may follow.
+        * For example:
+        * 
+        *     $indexes = [
+        *         // Create a unique index on the "username" field
+        *         [ 'key' => [ 'username' => 1 ], 'unique' => true ],
+        *         // Create a 2dsphere index on the "loc" field with a custom name
+        *         [ 'key' => [ 'loc' => '2dsphere' ], 'name' => 'geo' ],
+        *     ];
+        * 
+        * If the "name" option is unspecified, a name will be generated from the
+        * "key" document.
+        *
+        * @see https://mongodb.com/docs/manual/reference/command/createIndexes/
+        * @see https://mongodb.com/docs/manual/reference/method/db.collection.createIndex/
+        * @see CreateIndexes::__construct() for supported command options
+        * @param array<int, array> $indexes List of index specifications
+        * @param array $options Command options
+        * @return array<int, string> The names of the created indexes
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function createIndexes(array<int, array> $indexes, array $options = []): array<int, string>;
+        /**
+        * Create an Atlas Search index for the collection.
+        *
+        * Only available when used against a 7.0+ Atlas cluster.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/command/createSearchIndexes/
+        * @see https://www.mongodb.com/docs/manual/reference/method/db.collection.createSearchIndex/
+        * @param array|object $definition Atlas Search index mapping definition
+        * @param array $options Index and command options
+        * @return string The name of the created search index
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function createSearchIndex(array|object $definition, array $options = []): string;
+        /**
+        * Create one or more Atlas Search indexes for the collection.
+        *
+        * Only available when used against a 7.0+ Atlas cluster.
+        * 
+        * Each element in the $indexes array must have "definition" document and they may have a "name" string.
+        * The name can be omitted for a single index, in which case a name will be the default.
+        * For example:
+        * 
+        *     $indexes = [
+        *         // Create a search index with the default name on a single field
+        *         ['definition' => ['mappings' => ['dynamic' => false, 'fields' => ['title' => ['type' => 'string']]]]],
+        *         // Create a named search index on all fields
+        *         ['name' => 'search_all', 'definition' => ['mappings' => ['dynamic' => true]]],
+        *     ];
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/command/createSearchIndexes/
+        * @see https://mongodb.com/docs/manual/reference/method/db.collection.createSearchIndex/
+        * @param array<int, CollectionSearchIndexSpecShape> $indexes List of search index specifications
+        * @param array $options Command options
+        * @return array<int, string> The names of the created search indexes
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function createSearchIndexes(array<int, \MongoDB\CollectionSearchIndexSpecShape> $indexes, array $options = []): array<int, string>;
+        /**
+        * Deletes all documents matching the filter.
+        *
+        * @see DeleteMany::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/delete/
+        * @param array|object $filter Query by which to delete documents
+        * @param array $options Command options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function deleteMany(array|object $filter, array $options = []): \MongoDB\DeleteResult;
+        /**
+        * Deletes at most one document matching the filter.
+        *
+        * @see DeleteOne::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/delete/
+        * @param array|object $filter Query by which to delete documents
+        * @param array $options Command options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function deleteOne(array|object $filter, array $options = []): \MongoDB\DeleteResult;
+        /**
+        * Finds the distinct values for a specified field across the collection.
+        *
+        * @see Distinct::__construct() for supported options
+        * @param string $fieldName Field for which to return distinct values
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function distinct(string $fieldName, array|object $filter = [], array $options = []): array;
+        /**
+        * Drop this collection.
+        *
+        * @see DropCollection::__construct() for supported options
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function drop(array $options = []): void;
+        /**
+        * Drop a single index in the collection.
+        *
+        * @see DropIndexes::__construct() for supported options
+        * @param string|\MongoDB\Model\IndexInfo $indexName Index name or model object
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function dropIndex(string|\MongoDB\Model\IndexInfo $indexName, array $options = []): void;
+        /**
+        * Drop all indexes in the collection.
+        *
+        * @see DropIndexes::__construct() for supported options
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function dropIndexes(array $options = []): void;
+        /**
+        * Drop a single Atlas Search index in the collection.
+        *
+        * Only available when used against a 7.0+ Atlas cluster.
+        *
+        * @param string $name Search index name
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function dropSearchIndex(string $name, array $options = []): void;
+        /**
+        * Gets an estimated number of documents in the collection using the collection metadata.
+        *
+        * @see EstimatedDocumentCount::__construct() for supported options
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function estimatedDocumentCount(array $options = []): int;
+        /**
+        * Finds documents matching the query.
+        *
+        * @see Find::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/crud/#read-operations
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function find(array|object $filter = [], array $options = []): \MongoDB\Driver\CursorInterface;
+        /**
+        * Finds a single document matching the query.
+        *
+        * @see FindOne::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/crud/#read-operations
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function findOne(array|object $filter = [], array $options = []): array|object|null;
+        /**
+        * Finds a single document and deletes it, returning the original.
+        *
+        * The document to return may be null if no document matched the filter.
+        *
+        * @see FindOneAndDelete::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/findAndModify/
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function findOneAndDelete(array|object $filter, array $options = []): array|object|null;
+        /**
+        * Finds a single document and replaces it, returning either the original or
+        *
+        * the replaced document.
+        * 
+        * The document to return may be null if no document matched the filter. By
+        * default, the original document is returned. Specify
+        * FindOneAndReplace::RETURN_DOCUMENT_AFTER for the "returnDocument" option
+        * to return the updated document.
+        *
+        * @see FindOneAndReplace::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/findAndModify/
+        * @param array|object $filter Query by which to filter documents
+        * @param array|object $replacement Replacement document
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function findOneAndReplace(array|object $filter, array|object $replacement, array $options = []): array|object|null;
+        /**
+        * Finds a single document and updates it, returning either the original or
+        *
+        * the updated document.
+        * 
+        * The document to return may be null if no document matched the filter. By
+        * default, the original document is returned. Specify
+        * FindOneAndUpdate::RETURN_DOCUMENT_AFTER for the "returnDocument" option
+        * to return the updated document.
+        *
+        * @see FindOneAndReplace::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/findAndModify/
+        * @param array|object $filter Query by which to filter documents
+        * @param array|object $update Update to apply to the matched document
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function findOneAndUpdate(array|object $filter, array|object $update, array $options = []): array|object|null;
+        /**
+        * @generated
+        */
+        public function getBuilderEncoder(): \MongoDB\Codec\Encoder;
+        public function getCodec(): ?\MongoDB\Codec\DocumentCodec;
+        /**
+        * Return the collection name.
+        *
+        * @generated
+        */
+        public function getCollectionName(): string;
+        /**
+        * Return the database name.
+        *
+        * @generated
+        */
+        public function getDatabaseName(): string;
+        /**
+        * Return the Manager.
+        *
+        * @generated
+        */
+        public function getManager(): \MongoDB\Driver\Manager;
+        /**
+        * Return the collection namespace.
+        *
+        * @see https://mongodb.com/docs/manual/reference/glossary/#term-namespace
+        * @generated
+        */
+        public function getNamespace(): string;
+        /**
+        * Return the read concern for this collection.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-readconcern.isdefault.php
+        * @generated
+        */
+        public function getReadConcern(): \MongoDB\Driver\ReadConcern;
+        /**
+        * Return the read preference for this collection.
+        *
+        * @generated
+        */
+        public function getReadPreference(): \MongoDB\Driver\ReadPreference;
+        /**
+        * Return the type map for this collection.
+        *
+        * @generated
+        */
+        public function getTypeMap(): array;
+        /**
+        * Return the write concern for this collection.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-writeconcern.isdefault.php
+        * @generated
+        */
+        public function getWriteConcern(): \MongoDB\Driver\WriteConcern;
+        /**
+        * Inserts multiple documents.
+        *
+        * @see InsertMany::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/insert/
+        * @param array<int, object|array> $documents The documents to insert
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function insertMany(array<int, object|array> $documents, array $options = []): \MongoDB\InsertManyResult;
+        /**
+        * Inserts one document.
+        *
+        * @see InsertOne::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/insert/
+        * @param array|object $document The document to insert
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function insertOne(array|object $document, array $options = []): \MongoDB\InsertOneResult;
+        /**
+        * Returns information for all indexes for the collection.
+        *
+        * @see ListIndexes::__construct() for supported options
+        * @return \Iterator
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function listIndexes(array $options = []): \Iterator;
+        /**
+        * Returns information for all Atlas Search indexes for the collection.
+        *
+        * Only available when used against a 7.0+ Atlas cluster.
+        *
+        * @param array $options Command options
+        * @return \Iterator
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @see ListSearchIndexes::__construct() for supported options
+        * @generated
+        */
+        public function listSearchIndexes(array $options = []): \Iterator;
+        /**
+        * Renames the collection.
+        *
+        * @see RenameCollection::__construct() for supported options
+        * @param string $toCollectionName New name of the collection
+        * @param ?string $toDatabaseName New database name of the collection. Defaults to the original database.
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function rename(string $toCollectionName, ?string $toDatabaseName = null, array $options = []): void;
+        /**
+        * Replaces at most one document matching the filter.
+        *
+        * @see ReplaceOne::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/update/
+        * @param array|object $filter Query by which to filter documents
+        * @param array|object $replacement Replacement document
+        * @param array $options Command options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function replaceOne(array|object $filter, array|object $replacement, array $options = []): \MongoDB\UpdateResult;
+        /**
+        * Updates all documents matching the filter.
+        *
+        * @see UpdateMany::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/update/
+        * @param array|object $filter Query by which to filter documents
+        * @param array|object $update Update to apply to the matched documents
+        * @param array $options Command options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function updateMany(array|object $filter, array|object $update, array $options = []): \MongoDB\UpdateResult;
+        /**
+        * Updates at most one document matching the filter.
+        *
+        * @see UpdateOne::__construct() for supported options
+        * @see https://mongodb.com/docs/manual/reference/command/update/
+        * @param array|object $filter Query by which to filter documents
+        * @param array|object $update Update to apply to the matched document
+        * @param array $options Command options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function updateOne(array|object $filter, array|object $update, array $options = []): \MongoDB\UpdateResult;
+        /**
+        * Update a single Atlas Search index in the collection.
+        *
+        * Only available when used against a 7.0+ Atlas cluster.
+        *
+        * @param string $name Search index name
+        * @param array|object $definition Atlas Search index definition
+        * @param array $options Command options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function updateSearchIndex(string $name, array|object $definition, array $options = []): void;
+        /**
+        * Create a change stream for watching changes to the collection.
+        *
+        * @see Watch::__construct() for supported options
+        * @param array|\MongoDB\Builder\Pipeline $pipeline Aggregation pipeline
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function watch(array|\MongoDB\Builder\Pipeline $pipeline = [], array $options = []): \MongoDB\ChangeStream;
+        /**
+        * Get a clone of this collection with different options.
+        *
+        * @see Collection::__construct() for supported options
+        * @param array $options Collection constructor options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function withOptions(array $options = []): \MongoDB\Collection;
+    }
+    /**
+    * @psalm-no-seal-properties
+    * @generated
+    */
+    class Database implements \Stringable {
+        /**
+        * Constructs new Database instance.
+        *
+        * This class provides methods for database-specific operations and serves
+        * as a gateway for accessing collections.
+        * 
+        * Supported options:
+        * 
+        *  * builderEncoder (MongoDB\Codec\Encoder): Encoder for query and
+        *    aggregation builders. If not given, the default encoder will be used.
+        * 
+        *  * readConcern (MongoDB\Driver\ReadConcern): The default read concern to
+        *    use for database operations and selected collections. Defaults to the
+        *    Manager's read concern.
+        * 
+        *  * readPreference (MongoDB\Driver\ReadPreference): The default read
+        *    preference to use for database operations and selected collections.
+        *    Defaults to the Manager's read preference.
+        * 
+        *  * typeMap (array): Default type map for cursors and BSON documents.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): The default write concern
+        *    to use for database operations and selected collections. Defaults to
+        *    the Manager's write concern.
+        *
+        * @param \MongoDB\Driver\Manager $manager Manager instance from the driver
+        * @param string $databaseName Database name
+        * @param array $options Database options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(\MongoDB\Driver\Manager $manager, string $databaseName, array $options = []): void;
+        /**
+        * Return internal properties for debugging purposes.
+        *
+        * @see https://php.net/manual/en/language.oop5.magic.php#language.oop5.magic.debuginfo
+        * @generated
+        */
+        public function __debugInfo(): array;
+        /**
+        * Select a collection within this database.
+        *
+        * Note: collections whose names contain special characters (e.g. ".") may
+        * be selected with complex syntax (e.g. $database->{"system.profile"}) or
+        * {@link selectCollection()}.
+        *
+        * @see https://php.net/oop5.overloading#object.get
+        * @see https://php.net/types.string#language.types.string.parsing.complex
+        * @param string $collectionName Name of the collection to select
+        * @generated
+        */
+        public function __get(string $collectionName): \MongoDB\Collection;
+        /**
+        * Return the database name.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Runs an aggregation framework pipeline on the database for pipeline
+        *
+        * stages that do not require an underlying collection, such as $currentOp
+        * and $listLocalSessions. Requires MongoDB >= 3.6
+        *
+        * @see Aggregate::__construct() for supported options
+        * @param array|\MongoDB\Builder\Pipeline $pipeline Aggregation pipeline
+        * @param array $options Command options
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function aggregate(array|\MongoDB\Builder\Pipeline $pipeline, array $options = []): \MongoDB\Driver\CursorInterface;
+        /**
+        * Execute a command on this database.
+        *
+        * @see DatabaseCommand::__construct() for supported options
+        * @param array|object $command Command document
+        * @param array $options Options for command execution
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function command(array|object $command, array $options = []): \MongoDB\Driver\CursorInterface;
+        /**
+        * Create a new collection explicitly.
+        *
+        * If the "encryptedFields" option is specified, this method additionally
+        * creates related metadata collections and an index on the encrypted
+        * collection.
+        *
+        * @see CreateCollection::__construct() for supported options
+        * @see https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/client-side-encryption.md#create-collection-helper
+        * @see https://www.mongodb.com/docs/manual/core/queryable-encryption/fundamentals/manage-collections/
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function createCollection(string $collectionName, array $options = []): void;
+        /**
+        * Create a new encrypted collection explicitly.
+        *
+        * The "encryptedFields" option is required.
+        * 
+        * This method will automatically create data keys for any encrypted fields
+        * where "keyId" is null. A copy of the modified "encryptedFields" option
+        * will be returned in addition to the result from creating the collection.
+        * 
+        * If any error is encountered creating data keys or the collection, a
+        * CreateEncryptedCollectionException will be thrown. The original exception
+        * and modified "encryptedFields" option can be accessed via the
+        * getPrevious() and getEncryptedFields() methods, respectively.
+        *
+        * @see CreateCollection::__construct() for supported options
+        * @return array The modified "encryptedFields" option
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws CreateEncryptedCollectionException for any errors creating data keys or creating the collection
+        * @throws UnsupportedException if Queryable Encryption is not supported by the selected server
+        * @generated
+        */
+        public function createEncryptedCollection(string $collectionName, \MongoDB\Driver\ClientEncryption $clientEncryption, string $kmsProvider, ?array $masterKey, array $options): array;
+        /**
+        * Drop this database.
+        *
+        * @see DropDatabase::__construct() for supported options
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are unsupported on the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function drop(array $options = []): void;
+        /**
+        * Drop a collection within this database.
+        *
+        * @see DropCollection::__construct() for supported options
+        * @param string $collectionName Collection name
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are unsupported on the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function dropCollection(string $collectionName, array $options = []): void;
+        /**
+        * Returns a collection instance.
+        *
+        * If the collection does not exist in the database, it is not created when
+        * invoking this method.
+        *
+        * @see Collection::__construct() for supported options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function getCollection(string $collectionName, array $options = []): \MongoDB\Collection;
+        /**
+        * Returns the database name.
+        *
+        * @generated
+        */
+        public function getDatabaseName(): string;
+        /**
+        * Returns a GridFS bucket instance.
+        *
+        * @see Bucket::__construct() for supported options
+        * @param array $options Bucket constructor options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function getGridFSBucket(array $options = []): \MongoDB\GridFS\Bucket;
+        /**
+        * Return the Manager.
+        *
+        * @generated
+        */
+        public function getManager(): \MongoDB\Driver\Manager;
+        /**
+        * Return the read concern for this database.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-readconcern.isdefault.php
+        * @generated
+        */
+        public function getReadConcern(): \MongoDB\Driver\ReadConcern;
+        /**
+        * Return the read preference for this database.
+        *
+        * @generated
+        */
+        public function getReadPreference(): \MongoDB\Driver\ReadPreference;
+        /**
+        * Return the type map for this database.
+        *
+        * @generated
+        */
+        public function getTypeMap(): array;
+        /**
+        * Return the write concern for this database.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-writeconcern.isdefault.php
+        * @generated
+        */
+        public function getWriteConcern(): \MongoDB\Driver\WriteConcern;
+        /**
+        * Returns the names of all collections in this database
+        *
+        * @see ListCollectionNames::__construct() for supported options
+        * @return \Iterator
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function listCollectionNames(array $options = []): \Iterator;
+        /**
+        * Returns information for all collections in this database.
+        *
+        * @see ListCollections::__construct() for supported options
+        * @return \Iterator
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function listCollections(array $options = []): \Iterator;
+        /**
+        * Modifies a collection or view.
+        *
+        * @see ModifyCollection::__construct() for supported options
+        * @param string $collectionName Collection or view to modify
+        * @param array $collectionOptions Collection or view options to assign
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function modifyCollection(string $collectionName, array $collectionOptions, array $options = []): array|object;
+        /**
+        * Rename a collection within this database.
+        *
+        * @see RenameCollection::__construct() for supported options
+        * @param string $fromCollectionName Collection name
+        * @param string $toCollectionName New name of the collection
+        * @param ?string $toDatabaseName New database name of the collection. Defaults to the original database.
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are unsupported on the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function renameCollection(string $fromCollectionName, string $toCollectionName, ?string $toDatabaseName = null, array $options = []): void;
+        /**
+        * Select a collection within this database.
+        *
+        * @see Collection::__construct() for supported options
+        * @param string $collectionName Name of the collection to select
+        * @param array $options Collection constructor options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function selectCollection(string $collectionName, array $options = []): \MongoDB\Collection;
+        /**
+        * Select a GridFS bucket within this database.
+        *
+        * @see Bucket::__construct() for supported options
+        * @param array $options Bucket constructor options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function selectGridFSBucket(array $options = []): \MongoDB\GridFS\Bucket;
+        /**
+        * Create a change stream for watching changes to the database.
+        *
+        * @see Watch::__construct() for supported options
+        * @param array|\MongoDB\Builder\Pipeline $pipeline Aggregation pipeline
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function watch(array|\MongoDB\Builder\Pipeline $pipeline = [], array $options = []): \MongoDB\ChangeStream;
+        /**
+        * Get a clone of this database with different options.
+        *
+        * @see Database::__construct() for supported options
+        * @param array $options Database constructor options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function withOptions(array $options = []): \MongoDB\Database;
+    }
+    /**
+    * Result class for a delete operation.
+    *
+    * @generated
+    */
+    class DeleteResult {
+        public function __construct(\MongoDB\Driver\WriteResult $writeResult): void;
+        /**
+        * Return the number of documents that were deleted.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see DeleteResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getDeletedCount(): int;
+        /**
+        * Return whether this delete was acknowledged by the server.
+        *
+        * If the delete was not acknowledged, other fields from the WriteResult
+        * (e.g. deletedCount) will be undefined.
+        *
+        * @generated
+        */
+        public function isAcknowledged(): bool;
+    }
+    /**
+    * Result class for a multi-document insert operation.
+    *
+    * @generated
+    */
+    class InsertManyResult {
+        public function __construct(\MongoDB\Driver\WriteResult $writeResult, array $insertedIds): void;
+        /**
+        * Return the number of documents that were inserted.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see InsertManyResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getInsertedCount(): int;
+        /**
+        * Return a map of the inserted documents' IDs.
+        *
+        * The index of each ID in the map corresponds to each document's position
+        * in the bulk operation. If a document had an ID prior to inserting (i.e.
+        * the driver did not generate an ID), the index will contain its "_id"
+        * field value. Any driver-generated ID will be a MongoDB\BSON\ObjectId
+        * instance.
+        *
+        * @generated
+        */
+        public function getInsertedIds(): array;
+        /**
+        * Return whether this insert result was acknowledged by the server.
+        *
+        * If the insert was not acknowledged, other fields from the WriteResult
+        * (e.g. insertedCount) will be undefined.
+        *
+        * @generated
+        */
+        public function isAcknowledged(): bool;
+    }
+    /**
+    * Result class for a single-document insert operation.
+    *
+    * @generated
+    */
+    class InsertOneResult {
+        public function __construct(\MongoDB\Driver\WriteResult $writeResult, mixed $insertedId): void;
+        /**
+        * Return the number of documents that were inserted.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see InsertOneResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getInsertedCount(): int;
+        /**
+        * Return the inserted document's ID.
+        *
+        * If the document had an ID prior to inserting (i.e. the driver did not
+        * need to generate an ID), this will contain its "_id". Any
+        * driver-generated ID will be a MongoDB\BSON\ObjectId instance.
+        *
+        * @generated
+        */
+        public function getInsertedId(): mixed;
+        /**
+        * Return whether this insert was acknowledged by the server.
+        *
+        * If the insert was not acknowledged, other fields from the WriteResult
+        * (e.g. insertedCount) will be undefined.
+        * 
+        * If the insert was not acknowledged, other fields from the WriteResult
+        * (e.g. insertedCount) will be undefined and their getter methods should
+        * not be invoked.
+        *
+        * @generated
+        */
+        public function isAcknowledged(): bool;
+    }
+    /**
+    * Result class for an update operation.
+    *
+    * @generated
+    */
+    class UpdateResult {
+        public function __construct(\MongoDB\Driver\WriteResult $writeResult): void;
+        /**
+        * Return the number of documents that were matched by the filter.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see UpdateResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getMatchedCount(): int;
+        /**
+        * Return the number of documents that were modified.
+        *
+        * This value is undefined (i.e. null) if the write executed as a legacy
+        * operation instead of command.
+        * 
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see UpdateResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getModifiedCount(): int;
+        /**
+        * Return the number of documents that were upserted.
+        *
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see UpdateResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getUpsertedCount(): int;
+        /**
+        * Return the ID of the document inserted by an upsert operation.
+        *
+        * If the document had an ID prior to upserting (i.e. the server did not
+        * need to generate an ID), this will contain its "_id". Any
+        * server-generated ID will be a MongoDB\BSON\ObjectId instance.
+        * 
+        * This value is undefined (i.e. null) if an upsert did not take place.
+        * 
+        * This method should only be called if the write was acknowledged.
+        *
+        * @see UpdateResult::isAcknowledged()
+        * @throws LogicException if the write result is unacknowledged
+        * @generated
+        */
+        public function getUpsertedId(): mixed;
+        /**
+        * Return whether this update was acknowledged by the server.
+        *
+        * If the update was not acknowledged, other fields from the WriteResult
+        * (e.g. matchedCount) will be undefined and their getter methods should not
+        * be invoked.
+        *
+        * @generated
+        */
+        public function isAcknowledged(): bool;
+    }
+}
+namespace MongoDB\Builder {
+    type Pipelinestage = \MongoDB\Builder\Type\StageInterface|array<string, mixed>|\stdClass;
+    type UpdatePipelinestage = \MongoDB\Builder\Type\UpdateStageInterface|array<string, mixed>|\stdClass;
+    /**
+    * Factories for Aggregation Pipeline Accumulator and Window Operators
+    *
+    * @see https://www.mongodb.com/docs/v3.4/reference/operator/aggregation-group/
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/setWindowFields/
+    * @generated
+    */
+    final class Accumulator {
+    }
+    /**
+    * @template-implements Encoder<Type|stdClass|array|string|int, Pipeline|StageInterface|ExpressionInterface|QueryInterface>
+    * @generated
+    */
+    final class BuilderEncoder implements \MongoDB\Codec\Encoder {
+        use \MongoDB\Codec\EncodeIfSupported;
+        /**
+        * @param iterable<string, \MongoDB\Codec\Encoder> $encoders
+        * @generated
+        */
+        public function __construct(iterable<string, \MongoDB\Codec\Encoder> $encoders = []): void;
+        /**
+        * @psalm-assert-if-true object $value
+        * @generated
+        */
+        public function canEncode(mixed $value): bool;
+        public function encode(mixed $value): \MongoDB\BSON\Type|\stdClass|array|string|int;
+    }
+    /**
+    * Factories for Aggregation Pipeline Expression Operators
+    *
+    * @see https://docs.mongodb.com/manual/reference/operator/aggregation/
+    * @generated
+    */
+    final class Expression {
+    }
+    /**
+    * An aggregation pipeline consists of one or more stages that process documents.
+    *
+    * @see https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
+    * @psalm-immutable
+    * @implements IteratorAggregate<stage>
+    * @generated
+    */
+    final class Pipeline implements \IteratorAggregate {
+        /**
+        * @no-named-arguments
+        * @generated
+        */
+        public function __construct(\MongoDB\Builder\Type\StageInterface|\MongoDB\Builder\Pipeline|array|\stdClass ...$stagesOrPipelines): void;
+        public function getIterator(): \ArrayIterator;
+    }
+    /**
+    * Factories for Query Operators
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/query/
+    * @generated
+    */
+    final class Query {
+        /**
+        * Combine multiple field query operators that apply to a same field.
+        *
+        * @generated
+        */
+        public static function fieldQuery(\MongoDB\Builder\Type\FieldQueryInterface|\MongoDB\BSON\Type|\stdClass|array|bool|float|int|string|null ...$query): \MongoDB\Builder\Type\FieldQueryInterface;
+        public static function query(\MongoDB\Builder\Type\QueryInterface|\MongoDB\Builder\Type\FieldQueryInterface|\MongoDB\BSON\Type|\stdClass|array|bool|float|int|string|null ...$query): \MongoDB\Builder\Type\QueryInterface;
+    }
+    final class Search {
+    }
+    final class Stage {
+    }
+    /**
+    * Factories for Update Operators
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/update/
+    * @generated
+    */
+    final class Update {
+        public array $update ?? [];
+        public function __construct(\MongoDB\Builder\Type\UpdateInterface ...$update): void;
+    }
+    /**
+    * An aggregation pipeline consists of one or more stages that process documents.
+    *
+    * @see https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
+    * @psalm-immutable
+    * @implements IteratorAggregate<stage>
+    * @generated
+    */
+    final class UpdatePipeline implements \IteratorAggregate {
+        /**
+        * @no-named-arguments
+        * @generated
+        */
+        public function __construct(\MongoDB\Builder\Type\UpdateStageInterface|\MongoDB\Builder\UpdatePipeline|array|\stdClass ...$stagesOrPipelines): void;
+        public function getIterator(): \ArrayIterator;
+    }
+    /**
+    * Enum for system variables that can be used in aggregation expressions.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/aggregation-variables/
+    * @generated
+    */
+    final class Variable {
+        /**
+        * A variable that returns the current timestamp value.
+        *
+        * CLUSTER_TIME is only available on replica sets and sharded clusters.
+        * CLUSTER_TIME returns the same value for all members of the deployment and remains the same throughout all stages
+        * of the pipeline.
+        * 
+        * New in MongoDB 4.2.
+        *
+        * @generated
+        */
+        public static function clusterTime(): \MongoDB\Builder\Expression\ResolvesToTimestamp;
+        /**
+        * References the start of the field path being processed in the aggregation pipeline stage.
+        *
+        * Unless documented otherwise, all stages start with CURRENT the same as ROOT.
+        * CURRENT is modifiable. However, since $<field> is equivalent to $$CURRENT.<field>, rebinding
+        * CURRENT changes the meaning of $ accesses.
+        *
+        * @generated
+        */
+        public static function current(string $fieldPath = ''): \MongoDB\Builder\Expression\ResolvesToAny;
+        /**
+        * One of the allowed results of a $redact expression.
+        *
+        * $redact returns the fields at the current document level, excluding embedded documents. To include embedded
+        * documents and embedded documents within arrays, apply the $cond expression to the embedded documents to determine
+        * access for these embedded documents.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/redact/#mongodb-pipeline-pipe.-redact
+        * @generated
+        */
+        public static function descend(): \MongoDB\Builder\Type\ExpressionInterface;
+        /**
+        * One of the allowed results of a $redact expression.
+        *
+        * $redact returns or keeps all fields at this current document/embedded document level, without further inspection
+        * of the fields at this level. This applies even if the included field contains embedded documents that may have
+        * different access levels.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/redact/#mongodb-pipeline-pipe.-redact
+        * @generated
+        */
+        public static function keep(): \MongoDB\Builder\Type\ExpressionInterface;
+        /**
+        * A variable that returns the current datetime value.
+        *
+        * NOW returns the same value for all members of the deployment and remains the same throughout all stages of the
+        * aggregation pipeline.
+        * 
+        * New in MongoDB 4.2.
+        *
+        * @generated
+        */
+        public static function now(): \MongoDB\Builder\Expression\ResolvesToDate;
+        /**
+        * One of the allowed results of a $redact expression.
+        *
+        * $redact excludes all fields at this current document/embedded document level, without further inspection of any
+        * of the excluded fields. This applies even if the excluded field contains embedded documents that may have
+        * different access levels.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/redact/#mongodb-pipeline-pipe.-redact
+        * @generated
+        */
+        public static function prune(): \MongoDB\Builder\Type\ExpressionInterface;
+        /**
+        * A variable which evaluates to the missing value. Allows for the conditional exclusion of fields. In a $project,
+        *
+        * a field set to the variable REMOVE is excluded from the output.
+        * Can be used with $cond operator for conditionally exclude fields.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#std-label-remove-example
+        * @generated
+        */
+        public static function remove(): \MongoDB\Builder\Expression\ResolvesToAny;
+        /**
+        * References the root document, i.e. the top-level document, currently being processed in the aggregation pipeline
+        *
+        * stage.
+        *
+        * @generated
+        */
+        public static function root(): \MongoDB\Builder\Expression\ResolvesToObject;
+        /**
+        * A variable that stores the metadata results of an Atlas Search query. In all supported aggregation pipeline
+        *
+        * stages, a field set to the variable $$SEARCH_META returns the metadata results for the query.
+        * For an example of its usage, see Atlas Search facet and count.
+        *
+        * @see https://www.mongodb.com/docs/atlas/atlas-search/query-syntax/#metadata-result-types
+        * @generated
+        */
+        public static function searchMeta(): \MongoDB\Builder\Expression\ResolvesToObject;
+        /**
+        * Returns the roles assigned to the current user.
+        *
+        * For use cases that include USER_ROLES, see the find, aggregation, view, updateOne, updateMany, and findAndModify
+        * examples.
+        * 
+        * New in MongoDB 7.0.
+        *
+        * @generated
+        */
+        public static function userRoles(): \MongoDB\Builder\Expression\ResolvesToArray;
+        /**
+        * User-defined variable that can be used to store any BSON type.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/let/
+        * @generated
+        */
+        public static function variable(string $name): \MongoDB\Builder\Expression\Variable;
+    }
+}
+namespace MongoDB\Builder\Expression {
+    class ArrayFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToArray {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class BinDataFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToBinData {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class BoolFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToBool {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class DateFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToDate {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class DecimalFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToDecimal {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class DoubleFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToDouble {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class FieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToAny {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class IntFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToInt {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class JavascriptFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToJavascript {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class LongFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToLong {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class NullFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToNull {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class NumberFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToNumber {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class ObjectFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToObject {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class ObjectIdFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToObjectId {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class RegexFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToRegex {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    interface ResolvesToAny extends \MongoDB\Builder\Expression\ResolvesToDouble, \MongoDB\Builder\Expression\ResolvesToString, \MongoDB\Builder\Expression\ResolvesToObject, \MongoDB\Builder\Expression\ResolvesToArray, \MongoDB\Builder\Expression\ResolvesToBinData, \MongoDB\Builder\Expression\ResolvesToObjectId, \MongoDB\Builder\Expression\ResolvesToBool, \MongoDB\Builder\Expression\ResolvesToDate, \MongoDB\Builder\Expression\ResolvesToNull, \MongoDB\Builder\Expression\ResolvesToRegex, \MongoDB\Builder\Expression\ResolvesToJavascript, \MongoDB\Builder\Expression\ResolvesToInt, \MongoDB\Builder\Expression\ResolvesToTimestamp, \MongoDB\Builder\Expression\ResolvesToLong, \MongoDB\Builder\Expression\ResolvesToDecimal, \MongoDB\Builder\Expression\ResolvesToNumber {
+    }
+    interface ResolvesToArray extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToBinData extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToBool extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToDate extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToDecimal extends \MongoDB\Builder\Expression\ResolvesToDouble {
+    }
+    interface ResolvesToDouble extends \MongoDB\Builder\Expression\ResolvesToNumber {
+    }
+    interface ResolvesToInt extends \MongoDB\Builder\Expression\ResolvesToNumber {
+    }
+    interface ResolvesToJavascript extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToLong extends \MongoDB\Builder\Expression\ResolvesToInt {
+    }
+    interface ResolvesToNull extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToNumber extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToObject extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToObjectId extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToRegex extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToString extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    interface ResolvesToTimestamp extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    class StringFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToString {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class TimestampFieldPath implements \MongoDB\Builder\Type\FieldPathInterface, \MongoDB\Builder\Expression\ResolvesToTimestamp {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+    class Variable implements \MongoDB\Builder\Expression\ResolvesToAny {
+        public readonly string $name;
+        public function __construct(string $name): void;
+    }
+}
+namespace MongoDB\Builder\Stage {
+    trait FluentFactoryTrait {
+        /**
+        * @var array<int, \MongoDB\Builder\Type\StageInterface|array<string, mixed>|\stdClass>
+        * @generated
+        */
+        public array<int, \MongoDB\Builder\Type\StageInterface|array<string, mixed>|\stdClass> $pipeline ?? [];
+        public function getPipeline(): \MongoDB\Builder\Pipeline;
+        /**
+        * Filters the document stream to allow only matching documents to pass unmodified into the next pipeline stage. $match uses standard MongoDB queries. For each input document, outputs either one document (a match) or zero documents (no match).
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/match/
+        * @param DateTimeInterface|QueryInterface|FieldQueryInterface|Type|stdClass|array<array-key, mixed>|bool|float|int|string|null $ ...$queries The query predicates to match
+        * @generated
+        */
+        public function match(\DateTimeInterface|\MongoDB\Builder\Type\QueryInterface|\MongoDB\Builder\Type\FieldQueryInterface|\MongoDB\BSON\Type|\stdClass|array|string|int|float|bool|null ...$queries): static;
+        /**
+        * Adds new fields to documents. Outputs documents that contain all existing fields from the input documents and newly added fields.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/addFields/
+        * @param DateTimeInterface|ExpressionInterface|Type|array|bool|float|int|null|stdClass|string $ ...$expression Specify the name of each field to add and set its value to an aggregation expression or an empty object.
+        * @generated
+        */
+        public function addFields(\DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null ...$expression): static;
+        /**
+        * Splits large change stream events that exceed 16 MB into smaller fragments returned in a change stream cursor.
+        *
+        * You can only use $changeStreamSplitLargeEvent in a $changeStream pipeline and it must be the final stage in the pipeline.
+        * 
+        * New in MongoDB 6.1
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/changeStreamSplitLargeEvent/
+        * @generated
+        */
+        public function changeStreamSplitLargeEvent(): static;
+        /**
+        * Returns a count of the number of documents at this stage of the aggregation pipeline.
+        *
+        * Distinct from the $count aggregation accumulator.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/count/
+        * @param string $field Name of the output field which has the count as its value. It must be a non-empty string, must not start with $ and must not contain the . character.
+        * @generated
+        */
+        public function count(string $field): static;
+        /**
+        * Returns literal documents from input values.
+        *
+        * New in MongoDB 5.1
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/documents/
+        * @param \MongoDB\BSON\PackedArray|\MongoDB\Builder\Expression\ResolvesToArray|\MongoDB\Model\BSONArray|array|string $documents $documents accepts any valid expression that resolves to an array of objects. This includes:
+        *  *     - system variables, such as $$NOW or $$SEARCH_META
+        *  *     - $let expressions
+        *  *     - variables in scope from $lookup expressions
+        *  *     Expressions that do not resolve to a current document, like $myField or $$ROOT, will result in an error.
+        * @generated
+        */
+        public function documents(\MongoDB\BSON\PackedArray|\MongoDB\Builder\Expression\ResolvesToArray|\MongoDB\Model\BSONArray|array|string $documents): static;
+        /**
+        * Processes multiple aggregation pipelines within a single stage on the same set of input documents. Enables the creation of multi-faceted aggregations capable of characterizing data across multiple dimensions, or facets, in a single stage.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/facet/
+        * @param BSONArray|PackedArray|Pipeline|array $ ...$facet
+        * @generated
+        */
+        public function facet(\MongoDB\BSON\PackedArray|\MongoDB\Builder\Pipeline|\MongoDB\Model\BSONArray|array ...$facet): static;
+        /**
+        * Groups input documents by a specified identifier expression and applies the accumulator expression(s), if specified, to each group. Consumes all input documents and outputs one document per each distinct group. The output documents only contain the identifier field and, if specified, accumulated fields.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/
+        * @param \DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null $_id The _id expression specifies the group key. If you specify an _id value of null, or any other constant value, the $group stage returns a single document that aggregates values across all of the input documents.
+        * @param AccumulatorInterface|Document|Serializable|array|stdClass $ ...$field Computed using the accumulator operators.
+        * @generated
+        */
+        public function group(\DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null $_id, \MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\MongoDB\Builder\Type\AccumulatorInterface|\stdClass|array ...$field): static;
+        /**
+        * Returns statistics regarding the use of each index for the collection.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/indexStats/
+        * @generated
+        */
+        public function indexStats(): static;
+        /**
+        * Passes the first n documents unmodified to the pipeline where n is the specified limit. For each input document, outputs either one document (for the first n documents) or zero documents (after the first n documents).
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/limit/
+        * @param int $limit
+        * @generated
+        */
+        public function limit(int $limit): static;
+        /**
+        * Returns plan cache information for a collection.
+        *
+        * New in MongoDB 4.4
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/planCacheStats/
+        * @generated
+        */
+        public function planCacheStats(): static;
+        /**
+        * Reshapes each document in the stream, such as by adding new fields or removing existing fields. For each input document, outputs one document.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/
+        * @param DateTimeInterface|ExpressionInterface|Type|array|bool|float|int|null|stdClass|string $ ...$specification
+        * @generated
+        */
+        public function project(\DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null ...$specification): static;
+        /**
+        * Reshapes each document in the stream by restricting the content for each document based on information stored in the documents themselves. Incorporates the functionality of $project and $match. Can be used to implement field level redaction. For each input document, outputs either one or zero documents.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/redact/
+        * @param \DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null $expression
+        * @generated
+        */
+        public function redact(\DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null $expression): static;
+        /**
+        * Replaces a document with the specified embedded document. The operation replaces all existing fields in the input document, including the _id field. Specify a document embedded in the input document to promote the embedded document to the top level.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/replaceRoot/
+        * @param \MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\MongoDB\Builder\Expression\ResolvesToObject|\stdClass|array|string $newRoot
+        * @generated
+        */
+        public function replaceRoot(\MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\MongoDB\Builder\Expression\ResolvesToObject|\stdClass|array|string $newRoot): static;
+        /**
+        * Replaces a document with the specified embedded document. The operation replaces all existing fields in the input document, including the _id field. Specify a document embedded in the input document to promote the embedded document to the top level.
+        *
+        * Alias for $replaceRoot.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/replaceWith/
+        * @param \MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\MongoDB\Builder\Expression\ResolvesToObject|\stdClass|array|string $expression
+        * @generated
+        */
+        public function replaceWith(\MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\MongoDB\Builder\Expression\ResolvesToObject|\stdClass|array|string $expression): static;
+        /**
+        * Reranks documents using a Voyage AI reranking model to improve relevance scoring.
+        *
+        * New in MongoDB 8.3
+        *
+        * @see https://www.mongodb.com/docs/vector-search/query/aggregation-stages/rerank/
+        * @param string $model Name of the Voyage AI reranking model to use (e.g. rerank-2.5, rerank-2.5-lite).
+        * @param \MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\stdClass|array $query Query object for reranking.
+        * @param \MongoDB\BSON\PackedArray|\MongoDB\Model\BSONArray|array|string $path Field path or array of field paths to use for reranking.
+        * @param int $numDocsToRerank Maximum number of documents to send to Voyage AI for reranking. Value must be between 1 and 1000.
+        * @generated
+        */
+        public function rerank(string $model, \MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\stdClass|array $query, \MongoDB\BSON\PackedArray|\MongoDB\Model\BSONArray|array|string $path, int $numDocsToRerank): static;
+        /**
+        * Randomly selects the specified number of documents from its input.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/sample/
+        * @param int $size The number of documents to randomly select.
+        * @generated
+        */
+        public function sample(int $size): static;
+        /**
+        * Adds new fields to documents. Outputs documents that contain all existing fields from the input documents and newly added fields.
+        *
+        * Alias for $addFields.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/set/
+        * @param DateTimeInterface|ExpressionInterface|Type|array|bool|float|int|null|stdClass|string $ ...$field
+        * @generated
+        */
+        public function set(\DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null ...$field): static;
+        /**
+        * Provides data and size distribution information on sharded collections.
+        *
+        * New in MongoDB 6.0.3
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/shardedDataDistribution/
+        * @generated
+        */
+        public function shardedDataDistribution(): static;
+        /**
+        * Skips the first n documents where n is the specified skip number and passes the remaining documents unmodified to the pipeline. For each input document, outputs either zero documents (for the first n documents) or one document (if after the first n documents).
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/skip/
+        * @param int $skip
+        * @generated
+        */
+        public function skip(int $skip): static;
+        /**
+        * Reorders the document stream by a specified sort key. Only the order changes; the documents remain unmodified. For each input document, outputs one document.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/sort/
+        * @param DateTimeInterface|ExpressionInterface|Sort|Type|array|bool|float|int|null|stdClass|string $ ...$sort
+        * @generated
+        */
+        public function sort(\DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\MongoDB\Builder\Type\Sort|\stdClass|array|string|int|float|bool|null ...$sort): static;
+        /**
+        * Groups incoming documents based on the value of a specified expression, then computes the count of documents in each distinct group.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/sortByCount/
+        * @param \DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null $expression
+        * @generated
+        */
+        public function sortByCount(\DateTimeInterface|\MongoDB\BSON\Type|\MongoDB\Builder\Type\ExpressionInterface|\stdClass|array|string|int|float|bool|null $expression): static;
+        /**
+        * Removes or excludes fields from documents.
+        *
+        * Alias for $project stage that removes or excludes fields.
+        *
+        * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/unset/
+        * @no-named-arguments
+        * @param string $ ...$field
+        * @generated
+        */
+        public function unset(string ...$field): static;
+    }
+}
+namespace MongoDB\Builder\Type {
+    /**
+    * Aggregation Pipeline Accumulators for $group stage.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/#accumulators
+    * @generated
+    */
+    interface AccumulatorInterface {
+    }
+    interface DictionaryInterface {
+        public function getValue(): string|int|array;
+    }
+    /**
+    * Expressions can include field paths, literals, system variables, expression objects, and expression operators.
+    *
+    * Expressions can be nested.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/
+    * @generated
+    */
+    interface ExpressionInterface {
+    }
+    /**
+    * Aggregation expressions use field path to access fields in the input documents.
+    *
+    * @see https://www.mongodb.com/docs/manual/meta/aggregation-quick-reference/#field-paths
+    * @property-read string $path The field path string, without the leading "$" character.
+    * @generated
+    */
+    interface FieldPathInterface extends \MongoDB\Builder\Type\ExpressionInterface {
+        public string $path;
+    }
+    /**
+    * Query operators that need to be associated with a field path.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/query/
+    * @generated
+    */
+    interface FieldQueryInterface {
+    }
+    /**
+    * @see https://www.mongodb.com/docs/manual/reference/operator/query/geometry/
+    * @generated
+    */
+    interface GeometryInterface {
+    }
+    /**
+    * Interface for stages that can only be used as the FIRST stage in an aggregation pipeline
+    *
+    * @generated
+    */
+    interface InputStageInterface extends \MongoDB\Builder\Type\StageInterface {
+    }
+    /**
+    * @see https://www.mongodb.com/docs/manual/meta/aggregation-quick-reference/#operator-expressions
+    * @generated
+    */
+    interface OperatorExpressionInterface extends \MongoDB\Builder\Type\ExpressionInterface {
+    }
+    /**
+    * Marker interface for MongoDB operators.
+    *
+    * @generated
+    */
+    interface OperatorInterface {
+        /**
+        * @var array<string, string|null>
+        * @generated
+        */
+        public const array<string, string|null> PROPERTIES ?? [];
+        /**
+        * @var null
+        * @generated
+        */
+        public const null NAME ?? null;
+    }
+    /**
+    * Interface for stages that can only be used as the LAST stage in an aggregation pipeline
+    *
+    * @generated
+    */
+    interface OutputStageInterface extends \MongoDB\Builder\Type\StageInterface {
+    }
+    /**
+    * Specifies the window boundaries and parameters. Window boundaries are inclusive.
+    *
+    * Default is an unbounded window, which includes all documents in the partition.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/setWindowFields/
+    * @generated
+    */
+    final class OutputWindow implements \MongoDB\Builder\Type\WindowInterface {
+        /**
+        * Function used to initialize the state. The init function receives its arguments from the initArgs array expression.
+        *
+        * You can specify the function definition as either BSON type Code or String.
+        *
+        * @generated
+        */
+        public \MongoDB\BSON\Document|\MongoDB\BSON\Serializable|\MongoDB\Builder\Type\WindowInterface|\stdClass|array $operator;
+    }
+    /**
+    * Query are operator and object that can be used in $match stage.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/query/
+    * @generated
+    */
+    interface QueryInterface {
+    }
+    /**
+    * Helper class to validate query objects.
+    *
+    * Queries are a mix of query operators ($or, $and, $nor, $jsonSchema...) and field query operators ($eq, $gt, $in...)
+    * associated to a field path.
+    *
+    * @generated
+    */
+    final class QueryObject implements \MongoDB\Builder\Type\QueryInterface {
+        public readonly array $queries;
+        /**
+        * @param array<\DateTimeInterface|QueryInterface|FieldQueryInterface|\MongoDB\BSON\Type|\stdClass|array|bool|float|int|string|null> $queries
+        * @generated
+        */
+        public static function create(array<\DateTimeInterface|\MongoDB\Builder\Type\QueryInterface|\MongoDB\Builder\Type\FieldQueryInterface|\MongoDB\BSON\Type|\stdClass|array|bool|float|int|string|null> $queries): \MongoDB\Builder\Type\QueryInterface;
+    }
+    interface SearchOperatorInterface {
+    }
+    /**
+    * Sort order can be used with $sort stage and sortBy properties
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/sort/
+    * @generated
+    */
+    enum Sort implements \MongoDB\Builder\Type\DictionaryInterface {
+        case Asc;
+        case Desc;
+        case TextScore;
+        public function getValue(): int|array;
+    }
+    /**
+    * Aggregation Pipeline Stages
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation-pipeline/
+    * @generated
+    */
+    interface StageInterface {
+    }
+    /**
+    * Interface for branches in $switch operators
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/switch/
+    * @generated
+    */
+    interface SwitchBranchInterface {
+    }
+    /**
+    * Values for "unit" property of stages like $derivative and $integral, and operators like $dateAdd and $dateDiff
+    *
+    * @generated
+    */
+    enum TimeUnit: string implements \MongoDB\Builder\Type\DictionaryInterface {
+        case Year = 'year';
+        case Quarter = 'quarter';
+        case Week = 'week';
+        case Month = 'month';
+        case Day = 'day';
+        case Hour = 'hour';
+        case Minute = 'minute';
+        case Second = 'second';
+        case Millisecond = 'millisecond';
+        public function getValue(): string;
+    }
+    /**
+    * Update operators modify field values in update operations.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/update/
+    * @generated
+    */
+    interface UpdateInterface {
+    }
+    /**
+    * Interface for stages that can be used in an update pipeline
+    *
+    * @generated
+    */
+    interface UpdateStageInterface extends \MongoDB\Builder\Type\StageInterface {
+    }
+    /**
+    * Window Operators can be used for $setWindowFields stage partition.
+    *
+    * @see https://www.mongodb.com/docs/manual/reference/operator/aggregation/setWindowFields/#window-operators
+    * @generated
+    */
+    interface WindowInterface {
+    }
+}
+namespace MongoDB\Codec {
+    /**
+    * The Codec interface allows decoding BSON data to native PHP types and back
+    *
+    * to BSON.
+    *
+    * @template-extends Decoder<BSONType, NativeType>
+    * @template-extends Encoder<BSONType, NativeType>
+    * @generated
+    */
+    interface Codec<BSONType, NativeType> extends \MongoDB\Codec\Decoder, \MongoDB\Codec\Encoder {
+    }
+    /**
+    * @generated
+    */
+    trait DecodeIfSupported<BSONType, NativeType> {
+        /**
+        * @psalm-assert-if-true BSONType $value
+        * @generated
+        */
+        public abstract function canDecode(mixed $value): bool;
+        /**
+        * @throws UnsupportedValueException if the decoder does not support the value
+        * @generated
+        */
+        public abstract function decode(BSONType $value): NativeType;
+        /**
+        * @generated
+        */
+        public function decodeIfSupported(mixed $value): mixed;
+    }
+    /**
+    * @generated
+    */
+    interface Decoder<BSONType, NativeType> {
+        /**
+        * Checks if the decoder supports a given value.
+        *
+        * @psalm-assert-if-true BSONType $value
+        * @generated
+        */
+        public function canDecode(mixed $value): bool;
+        /**
+        * Decodes a given value. If the decoder does not support the value, it
+        *
+        * should throw an exception.
+        *
+        * @throws UnsupportedValueException if the decoder does not support the value
+        * @generated
+        */
+        public function decode(BSONType $value): NativeType;
+        /**
+        * Decodes a given value if supported, otherwise returns the value as-is.
+        *
+        * The DecodeIfSupported trait provides a default implementation of this
+        * method.
+        *
+        * @generated
+        */
+        public function decodeIfSupported(mixed $value): mixed;
+    }
+    /**
+    * The DocumentCodec interface allows decoding BSON document data to native PHP
+    *
+    * objects and back to BSON documents.
+    *
+    * @template-extends Codec<Document, ObjectType>
+    * @generated
+    */
+    interface DocumentCodec<ObjectType extends object> extends \MongoDB\Codec\Codec {
+        /**
+        * @throws UnsupportedValueException if the decoder does not support the value
+        * @generated
+        */
+        public function decode(\MongoDB\BSON\Document $value): ObjectType;
+        /**
+        * @throws UnsupportedValueException if the encoder does not support the value
+        * @generated
+        */
+        public function encode(ObjectType $value): \MongoDB\BSON\Document;
+    }
+    /**
+    * @generated
+    */
+    trait EncodeIfSupported<BSONType, NativeType> {
+        /**
+        * @psalm-assert-if-true NativeType $value
+        * @generated
+        */
+        public abstract function canEncode(mixed $value): bool;
+        /**
+        * @throws UnsupportedValueException if the encoder does not support the value
+        * @generated
+        */
+        public abstract function encode(NativeType $value): BSONType;
+        /**
+        * @generated
+        */
+        public function encodeIfSupported(mixed $value): mixed;
+    }
+    /**
+    * @generated
+    */
+    interface Encoder<BSONType, NativeType> {
+        /**
+        * Checks if the encoder supports a given value.
+        *
+        * @psalm-assert-if-true NativeType $value
+        * @generated
+        */
+        public function canEncode(mixed $value): bool;
+        /**
+        * Encodes a given value. If the encoder does not support the value, it
+        *
+        * should throw an exception.
+        *
+        * @throws UnsupportedValueException if the encoder does not support the value
+        * @generated
+        */
+        public function encode(NativeType $value): BSONType;
+        /**
+        * Encodes a given value if supported, otherwise returns the value as-is.
+        *
+        * The EncodeIfSupported trait provides a default implementation of this
+        * method.
+        *
+        * @generated
+        */
+        public function encodeIfSupported(mixed $value): mixed;
+    }
+}
+namespace MongoDB\Exception {
+    class BadMethodCallException extends \BadMethodCallException implements \MongoDB\Exception\Exception {
+    }
+    interface Exception extends \MongoDB\Driver\Exception\Exception {
+    }
+    class InvalidArgumentException extends \MongoDB\Driver\Exception\InvalidArgumentException implements \MongoDB\Exception\Exception {
+    }
+    class ResumeTokenException extends \MongoDB\Exception\RuntimeException {
+    }
+    class RuntimeException extends \MongoDB\Driver\Exception\RuntimeException implements \MongoDB\Exception\Exception {
+    }
+    final class SearchNotSupportedException extends \MongoDB\Driver\Exception\ServerException {
+    }
+    class UnexpectedValueException extends \MongoDB\Driver\Exception\UnexpectedValueException implements \MongoDB\Exception\Exception {
+    }
+    class UnsupportedException extends \MongoDB\Exception\RuntimeException {
+    }
+    class UnsupportedValueException extends \InvalidArgumentException implements \MongoDB\Exception\Exception {
+        public function getValue(): mixed;
+        public static function invalidDecodableValue(mixed $value): self;
+        public static function invalidEncodableValue(mixed $value): self;
+    }
+}
+namespace MongoDB\GridFS {
+    /**
+    * Bucket provides a public API for interacting with the GridFS files and chunks
+    *
+    * collections.
+    *
+    * @generated
+    */
+    class Bucket {
+        /**
+        * Constructs a GridFS bucket.
+        *
+        * Supported options:
+        * 
+        *  * bucketName (string): The bucket name, which will be used as a prefix
+        *    for the files and chunks collections. Defaults to "fs".
+        * 
+        *  * chunkSizeBytes (integer): The chunk size in bytes. Defaults to
+        *    261120 (i.e. 255 KiB).
+        * 
+        *  * readConcern (MongoDB\Driver\ReadConcern): Read concern.
+        * 
+        *  * readPreference (MongoDB\Driver\ReadPreference): Read preference.
+        * 
+        *  * typeMap (array): Default type map for cursors and BSON documents.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param \MongoDB\Driver\Manager $manager Manager instance from the driver
+        * @param string $databaseName Database name
+        * @param array $options Bucket options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(\MongoDB\Driver\Manager $manager, string $databaseName, array $options = []): void;
+        /**
+        * Return internal properties for debugging purposes.
+        *
+        * @see https://php.net/manual/en/language.oop5.magic.php#language.oop5.magic.debuginfo
+        * @generated
+        */
+        public function __debugInfo(): array;
+        /**
+        * Delete a file from the GridFS bucket.
+        *
+        * If the files collection document is not found, this method will still
+        * attempt to delete orphaned chunks.
+        *
+        * @param mixed $id File ID
+        * @throws FileNotFoundException if no file could be selected
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function delete(mixed $id): void;
+        /**
+        * Delete all the revisions of a file name from the GridFS bucket.
+        *
+        * @param string $filename Filename
+        * @throws FileNotFoundException if no file could be selected
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function deleteByName(string $filename): void;
+        /**
+        * Writes the contents of a GridFS file to a writable stream.
+        *
+        * @param mixed $id File ID
+        * @param resource $destination Writable Stream
+        * @throws FileNotFoundException if no file could be selected
+        * @throws InvalidArgumentException if $destination is not a stream
+        * @throws StreamException if the file could not be uploaded
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function downloadToStream(mixed $id, resource $destination): void;
+        /**
+        * Writes the contents of a GridFS file, which is selected by name and
+        *
+        * revision, to a writable stream.
+        * 
+        * Supported options:
+        * 
+        *  * revision (integer): Which revision (i.e. documents with the same
+        *    filename and different uploadDate) of the file to retrieve. Defaults
+        *    to -1 (i.e. the most recent revision).
+        * 
+        * Revision numbers are defined as follows:
+        * 
+        *  * 0 = the original stored file
+        *  * 1 = the first revision
+        *  * 2 = the second revision
+        *  * etc…
+        *  * -2 = the second most recent revision
+        *  * -1 = the most recent revision
+        *
+        * @param string $filename Filename
+        * @param resource $destination Writable Stream
+        * @param array $options Download options
+        * @throws FileNotFoundException if no file could be selected
+        * @throws InvalidArgumentException if $destination is not a stream
+        * @throws StreamException if the file could not be uploaded
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function downloadToStreamByName(string $filename, resource $destination, array $options = []): void;
+        /**
+        * Drops the files and chunks collections associated with this GridFS
+        *
+        * bucket.
+        *
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function drop(): void;
+        /**
+        * Finds documents from the GridFS bucket's files collection matching the
+        *
+        * query.
+        *
+        * @see Find::__construct() for supported options
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function find(array|object $filter = [], array $options = []): \MongoDB\Driver\CursorInterface;
+        /**
+        * Finds a single document from the GridFS bucket's files collection
+        *
+        * matching the query.
+        *
+        * @see FindOne::__construct() for supported options
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Additional options
+        * @throws UnsupportedException if options are not supported by the selected server
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function findOne(array|object $filter = [], array $options = []): array|object|null;
+        /**
+        * Return the bucket name.
+        *
+        * @generated
+        */
+        public function getBucketName(): string;
+        /**
+        * Return the chunks collection.
+        *
+        * @generated
+        */
+        public function getChunksCollection(): \MongoDB\Collection;
+        /**
+        * Return the chunk size in bytes.
+        *
+        * @generated
+        */
+        public function getChunkSizeBytes(): int;
+        /**
+        * Return the database name.
+        *
+        * @generated
+        */
+        public function getDatabaseName(): string;
+        /**
+        * Gets the file document of the GridFS file associated with a stream.
+        *
+        * @param resource $stream GridFS stream
+        * @throws InvalidArgumentException if $stream is not a GridFS stream
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function getFileDocumentForStream(resource $stream): array|object;
+        /**
+        * Gets the file document's ID of the GridFS file associated with a stream.
+        *
+        * @param resource $stream GridFS stream
+        * @throws CorruptFileException if the file "_id" field does not exist
+        * @throws InvalidArgumentException if $stream is not a GridFS stream
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function getFileIdForStream(resource $stream): mixed;
+        /**
+        * Return the files collection.
+        *
+        * @generated
+        */
+        public function getFilesCollection(): \MongoDB\Collection;
+        /**
+        * Return the read concern for this GridFS bucket.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-readconcern.isdefault.php
+        * @generated
+        */
+        public function getReadConcern(): \MongoDB\Driver\ReadConcern;
+        /**
+        * Return the read preference for this GridFS bucket.
+        *
+        * @generated
+        */
+        public function getReadPreference(): \MongoDB\Driver\ReadPreference;
+        /**
+        * Return the type map for this GridFS bucket.
+        *
+        * @generated
+        */
+        public function getTypeMap(): array;
+        /**
+        * Return the write concern for this GridFS bucket.
+        *
+        * @see https://php.net/manual/en/mongodb-driver-writeconcern.isdefault.php
+        * @generated
+        */
+        public function getWriteConcern(): \MongoDB\Driver\WriteConcern;
+        /**
+        * Opens a readable stream for reading a GridFS file.
+        *
+        * @param mixed $id File ID
+        * @return resource
+        * @throws FileNotFoundException if no file could be selected
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function openDownloadStream(mixed $id): resource;
+        /**
+        * Opens a readable stream to read a GridFS file, which is selected
+        *
+        * by name and revision.
+        * 
+        * Supported options:
+        * 
+        *  * revision (integer): Which revision (i.e. documents with the same
+        *    filename and different uploadDate) of the file to retrieve. Defaults
+        *    to -1 (i.e. the most recent revision).
+        * 
+        * Revision numbers are defined as follows:
+        * 
+        *  * 0 = the original stored file
+        *  * 1 = the first revision
+        *  * 2 = the second revision
+        *  * etc…
+        *  * -2 = the second most recent revision
+        *  * -1 = the most recent revision
+        *
+        * @param string $filename Filename
+        * @param array $options Download options
+        * @return resource
+        * @throws FileNotFoundException if no file could be selected
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function openDownloadStreamByName(string $filename, array $options = []): resource;
+        /**
+        * Opens a writable stream for writing a GridFS file.
+        *
+        * Supported options:
+        * 
+        *  * _id (mixed): File document identifier. Defaults to a new ObjectId.
+        * 
+        *  * chunkSizeBytes (integer): The chunk size in bytes. Defaults to the
+        *    bucket's chunk size.
+        * 
+        *  * metadata (document): User data for the "metadata" field of the files
+        *    collection document.
+        *
+        * @param string $filename Filename
+        * @param array $options Upload options
+        * @return resource
+        * @generated
+        */
+        public function openUploadStream(string $filename, array $options = []): resource;
+        /**
+        * Register an alias to enable basic filename access for this bucket.
+        *
+        * For applications that need to interact with GridFS using only a filename
+        * string, a bucket can be registered with an alias. Files can then be
+        * accessed using the following pattern:
+        * 
+        *     gridfs://<bucket-alias>/<filename>
+        * 
+        * Read operations will always target the most recent revision of a file.
+        *
+        * @param non-empty-string $ string $alias The alias to use for the bucket
+        * @generated
+        */
+        public function registerGlobalStreamWrapperAlias(string $alias): void;
+        /**
+        * Renames the GridFS file with the specified ID.
+        *
+        * @param mixed $id File ID
+        * @param string $newFilename New filename
+        * @throws FileNotFoundException if no file could be selected
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function rename(mixed $id, string $newFilename): void;
+        /**
+        * Renames all the revisions of a file name in the GridFS bucket.
+        *
+        * @param string $filename Filename
+        * @param string $newFilename New filename
+        * @throws FileNotFoundException if no file could be selected
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function renameByName(string $filename, string $newFilename): void;
+        /**
+        * Writes the contents of a readable stream to a GridFS file.
+        *
+        * Supported options:
+        * 
+        *  * _id (mixed): File document identifier. Defaults to a new ObjectId.
+        * 
+        *  * chunkSizeBytes (integer): The chunk size in bytes. Defaults to the
+        *    bucket's chunk size.
+        * 
+        *  * metadata (document): User data for the "metadata" field of the files
+        *    collection document.
+        *
+        * @param string $filename Filename
+        * @param resource $source Readable stream
+        * @param array $options Stream options
+        * @return mixed ID of the newly created GridFS file
+        * @throws InvalidArgumentException if $source is not a GridFS stream
+        * @throws StreamException if the file could not be uploaded
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function uploadFromStream(string $filename, resource $source, array $options = []): mixed;
+    }
+}
+namespace MongoDB\GridFS\Exception {
+    class CorruptFileException extends \MongoDB\Exception\RuntimeException {
+    }
+    class FileNotFoundException extends \MongoDB\Exception\RuntimeException {
+    }
+    class LogicException extends \LogicException implements \MongoDB\Exception\Exception {
+    }
+    class StreamException extends \MongoDB\Exception\RuntimeException {
+    }
+}
+namespace MongoDB\Model {
+    /**
+    * Model class for a BSON array.
+    *
+    * The internal data will be filtered through array_values() during BSON
+    * serialization to ensure that it becomes a BSON array.
+    *
+    * @template-extends ArrayObject<int, mixed>
+    * @generated
+    */
+    class BSONArray extends \ArrayObject implements \JsonSerializable, \MongoDB\BSON\Serializable, \MongoDB\BSON\Unserializable {
+        /**
+        * Clone this BSONArray.
+        *
+        * @generated
+        */
+        public function __clone(): mixed;
+        /**
+        * Factory method for var_export().
+        *
+        * @see https://php.net/oop5.magic#object.set-state
+        * @see https://php.net/var-export
+        * @generated
+        */
+        public static function __set_state(array $properties): self;
+        /**
+        * Serialize the array to BSON.
+        *
+        * The array data will be numerically reindexed to ensure that it is stored
+        * as a BSON array.
+        *
+        * @see https://php.net/mongodb-bson-serializable.bsonserialize
+        * @generated
+        */
+        public function bsonSerialize(): array;
+        /**
+        * Unserialize the document to BSON.
+        *
+        * @see https://php.net/mongodb-bson-unserializable.bsonunserialize
+        * @param array<int, mixed> $data Array data
+        * @generated
+        */
+        public function bsonUnserialize(array<int, mixed> $data): void;
+        /**
+        * Serialize the array to JSON.
+        *
+        * The array data will be numerically reindexed to ensure that it is stored
+        * as a JSON array.
+        *
+        * @see https://php.net/jsonserializable.jsonserialize
+        * @generated
+        */
+        public function jsonSerialize(): array;
+    }
+    /**
+    * Model class for a BSON document.
+    *
+    * The internal data will be cast to an object during BSON serialization to
+    * ensure that it becomes a BSON document.
+    *
+    * @template-extends ArrayObject<string, mixed>
+    * @generated
+    */
+    class BSONDocument extends \ArrayObject implements \JsonSerializable, \MongoDB\BSON\Serializable, \MongoDB\BSON\Unserializable {
+        /**
+        * Deep clone this BSONDocument.
+        *
+        * @generated
+        */
+        public function __clone(): mixed;
+        /**
+        * This overrides the parent constructor to allow property access of entries
+        *
+        * by default.
+        *
+        * @see https://php.net/arrayobject.construct
+        * @param array|\stdClass $input
+        * @generated
+        */
+        public function __construct(array|\stdClass $input = [], int $flags = \ArrayObject::ARRAY_AS_PROPS, string $iteratorClass = \ArrayIterator::class): void;
+        /**
+        * Factory method for var_export().
+        *
+        * @see https://php.net/oop5.magic#object.set-state
+        * @see https://php.net/var-export
+        * @generated
+        */
+        public static function __set_state(array $properties): self;
+        /**
+        * Serialize the document to BSON.
+        *
+        * @see https://php.net/mongodb-bson-serializable.bsonserialize
+        * @generated
+        */
+        public function bsonSerialize(): \stdClass;
+        /**
+        * Unserialize the document to BSON.
+        *
+        * @see https://php.net/mongodb-bson-unserializable.bsonunserialize
+        * @param array<string, mixed> $data Array data
+        * @generated
+        */
+        public function bsonUnserialize(array<string, mixed> $data): void;
+        /**
+        * Serialize the array to JSON.
+        *
+        * @see https://php.net/jsonserializable.jsonserialize
+        * @generated
+        */
+        public function jsonSerialize(): \stdClass;
+    }
+    /**
+    * Iterator for BSON documents.
+    *
+    * @template-implements Iterator<int, mixed>
+    * @generated
+    */
+    class BSONIterator implements \Iterator {
+        /**
+        * @see https://php.net/iterator.current
+        * @generated
+        */
+        public function current(): mixed;
+        /**
+        * @see https://php.net/iterator.key
+        * @generated
+        */
+        public function key(): int;
+        /**
+        * @see https://php.net/iterator.next
+        * @generated
+        */
+        public function next(): void;
+        /**
+        * @see https://php.net/iterator.rewind
+        * @generated
+        */
+        public function rewind(): void;
+        /**
+        * @see https://php.net/iterator.valid
+        * @generated
+        */
+        public function valid(): bool;
+    }
+    /**
+    * @template TValue of object
+    * @template-implements CursorInterface<TValue>
+    * @generated
+    */
+    class CodecCursor<TValue extends object> implements \MongoDB\Driver\CursorInterface {
+        /**
+        * @return TValue
+        * @generated
+        */
+        public function current(): TValue;
+        /**
+        * @template NativeClass of Object
+        * @param \MongoDB\Codec\DocumentCodec $codec
+        * @return self
+        * @generated
+        */
+        public static function fromCursor<NativeClass extends Object>(\MongoDB\Driver\CursorInterface $cursor, \MongoDB\Codec\DocumentCodec $codec): self;
+        public function getId(): \MongoDB\BSON\Int64;
+        public function getServer(): \MongoDB\Driver\Server;
+        public function isDead(): bool;
+        public function key(): int;
+        public function next(): void;
+        public function rewind(): void;
+        public function setTypeMap(array $typemap): void;
+        /**
+        * @return array<int, TValue>
+        * @generated
+        */
+        public function toArray(): array<int, TValue>;
+        public function valid(): bool;
+    }
+    /**
+    * Collection information model class.
+    *
+    * This class models the collection information returned by the listCollections
+    * command or, for legacy servers, queries on the "system.namespaces"
+    * collection. It provides methods to access options for the collection.
+    *
+    * @see \MongoDB\Database::listCollections()
+    * @see https://github.com/mongodb/specifications/blob/master/source/enumerate-collections.md
+    * @template-implements ArrayAccess<string, mixed>
+    * @generated
+    */
+    class CollectionInfo implements \ArrayAccess {
+        /**
+        * @param array $info Collection info
+        * @generated
+        */
+        public function __construct(array $info): void;
+        /**
+        * Return the collection info as an array.
+        *
+        * @see https://php.net/oop5.magic#language.oop5.magic.debuginfo
+        * @generated
+        */
+        public function __debugInfo(): array;
+        /**
+        * Return the maximum number of documents to keep in the capped collection.
+        *
+        * @deprecated 1.0 Deprecated in favor of using getOptions
+        * @generated
+        */
+        deprecated public function getCappedMax(): ?int;
+        /**
+        * Return the maximum size (in bytes) of the capped collection.
+        *
+        * @deprecated 1.0 Deprecated in favor of using getOptions
+        * @generated
+        */
+        deprecated public function getCappedSize(): ?int;
+        /**
+        * Return information about the _id index for the collection.
+        *
+        * @generated
+        */
+        public function getIdIndex(): array;
+        /**
+        * Return the "info" property of the server response.
+        *
+        * @see https://mongodb.com/docs/manual/reference/command/listCollections/#output
+        * @generated
+        */
+        public function getInfo(): array;
+        /**
+        * Return the collection name.
+        *
+        * @see https://mongodb.com/docs/manual/reference/command/listCollections/#output
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Return the collection options.
+        *
+        * @see https://mongodb.com/docs/manual/reference/command/listCollections/#output
+        * @generated
+        */
+        public function getOptions(): array;
+        /**
+        * Return the collection type.
+        *
+        * @see https://mongodb.com/docs/manual/reference/command/listCollections/#output
+        * @generated
+        */
+        public function getType(): string;
+        /**
+        * Return whether the collection is a capped collection.
+        *
+        * @deprecated 1.0 Deprecated in favor of using getOptions
+        * @generated
+        */
+        deprecated public function isCapped(): bool;
+        /**
+        * Determines whether the collection is a view.
+        *
+        * @generated
+        */
+        public function isView(): bool;
+        /**
+        * Check whether a field exists in the collection information.
+        *
+        * @see https://php.net/arrayaccess.offsetexists
+        * @generated
+        */
+        public function offsetExists(mixed $offset): bool;
+        /**
+        * Return the field's value from the collection information.
+        *
+        * @see https://php.net/arrayaccess.offsetget
+        * @generated
+        */
+        public function offsetGet(mixed $offset): mixed;
+        /**
+        * Not supported.
+        *
+        * @see https://php.net/arrayaccess.offsetset
+        * @throws BadMethodCallException
+        * @generated
+        */
+        public function offsetSet(mixed $offset, mixed $value): void;
+        /**
+        * Not supported.
+        *
+        * @see https://php.net/arrayaccess.offsetunset
+        * @throws BadMethodCallException
+        * @generated
+        */
+        public function offsetUnset(mixed $offset): void;
+    }
+    /**
+    * Database information model class.
+    *
+    * This class models the database information returned by the listDatabases
+    * command. It provides methods to access common database properties.
+    *
+    * @see \MongoDB\Client::listDatabases()
+    * @see https://mongodb.com/docs/manual/reference/command/listDatabases/
+    * @template-implements ArrayAccess<string, mixed>
+    * @generated
+    */
+    class DatabaseInfo implements \ArrayAccess {
+        /**
+        * @param array $info Database info
+        * @generated
+        */
+        public function __construct(array $info): void;
+        /**
+        * Return the database info as an array.
+        *
+        * @see https://php.net/oop5.magic#language.oop5.magic.debuginfo
+        * @generated
+        */
+        public function __debugInfo(): array;
+        /**
+        * Return the database name.
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Return the databases size on disk (in bytes).
+        *
+        * @generated
+        */
+        public function getSizeOnDisk(): int;
+        /**
+        * Return whether the database is empty.
+        *
+        * @generated
+        */
+        public function isEmpty(): bool;
+        /**
+        * Check whether a field exists in the database information.
+        *
+        * @see https://php.net/arrayaccess.offsetexists
+        * @generated
+        */
+        public function offsetExists(mixed $offset): bool;
+        /**
+        * Return the field's value from the database information.
+        *
+        * @see https://php.net/arrayaccess.offsetget
+        * @generated
+        */
+        public function offsetGet(mixed $offset): mixed;
+        /**
+        * Not supported.
+        *
+        * @see https://php.net/arrayaccess.offsetset
+        * @throws BadMethodCallException
+        * @generated
+        */
+        public function offsetSet(mixed $offset, mixed $value): void;
+        /**
+        * Not supported.
+        *
+        * @see https://php.net/arrayaccess.offsetunset
+        * @throws BadMethodCallException
+        * @generated
+        */
+        public function offsetUnset(mixed $offset): void;
+    }
+    /**
+    * Index information model class.
+    *
+    * This class models the index information returned by the listIndexes command
+    * or, for legacy servers, queries on the "system.indexes" collection. It
+    * provides methods to access common index options, and allows access to other
+    * options through the ArrayAccess interface (write methods are not supported).
+    * For information on keys and index options, see the referenced
+    * db.collection.createIndex() documentation.
+    *
+    * @see \MongoDB\Collection::listIndexes()
+    * @see https://github.com/mongodb/specifications/blob/master/source/enumerate-indexes.md
+    * @see https://mongodb.com/docs/manual/reference/method/db.collection.createIndex/
+    * @template-implements ArrayAccess<string, mixed>
+    * @generated
+    */
+    class IndexInfo implements \ArrayAccess, \Stringable {
+        /**
+        * @param array $info Index info
+        * @generated
+        */
+        public function __construct(array $info): void;
+        /**
+        * Return the collection info as an array.
+        *
+        * @see https://php.net/oop5.magic#language.oop5.magic.debuginfo
+        * @generated
+        */
+        public function __debugInfo(): array;
+        /**
+        * Return the index name to allow casting IndexInfo to string.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Return the index key.
+        *
+        * @generated
+        */
+        public function getKey(): array;
+        /**
+        * Return the index name.
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * Return the index version.
+        *
+        * @generated
+        */
+        public function getVersion(): int;
+        /**
+        * Return whether or not this index is of type 2dsphere.
+        *
+        * @generated
+        */
+        public function is2dSphere(): bool;
+        /**
+        * Return whether this is a sparse index.
+        *
+        * @see https://mongodb.com/docs/manual/core/index-sparse/
+        * @generated
+        */
+        public function isSparse(): bool;
+        /**
+        * Return whether or not this index is of type text.
+        *
+        * @generated
+        */
+        public function isText(): bool;
+        /**
+        * Return whether this is a TTL index.
+        *
+        * @see https://mongodb.com/docs/manual/core/index-ttl/
+        * @generated
+        */
+        public function isTtl(): bool;
+        /**
+        * Return whether this is a unique index.
+        *
+        * @see https://mongodb.com/docs/manual/core/index-unique/
+        * @generated
+        */
+        public function isUnique(): bool;
+        /**
+        * Check whether a field exists in the index information.
+        *
+        * @see https://php.net/arrayaccess.offsetexists
+        * @generated
+        */
+        public function offsetExists(mixed $offset): bool;
+        /**
+        * Return the field's value from the index information.
+        *
+        * This method satisfies the Enumerating Indexes specification's requirement
+        * that index fields be made accessible under their original names. It may
+        * also be used to access fields that do not have a helper method.
+        *
+        * @see https://php.net/arrayaccess.offsetget
+        * @see https://github.com/mongodb/specifications/blob/master/source/enumerate-indexes.md#getting-full-index-information
+        * @generated
+        */
+        public function offsetGet(mixed $offset): mixed;
+        /**
+        * Not supported.
+        *
+        * @see https://php.net/arrayaccess.offsetset
+        * @throws BadMethodCallException
+        * @generated
+        */
+        public function offsetSet(mixed $offset, mixed $value): void;
+        /**
+        * Not supported.
+        *
+        * @see https://php.net/arrayaccess.offsetunset
+        * @throws BadMethodCallException
+        * @generated
+        */
+        public function offsetUnset(mixed $offset): void;
+    }
+}
+namespace MongoDB\Operation {
+    type BulkWriteDocument = object|array;
+    type BulkWriteOperationShape = array;
+    /**
+    * Operation for executing multiple write operations.
+    *
+    * @see \MongoDB\Collection::bulkWrite()
+    * @generated
+    */
+    final class BulkWrite {
+        public const string DELETE_MANY ?? 'deleteMany';
+        public const string DELETE_ONE ?? 'deleteOne';
+        public const string INSERT_ONE ?? 'insertOne';
+        public const string REPLACE_ONE ?? 'replaceOne';
+        public const string UPDATE_MANY ?? 'updateMany';
+        public const string UPDATE_ONE ?? 'updateOne';
+        /**
+        * Constructs a bulk write operation.
+        *
+        * Example array structure for all supported operation types:
+        * 
+        *  [
+        *    [ 'deleteMany' => [ $filter, $options ] ],
+        *    [ 'deleteOne'  => [ $filter, $options ] ],
+        *    [ 'insertOne'  => [ $document ] ],
+        *    [ 'replaceOne' => [ $filter, $replacement, $options ] ],
+        *    [ 'updateMany' => [ $filter, $update, $options ] ],
+        *    [ 'updateOne'  => [ $filter, $update, $options ] ],
+        *  ]
+        * 
+        * Arguments correspond to the respective Operation classes; however, the
+        * writeConcern option is specified for the top-level bulk write operation
+        * instead of each individual operation.
+        * 
+        * Supported options for deleteMany and deleteOne operations:
+        * 
+        *  * collation (document): Collation specification.
+        * 
+        * Supported options for replaceOne, updateMany, and updateOne operations:
+        * 
+        *  * collation (document): Collation specification.
+        * 
+        *  * upsert (boolean): When true, a new document is created if no document
+        *    matches the query. The default is false.
+        * 
+        * Supported options for replaceOne and updateOne operations:
+        * 
+        *  * sort (document): Determines which document the operation modifies if
+        *    the query selects multiple documents.
+        * 
+        *    This is not supported for server versions < 8.0 and will result in an
+        *    exception at execution time if used.
+        * 
+        * Supported options for updateMany and updateOne operations:
+        * 
+        *  * arrayFilters (document array): A set of filters specifying to which
+        *    array elements an update should apply.
+        * 
+        * Supported options for the bulk write operation:
+        * 
+        *  * builderEncoder (MongoDB\Codec\Encoder): Encoder for query and
+        *    aggregation builders. If not given, the default encoder will be used.
+        * 
+        *  * bypassDocumentValidation (boolean): If true, allows the write to
+        *    circumvent document level validation. The default is false.
+        * 
+        *  * codec (MongoDB\Codec\DocumentCodec): Codec used to decode documents
+        *    from BSON to PHP objects. This option is also used to encode PHP
+        *    objects into BSON for insertOne and replaceOne operations.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command(s)
+        *    associated with this bulk write.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * ordered (boolean): If true, when an insert fails, return without
+        *    performing the remaining writes. If false, when a write fails,
+        *    continue with the remaining writes, if any. The default is true.
+        * 
+        *  * let (document): Map of parameter names and values. Values must be
+        *    constant or closed expressions that do not reference document fields.
+        *    Parameters can then be accessed as variables in an aggregate
+        *    expression context (e.g. "$$var").
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array<int, BulkWriteOperationShape> $operations List of write operations
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array<int, \MongoDB\Operation\BulkWriteOperationShape> $operations, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \MongoDB\BulkWriteResult;
+    }
+    /**
+    * Operation for executing multiple write operations via the bulkWrite command.
+    *
+    * @see \MongoDB\Client::bulkWrite()
+    * @generated
+    */
+    final class ClientBulkWriteCommand {
+        /**
+        * Constructs a client-level bulk write operation.
+        *
+        * Most options for the bulkWrite command and its write operations are
+        * specified when building the extension's BulkWriteCommand object. This
+        * operation only accepts options for Server::executeBulkWriteCommand().
+        * 
+        * Supported options:
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param \MongoDB\Driver\BulkWriteCommand $bulkWriteCommand Assembled bulk write command
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(\MongoDB\Driver\BulkWriteCommand $bulkWriteCommand, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \MongoDB\Driver\BulkWriteCommandResult;
+    }
+    /**
+    * Operation for obtaining an exact count of documents in a collection
+    *
+    * @see \MongoDB\Collection::countDocuments()
+    * @see https://github.com/mongodb/specifications/blob/master/source/crud/crud.md#countdocuments
+    * @generated
+    */
+    final class CountDocuments {
+        /**
+        * Constructs an aggregate command for counting documents
+        *
+        * Supported options:
+        * 
+        *  * collation (document): Collation specification.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    Only string values are supported for server versions < 4.4.
+        * 
+        *  * hint (string|document): The index to use. Specify either the index
+        *    name as a string or the index key pattern as a document. If specified,
+        *    then the query system will only consider plans using the hinted index.
+        * 
+        *  * limit (integer): The maximum number of documents to count.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * readConcern (MongoDB\Driver\ReadConcern): Read concern.
+        * 
+        *  * readPreference (MongoDB\Driver\ReadPreference): Read preference.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * skip (integer): The number of documents to skip before returning the
+        *    documents.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array|object $filter Query by which to filter documents
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array|object $filter, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if collation or read concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): int;
+    }
+    /**
+    * Operation for the create command.
+    *
+    * @see \MongoDB\Database::createCollection()
+    * @see https://mongodb.com/docs/manual/reference/command/create/
+    * @generated
+    */
+    final class CreateCollection {
+        /**
+        * Constructs a create command.
+        *
+        * Supported options:
+        * 
+        *  * capped (boolean): Specify true to create a capped collection. If set,
+        *    the size option must also be specified. The default is false.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * changeStreamPreAndPostImages (document): Used to configure support for
+        *    pre- and post-images in change streams.
+        * 
+        *    This is not supported for server versions < 6.0.
+        * 
+        *  * clusteredIndex (document): A clustered index specification.
+        * 
+        *    This is not supported for server versions < 5.3.
+        * 
+        *  * collation (document): Collation specification.
+        * 
+        *  * encryptedFields (document): Configuration for encrypted fields.
+        *    See: https://www.mongodb.com/docs/manual/core/queryable-encryption/fundamentals/encrypt-and-query/
+        * 
+        *  * expireAfterSeconds: The TTL for documents in time series collections.
+        * 
+        *    This is not supported for servers versions < 5.0.
+        * 
+        *  * indexOptionDefaults (document): Default configuration for indexes when
+        *    creating the collection.
+        * 
+        *  * max (integer): The maximum number of documents allowed in the capped
+        *    collection. The size option takes precedence over this limit.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * pipeline (array): An array that consists of the aggregation pipeline
+        *    stage(s), which will be applied to the collection or view specified by
+        *    viewOn.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * size (integer): The maximum number of bytes for a capped collection.
+        * 
+        *  * storageEngine (document): Storage engine options.
+        * 
+        *  * timeseries (document): Options for time series collections.
+        * 
+        *    This is not supported for servers versions < 5.0.
+        * 
+        *  * validationAction (string): Validation action.
+        * 
+        *  * validationLevel (string): Validation level.
+        * 
+        *  * validator (document): Validation rules or expressions.
+        * 
+        *  * viewOn (string): The name of the source collection or view from which
+        *    to create the view.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @see https://source.wiredtiger.com/2.4.1/struct_w_t___s_e_s_s_i_o_n.html#a358ca4141d59c345f401c58501276bbb
+        * @see https://mongodb.com/docs/manual/core/schema-validation/
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): void;
+    }
+    /**
+    * Operation for the createIndexes command.
+    *
+    * @see \MongoDB\Collection::createIndex()
+    * @see \MongoDB\Collection::createIndexes()
+    * @see https://mongodb.com/docs/manual/reference/command/createIndexes/
+    * @generated
+    */
+    final class CreateIndexes {
+        /**
+        * Constructs a createIndexes command.
+        *
+        * Supported options:
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * commitQuorum (integer|string): Specifies how many data-bearing members
+        *    of a replica set, including the primary, must complete the index
+        *    builds successfully before the primary marks the indexes as ready.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array<int, array> $indexes List of index specifications
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array<int, array> $indexes, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return array<int, string> The names of the created indexes
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): array<int, string>;
+    }
+    /**
+    * Operation for the createIndexes command.
+    *
+    * @see \MongoDB\Collection::createSearchIndex()
+    * @see \MongoDB\Collection::createSearchIndexes()
+    * @see https://mongodb.com/docs/manual/reference/command/createSearchIndexes/
+    * @generated
+    */
+    final class CreateSearchIndexes {
+        /**
+        * Constructs a createSearchIndexes command.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array<int, array> $indexes List of search index specifications
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array<int, array> $indexes, array $options): void;
+        /**
+        * Execute the operation.
+        *
+        * @return array<int, string> The names of the created indexes
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): array<int, string>;
+    }
+    /**
+    * Operation for executing a database command.
+    *
+    * @see \MongoDB\Database::command()
+    * @generated
+    */
+    final class DatabaseCommand {
+        /**
+        * Constructs a command.
+        *
+        * Supported options:
+        * 
+        *  * readPreference (MongoDB\Driver\ReadPreference): The read preference to
+        *    use when executing the command. This may be used when issuing the
+        *    command to a replica set or mongos node to ensure that the driver sets
+        *    the wire protocol accordingly or adds the read preference to the
+        *    command document, respectively.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * typeMap (array): Type map for BSON deserialization. This will be
+        *    applied to the returned Cursor (it is not sent to the server).
+        *
+        * @param string $databaseName Database name
+        * @param array|object $command Command document
+        * @param array $options Options for command execution
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, array|object $command, array $options = []): void;
+        public function execute(\MongoDB\Driver\Server $server): \MongoDB\Driver\CursorInterface;
+    }
+    /**
+    * Operation for the drop command.
+    *
+    * @see \MongoDB\Collection::drop()
+    * @see \MongoDB\Database::dropCollection()
+    * @see https://mongodb.com/docs/manual/reference/command/drop/
+    * @generated
+    */
+    final class DropCollection {
+        /**
+        * Constructs a drop command.
+        *
+        * Supported options:
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): void;
+    }
+    /**
+    * Operation for the dropDatabase command.
+    *
+    * @see \MongoDB\Client::dropDatabase()
+    * @see \MongoDB\Database::drop()
+    * @see https://mongodb.com/docs/manual/reference/command/dropDatabase/
+    * @generated
+    */
+    final class DropDatabase {
+        /**
+        * Constructs a dropDatabase command.
+        *
+        * Supported options:
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): void;
+    }
+    /**
+    * Operation for the dropIndexes command.
+    *
+    * @see \MongoDB\Collection::dropIndexes()
+    * @see https://mongodb.com/docs/manual/reference/command/dropIndexes/
+    * @generated
+    */
+    final class DropIndexes {
+        /**
+        * Constructs a dropIndexes command.
+        *
+        * Supported options:
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param string $indexName Index name (use "*" to drop all indexes)
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, string $indexName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): void;
+    }
+    /**
+    * Operation for the dropSearchIndexes command.
+    *
+    * @see \MongoDB\Collection::dropSearchIndexes()
+    * @see https://mongodb.com/docs/manual/reference/command/dropSearchIndexes/
+    * @generated
+    */
+    final class DropSearchIndex {
+        /**
+        * Constructs a dropSearchIndex command.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param string $name Index name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, string $name, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): void;
+    }
+    /**
+    * Operation for the explain command.
+    *
+    * @see \MongoDB\Collection::explain()
+    * @see https://mongodb.com/docs/manual/reference/command/explain/
+    * @generated
+    */
+    final class Explain {
+        public const string VERBOSITY_ALL_PLANS ?? 'allPlansExecution';
+        public const string VERBOSITY_EXEC_STATS ?? 'executionStats';
+        public const string VERBOSITY_QUERY ?? 'queryPlanner';
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if the server does not support explaining the operation
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): array|object;
+    }
+    /**
+    * Operation for inserting multiple documents with the insert command.
+    *
+    * @see \MongoDB\Collection::insertMany()
+    * @see https://mongodb.com/docs/manual/reference/command/insert/
+    * @generated
+    */
+    final class InsertMany {
+        /**
+        * Constructs an insert command.
+        *
+        * Supported options:
+        * 
+        *  * bypassDocumentValidation (boolean): If true, allows the write to
+        *    circumvent document level validation.
+        * 
+        *  * codec (MongoDB\Codec\DocumentCodec): Codec used to encode PHP objects
+        *    into BSON.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to the command(s)
+        *    associated with this insert.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * ordered (boolean): If true, when an insert fails, return without
+        *    performing the remaining writes. If false, when a write fails,
+        *    continue with the remaining writes, if any. The default is true.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array<int, object|array> $documents List of documents to insert
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array<int, object|array> $documents, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \MongoDB\InsertManyResult;
+    }
+    /**
+    * Operation for inserting a single document with the insert command.
+    *
+    * @see \MongoDB\Collection::insertOne()
+    * @see https://mongodb.com/docs/manual/reference/command/insert/
+    * @generated
+    */
+    final class InsertOne {
+        /**
+        * Constructs an insert command.
+        *
+        * Supported options:
+        * 
+        *  * bypassDocumentValidation (boolean): If true, allows the write to
+        *    circumvent document level validation.
+        * 
+        *  * codec (MongoDB\Codec\DocumentCodec): Codec used to encode PHP objects
+        *    into BSON.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array|object $document Document to insert
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array|object $document, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \MongoDB\InsertOneResult;
+    }
+    /**
+    * Operation for the listCollectionNames helper.
+    *
+    * @see \MongoDB\Database::listCollectionNames()
+    * @see https://mongodb.com/docs/manual/reference/command/listCollections/
+    * @generated
+    */
+    final class ListCollectionNames {
+        /**
+        * Constructs a listCollections command.
+        *
+        * Supported options:
+        * 
+        *  * authorizedCollections (boolean): Determines which collections are
+        *    returned based on the user privileges.
+        * 
+        *    For servers < 4.0, this option is ignored.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * filter (document): Query by which to filter collections.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        *
+        * @param string $databaseName Database name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return \Iterator
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \Iterator;
+    }
+    /**
+    * Operation for the listCollections command.
+    *
+    * @see \MongoDB\Database::listCollections()
+    * @see https://mongodb.com/docs/manual/reference/command/listCollections/
+    * @generated
+    */
+    final class ListCollections {
+        /**
+        * Constructs a listCollections command.
+        *
+        * Supported options:
+        * 
+        *  * authorizedCollections (boolean): Determines which collections are
+        *    returned based on the user privileges.
+        * 
+        *    For servers < 4.0, this option is ignored.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * filter (document): Query by which to filter collections.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        *
+        * @param string $databaseName Database name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return \Iterator
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \Iterator;
+    }
+    /**
+    * Operation for the ListDatabases command, returning only database names.
+    *
+    * @see \MongoDB\Client::listDatabaseNames()
+    * @see https://mongodb.com/docs/manual/reference/command/listDatabases/#mongodb-dbcommand-dbcmd.listDatabases
+    * @generated
+    */
+    final class ListDatabaseNames {
+        /**
+        * Constructs a listDatabases command.
+        *
+        * Supported options:
+        * 
+        *  * authorizedDatabases (boolean): Determines which databases are returned
+        *    based on the user privileges.
+        * 
+        *    For servers < 4.0.5, this option is ignored.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * filter (document): Query by which to filter databases.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        *
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return \Iterator
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \Iterator;
+    }
+    /**
+    * Operation for the ListDatabases command.
+    *
+    * @see \MongoDB\Client::listDatabases()
+    * @see https://mongodb.com/docs/manual/reference/command/listDatabases/#mongodb-dbcommand-dbcmd.listDatabases`
+    * @generated
+    */
+    final class ListDatabases {
+        /**
+        * Constructs a listDatabases command.
+        *
+        * Supported options:
+        * 
+        *  * authorizedDatabases (boolean): Determines which databases are returned
+        *    based on the user privileges.
+        * 
+        *    For servers < 4.0.5, this option is ignored.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * filter (document): Query by which to filter databases.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        *
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return \Iterator
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \Iterator;
+    }
+    /**
+    * Operation for the listIndexes command.
+    *
+    * @see \MongoDB\Collection::listIndexes()
+    * @see https://mongodb.com/docs/manual/reference/command/listIndexes/
+    * @generated
+    */
+    final class ListIndexes {
+        /**
+        * Constructs a listIndexes command.
+        *
+        * Supported options:
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * maxTimeMS (integer): The maximum amount of time to allow the query to
+        *    run.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return \Iterator
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \Iterator;
+    }
+    /**
+    * Operation for the listSearchIndexes command.
+    *
+    * @see \MongoDB\Collection::listSearchIndexes()
+    * @see https://mongodb.com/docs/manual/reference/command/listSearchIndexes/
+    * @generated
+    */
+    final class ListSearchIndexes {
+        /**
+        * Constructs an aggregate command for listing Atlas Search indexes
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array $options Command options
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return \Iterator
+        * @throws UnexpectedValueException if the command response was malformed
+        * @throws UnsupportedException if collation or read concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \Iterator;
+    }
+    /**
+    * Operation for the collMod command.
+    *
+    * @see \MongoDB\Database::modifyCollection()
+    * @see https://mongodb.com/docs/manual/reference/command/collMod/
+    * @generated
+    */
+    final class ModifyCollection {
+        /**
+        * Constructs a collMod command.
+        *
+        * Supported options:
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * typeMap (array): Type map for BSON deserialization. This will only be
+        *    used for the returned command result document.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection or view to modify
+        * @param array $collectionOptions Collection or view options to assign
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array $collectionOptions, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @return array|object Command result document
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): array|object;
+    }
+    /**
+    * Operation for the renameCollection command.
+    *
+    * @see \MongoDB\Collection::rename()
+    * @see \MongoDB\Database::renameCollection()
+    * @see https://mongodb.com/docs/manual/reference/command/renameCollection/
+    * @generated
+    */
+    final class RenameCollection {
+        /**
+        * Constructs a renameCollection command.
+        *
+        * Supported options:
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        * 
+        *  * dropTarget (boolean): If true, MongoDB will drop the target before
+        *    renaming the collection.
+        *
+        * @param string $fromDatabaseName Database name
+        * @param string $fromCollectionName Collection name
+        * @param string $toDatabaseName New database name
+        * @param string $toCollectionName New collection name
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $fromDatabaseName, string $fromCollectionName, string $toDatabaseName, string $toCollectionName, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): void;
+    }
+    /**
+    * Operation for replacing a single document with the update command.
+    *
+    * @see \MongoDB\Collection::replaceOne()
+    * @see https://mongodb.com/docs/manual/reference/command/update/
+    * @generated
+    */
+    final class ReplaceOne {
+        /**
+        * Constructs an update command.
+        *
+        * Supported options:
+        * 
+        *  * bypassDocumentValidation (boolean): If true, allows the write to
+        *    circumvent document level validation.
+        * 
+        *  * codec (MongoDB\Codec\DocumentCodec): Codec used to encode PHP objects
+        *    into BSON.
+        * 
+        *  * collation (document): Collation specification.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    This is not supported for servers versions < 4.4.
+        * 
+        *  * hint (string|document): The index to use. Specify either the index
+        *    name as a string or the index key pattern as a document. If specified,
+        *    then the query system will only consider plans using the hinted index.
+        * 
+        *    This is not supported for server versions < 4.2 and will result in an
+        *    exception at execution time if used.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * upsert (boolean): When true, a new document is created if no document
+        *    matches the query. The default is false.
+        * 
+        *  * let (document): Map of parameter names and values. Values must be
+        *    constant or closed expressions that do not reference document fields.
+        *    Parameters can then be accessed as variables in an aggregate
+        *    expression context (e.g. "$$var").
+        * 
+        *   * sort (document): Determines which document the operation modifies if
+        *     the query selects multiple documents.
+        * 
+        *     This is not supported for server versions < 8.0 and will result in an
+        *     exception at execution time if used.
+        * 
+        *  * writeConcern (MongoDB\Driver\WriteConcern): Write concern.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param array|object $filter Query by which to filter documents
+        * @param array|object $replacement Replacement document
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, array|object $filter, array|object $replacement, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if collation is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \MongoDB\UpdateResult;
+    }
+    /**
+    * Operation for the createIndexes command.
+    *
+    * @see \MongoDB\Collection::updateSearchIndexes()
+    * @see https://mongodb.com/docs/manual/reference/command/updateSearchIndexes/
+    * @generated
+    */
+    final class UpdateSearchIndex {
+        /**
+        * Constructs a createSearchIndexes command.
+        *
+        * @param string $databaseName Database name
+        * @param string $collectionName Collection name
+        * @param string $name Search index name
+        * @param array|object $definition Atlas Search index definition
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter parsing errors
+        * @generated
+        */
+        public function __construct(string $databaseName, string $collectionName, string $name, array|object $definition, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if write concern is used and unsupported
+        * @throws DriverRuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): void;
+    }
+    /**
+    * Operation for creating a change stream with the aggregate command.
+    *
+    * Note: the implementation of CommandSubscriber is an internal implementation
+    * detail and should not be considered part of the public API.
+    *
+    * @see \MongoDB\Collection::watch()
+    * @see https://mongodb.com/docs/manual/changeStreams/
+    * @generated
+    */
+    final class Watch implements \MongoDB\Driver\Monitoring\CommandSubscriber {
+        public const string FULL_DOCUMENT_UPDATE_LOOKUP ?? 'updateLookup';
+        public const string FULL_DOCUMENT_WHEN_AVAILABLE ?? 'whenAvailable';
+        public const string FULL_DOCUMENT_REQUIRED ?? 'required';
+        public const string FULL_DOCUMENT_BEFORE_CHANGE_OFF ?? 'off';
+        public const string FULL_DOCUMENT_BEFORE_CHANGE_WHEN_AVAILABLE ?? 'whenAvailable';
+        public const string FULL_DOCUMENT_BEFORE_CHANGE_REQUIRED ?? 'required';
+        /**
+        * Constructs an aggregate command for creating a change stream.
+        *
+        * Supported options:
+        * 
+        *  * batchSize (integer): The number of documents to return per batch.
+        * 
+        *  * codec (MongoDB\Codec\DocumentCodec): Codec used to decode documents
+        *    from BSON to PHP objects.
+        * 
+        *  * collation (document): Specifies a collation.
+        * 
+        *  * comment (mixed): BSON value to attach as a comment to this command.
+        * 
+        *    Only string values are supported for server versions < 4.4.
+        * 
+        *  * fullDocument (string): Determines how the "fullDocument" response
+        *    field will be populated for update operations.
+        * 
+        *    By default, change streams only return the delta of fields (via an
+        *    "updateDescription" field) for update operations and "fullDocument" is
+        *    omitted. Insert and replace operations always include the
+        *    "fullDocument" field. Delete operations omit the field as the document
+        *    no longer exists.
+        * 
+        *    Specify "updateLookup" to return the current majority-committed
+        *    version of the updated document.
+        * 
+        *    MongoDB 6.0+ allows returning the post-image of the modified document
+        *    if the collection has changeStreamPreAndPostImages enabled. Specify
+        *    "whenAvailable" to return the post-image if available or a null value
+        *    if not. Specify "required" to return the post-image if available or
+        *    raise an error if not.
+        * 
+        *  * fullDocumentBeforeChange (string): Determines how the
+        *    "fullDocumentBeforeChange" response field will be populated. By
+        *    default, the field is omitted.
+        * 
+        *    MongoDB 6.0+ allows returning the pre-image of the modified document
+        *    if the collection has changeStreamPreAndPostImages enabled. Specify
+        *    "whenAvailable" to return the pre-image if available or a null value
+        *    if not. Specify "required" to return the pre-image if available or
+        *    raise an error if not.
+        * 
+        *  * maxAwaitTimeMS (integer): The maximum amount of time for the server to
+        *    wait on new documents to satisfy a change stream query.
+        * 
+        *  * readConcern (MongoDB\Driver\ReadConcern): Read concern.
+        * 
+        *  * readPreference (MongoDB\Driver\ReadPreference): Read preference. This
+        *    will be used to select a new server when resuming. Defaults to a
+        *    "primary" read preference.
+        * 
+        *  * resumeAfter (document): Specifies the logical starting point for the
+        *    new change stream.
+        * 
+        *    Using this option in conjunction with "startAfter" and/or
+        *    "startAtOperationTime" will result in a server error. The options are
+        *    mutually exclusive.
+        * 
+        *  * session (MongoDB\Driver\Session): Client session.
+        * 
+        *  * showExpandedEvents (boolean): Enables the server to send the expanded
+        *    list of change stream events.
+        * 
+        *    This option is not supported for server versions < 6.0.
+        * 
+        *  * startAfter (document): Specifies the logical starting point for the
+        *    new change stream. Unlike "resumeAfter", this option can be used with
+        *    a resume token from an "invalidate" event.
+        * 
+        *    Using this option in conjunction with "resumeAfter" and/or
+        *    "startAtOperationTime" will result in a server error. The options are
+        *    mutually exclusive.
+        * 
+        *  * startAtOperationTime (MongoDB\BSON\TimestampInterface): If specified,
+        *    the change stream will only provide changes that occurred at or after
+        *    the specified timestamp. Any command run against the server will
+        *    return an operation time that can be used here. Alternatively, an
+        *    operation time may be obtained from MongoDB\Driver\Server::getInfo().
+        * 
+        *    Using this option in conjunction with "resumeAfter" and/or
+        *    "startAfter" will result in a server error. The options are mutually
+        *    exclusive.
+        * 
+        *    This option is not supported for server versions < 4.0.
+        * 
+        *  * typeMap (array): Type map for BSON deserialization. This will be
+        *    applied to the returned Cursor (it is not sent to the server).
+        * 
+        * Note: A database-level change stream may be created by specifying null
+        * for the collection name. A cluster-level change stream may be created by
+        * specifying null for both the database and collection name.
+        *
+        * @param \MongoDB\Driver\Manager $manager Manager instance from the driver
+        * @param ?string $databaseName Database name
+        * @param ?string $collectionName Collection name
+        * @param array $pipeline Aggregation pipeline
+        * @param array $options Command options
+        * @throws InvalidArgumentException for parameter/option parsing errors
+        * @generated
+        */
+        public function __construct(\MongoDB\Driver\Manager $manager, ?string $databaseName, ?string $collectionName, array $pipeline, array $options = []): void;
+        /**
+        * Execute the operation.
+        *
+        * @throws UnsupportedException if collation or read concern is used and unsupported
+        * @throws RuntimeException for other driver errors (e.g. connection errors)
+        * @generated
+        */
+        public function execute(\MongoDB\Driver\Server $server): \MongoDB\ChangeStream;
+    }
+}

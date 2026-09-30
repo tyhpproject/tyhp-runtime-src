@@ -1,0 +1,1255 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Fruitcake\LaravelDebugbar {
+    class DebugbarViewEngine implements \Illuminate\Contracts\View\Engine {
+        /**
+        * @var \Illuminate\Contracts\View\Engine
+        * @generated
+        */
+        protected \Illuminate\Contracts\View\Engine $engine;
+        /**
+        * @var LaravelDebugbar
+        * @generated
+        */
+        protected \Fruitcake\LaravelDebugbar\LaravelDebugbar $laravelDebugbar;
+        /**
+        * @var array
+        * @generated
+        */
+        protected array $exclude_paths;
+        public function __construct(\Illuminate\Contracts\View\Engine $engine, \Fruitcake\LaravelDebugbar\LaravelDebugbar $laravelDebugbar): void;
+        /**
+        * @param string|null $path
+        * @generated
+        */
+        public function get(string|null $path, array $data = []): string;
+        /**
+        * NOTE: This is done to support other Engine swap (example: Livewire).
+        *
+        * @generated
+        */
+        public function __call(mixed $name, mixed $arguments): mixed;
+    }
+    /**
+    * Debug bar subclass which adds all without Request and with LaravelCollector.
+    *
+    * Rest is added in Service Provider
+    *
+    * @method void emergency(...$message)
+    * @method void alert(...$message)
+    * @method void critical(...$message)
+    * @method void error(...$message)
+    * @method void warning(...$message)
+    * @method void notice(...$message)
+    * @method void info(...$message)
+    * @method void debug(...$message)
+    * @method void log(...$message)
+    * @generated
+    */
+    class LaravelDebugbar extends \DebugBar\DebugBar {
+        protected \Illuminate\Foundation\Application $app;
+        protected \Illuminate\Http\Request $request;
+        protected ?\Illuminate\Contracts\Queue\Job $processingJob ?? null;
+        protected bool $booted ?? false;
+        protected ?bool $enabled ?? null;
+        protected ?bool $storageOpen ?? null;
+        /**
+        * Laravel default error handler
+        *
+        * @var callable|null
+        * @generated
+        */
+        protected callable|null $prevErrorHandler ?? null;
+        protected ?string $editorTemplate ?? null;
+        protected bool $responseIsModified ?? false;
+        protected \DebugBar\DataCollector\TimeDataCollector $timeCollector;
+        protected \DebugBar\DataCollector\MessagesCollector $messagesCollector;
+        protected \DebugBar\DataCollector\ExceptionsCollector $exceptionsCollector;
+        public function __construct(\Illuminate\Foundation\Application $app, \Illuminate\Http\Request $request): void;
+        public function setApplication(\Illuminate\Foundation\Application $app): void;
+        public function setRequest(\Illuminate\Http\Request $request): void;
+        public function setProcessingJob(?\Illuminate\Contracts\Queue\Job $job): void;
+        public function getProcessingJob(): ?\Illuminate\Contracts\Queue\Job;
+        public function getHttpDriver(): \DebugBar\HttpDriverInterface;
+        public function getRequestIdGenerator(): \DebugBar\RequestIdGeneratorInterface;
+        public function getTimeCollector(): \DebugBar\DataCollector\TimeDataCollector;
+        public function getMessagesCollector(): \DebugBar\DataCollector\MessagesCollector;
+        public function getExceptionsCollector(): \DebugBar\DataCollector\ExceptionsCollector;
+        public function isCollecting(): bool;
+        /**
+        * Enable the Debugbar and boot, if not already booted.
+        *
+        * @generated
+        */
+        public function enable(): void;
+        /**
+        * Boot the debugbar (add collectors, renderer and listener)
+        *
+        * @generated
+        */
+        public function boot(): void;
+        public function booted(): void;
+        protected function registerCollectors(): void;
+        /**
+        * @param array<string, string> $providers
+        * @generated
+        */
+        protected function registerCollectorProviders(array<string, string> $providers): void;
+        /**
+        * @param array<string, bool> $providers
+        * @generated
+        */
+        protected function registerCustomCollectorProviders(array<string, bool> $providers): void;
+        /**
+        * Register some Casters to avoid large objects for events etc.
+        *
+        * @generated
+        */
+        protected function registerDataFormatter(): void;
+        public function getJavascriptRenderer(?string $baseUrl = null, ?string $basePath = null): \DebugBar\JavascriptRenderer;
+        public function shouldCollect(string $name, bool $default = true): bool;
+        /**
+        * Handle silenced errors
+        *
+        * @generated
+        */
+        public function handleError(int $level, string $message, string $file = '', int $line = 0, array $context = []): mixed;
+        /**
+        * Starts a measure
+        *
+        * @param string $name Internal name, used to stop the measure
+        * @param ?string $label Public name
+        * @generated
+        */
+        public function startMeasure(string $name, ?string $label = null, ?string $collector = null, ?string $group = null): void;
+        /**
+        * Stops a measure
+        *
+        * @generated
+        */
+        public function stopMeasure(string $name): void;
+        /**
+        * Alias for addThrowable
+        *
+        * @generated
+        */
+        public function addException(\Throwable $e): void;
+        /**
+        * Adds an exception to be profiled in the debug bar
+        *
+        * @generated
+        */
+        public function addThrowable(\Throwable $e): void;
+        /**
+        * Register collector exceptions
+        *
+        * @generated
+        */
+        protected function addCollectorException(string $message, \Exception $exception): void;
+        /**
+        * Modify the response and inject the debugbar (or data in headers)
+        *
+        * @generated
+        */
+        public function handleResponse(\Illuminate\Http\Request $request, \Symfony\Component\HttpFoundation\Response $response): \Symfony\Component\HttpFoundation\Response;
+        public static function canBeEnabled(): bool;
+        /**
+        * Check if the Debugbar is enabled
+        *
+        * @generated
+        */
+        public function isEnabled(): bool;
+        public function isStorageOpen(\Illuminate\Http\Request $request): bool;
+        public function requestIsExcluded(\Illuminate\Http\Request $request): bool;
+        /**
+        * Check if this is a request to the Debugbar OpenHandler
+        *
+        * @generated
+        */
+        protected function isDebugbarRequest(\Illuminate\Http\Request $request): bool;
+        protected function isJsonRequest(\Illuminate\Http\Request $request): bool;
+        protected function isJsonResponse(\Symfony\Component\HttpFoundation\Response $response): bool;
+        /**
+        * Collects meta data about the current request
+        *
+        * @generated
+        */
+        public function collectMetaData(): array;
+        /**
+        * Read a client-generated correlation id from the request, used to match a
+        *
+        * streamed response back to its stored Debugbar data via the OpenHandler.
+        * 
+        * Sanitised so it can be safely used as an fnmatch() filter in storage.
+        *
+        * @generated
+        */
+        protected function getRequestCorrelationId(): ?string;
+        public function terminate(): void;
+        /**
+        * Injects the web debug toolbar into the given Response.
+        *
+        * Based on https://github.com/symfony/WebProfilerBundle/blob/master/EventListener/WebDebugToolbarListener.php
+        *
+        * @generated
+        */
+        public function injectDebugbar(\Symfony\Component\HttpFoundation\Response $response): void;
+        /**
+        * Disable the Debugbar
+        *
+        * @generated
+        */
+        public function disable(): void;
+        public function reset(): void;
+        /**
+        * Adds a measure
+        *
+        * @generated
+        */
+        public function addMeasure(string $label, float $start, ?float $end = null, array $params = [], ?string $collector = null, ?string $group = null): void;
+        /**
+        * Utility function to measure the execution of a Closure
+        *
+        * @generated
+        */
+        public function measure(string $label, \Closure $closure, ?string $collector = null, ?string $group = null): mixed;
+        /**
+        * Magic calls for adding messages
+        *
+        * @generated
+        */
+        public function __call(string $method, array $args): void;
+        /**
+        * Adds a message to the MessagesCollector
+        *
+        * A message can be anything from an object to a string
+        *
+        * @generated
+        */
+        public function addMessage(mixed $message, string $label = 'info', array $context = []): void;
+        /**
+        * Check the version of Laravel
+        *
+        * @generated
+        */
+        public function checkVersion(string $version, string $operator = ">="): bool;
+        protected function selectStorage(\DebugBar\DebugBar $debugbar): void;
+        /**
+        * @var Repository $config
+        * @generated
+        */
+        protected function addClockworkHeaders(\Symfony\Component\HttpFoundation\Response $response): void;
+        /**
+        * Add Server-Timing headers for the TimeData collector
+        *
+        * @see https://www.w3.org/TR/server-timing/
+        * @generated
+        */
+        protected function addServerTimingHeaders(\Symfony\Component\HttpFoundation\Response $response): void;
+        protected function detectCspNonce(): ?string;
+        public function emergency(mixed $message): void;
+        public function alert(mixed $message): void;
+        public function critical(mixed $message): void;
+        public function error(mixed $message): void;
+        public function warning(mixed $message): void;
+        public function notice(mixed $message): void;
+        public function info(mixed $message): void;
+        public function debug(mixed $message): void;
+        public function log(mixed $message): void;
+    }
+    class LaravelHttpDriver implements \DebugBar\HttpDriverInterface {
+        protected \Illuminate\Http\Request $request;
+        protected ?\Symfony\Component\HttpFoundation\Response $response ?? null;
+        public function __construct(\Illuminate\Http\Request $request, ?\Symfony\Component\HttpFoundation\Response $response = null): void;
+        public function setRequest(\Illuminate\Http\Request $request): void;
+        public function setResponse(?\Symfony\Component\HttpFoundation\Response $response): void;
+        public function setHeaders(array $headers): void;
+        public function output(string $content): void;
+        public function isSessionStarted(): bool;
+        public function setSessionValue(string $name, mixed $value): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function hasSessionValue(string $name): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getSessionValue(string $name): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function deleteSessionValue(string $name): void;
+    }
+    class ServiceProvider extends \Illuminate\Support\ServiceProvider {
+        /**
+        * Register the service provider.
+        *
+        * @generated
+        */
+        public function register(): void;
+        /**
+        * Bootstrap the application events.
+        *
+        * @generated
+        */
+        public function boot(\Illuminate\Contracts\Events\Dispatcher $events): void;
+        /**
+        * Get the config path
+        *
+        * @generated
+        */
+        protected function getConfigPath(): string;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\CollectorProviders {
+    abstract class AbstractCollectorProvider {
+        protected readonly \Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar;
+        public function __construct(\Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar): void;
+        protected function addCollector(\DebugBar\DataCollector\DataCollectorInterface $collector): void;
+        public function hasCollector(string $name): bool;
+        public function getCollector(string $name): \DebugBar\DataCollector\DataCollectorInterface;
+        protected function addCollectorException(string $message, \Throwable $exception): void;
+        /**
+        * Adds an exception to be profiled in the debug bar
+        *
+        * @generated
+        */
+        public function addThrowable(\Throwable $e): void;
+    }
+    class AiCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        /**
+        * @param array<string, mixed> $options
+        * @generated
+        */
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, array<string, mixed> $options): void;
+    }
+    class AuthCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(array $options): void;
+    }
+    class CacheCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Http\Request $request, \Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class ConfigCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(array $options): void;
+    }
+    class DatabaseCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, \Illuminate\Routing\Router $router, \Illuminate\Http\Request $request, \Illuminate\Contracts\Debug\ExceptionHandler $exceptionHandler, array $options): void;
+    }
+    class EventsCollectorCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Http\Request $request, \Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class ExceptionsCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Debug\ExceptionHandler $exceptionHandler, array $options): void;
+    }
+    class GateCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class HttpClientCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        protected ?\Fruitcake\LaravelDebugbar\DataCollector\HttpClientCollector $httpClientCollector ?? null;
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+        /**
+        * @var TimeDataCollector $timeCollector
+        * @generated
+        */
+        protected function addEvent(\Illuminate\Http\Client\Events\ResponseReceived|\Illuminate\Http\Client\Events\ConnectionFailed $event): void;
+    }
+    class InertiaCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Foundation\Application $app, \Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class JobsCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class LaravelCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(array $options): void;
+    }
+    class LivewireCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Foundation\Application $app, \Illuminate\Http\Request $request): void;
+    }
+    class LogCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Log\Logger $logger, array $options): void;
+    }
+    class LogsCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Log\Logger $logger, array $options): void;
+    }
+    class MailCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class MemoryCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(array $options): void;
+    }
+    class MessagesCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(array $options): void;
+    }
+    class ModelsCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class PennantCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Foundation\Application $app, array $options): void;
+    }
+    class PhpInfoCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(array $options): void;
+    }
+    class RequestCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, \Illuminate\Http\Request $request, array $options): void;
+    }
+    class RouteCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(array $options): void;
+    }
+    class SessionCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Http\Request $request, array $options): void;
+    }
+    class TimeCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Foundation\Application $app, \Illuminate\Http\Request $request, \Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+    class ViewsCollectorProvider extends \Fruitcake\LaravelDebugbar\CollectorProviders\AbstractCollectorProvider {
+        public function __invoke(\Illuminate\Contracts\Events\Dispatcher $events, array $options): void;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Console {
+    class ClearCommand extends \Illuminate\Console\Command {
+        protected mixed $name ?? 'debugbar:clear';
+        protected mixed $description ?? 'Clear the Debugbar Storage';
+        public function handle(\Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar): void;
+    }
+    class FindCommand extends \Illuminate\Console\Command {
+        use \Fruitcake\LaravelDebugbar\Console\Concerns\AnalyzesQueries;
+        protected mixed $signature;
+        protected mixed $description ?? 'List the Debugbar Storage';
+        public function handle(\Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar): void;
+    }
+    class GetCommand extends \Illuminate\Console\Command {
+        protected mixed $signature;
+        protected mixed $description ?? 'Get a Debugbar request from the Storage';
+        public function handle(\Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar): void;
+        public function dumpResult(array $result, mixed $output = null): ?string;
+    }
+    class InstallSkillCommand extends \Illuminate\Console\Command {
+        protected mixed $signature;
+        protected mixed $description ?? 'Install the Debugbar debugging skill for AI coding agents';
+        public function handle(\Illuminate\Filesystem\Filesystem $files): int;
+    }
+    class QueriesCommand extends \Illuminate\Console\Command {
+        use \Fruitcake\LaravelDebugbar\Console\Concerns\AnalyzesQueries;
+        protected mixed $signature;
+        protected mixed $description ?? 'Shows Debugbar Queries from a specific request';
+        public function handle(\Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar): void;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Console\Concerns {
+    trait AnalyzesQueries {
+        /**
+        * Group statement indexes by sql+params+connection, matching the front-end logic.
+        *
+        * These are exact repeats: the same query, run more than once, with the same values.
+        *
+        * @return array<string, array<int, int>>
+        * @generated
+        */
+        protected function duplicateGroups(array $statements): array<string, array<int, int>>;
+        /**
+        * Group statement indexes by the *shape* of the query, ignoring literal values.
+        *
+        * A classic N+1 runs the same query with a different id per record, so it never
+        * shows up as an exact duplicate. Groups whose members are all identical are
+        * excluded, because those are already reported as duplicates.
+        *
+        * @return array<string, array<int, int>>
+        * @generated
+        */
+        protected function nPlusOneGroups(array $statements): array<string, array<int, int>>;
+        /**
+        * Failed statements keyed by their index. `nb_failed_statements` is not
+        *
+        * populated by the collector, so the statements are the source of truth.
+        *
+        * @return array<int, array>
+        * @generated
+        */
+        protected function failedStatements(array $statements): array<int, array>;
+        /**
+        * Strip literal values so two runs of the same query with different values
+        *
+        * collapse onto one key. The collector renders bindings into the SQL, so
+        * comparing the raw string is not enough.
+        *
+        * @generated
+        */
+        protected function normalizeSql(string $sql): string;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Controllers {
+    class AssetController {
+        public function getAssets(\Fruitcake\LaravelDebugbar\Requests\AssetRequest $request, \DebugBar\AssetHandler $assetHandler, \Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar): \Illuminate\Http\Response;
+    }
+    class CacheController {
+        /**
+        * Forget a cache key
+        *
+        * @generated
+        */
+        public function delete(\Illuminate\Cache\CacheManager $cache, \Fruitcake\LaravelDebugbar\Requests\CacheDeleteRequest $request, string $key): \Illuminate\Http\JsonResponse;
+    }
+    class OpenHandlerController {
+        public function handle(\Fruitcake\LaravelDebugbar\Requests\OpenHandlerRequest $request, \Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar, \DebugBar\OpenHandler $openHandler): \Illuminate\Http\Response|\Illuminate\Http\JsonResponse;
+        /**
+        * Return Clockwork output
+        *
+        * @throws \DebugBar\DebugBarException
+        * @generated
+        */
+        public function clockwork(\DebugBar\OpenHandler $openHandler, mixed $id): \Illuminate\Http\JsonResponse;
+    }
+    class QueriesController {
+        /**
+        * Generate explain data for query.
+        *
+        * @generated
+        */
+        public function explain(\Fruitcake\LaravelDebugbar\Requests\QueriesExplainRequest $request, \Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar, \Fruitcake\LaravelDebugbar\Support\Explain $explain): \Illuminate\Http\JsonResponse;
+    }
+    class TelescopeController {
+        public function show(\Laravel\Telescope\Contracts\EntriesRepository $storage, mixed $uuid): mixed;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\DataCollector {
+    /**
+    * Collects laravel/ai agent activity. Each agent invocation is shown as a
+    *
+    * single entry combining the prompt, response, token usage and any tool
+    * calls made during that run.
+    * 
+    * Tool invocations are buffered by invocation id as they fire and folded
+    * into the entry recorded when the agent finishes ({@see AgentPrompted}).
+    *
+    * @generated
+    */
+    class AiCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\DataCollectorInterface, \DebugBar\DataCollector\Renderable {
+        /**
+        * Completed agent runs, ready for display.
+        *
+        * @var array<int, array<string, mixed>>
+        * @generated
+        */
+        protected array<int, array<string, mixed>> $runs ?? [];
+        /**
+        * Tool calls collected during the current request, keyed by invocation id.
+        *
+        * @var array<string, array<int, array<string, mixed>>>
+        * @generated
+        */
+        protected array<string, array<int, array<string, mixed>>> $toolInvocations ?? [];
+        protected bool $collectValues ?? true;
+        public function __construct(bool $collectValues = true): void;
+        public function bufferToolInvocation(\Laravel\Ai\Events\ToolInvoked $event): void;
+        public function recordAgentPrompted(\Laravel\Ai\Events\AgentPrompted|\Laravel\Ai\Events\AgentStreamed $event): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+        /**
+        * Keep large prompt/response/tool bodies from bloating the debug bar.
+        *
+        * @generated
+        */
+        protected function truncate(string $value, int $limit = 20000): string;
+    }
+    class CacheCollector extends \DebugBar\DataCollector\TimeDataCollector implements \DebugBar\DataCollector\AssetProvider, \DebugBar\DataCollector\Resettable {
+        use \DebugBar\DataCollector\HasTimeDataCollector;
+        protected bool $collectValues ?? false;
+        protected array $eventStarts ?? [];
+        protected array $classMap ?? [];
+        public function __construct(float $requestStartTime, bool $collectValues): void;
+        public function getCacheEvents(): array;
+        public function onCacheEvent(\Illuminate\Cache\Events\CacheEvent|\Illuminate\Cache\Events\CacheFailedOver|\Illuminate\Cache\Events\CacheFlushed|\Illuminate\Cache\Events\CacheFlushFailed|\Illuminate\Cache\Events\CacheFlushing $event): void;
+        public function onStartCacheEvent(mixed $event): void;
+        protected function getEventHash(string $class, array $params): string;
+        public function collect(): array;
+        public function reset(): void;
+        public function getName(): string;
+        public function getWidgets(): array;
+        public function getAssets(): array;
+    }
+    class ConfigCollector extends \DebugBar\DataCollector\ConfigCollector {
+        public function collect(): array;
+    }
+    class EventCollector extends \DebugBar\DataCollector\TimeDataCollector {
+        protected array $excludedEvents ?? [];
+        protected bool $collectValues ?? false;
+        protected bool $collectListeners ?? false;
+        public function setCollectValues(bool $collectValues = true): void;
+        public function setCollectListeners(bool $collectListeners = true): void;
+        public function setExcludedEvents(array $excludedEvents): void;
+        public function onWildcardEvent(?string $name = null, array $data = []): void;
+        public function collect(): array;
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    /**
+    * Collector for Laravel's gate checks
+    *
+    * @generated
+    */
+    class GateCollector extends \DebugBar\DataCollector\MessagesCollector implements \DebugBar\DataCollector\Resettable {
+        protected array $reflection ?? [];
+        protected int $backtraceLimit ?? 20;
+        public function addCheck(mixed $user, string|int $ability, mixed $result, array $arguments = []): void;
+        protected function getStackTraceItem(array $stacktrace): array;
+        /**
+        * Find the route action file
+        *
+        * @generated
+        */
+        protected function findControllerFromDispatcher(array $trace): array;
+        /**
+        * Find the template name from the hash.
+        *
+        * @generated
+        */
+        protected function findViewFromHash(string $hash): ?string;
+        public function reset(): void;
+    }
+    class HttpClientCollector extends \DebugBar\DataCollector\HttpCollector {
+        public function addEvent(\Illuminate\Http\Client\Events\ResponseReceived|\Illuminate\Http\Client\Events\ConnectionFailed $event): void;
+        protected function parseResponse(\Illuminate\Http\Client\Response $response): string|array;
+    }
+    /**
+    * Collector for Ineratia.
+    *
+    * @generated
+    */
+    class InertiaCollector extends \DebugBar\DataCollector\TemplateCollector {
+        public function addFromView(\Illuminate\View\View $view): void;
+        public function addFromResponse(\Symfony\Component\HttpFoundation\Response $response): void;
+        public function collect(): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        public function getWidgets(): array;
+    }
+    class LaravelCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+    }
+    /**
+    * Collector for Models.
+    *
+    * @generated
+    */
+    class LivewireCollector extends \DebugBar\DataCollector\TemplateCollector {
+        public function addLivewireComponent(\Livewire\Component $component, ?\Illuminate\Http\Request $request = null): void;
+        /**
+        * Resolve the file the component was written in.
+        *
+        * Livewire 4 compiles single- and multi-file components into the cache
+        * directory, so reflection reports the compiled class rather than the
+        * source the user can edit.
+        *
+        * @generated
+        */
+        protected function resolveSourcePath(\Livewire\Component $component): ?string;
+        /**
+        * @return array
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * @return array<string, array>
+        * @generated
+        */
+        public function getWidgets(): array<string, array>;
+    }
+    class LogsCollector extends \DebugBar\DataCollector\MessagesCollector {
+        protected mixed $lines ?? 124;
+        protected array $paths ?? [];
+        public function __construct(string|array|null $path = null, string $name = 'logs'): void;
+        public function collect(): array;
+        /**
+        * get logs apache in app/storage/logs
+        *
+        * only 24 last of current day
+        *
+        * @generated
+        */
+        public function getStorageLogs(string $path): void;
+        /**
+        * By Ain Tohvri (ain)
+        *
+        * http://tekkie.flashbit.net/php/tail-functionality-in-php
+        *
+        * @generated
+        */
+        protected function tailFile(string $file, int $lines): array;
+        /**
+        * Search a string for log entries
+        *
+        * Based on https://github.com/mikemand/logviewer/blob/master/src/Kmd/Logviewer/Logviewer.php by mikemand
+        *
+        * @generated
+        */
+        public function getLogs(string $file): array;
+        public function getMessages(): array;
+        /**
+        * Get the log levels from psr/log.
+        *
+        * Based on https://github.com/mikemand/logviewer/blob/master/src/Kmd/Logviewer/Logviewer.php by mikemand
+        *
+        * @generated
+        */
+        public function getLevels(): array;
+    }
+    /**
+    * Collector for Laravel's Auth provider
+    *
+    * @generated
+    */
+    class MultiAuthCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable {
+        protected array $guards ?? [];
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $showName ?? false;
+        /**
+        * @var bool
+        * @generated
+        */
+        protected bool $showGuardsData ?? true;
+        public function __construct(array $guards = []): void;
+        /**
+        * Set to show the users name/email
+        *
+        * @generated
+        */
+        public function setShowName(bool $showName): void;
+        /**
+        * Set to hide the guards tab, and show only name
+        *
+        * @generated
+        */
+        public function setShowGuardsData(bool $showGuardsData): void;
+        /**
+        * @{inheritDoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * Get displayed user information
+        *
+        * @generated
+        */
+        protected function getUserInformation(mixed $user = null): array;
+        /**
+        * @{inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * @{inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+    }
+    class PennantCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\DataCollectorInterface, \DebugBar\DataCollector\Renderable {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+    }
+    /**
+    * Collects data about SQL statements executed with PDO
+    *
+    * @generated
+    */
+    class QueryCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable, \DebugBar\DataCollector\AssetProvider, \DebugBar\DataCollector\Resettable {
+        use \DebugBar\DataCollector\HasTimeDataCollector;
+        protected array $queries ?? [];
+        protected int $queryCount ?? 0;
+        protected int $transactionEventsCount ?? 0;
+        protected int $infoStatements ?? 0;
+        protected ?int $softLimit ?? null;
+        protected ?int $hardLimit ?? null;
+        protected ?int $lastMemoryUsage ?? null;
+        protected bool|int $findSource ?? false;
+        protected array $middleware ?? [];
+        protected bool $explainQuery ?? false;
+        protected bool $showQueryResult ?? false;
+        protected array $reflection ?? [];
+        protected array $excludePaths ?? [];
+        protected array $backtraceExcludePaths ?? [];
+        protected ?\DebugBar\DataFormatter\QueryFormatter $queryFormatter ?? null;
+        protected bool $renderSqlWithParams ?? false;
+        protected bool $durationBackground ?? false;
+        protected ?float $slowThreshold ?? null;
+        protected bool $backtraceEditorLinks ?? false;
+        public function getQueryFormatter(): \DebugBar\DataFormatter\QueryFormatter;
+        /**
+        * @param ?int $softLimit After the soft limit, no parameters/backtrace are captured
+        * @param ?int $hardLimit After the hard limit, queries are ignored
+        * @generated
+        */
+        public function setLimits(?int $softLimit, ?int $hardLimit): void;
+        /**
+        * Renders the SQL of traced statements with params embedded
+        *
+        * @generated
+        */
+        public function setRenderSqlWithParams(bool $enabled = true): void;
+        /**
+        * Enable/disable finding the source
+        *
+        * @generated
+        */
+        public function setFindSource(bool|int $value, array $middleware): void;
+        public function mergeExcludePaths(array $excludePaths): void;
+        /**
+        * Set additional paths to exclude from the backtrace
+        *
+        * @generated
+        */
+        public function mergeBacktraceExcludePaths(array $excludePaths): void;
+        /**
+        * Enable/disable the shaded duration background on queries
+        *
+        * @generated
+        */
+        public function setDurationBackground(bool $enabled): void;
+        /**
+        * Highlights queries that exceed the threshold
+        *
+        * @param int|float $threshold miliseconds value
+        * @generated
+        */
+        public function setSlowThreshold(int|float $threshold): void;
+        public function isSqlRenderedWithParams(): bool;
+        /**
+        * Enable/disable the EXPLAIN queries
+        *
+        * @deprecated use setExplainQuery()
+        * @generated
+        */
+        deprecated public function setExplainSource(bool $enabled): void;
+        /**
+        * Enable/disable the EXPLAIN queries
+        *
+        * @generated
+        */
+        public function setExplainQuery(bool $enabled): void;
+        /**
+        * Enable/disable the EXPLAIN queries
+        *
+        * @generated
+        */
+        public function setShowQueryResult(bool $enabled): void;
+        /**
+        * Enable/disable editor links on backtrace entries
+        *
+        * @generated
+        */
+        public function setBacktraceEditorLinks(bool $enabled): void;
+        public function startMemoryUsage(): void;
+        public function addQuery(\Illuminate\Database\Events\QueryExecuted $query): void;
+        public function addFailedQuery(\Illuminate\Database\QueryException $exception): void;
+        /**
+        * Use a backtrace to search for the origins of the query.
+        *
+        * @generated
+        */
+        protected function findSource(?array $stack = null): array;
+        /**
+        * Parse a trace element from the backtrace stack.
+        *
+        * @generated
+        */
+        protected function parseTrace(int $index, array $trace): object|bool;
+        /**
+        * Check if the given file is to be excluded from analysis
+        *
+        * @generated
+        */
+        protected function fileIsInExcludedPath(string $file): bool;
+        /**
+        * Find the middleware alias from the file.
+        *
+        * @generated
+        */
+        protected function findMiddlewareFromFile(string $file): ?string;
+        /**
+        * Find the template name from the hash.
+        *
+        * @generated
+        */
+        protected function findViewFromHash(string $hash): ?array;
+        /**
+        * Get the filename/line from a Twig template trace
+        *
+        * @generated
+        */
+        protected function getTwigInfo(array $trace): array;
+        /**
+        * Adds a custom message to statements.
+        *
+        * @generated
+        */
+        public function addMessage(mixed $message, string $type = 'message'): void;
+        /**
+        * Collect a database transaction event.
+        *
+        * @generated
+        */
+        public function collectTransactionEvent(string $event, mixed $connection): void;
+        /**
+        * Reset the queries.
+        *
+        * @generated
+        */
+        public function reset(): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+        protected function getSqlQueryToDisplay(array $query): string;
+        public function getAssets(): array;
+    }
+    class RequestCollector extends \DebugBar\Bridge\Symfony\SymfonyRequestCollector implements \DebugBar\DataCollector\DataCollectorInterface, \DebugBar\DataCollector\Renderable {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        protected function collectCli(): array;
+        protected function collectJob(\Illuminate\Contracts\Queue\Job $job): array;
+        protected function getRouteInformation(mixed $route): array;
+    }
+    /**
+    * Based on Illuminate\Foundation\Console\RoutesCommand for Taylor Otwell
+    *
+    * https://github.com/laravel/framework/blob/master/src/Illuminate/Foundation/Console/RoutesCommand.php
+    *
+    * @generated
+    */
+    class RouteCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\Renderable {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * Get the route information for a given route.
+        *
+        * @generated
+        */
+        protected function getRouteInformation(mixed $route): array;
+        /**
+        * Get middleware
+        *
+        * @generated
+        */
+        protected function getMiddleware(mixed $route): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+    }
+    class SessionCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\DataCollectorInterface, \DebugBar\DataCollector\Renderable {
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+    }
+    class ViewCollector extends \DebugBar\DataCollector\TemplateCollector {
+        public function getName(): string;
+        /**
+        * Add a View instance to the Collector
+        *
+        * @generated
+        */
+        public function addView(\Illuminate\View\View $view): void;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Facades {
+    /**
+    * @method static LaravelDebugbar addCollector(DataCollectorInterface $collector)
+    * @method static void            addMessage(mixed $message, string $label = 'info')
+    * @method static void            alert(mixed $message)
+    * @method static void            critical(mixed $message)
+    * @method static void            debug(mixed $message)
+    * @method static void            emergency(mixed $message)
+    * @method static void            error(mixed $message)
+    * @method static LaravelDebugbar getCollector(string $name)
+    * @method static bool            hasCollector(string $name)
+    * @method static void            info(mixed $message)
+    * @method static void            log(mixed $message)
+    * @method static void            notice(mixed $message)
+    * @method static void            warning(mixed $message)
+    * @see \Fruitcake\LaravelDebugbar\LaravelDebugbar
+    * @generated
+    */
+    class Debugbar extends \Illuminate\Support\Facades\Facade {
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        protected static function getFacadeAccessor(): string;
+        public static function addCollector(\DebugBar\DataCollector\DataCollectorInterface $collector): \Fruitcake\LaravelDebugbar\LaravelDebugbar;
+        public static function addMessage(mixed $message, string $label): void;
+        public static function alert(mixed $message): void;
+        public static function critical(mixed $message): void;
+        public static function debug(mixed $message): void;
+        public static function emergency(mixed $message): void;
+        public static function error(mixed $message): void;
+        public static function getCollector(string $name): \Fruitcake\LaravelDebugbar\LaravelDebugbar;
+        public static function hasCollector(string $name): bool;
+        public static function info(mixed $message): void;
+        public static function log(mixed $message): void;
+        public static function notice(mixed $message): void;
+        public static function warning(mixed $message): void;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Middleware {
+    readonly class DebugbarEnabled {
+        protected \Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar;
+        /**
+        * Create a new middleware instance.
+        *
+        * @generated
+        */
+        public function __construct(\Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar): void;
+        /**
+        * Handle an incoming request.
+        *
+        * @param \Illuminate\Http\Request $request
+        * @generated
+        */
+        public function handle(\Illuminate\Http\Request $request, \Closure $next): mixed;
+    }
+    readonly class StopRecordingTelescope {
+        /**
+        * Handle an incoming request.
+        *
+        * @param \Illuminate\Http\Request $request
+        * @generated
+        */
+        public function handle(\Illuminate\Http\Request $request, \Closure $next): mixed;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Requests {
+    class AssetRequest extends \Illuminate\Foundation\Http\FormRequest {
+        public function rules(): array;
+    }
+    class CacheDeleteRequest extends \Illuminate\Foundation\Http\FormRequest {
+        public function authorize(): bool;
+        public function rules(): array;
+    }
+    class OpenHandlerRequest extends \Illuminate\Foundation\Http\FormRequest {
+        public function rules(): array;
+    }
+    class QueriesExplainRequest extends \Illuminate\Foundation\Http\FormRequest {
+        public function rules(): array;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Support {
+    class Explain {
+        public function isReadOnlyQuery(string $query): bool;
+        public function isRawExplainSupported(string $driver, ?array $bindings): bool;
+        public function isVisualExplainSupported(string $connection): bool;
+        public function confirmVisualExplain(string $connection): ?string;
+        public function hash(string $connection, string $sql, ?array $bindings): string;
+        public function generateSelectResult(string $connection, string $sql, array $bindings, string $hash, ?string $format): array;
+        public function generateRawExplain(string $connection, string $sql, array $bindings, string $hash): array;
+        public function generateVisualExplain(string $connection, string $sql, array $bindings, string $hash): string;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Support\Clockwork {
+    /**
+    * Based on \Symfony\Component\HttpKernel\DataCollector\RequestDataCollector by Fabien Potencier <fabien@symfony.com>
+    *
+    * @generated
+    */
+    class ClockworkCollector extends \DebugBar\DataCollector\DataCollector implements \DebugBar\DataCollector\DataCollectorInterface, \DebugBar\DataCollector\Renderable {
+        protected \Symfony\Component\HttpFoundation\Request $request;
+        protected \Symfony\Component\HttpFoundation\Response $response;
+        public function __construct(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getName(): string;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getWidgets(): array;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function collect(): array;
+    }
+    class Converter {
+        /**
+        * Convert the phpdebugbar data to Clockwork format.
+        *
+        * @param array $data
+        * @generated
+        */
+        public function convert(array $data): array;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Support\Octane {
+    class ResetDebugbar {
+        /**
+        * Handle the event.
+        *
+        * @generated
+        */
+        public function handle(\Laravel\Octane\Events\RequestReceived $event): void;
+    }
+}
+namespace Fruitcake\LaravelDebugbar\Twig\Extension {
+    /**
+    * Access debugbar debug in your Twig templates.
+    *
+    * @generated
+    */
+    class Debug extends \DebugBar\Bridge\Twig\DebugTwigExtension {
+        public function debug(\Twig\Environment $env, mixed $context): mixed;
+    }
+    /**
+    * Dump variables using the DataFormatter
+    *
+    * @generated
+    */
+    class Dump extends \DebugBar\Bridge\Twig\DumpTwigExtension {
+    }
+    /**
+    * Access debugbar time measures in your Twig templates.
+    *
+    * Based on Symfony\Bridge\Twig\Extension\StopwatchExtension
+    *
+    * @generated
+    */
+    class Stopwatch extends \DebugBar\Bridge\Twig\MeasureTwigExtension {
+        /**
+        * @var \Fruitcake\LaravelDebugbar\LaravelDebugbar
+        * @generated
+        */
+        protected \Fruitcake\LaravelDebugbar\LaravelDebugbar $debugbar;
+        /**
+        * Create a new time measure extension.
+        *
+        * @generated
+        */
+        public function __construct(\Illuminate\Foundation\Application $app): void;
+        public function getDebugbar(): mixed;
+        public function getTokenParsers(): mixed;
+        public function startMeasure(mixed ...$arg): mixed;
+        public function stopMeasure(mixed ...$arg): mixed;
+    }
+}

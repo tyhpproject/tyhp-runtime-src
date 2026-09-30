@@ -1,0 +1,314 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Spiral\RoadRunner {
+    type EnvironmentVariables = array|array<string, string>;
+    /**
+    * @see Mode
+    * @generated
+    */
+    class Environment implements \Spiral\RoadRunner\EnvironmentInterface {
+        /**
+        * @param EnvironmentVariables $env
+        * @generated
+        */
+        public function __construct(\Spiral\RoadRunner\EnvironmentVariables $env = []): void;
+        public static function fromGlobals(): self;
+        /**
+        * @var array<string, string> $env
+        * @generated
+        */
+        public function getMode(): string;
+        public function getRelayAddress(): string;
+        public function getRPCAddress(): string;
+        public function getVersion(): string;
+    }
+    /**
+    * Provides base values to configure roadrunner worker.
+    *
+    * @see Mode
+    * @method string getVersion()
+    * @generated
+    */
+    interface EnvironmentInterface {
+        /**
+        * Returns worker mode assigned to the PHP process.
+        *
+        * @return string
+        * @generated
+        */
+        public function getMode(): string;
+        /**
+        * Address worker should be connected to (or pipes).
+        *
+        * @generated
+        */
+        public function getRelayAddress(): string;
+        /**
+        * RPC address.
+        *
+        * @generated
+        */
+        public function getRPCAddress(): string;
+        public function getVersion(): string;
+    }
+    class Logger implements \Psr\Log\LoggerInterface {
+        use \Psr\Log\LoggerTrait;
+        /**
+        * @psalm-suppress RedundantConditionGivenDocblockType
+        * @generated
+        */
+        public function log(mixed $level, string|\Stringable $message, array $context = []): void;
+        protected function write(string $message): void;
+        protected function format(string $level, string $message, array $context = []): string;
+        protected function formatContext(array $context): string;
+    }
+    final class PayloadFactory {
+        public static function fromFrame(\Spiral\Goridge\Frame $frame): \Spiral\RoadRunner\Payload;
+    }
+    interface StreamWorkerInterface extends \Spiral\RoadRunner\WorkerInterface {
+        public function withStreamMode(): static;
+    }
+    final class Version {
+        public const array PACKAGE_NAMES ?? [];
+        public const string VERSION_FALLBACK ?? 'dev-master';
+        public static function current(): string;
+        public static function constraint(): string;
+    }
+    /**
+    * Accepts connection from RoadRunner server over given Goridge relay.
+    *
+    * <code>
+    * $worker = Worker::create();
+    * 
+    * while ($receivedPayload = $worker->waitPayload()) {
+    *      $worker->respond(new Payload("DONE", json_encode($context)));
+    * }
+    * </code>
+    *
+    * @generated
+    */
+    class Worker implements \Spiral\RoadRunner\StreamWorkerInterface {
+        public function __construct(\Spiral\Goridge\RelayInterface $relay, bool $interceptSideEffects = true, \Psr\Log\LoggerInterface $logger): void;
+        /**
+        * Create a new RoadRunner {@see Worker} using global
+        *
+        * environment ({@see Environment}) configuration.
+        *
+        * @generated
+        */
+        public static function create(bool $interceptSideEffects = true, \Psr\Log\LoggerInterface $logger): self;
+        /**
+        * Create a new RoadRunner {@see Worker} using passed environment
+        *
+        * configuration.
+        *
+        * @generated
+        */
+        public static function createFromEnvironment(\Spiral\RoadRunner\EnvironmentInterface $env, bool $interceptSideEffects = true, \Psr\Log\LoggerInterface $logger): self;
+        public function getLogger(): \Psr\Log\LoggerInterface;
+        public function waitPayload(): ?\Spiral\RoadRunner\Payload;
+        public function withStreamMode(): static;
+        /**
+        * @param ?int $codec The codec used for encoding the payload header.
+        *  *            Can be {@see Frame::CODEC_PROTO} for Protocol Buffers or {@see Frame::CODEC_JSON} for JSON.
+        *  *            This parameter will be removed in v4.0 and {@see Frame::CODEC_PROTO} will be used by default.
+        * @generated
+        */
+        public function respond(\Spiral\RoadRunner\Payload $payload, ?int $codec = null): void;
+        public function error(string $error): void;
+        public function stop(): void;
+        public function hasPayload(?string $class = null): bool;
+        public function getPayload(?string $class = null): ?\Spiral\RoadRunner\Payload;
+    }
+    interface WorkerAwareInterface {
+        /**
+        * Returns underlying binary worker.
+        *
+        * @generated
+        */
+        public function getWorker(): \Spiral\RoadRunner\WorkerInterface;
+    }
+    interface WorkerInterface {
+        /**
+        * Wait for incoming payload from the server.
+        *
+        * Must return {@see null} when worker stopped.
+        *
+        * @throws RoadRunnerException
+        * @generated
+        */
+        public function waitPayload(): ?\Spiral\RoadRunner\Payload;
+        /**
+        * Respond to the server with the processing result.
+        *
+        * @throws RoadRunnerException
+        * @generated
+        */
+        public function respond(\Spiral\RoadRunner\Payload $payload): void;
+        /**
+        * Respond to the server with an error.
+        *
+        * Error must be treated as TaskError and might not cause worker destruction.
+        * 
+        * <code>
+        *  $worker->error('Something Went Wrong');
+        * </code>
+        *
+        * @throws RoadRunnerException
+        * @generated
+        */
+        public function error(string $error): void;
+        /**
+        * Terminate the process. Server must automatically pass task to the next
+        *
+        * available process. Worker will receive stop command after calling this
+        * method.
+        * 
+        * Attention, you MUST use continue; after invoking this method to let
+        * RoadRunner to properly stop worker.
+        *
+        * @generated
+        */
+        public function stop(): void;
+        /**
+        * @param ?string $class
+        * @return bool Returns {@see true} if worker is ready to accept new payload.
+        * @generated
+        */
+        public function hasPayload(?string $class = null): bool;
+        /**
+        * @param ?string $class
+        * @return ?\Spiral\RoadRunner\Payload Returns {@see null} if worker is not ready to accept new payload and has no cached payload
+        *  *             of the given type.
+        * @generated
+        */
+        public function getPayload(?string $class = null): ?\Spiral\RoadRunner\Payload;
+    }
+    type WorkerPoolTInformerWorker = struct {
+        mixed $pid;
+        int $status;
+        int $numExecs;
+        mixed $created;
+        mixed $memoryUsage;
+        float $CPUPercent;
+        string $command;
+        string $statusStr;
+    };
+    /**
+    * @generated
+    */
+    final class WorkerPool {
+        public function __construct(\Spiral\Goridge\RPC\RPCInterface $rpc): void;
+        /**
+        * Add worker to the pool.
+        *
+        * @param string $plugin
+        * @generated
+        */
+        public function addWorker(string $plugin): void;
+        /**
+        * Get the number of workers for the pool.
+        *
+        * @param string $plugin
+        * @generated
+        */
+        public function countWorkers(string $plugin): int;
+        /**
+        * Get the info about running workers for the pool.
+        *
+        * @param string $plugin
+        * @generated
+        */
+        public function getWorkers(string $plugin): \Spiral\RoadRunner\Informer\Workers;
+        /**
+        * Remove worker from the pool.
+        *
+        * @param string $plugin
+        * @generated
+        */
+        public function removeWorker(string $plugin): void;
+    }
+}
+namespace Spiral\RoadRunner\Environment {
+    type ModeType = mixed;
+    /**
+    * @generated
+    */
+    interface Mode {
+        public const string MODE_HTTP ?? 'http';
+        public const string MODE_TEMPORAL ?? 'temporal';
+        public const string MODE_JOBS ?? 'jobs';
+        public const string MODE_GRPC ?? 'grpc';
+        public const string MODE_TCP ?? 'tcp';
+        public const string MODE_CENTRIFUGE ?? 'centrifuge';
+    }
+}
+namespace Spiral\RoadRunner\Exception {
+    final class RoadRunnerException extends \RuntimeException {
+    }
+}
+namespace Spiral\RoadRunner\Informer {
+    final class Worker {
+        public int $pid;
+        public int $statusCode;
+        public int $executions;
+        public int $createdAt;
+        public int $memoryUsage;
+        public float $cpuUsage;
+        public string $command;
+        public string $status;
+        /**
+        * @param int $pid process id
+        * @param int $statusCode integer status of the worker
+        * @param int $executions number of worker executions
+        * @param int $createdAt unix nano timestamp of worker creation time
+        * @param int $memoryUsage memory usage in bytes. Values might vary for different operating systems and based on RSS
+        * @param float $cpuUsage how many percent of the CPU time this process uses
+        * @param string $command used in the service plugin and shows a command for the particular service
+        * @generated
+        */
+        public function __construct(int $pid, int $statusCode, int $executions, int $createdAt, int $memoryUsage, float $cpuUsage, string $command, string $status): void;
+    }
+    final class Workers implements \Countable {
+        /**
+        * @param array<Worker> $workers
+        * @generated
+        */
+        public function __construct(array<\Spiral\RoadRunner\Informer\Worker> $workers = []): void;
+        /**
+        * @return array<Worker>
+        * @generated
+        */
+        public function getWorkers(): array<\Spiral\RoadRunner\Informer\Worker>;
+        public function count(): int;
+    }
+}
+namespace Spiral\RoadRunner\Message\Command {
+    /**
+    * @psalm-immutable
+    * @generated
+    */
+    final class GetProcessId extends \Spiral\RoadRunner\Payload implements \Spiral\RoadRunner\Message\ControlMessage {
+    }
+    /**
+    * @psalm-immutable
+    * @generated
+    */
+    final class Pong extends \Spiral\RoadRunner\Payload implements \Spiral\RoadRunner\Message\SkipMessage {
+    }
+    /**
+    * @psalm-immutable
+    * @generated
+    */
+    final class StreamStop extends \Spiral\RoadRunner\Payload implements \Spiral\RoadRunner\Message\SkipMessage {
+    }
+    /**
+    * @psalm-immutable
+    * @generated
+    */
+    final class WorkerStop extends \Spiral\RoadRunner\Payload implements \Spiral\RoadRunner\Message\ControlMessage {
+    }
+}

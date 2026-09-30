@@ -1,0 +1,55 @@
+<?tyhp
+
+function test_oauth2_server_new(
+    \League\OAuth2\Server\Repositories\ClientRepositoryInterface $clients,
+    \League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokens,
+    \League\OAuth2\Server\Repositories\ScopeRepositoryInterface $scopes,
+): \League\OAuth2\Server\AuthorizationServer
+{
+    return new \League\OAuth2\Server\AuthorizationServer(
+        $clients,
+        $accessTokens,
+        $scopes,
+        'file://tmp/oauth-private.key',
+        'encryption-key',
+    );
+}
+
+function test_oauth2_server_enable_grant(\League\OAuth2\Server\AuthorizationServer $server): void
+{
+    $server->enableGrantType(new \League\OAuth2\Server\Grant\ClientCredentialsGrant(), new \DateInterval('PT1H'));
+}
+
+function test_oauth2_server_respond(
+    \League\OAuth2\Server\AuthorizationServer $server,
+    \Psr\Http\Message\ServerRequestInterface $request,
+    \Psr\Http\Message\ResponseInterface $response,
+): \Psr\Http\Message\ResponseInterface
+{
+    return $server->respondToAccessTokenRequest($request, $response);
+}
+
+function test_oauth2_resource_server(
+    \League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface $accessTokens,
+): \League\OAuth2\Server\ResourceServer
+{
+    return new \League\OAuth2\Server\ResourceServer($accessTokens, 'file://tmp/oauth-public.key');
+}
+
+function test_oauth2_crypt_key(): \League\OAuth2\Server\CryptKey
+{
+    return new \League\OAuth2\Server\CryptKey('file://tmp/oauth-private.key', null, false);
+}
+
+function test_oauth2_redirect_uris(): bool
+{
+    $validator = new \League\OAuth2\Server\RedirectUriValidators\RedirectUriValidator([
+        'https://example.com/callback',
+    ]);
+    return $validator->validateRedirectUri('https://example.com/callback');
+}
+
+function test_oauth2_unsupported_grant(): string
+{
+    return \League\OAuth2\Server\Exception\OAuthServerException::unsupportedGrantType()->getErrorType();
+}

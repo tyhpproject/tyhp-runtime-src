@@ -1,0 +1,100 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Promise state literals and `wait($unwrap)` overloads from the PHP source.
+ */
+
+namespace Http\Promise {
+    /**
+     * `Promise::getState()` is one of the `PENDING` / `FULFILLED` / `REJECTED` constants.
+     */
+    type PromiseState = 'pending'|'fulfilled'|'rejected';
+
+    /**
+     * Overlay: `then()` returns a promise; `wait(false)` is null.
+     */
+    // @overlay-against: interface Promise
+    partial interface Promise {
+        /**
+         * @param (callable(mixed): mixed)|null $onFulfilled Called with the fulfilled value.
+         * @param (callable(\Throwable): mixed)|null $onRejected Called with the rejection throwable.
+         */
+        // @overlay-against: function then(callable|null $onFulfilled, callable|null $onRejected): \Http\Promise\Promise
+        public function then(?callable(mixed): mixed $onFulfilled = null, ?callable(\Throwable): mixed $onRejected = null): \Http\Promise\Promise;
+
+        /**
+         * @return \Http\Promise\PromiseState One of PENDING, FULFILLED, or REJECTED.
+         */
+        // @overlay-against: function getState(): string
+        public function getState(): \Http\Promise\PromiseState;
+
+        /**
+         * @param true $unwrap Default: unwrap the resolved value (or throw).
+         */
+        // @overlay-against: function wait(bool $unwrap): mixed
+        public function wait(true $unwrap = true): mixed;
+
+        /**
+         * @param false $unwrap Do not unwrap; returns null.
+         */
+        // @overlay-against: function wait(bool $unwrap): mixed
+        public function wait(false $unwrap): null;
+
+        /**
+         * @param bool $unwrap Whether to return the resolved value / throw the reason.
+         */
+        // @overlay-against: function wait(bool $unwrap): mixed
+        public function wait(bool $unwrap = true): mixed;
+    }
+
+    /**
+     * Overlay: fulfilled implementation matches `Promise`.
+     */
+    // @overlay-against: class FulfilledPromise implements \Http\Promise\Promise
+    partial class FulfilledPromise {
+        /**
+         * @param (callable(mixed): mixed)|null $onFulfilled Called with the fulfilled value.
+         * @param (callable(\Throwable): mixed)|null $onRejected Ignored when already fulfilled.
+         */
+        // @overlay-against: function then(?callable $onFulfilled, ?callable $onRejected): mixed
+        public function then(?callable(mixed): mixed $onFulfilled = null, ?callable(\Throwable): mixed $onRejected = null): \Http\Promise\Promise;
+
+        // @overlay-against: function getState(): mixed
+        public function getState(): \Http\Promise\PromiseState;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(true $unwrap = true): mixed;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(false $unwrap): null;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(bool $unwrap = true): mixed;
+    }
+
+    /**
+     * Overlay: rejected implementation matches `Promise`.
+     */
+    // @overlay-against: class RejectedPromise implements \Http\Promise\Promise
+    partial class RejectedPromise {
+        /**
+         * @param (callable(mixed): mixed)|null $onFulfilled Ignored when already rejected.
+         * @param (callable(\Throwable): mixed)|null $onRejected Called with the rejection throwable.
+         */
+        // @overlay-against: function then(?callable $onFulfilled, ?callable $onRejected): mixed
+        public function then(?callable(mixed): mixed $onFulfilled = null, ?callable(\Throwable): mixed $onRejected = null): \Http\Promise\Promise;
+
+        // @overlay-against: function getState(): mixed
+        public function getState(): \Http\Promise\PromiseState;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(true $unwrap = true): mixed;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(false $unwrap): null;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(bool $unwrap = true): mixed;
+    }
+}

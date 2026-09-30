@@ -1,0 +1,182 @@
+<?tyhp
+
+namespace OverlayTests\Core;
+
+function makeGenerator(): \Generator<int, string> {
+    yield 1 => "a";
+}
+
+function generatorCurrent_isTValue_notNullable(): void {
+    \Generator<int, string> $g = makeGenerator();
+    string $value = $g->current();
+}
+
+function generatorCurrent_assignsToStringAndNullable(): void {
+    \Generator<int, string> $g = makeGenerator();
+    string|null $value = $g->current();
+    string $only = $g->current();
+}
+
+function sensitiveParameterValue_constructorInfersTValue(): void {
+    \SensitiveParameterValue<string> $wrapped = new \SensitiveParameterValue<string>("x");
+    string $value = $wrapped->getValue();
+}
+
+function backedEnumFrom_returnsStatic_notBackedEnum(): void {
+    \OverlaySuit $suit = \OverlaySuit::from("H");
+    ?\OverlaySuit $missing = \OverlaySuit::tryFrom("nope");
+}
+
+function gcStatus_runsFieldIsInt(): void {
+    int $runs = \gc_status()->runs;
+    int $collected = \gc_status()->collected;
+    int $threshold = \gc_status()->threshold;
+    int $roots = \gc_status()->roots;
+}
+
+function gcStatus_stringIndexRunsIsInt(): void {
+    int $runs = \gc_status()->runs;
+}
+
+declare(php=">=8.3") {
+    function gcStatus_php83_extraFields(): void {
+        bool $running = \gc_status()->running;
+        bool $protected = \gc_status()->protected;
+        bool $full = \gc_status()->full;
+        int $buffer = \gc_status()->buffer_size;
+        float $app = \gc_status()->application_time;
+    }
+}
+
+class User {
+}
+
+function classExists_narrowsForDynamicNew(string $name): void {
+    if (\class_exists($name)) {
+        new $name();
+    }
+}
+
+function errorGetCode_isInt_throwableGetCodeStaysMixed(\Error $e, \Exception $ex, \Throwable $t): mixed {
+    int $fromError = $e->getCode();
+    int $fromException = $ex->getCode();
+    mixed $fromThrowable = $t->getCode();
+    return $fromThrowable;
+}
+
+function exceptionGetTrace_isDebugStackFrameList(): void {
+    array<int, \DebugStackFrame> $trace = (new \Exception("x"))->getTrace();
+}
+
+function funcGetArgs_isIntKeyedMixed(int $a, string $b): void {
+    array<int, mixed> $args = \func_get_args();
+}
+
+function getDeclaredTraits_isListOfString(): void {
+    array<__TraitName> $traits = \get_declared_traits();
+    string $first = $traits[0];
+}
+
+function internalIterator_currentAndKeyAreTypeArgs(\InternalIterator<string, int> $it): void {
+    int $value = $it->current();
+    string $key = $it->key();
+}
+
+function setErrorHandler_handler(int $errno, string $errstr, string $errfile = '', int $errline = -1): bool {
+    return false;
+}
+
+function setErrorHandler_acceptsFourArgBoolCallback(): void {
+    ?callable $previous = \set_error_handler(setErrorHandler_handler(...));
+    \set_error_handler(null);
+}
+
+function setExceptionHandler_handler(\Throwable $ex): void {
+}
+
+function setExceptionHandler_acceptsThrowableCallback(): void {
+    ?callable $previous = \set_exception_handler(setExceptionHandler_handler(...));
+    \set_exception_handler(null);
+}
+
+class Widget {
+    public string $name = "x";
+}
+
+function propertyExists_narrowsToReceiverBoundPropertyName(Widget $w, string $prop): void {
+    if (\property_exists($w, $prop)) {
+        \__PropertyName<Widget> $typed = $prop;
+    }
+}
+
+class Foo {
+    public int $n = 0;
+}
+
+function propertyExists_classNameLiteral_narrowsToBoundPropertyName(string $name): void {
+    if (\property_exists(Foo::class, $name)) {
+        \__PropertyName<Foo> $typed = $name;
+    }
+}
+
+function propertyExists_explicitTypeArg_narrowsToThatT(Widget $w, string $prop): void {
+    if (\property_exists<Widget>($w, $prop)) {
+        \__PropertyName<Widget> $typed = $prop;
+    }
+}
+
+function methodExists_narrowsToReceiverBoundMethodName(Widget $w, string $m): void {
+    if (\method_exists($w, $m)) {
+        \__MethodName<Widget> $typed = $m;
+    }
+}
+
+class FooWithRun {
+    public function run(): void {}
+}
+
+function methodExists_classNameLiteral_narrowsToBoundMethodName(string $name): void {
+    if (\method_exists(FooWithRun::class, $name)) {
+        \__MethodName<FooWithRun> $typed = $name;
+    }
+}
+
+class Animal {
+}
+
+class Dog extends Animal {
+}
+
+function isA_objectInstance_narrowsToClassArgType(Animal $a): void {
+    if (\is_a($a, Dog::class)) {
+        Dog $typed = $a;
+    }
+}
+
+function isA_stringWithAllowStringTrue_narrowsToCompatibleTypeName(string $name): void {
+    if (\is_a($name, Dog::class, true)) {
+        \__CompatibleTypeName<Dog> $typed = $name;
+    }
+}
+
+function isSubclassOf_narrowsClassNameParamFromReceiverSibling(Animal $obj, string $className): void {
+    if (\is_subclass_of($obj, $className)) {
+        \__SuperTypeName<Animal> $typed = $className;
+    }
+}
+
+declare(php=">=8.4") {
+    #[\Deprecated(message: "old", since: "8.3")]
+    function deprecated_on_function_typechecks(): void {}
+
+    #[\Deprecated("old")]
+    class DeprecatedOnClassAllowed {
+    }
+}
+
+declare(php=">=8.5") {
+    #[\NoDiscard("ignored")]
+    function nodiscard_on_function_typechecks(): int {
+        return 42;
+    }
+}

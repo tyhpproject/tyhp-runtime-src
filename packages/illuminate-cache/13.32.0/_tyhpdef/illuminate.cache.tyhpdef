@@ -1,0 +1,5301 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Illuminate\Cache {
+    class ApcStore extends \Illuminate\Cache\TaggableStore {
+        use \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * The APC wrapper instance.
+        *
+        * @var \Illuminate\Cache\ApcWrapper
+        * @generated
+        */
+        protected \Illuminate\Cache\ApcWrapper $apc;
+        /**
+        * A string that should be prepended to keys.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $prefix;
+        /**
+        * Create a new APC store.
+        *
+        * @param \Illuminate\Cache\ApcWrapper $apc
+        * @param string $prefix
+        * @generated
+        */
+        public function __construct(\Illuminate\Cache\ApcWrapper $apc, string $prefix = ''): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param int $value
+        * @return int|false
+        * @generated
+        */
+        public function increment(string $key, int $value = 1): int|false;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param int $value
+        * @return int|false
+        * @generated
+        */
+        public function decrement(string $key, int $value = 1): int|false;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Set the cache key prefix.
+        *
+        * @param string $prefix
+        * @return void
+        * @generated
+        */
+        public function setPrefix(string $prefix): void;
+    }
+    class ApcWrapper {
+        /**
+        * Get an item from the cache.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Store an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param int $value
+        * @return int|false
+        * @generated
+        */
+        public function increment(string $key, int $value): int|false;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param int $value
+        * @return int|false
+        * @generated
+        */
+        public function decrement(string $key, int $value): int|false;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function delete(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+    }
+    class ArrayLock extends \Illuminate\Cache\Lock {
+        /**
+        * The parent array cache store.
+        *
+        * @var \Illuminate\Cache\ArrayStore
+        * @generated
+        */
+        protected \Illuminate\Cache\ArrayStore $store;
+        /**
+        * Create a new lock instance.
+        *
+        * @param \Illuminate\Cache\ArrayStore $store
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @generated
+        */
+        public function __construct(\Illuminate\Cache\ArrayStore $store, string $name, int $seconds, string|null $owner = null): void;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Determine if the current lock exists.
+        *
+        * @return bool
+        * @generated
+        */
+        protected function exists(): bool;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function release(): bool;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return string|null
+        * @generated
+        */
+        protected function getCurrentOwner(): string|null;
+        /**
+        * Releases this lock regardless of ownership.
+        *
+        * @return void
+        * @generated
+        */
+        public function forceRelease(): void;
+    }
+    class ArrayStore extends \Illuminate\Cache\TaggableStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider {
+        use \Illuminate\Support\InteractsWithTime, \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * The array of stored values.
+        *
+        * @var array<string, array>
+        * @generated
+        */
+        protected array<string, array> $storage ?? [];
+        /**
+        * The array of locks.
+        *
+        * @var array<string, array>
+        * @generated
+        */
+        public array<string, array> $locks ?? [];
+        /**
+        * Indicates if values are serialized within the store.
+        *
+        * @var bool
+        * @generated
+        */
+        protected bool $serializesValues;
+        /**
+        * The classes that should be allowed during unserialization.
+        *
+        * @var array|bool|null
+        * @generated
+        */
+        protected array|bool|null $serializableClasses;
+        /**
+        * Create a new Array store.
+        *
+        * @param bool $serializesValues
+        * @param array|bool|null $serializableClasses
+        * @generated
+        */
+        public function __construct(bool $serializesValues = false, array|bool|null $serializableClasses = null): void;
+        /**
+        * Get all of the cached values and their expiration times.
+        *
+        * @param bool $unserialize
+        * @return array<string, array>
+        * @generated
+        */
+        public function all(bool $unserialize = true): array<string, array>;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Remove all locks from the store.
+        *
+        * @return bool
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Get the expiration time of the key.
+        *
+        * @param int $seconds
+        * @return float
+        * @generated
+        */
+        protected function calculateExpiration(int $seconds): float;
+        /**
+        * Get the UNIX timestamp, with milliseconds, for the given number of seconds in the future.
+        *
+        * @param int $seconds
+        * @return float
+        * @generated
+        */
+        protected function toTimestamp(int $seconds): float;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Determine if the lock store is separate from the cache store.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSeparateLockStore(): bool;
+        /**
+        * Unserialize the given value.
+        *
+        * @param string $value
+        * @return mixed
+        * @generated
+        */
+        protected function unserialize(string $value): mixed;
+    }
+    class CacheLock extends \Illuminate\Cache\Lock {
+        /**
+        * The cache store implementation.
+        *
+        * @var \Illuminate\Contracts\Cache\Store
+        * @generated
+        */
+        protected \Illuminate\Contracts\Cache\Store $store;
+        /**
+        * Create a new lock instance.
+        *
+        * @param \Illuminate\Contracts\Cache\Store $store
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Cache\Store $store, string $name, int $seconds, string|null $owner = null): void;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function release(): bool;
+        /**
+        * Releases this lock regardless of ownership.
+        *
+        * @return void
+        * @generated
+        */
+        public function forceRelease(): void;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return mixed
+        * @generated
+        */
+        protected function getCurrentOwner(): mixed;
+    }
+    /**
+    * @mixin \Illuminate\Cache\Repository
+    * @mixin \Illuminate\Contracts\Cache\LockProvider
+    * @generated
+    */
+    class CacheManager implements \Illuminate\Contracts\Cache\Factory {
+        use \Illuminate\Support\RebindsCallbacksToSelf;
+        /**
+        * The application instance.
+        *
+        * @var \Illuminate\Contracts\Foundation\Application
+        * @generated
+        */
+        protected \Illuminate\Contracts\Foundation\Application $app;
+        /**
+        * The array of resolved cache stores.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $stores ?? [];
+        /**
+        * The registered custom driver creators.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $customCreators ?? [];
+        /**
+        * Create a new Cache manager instance.
+        *
+        * @param \Illuminate\Contracts\Foundation\Application $app
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Foundation\Application $app): void;
+        /**
+        * Get a cache store instance by name, wrapped in a repository.
+        *
+        * @param \UnitEnum|string|null $name
+        * @return \Illuminate\Contracts\Cache\Repository
+        * @generated
+        */
+        public function store(\UnitEnum|string|null $name = null): \Illuminate\Contracts\Cache\Repository;
+        /**
+        * Get a cache driver instance.
+        *
+        * @param \UnitEnum|string|null $driver
+        * @return \Illuminate\Contracts\Cache\Repository
+        * @generated
+        */
+        public function driver(\UnitEnum|string|null $driver = null): \Illuminate\Contracts\Cache\Repository;
+        /**
+        * Get a memoized cache driver instance.
+        *
+        * @param \UnitEnum|string|null $driver
+        * @return \Illuminate\Contracts\Cache\Repository
+        * @generated
+        */
+        public function memo(\UnitEnum|string|null $driver = null): \Illuminate\Contracts\Cache\Repository;
+        /**
+        * Resolve the given store.
+        *
+        * @param string $name
+        * @return \Illuminate\Contracts\Cache\Repository
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function resolve(string $name): \Illuminate\Contracts\Cache\Repository;
+        /**
+        * Build a cache repository with the given configuration.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function build(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Call a custom driver creator.
+        *
+        * @param array $config
+        * @return mixed
+        * @generated
+        */
+        protected function callCustomCreator(array $config): mixed;
+        /**
+        * Create an instance of the APC cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createApcDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the array cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createArrayDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the database cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createDatabaseDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the DynamoDB cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createDynamodbDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create new DynamoDb Client instance.
+        *
+        * @return \Aws\DynamoDb\DynamoDbClient
+        * @generated
+        */
+        protected function newDynamodbClient(array $config): \Aws\DynamoDb\DynamoDbClient;
+        /**
+        * Create an instance of the failover cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createFailoverDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the file cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createFileDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the storage cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createStorageDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the Memcached cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createMemcachedDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the Null cache driver.
+        *
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createNullDriver(): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the Redis cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createRedisDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Create an instance of the session cache driver.
+        *
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function createSessionDriver(array $config): \Illuminate\Cache\Repository;
+        /**
+        * Get the session store implementation.
+        *
+        * @return \Illuminate\Contracts\Session\Session
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        protected function getSession(): \Illuminate\Contracts\Session\Session;
+        /**
+        * Create a new cache repository with the given implementation.
+        *
+        * @param \Illuminate\Contracts\Cache\Store $store
+        * @param array $config
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        public function repository(\Illuminate\Contracts\Cache\Store $store, array $config = []): \Illuminate\Cache\Repository;
+        /**
+        * Set the event dispatcher on the given repository instance.
+        *
+        * @param \Illuminate\Cache\Repository $repository
+        * @return void
+        * @generated
+        */
+        protected function setEventDispatcher(\Illuminate\Cache\Repository $repository): void;
+        /**
+        * Re-set the event dispatcher on all resolved cache repositories.
+        *
+        * @return void
+        * @generated
+        */
+        public function refreshEventDispatcher(): void;
+        /**
+        * Get the cache prefix.
+        *
+        * @param array $config
+        * @return string
+        * @generated
+        */
+        protected function getPrefix(array $config): string;
+        /**
+        * Get the classes that should be allowed during unserialization.
+        *
+        * @param array $config
+        * @return array|bool|null
+        * @generated
+        */
+        protected function getSerializableClasses(array $config): array|bool|null;
+        /**
+        * Get the cache connection configuration.
+        *
+        * @param string $name
+        * @return array|null
+        * @generated
+        */
+        protected function getConfig(string $name): array|null;
+        /**
+        * Get the default cache driver name.
+        *
+        * @return string
+        * @generated
+        */
+        public function getDefaultDriver(): string;
+        /**
+        * Set the default cache driver name.
+        *
+        * @param \UnitEnum|string $name
+        * @return void
+        * @generated
+        */
+        public function setDefaultDriver(\UnitEnum|string $name): void;
+        /**
+        * Unset the given driver instances.
+        *
+        * @param array|\UnitEnum|string|null $name
+        * @return static
+        * @generated
+        */
+        public function forgetDriver(array|\UnitEnum|string|null $name = null): static;
+        /**
+        * Disconnect the given driver and remove from local cache.
+        *
+        * @param \UnitEnum|string|null $name
+        * @return void
+        * @generated
+        */
+        public function purge(\UnitEnum|string|null $name = null): void;
+        /**
+        * Register a custom driver creator Closure.
+        *
+        * @param string $driver
+        * @param \Closure $callback
+        * @param-closure-this $this  $callback
+        * @return static
+        * @generated
+        */
+        public function extend(string $driver, \Closure $callback): static;
+        /**
+        * Set the application instance used by the manager.
+        *
+        * @param \Illuminate\Contracts\Foundation\Application $app
+        * @return static
+        * @generated
+        */
+        public function setApplication(\Illuminate\Contracts\Foundation\Application $app): static;
+        /**
+        * Register a callback to be invoked when an unserializable class is encountered.
+        *
+        * @param callable|null $callback
+        * @return void
+        * @generated
+        */
+        public function handleUnserializableClassUsing(callable|null $callback): void;
+        /**
+        * Dynamically call the default driver instance.
+        *
+        * @param string $method
+        * @param array $parameters
+        * @return mixed
+        * @generated
+        */
+        public function __call(string $method, array $parameters): mixed;
+    }
+    class CacheServiceProvider extends \Illuminate\Support\ServiceProvider implements \Illuminate\Contracts\Support\DeferrableProvider {
+        /**
+        * Register the service provider.
+        *
+        * @return void
+        * @generated
+        */
+        public function register(): void;
+        /**
+        * Get the services provided by the provider.
+        *
+        * @return array
+        * @generated
+        */
+        public function provides(): array;
+    }
+    class DatabaseLock extends \Illuminate\Cache\Lock {
+        use \Illuminate\Database\DetectsConcurrencyErrors;
+        /**
+        * The database connection instance.
+        *
+        * @var \Illuminate\Database\Connection
+        * @generated
+        */
+        protected \Illuminate\Database\Connection $connection;
+        /**
+        * The database table name.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $table;
+        /**
+        * The prune probability odds.
+        *
+        * @var array|null
+        * @generated
+        */
+        protected array|null $lottery;
+        /**
+        * The default number of seconds that a lock should be held.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $defaultTimeoutInSeconds;
+        /**
+        * Create a new lock instance.
+        *
+        * @param \Illuminate\Database\Connection $connection
+        * @param string $table
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @param array|null $lottery
+        * @param int $defaultTimeoutInSeconds
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Connection $connection, string $table, string $name, int $seconds, string|null $owner = null, array|null $lottery = [], int $defaultTimeoutInSeconds = 86400): void;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @throws \Throwable
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+        /**
+        * Get the UNIX timestamp indicating when the lock should expire.
+        *
+        * @return int
+        * @generated
+        */
+        protected function expiresAt(mixed $seconds = null): int;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @throws \Throwable
+        * @generated
+        */
+        public function release(): bool;
+        /**
+        * Releases this lock in disregard of ownership.
+        *
+        * @return void
+        * @generated
+        */
+        public function forceRelease(): void;
+        /**
+        * Deletes locks that are past expiration.
+        *
+        * @return void
+        * @throws \Throwable
+        * @generated
+        */
+        public function pruneExpiredLocks(): void;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return string|null
+        * @generated
+        */
+        protected function getCurrentOwner(): string|null;
+        /**
+        * Get the name of the database connection being used to manage the lock.
+        *
+        * @return string
+        * @generated
+        */
+        public function getConnectionName(): string;
+    }
+    class DatabaseStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider, \Illuminate\Contracts\Cache\Store {
+        use \Illuminate\Support\InteractsWithTime;
+        /**
+        * The database connection instance.
+        *
+        * @var \Illuminate\Database\ConnectionInterface
+        * @generated
+        */
+        protected \Illuminate\Database\ConnectionInterface $connection;
+        /**
+        * The database connection instance that should be used to manage locks.
+        *
+        * @var \Illuminate\Database\ConnectionInterface
+        * @generated
+        */
+        protected \Illuminate\Database\ConnectionInterface $lockConnection;
+        /**
+        * The name of the cache table.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $table;
+        /**
+        * A string that should be prepended to keys.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $prefix;
+        /**
+        * The name of the cache locks table.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $lockTable;
+        /**
+        * An array representation of the lock lottery odds.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $lockLottery;
+        /**
+        * The default number of seconds that a lock should be held.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $defaultLockTimeoutInSeconds;
+        /**
+        * The classes that should be allowed during unserialization.
+        *
+        * @var array|bool|null
+        * @generated
+        */
+        protected array|bool|null $serializableClasses;
+        /**
+        * Create a new database store.
+        *
+        * @param \Illuminate\Database\ConnectionInterface $connection
+        * @param string $table
+        * @param string $prefix
+        * @param string $lockTable
+        * @param array $lockLottery
+        * @param int $defaultLockTimeoutInSeconds
+        * @param array|bool|null $serializableClasses
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\ConnectionInterface $connection, string $table, string $prefix = '', string $lockTable = 'cache_locks', array $lockLottery = [], int $defaultLockTimeoutInSeconds = 86400, array|bool|null $serializableClasses = null): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param array $values
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int $seconds): bool;
+        /**
+        * Store an item in the cache if the key doesn't exist.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function add(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param int $value
+        * @return int|false
+        * @generated
+        */
+        public function increment(string $key, int $value = 1): int|false;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param int $value
+        * @return int|false
+        * @generated
+        */
+        public function decrement(string $key, int $value = 1): int|false;
+        /**
+        * Increment or decrement an item in the cache.
+        *
+        * @param string $key
+        * @param int|float $value
+        * @param \Closure $callback
+        * @return int|false
+        * @generated
+        */
+        protected function incrementOrDecrement(string $key, int|float $value, \Closure $callback): int|false;
+        /**
+        * Get the current system time.
+        *
+        * @return int
+        * @generated
+        */
+        protected function getTime(): int;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove an item from the cache if it is expired.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forgetIfExpired(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @param array $keys
+        * @return bool
+        * @generated
+        */
+        protected function forgetMany(array $keys): bool;
+        /**
+        * Remove all expired items from the given set from the cache.
+        *
+        * @param array $keys
+        * @param bool $prefixed
+        * @return bool
+        * @generated
+        */
+        protected function forgetManyIfExpired(array $keys, bool $prefixed = false): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Remove all locks from the store.
+        *
+        * @return bool
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Get a query builder for the cache table.
+        *
+        * @return \Illuminate\Database\Query\Builder
+        * @generated
+        */
+        protected function table(): \Illuminate\Database\Query\Builder;
+        /**
+        * Get a query builder for the cache locks table.
+        *
+        * @return \Illuminate\Database\Query\Builder
+        * @generated
+        */
+        protected function lockTable(): \Illuminate\Database\Query\Builder;
+        /**
+        * Get the underlying database connection.
+        *
+        * @return \Illuminate\Database\ConnectionInterface
+        * @generated
+        */
+        public function getConnection(): \Illuminate\Database\ConnectionInterface;
+        /**
+        * Set the underlying database connection.
+        *
+        * @param \Illuminate\Database\ConnectionInterface $connection
+        * @return static
+        * @generated
+        */
+        public function setConnection(\Illuminate\Database\ConnectionInterface $connection): static;
+        /**
+        * Get the connection used to manage locks.
+        *
+        * @return \Illuminate\Database\ConnectionInterface
+        * @generated
+        */
+        public function getLockConnection(): \Illuminate\Database\ConnectionInterface;
+        /**
+        * Specify the connection that should be used to manage locks.
+        *
+        * @param \Illuminate\Database\ConnectionInterface $connection
+        * @return static
+        * @generated
+        */
+        public function setLockConnection(\Illuminate\Database\ConnectionInterface $connection): static;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Set the cache key prefix.
+        *
+        * @param string $prefix
+        * @return void
+        * @generated
+        */
+        public function setPrefix(string $prefix): void;
+        /**
+        * Serialize the given value.
+        *
+        * @param mixed $value
+        * @return string
+        * @generated
+        */
+        protected function serialize(mixed $value): string;
+        /**
+        * Unserialize the given value.
+        *
+        * @param string $value
+        * @return mixed
+        * @generated
+        */
+        protected function unserialize(string $value): mixed;
+        /**
+        * Determine if the lock store is separate from the cache store.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSeparateLockStore(): bool;
+    }
+    class DynamoDbLock extends \Illuminate\Cache\Lock {
+        /**
+        * The DynamoDB client instance.
+        *
+        * @var \Illuminate\Cache\DynamoDbStore
+        * @generated
+        */
+        protected \Illuminate\Cache\DynamoDbStore $dynamo;
+        /**
+        * Create a new lock instance.
+        *
+        * @param \Illuminate\Cache\DynamoDbStore $dynamo
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @generated
+        */
+        public function __construct(\Illuminate\Cache\DynamoDbStore $dynamo, string $name, int $seconds, string|null $owner = null): void;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function release(): bool;
+        /**
+        * Release this lock in disregard of ownership.
+        *
+        * @return void
+        * @generated
+        */
+        public function forceRelease(): void;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return mixed
+        * @generated
+        */
+        protected function getCurrentOwner(): mixed;
+    }
+    class DynamoDbStore implements \Illuminate\Contracts\Cache\LockProvider, \Illuminate\Contracts\Cache\Store {
+        use \Illuminate\Support\InteractsWithTime;
+        /**
+        * A string that should be prepended to keys.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $prefix;
+        /**
+        * The classes that should be allowed during unserialization.
+        *
+        * @var array|bool|null
+        * @generated
+        */
+        protected array|bool|null $serializableClasses;
+        protected \Aws\DynamoDb\DynamoDbClient $dynamo;
+        protected string $table;
+        protected string $keyAttribute ?? 'key';
+        protected string $valueAttribute ?? 'value';
+        protected string $expirationAttribute ?? 'expires_at';
+        /**
+        * Create a new store instance.
+        *
+        * @param \Aws\DynamoDb\DynamoDbClient $dynamo The DynamoDB client instance.
+        * @param string $table The table name.
+        * @param string $keyAttribute The name of the attribute that should hold the key.
+        * @param string $valueAttribute The name of the attribute that should hold the value.
+        * @param string $expirationAttribute The name of the attribute that should hold the expiration timestamp.
+        * @param string $prefix
+        * @param array|bool|null $serializableClasses
+        * @generated
+        */
+        public function __construct(\Aws\DynamoDb\DynamoDbClient $dynamo, string $table, string $keyAttribute = 'key', string $valueAttribute = 'value', string $expirationAttribute = 'expires_at', string $prefix = '', array|bool|null $serializableClasses = null): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @param array $keys
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * Determine if the given item is expired.
+        *
+        * @param array $item
+        * @param \DateTimeInterface|null $expiration
+        * @return bool
+        * @generated
+        */
+        protected function isExpired(array $item, \DateTimeInterface|null $expiration = null): bool;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param array $values
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int $seconds): bool;
+        /**
+        * Store an item in the cache if the key doesn't exist.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @throws \Aws\DynamoDb\Exception\DynamoDbException
+        * @generated
+        */
+        public function add(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|false
+        * @throws \Aws\DynamoDb\Exception\DynamoDbException
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int|false;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|false
+        * @throws \Aws\DynamoDb\Exception\DynamoDbException
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int|false;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Atomically refresh the expiration of a key if it matches the expected owner.
+        *
+        * @param string $key
+        * @param mixed $expectedOwner
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function refreshIfOwned(string $key, mixed $expectedOwner, int $seconds): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @throws DynamoDbException
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return never
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function flush(): never;
+        /**
+        * Get the UNIX timestamp for the given number of seconds.
+        *
+        * @param int $seconds
+        * @return int
+        * @generated
+        */
+        protected function toTimestamp(int $seconds): int;
+        /**
+        * Serialize the value.
+        *
+        * @param mixed $value
+        * @return mixed
+        * @generated
+        */
+        protected function serialize(mixed $value): mixed;
+        /**
+        * Unserialize the value.
+        *
+        * @param mixed $value
+        * @return mixed
+        * @generated
+        */
+        protected function unserialize(mixed $value): mixed;
+        /**
+        * Get the DynamoDB type for the given value.
+        *
+        * @param mixed $value
+        * @return string
+        * @generated
+        */
+        protected function type(mixed $value): string;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Set the cache key prefix.
+        *
+        * @param string $prefix
+        * @return void
+        * @generated
+        */
+        public function setPrefix(string $prefix): void;
+        /**
+        * Get the DynamoDb Client instance.
+        *
+        * @return \Aws\DynamoDb\DynamoDbClient
+        * @generated
+        */
+        public function getClient(): \Aws\DynamoDb\DynamoDbClient;
+    }
+    class FailoverStore extends \Illuminate\Cache\TaggableStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider {
+        /**
+        * The caches which failed on the last action.
+        *
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $failingCaches ?? [];
+        protected \Illuminate\Cache\CacheManager $cache;
+        protected \Illuminate\Contracts\Events\Dispatcher $events;
+        protected array<int, string> $stores;
+        /**
+        * Create a new failover store.
+        *
+        * @param array<int, string> $stores
+        * @generated
+        */
+        public function __construct(\Illuminate\Cache\CacheManager $cache, \Illuminate\Contracts\Events\Dispatcher $events, array<int, string> $stores): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int $seconds): bool;
+        /**
+        * Store an item in the cache if the key doesn't exist.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function add(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|false
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int|false;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|false
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int|false;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Remove all expired tag set entries.
+        *
+        * @return void
+        * @generated
+        */
+        public function flushStaleTags(): void;
+        /**
+        * Flush all of the stale locks from every backing store.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Determine if the lock store is separate from the cache store.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSeparateLockStore(): bool;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Attempt the given method on all stores.
+        *
+        * @return mixed
+        * @throws \Throwable
+        * @generated
+        */
+        protected function attemptOnAllStores(string $method, array $arguments): mixed;
+        /**
+        * Get the cache store for the given store name.
+        *
+        * @return \Illuminate\Contracts\Cache\Repository
+        * @generated
+        */
+        protected function store(string $store): \Illuminate\Contracts\Cache\Repository;
+    }
+    class FileLock extends \Illuminate\Cache\CacheLock {
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+    }
+    class FileStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider, \Illuminate\Contracts\Cache\Store {
+        use \Illuminate\Support\InteractsWithTime, \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * The Illuminate Filesystem instance.
+        *
+        * @var \Illuminate\Filesystem\Filesystem
+        * @generated
+        */
+        protected \Illuminate\Filesystem\Filesystem $files;
+        /**
+        * The file cache directory.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $directory;
+        /**
+        * The file cache lock directory.
+        *
+        * @var string|null
+        * @generated
+        */
+        protected string|null $lockDirectory;
+        /**
+        * Octal representation of the cache file permissions.
+        *
+        * @var int|null
+        * @generated
+        */
+        protected int|null $filePermission;
+        /**
+        * The classes that should be allowed during unserialization.
+        *
+        * @var array|bool|null
+        * @generated
+        */
+        protected array|bool|null $serializableClasses;
+        /**
+        * Create a new file cache store instance.
+        *
+        * @param \Illuminate\Filesystem\Filesystem $files
+        * @param string $directory
+        * @param int|null $filePermission
+        * @param array|bool|null $serializableClasses
+        * @generated
+        */
+        public function __construct(\Illuminate\Filesystem\Filesystem $files, string $directory, int|null $filePermission = null, array|bool|null $serializableClasses = null): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store an item in the cache if the key doesn't exist.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function add(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Create the file cache directory if necessary.
+        *
+        * @param string $path
+        * @return void
+        * @generated
+        */
+        protected function ensureCacheDirectoryExists(string $path): void;
+        /**
+        * Ensure the created node has the correct permissions.
+        *
+        * @param string $path
+        * @return void
+        * @generated
+        */
+        protected function ensurePermissionsAreCorrect(string $path): void;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Atomically refresh the expiration of a cache key if it matches the expected owner.
+        *
+        * @param string $key
+        * @param mixed $expectedOwner
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function refreshIfOwned(string $key, mixed $expectedOwner, int $seconds): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Remove all locks from the store.
+        *
+        * @return bool
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Retrieve an item and expiry time from the cache by key.
+        *
+        * @param string $key
+        * @return array
+        * @generated
+        */
+        protected function getPayload(string $key): array;
+        /**
+        * Unserialize the given value.
+        *
+        * @param string $value
+        * @return mixed
+        * @generated
+        */
+        protected function unserialize(string $value): mixed;
+        /**
+        * Get a default empty payload for the cache.
+        *
+        * @return array
+        * @generated
+        */
+        protected function emptyPayload(): array;
+        /**
+        * Get the full path for the given cache key.
+        *
+        * @param string $key
+        * @return string
+        * @generated
+        */
+        public function path(string $key): string;
+        /**
+        * Get the expiration time based on the given seconds.
+        *
+        * @param int $seconds
+        * @return int
+        * @generated
+        */
+        protected function expiration(int $seconds): int;
+        /**
+        * Get the Filesystem instance.
+        *
+        * @return \Illuminate\Filesystem\Filesystem
+        * @generated
+        */
+        public function getFilesystem(): \Illuminate\Filesystem\Filesystem;
+        /**
+        * Get the working directory of the cache.
+        *
+        * @return string
+        * @generated
+        */
+        public function getDirectory(): string;
+        /**
+        * Set the working directory of the cache.
+        *
+        * @param string $directory
+        * @return static
+        * @generated
+        */
+        public function setDirectory(string $directory): static;
+        /**
+        * Set the cache directory where locks should be stored.
+        *
+        * @param string|null $lockDirectory
+        * @return static
+        * @generated
+        */
+        public function setLockDirectory(string|null $lockDirectory): static;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Determine if the lock store is separate from the cache store.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSeparateLockStore(): bool;
+    }
+    trait HasCacheLock {
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+    }
+    abstract class Lock implements \Illuminate\Contracts\Cache\Lock {
+        use \Illuminate\Support\InteractsWithTime;
+        /**
+        * The name of the lock.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $name;
+        /**
+        * The number of seconds the lock should be maintained.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $seconds;
+        /**
+        * The scope identifier of this lock.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $owner;
+        /**
+        * The number of milliseconds to wait before re-attempting to acquire a lock while blocking.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $sleepMilliseconds ?? 250;
+        /**
+        * Create a new lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @generated
+        */
+        public function __construct(string $name, int $seconds, string|null $owner = null): void;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public abstract function acquire(): bool;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public abstract function release(): bool;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return string|null
+        * @generated
+        */
+        protected abstract function getCurrentOwner(): string|null;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @param callable|null $callback
+        * @return mixed
+        * @generated
+        */
+        public function get(callable|null $callback = null): mixed;
+        /**
+        * Attempt to acquire the lock for the given number of seconds.
+        *
+        * @param int $seconds
+        * @param callable|null $callback
+        * @return mixed
+        * @throws \Illuminate\Contracts\Cache\LockTimeoutException
+        * @generated
+        */
+        public function block(int $seconds, callable|null $callback = null): mixed;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+        /**
+        * Returns the current owner of the lock.
+        *
+        * @return string
+        * @generated
+        */
+        public function owner(): string;
+        /**
+        * Determine if the lock is currently held by any process.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isLocked(): bool;
+        /**
+        * Determines whether this lock is allowed to release the lock in the driver.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isOwnedByCurrentProcess(): bool;
+        /**
+        * Determine whether this lock is owned by the given identifier.
+        *
+        * @param string|null $owner
+        * @return bool
+        * @generated
+        */
+        public function isOwnedBy(string|null $owner): bool;
+        /**
+        * Specify the number of milliseconds to sleep in between blocked lock acquisition attempts.
+        *
+        * @param int $milliseconds
+        * @return static
+        * @generated
+        */
+        public function betweenBlockedAttemptsSleepFor(int $milliseconds): static;
+    }
+    class LuaScripts {
+        /**
+        * Get the Lua script that sets a key only when it does not yet exist.
+        *
+        * KEYS[1] - The name of the key
+        * ARGV[1] - The value of the key
+        * ARGV[2] - The number of seconds the key should be valid
+        *
+        * @return string
+        * @generated
+        */
+        public static function add(): string;
+        /**
+        * Get the Lua script to atomically refresh a lock's expiration.
+        *
+        * KEYS[1] - The name of the lock
+        * ARGV[1] - The owner key of the lock instance trying to refresh it
+        * ARGV[2] - The number of seconds the lock should be valid
+        *
+        * @return string
+        * @generated
+        */
+        public static function refreshLock(): string;
+        /**
+        * Get the Lua script to atomically release a lock.
+        *
+        * KEYS[1] - The name of the lock
+        * ARGV[1] - The owner key of the lock instance trying to release it
+        *
+        * @return string
+        * @generated
+        */
+        public static function releaseLock(): string;
+    }
+    class MemcachedConnector {
+        /**
+        * Create a new Memcached connection.
+        *
+        * @param array $servers
+        * @param string|null $connectionId
+        * @param array $options
+        * @param array $credentials
+        * @return \Memcached
+        * @generated
+        */
+        public function connect(array $servers, string|null $connectionId = null, array $options = [], array $credentials = []): \Memcached;
+        /**
+        * Get a new Memcached instance.
+        *
+        * @param string|null $connectionId
+        * @param array $credentials
+        * @param array $options
+        * @return \Memcached
+        * @generated
+        */
+        protected function getMemcached(string|null $connectionId, array $credentials, array $options): \Memcached;
+        /**
+        * Create the Memcached instance.
+        *
+        * @param string|null $connectionId
+        * @return \Memcached
+        * @generated
+        */
+        protected function createMemcachedInstance(string|null $connectionId): \Memcached;
+        /**
+        * Set the SASL credentials on the Memcached connection.
+        *
+        * @param \Memcached $memcached
+        * @param array $credentials
+        * @return void
+        * @generated
+        */
+        protected function setCredentials(\Memcached $memcached, array $credentials): void;
+    }
+    class MemcachedLock extends \Illuminate\Cache\Lock {
+        /**
+        * The Memcached instance.
+        *
+        * @var \Memcached
+        * @generated
+        */
+        protected \Memcached $memcached;
+        /**
+        * Create a new lock instance.
+        *
+        * @param \Memcached $memcached
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @generated
+        */
+        public function __construct(\Memcached $memcached, string $name, int $seconds, string|null $owner = null): void;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function release(): bool;
+        /**
+        * Releases this lock in disregard of ownership.
+        *
+        * @return void
+        * @generated
+        */
+        public function forceRelease(): void;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return mixed
+        * @generated
+        */
+        protected function getCurrentOwner(): mixed;
+    }
+    class MemcachedStore extends \Illuminate\Cache\TaggableStore implements \Illuminate\Contracts\Cache\LockProvider {
+        use \Illuminate\Support\InteractsWithTime;
+        /**
+        * The Memcached instance.
+        *
+        * @var \Memcached
+        * @generated
+        */
+        protected \Memcached $memcached;
+        /**
+        * A string that should be prepended to keys.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $prefix;
+        /**
+        * Indicates whether we are using Memcached version >= 3.0.0.
+        *
+        * @var bool
+        * @generated
+        */
+        protected bool $onVersionThree;
+        /**
+        * Create a new Memcached store.
+        *
+        * @param \Memcached $memcached
+        * @param string $prefix
+        * @generated
+        */
+        public function __construct(\Memcached $memcached, string $prefix = ''): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @param array $keys
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param array $values
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int $seconds): bool;
+        /**
+        * Store an item in the cache if the key doesn't exist.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function add(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|false
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int|false;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|false
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int|false;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Get the expiration time of the key.
+        *
+        * @param int $seconds
+        * @return int
+        * @generated
+        */
+        protected function calculateExpiration(int $seconds): int;
+        /**
+        * Get the UNIX timestamp for the given number of seconds.
+        *
+        * @param int $seconds
+        * @return int
+        * @generated
+        */
+        protected function toTimestamp(int $seconds): int;
+        /**
+        * Get the underlying Memcached connection.
+        *
+        * @return \Memcached
+        * @generated
+        */
+        public function getMemcached(): \Memcached;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Set the cache key prefix.
+        *
+        * @param string $prefix
+        * @return void
+        * @generated
+        */
+        public function setPrefix(string $prefix): void;
+    }
+    class MemoizedStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider, \Illuminate\Contracts\Cache\Store {
+        /**
+        * The memoized cache values.
+        *
+        * @var array<string, mixed>
+        * @generated
+        */
+        protected array<string, mixed> $cache ?? [];
+        protected string $name;
+        protected \Illuminate\Cache\Repository $repository;
+        /**
+        * Create a new memoized cache instance.
+        *
+        * @param string $name
+        * @param \Illuminate\Cache\Repository $repository
+        * @generated
+        */
+        public function __construct(string $name, \Illuminate\Cache\Repository $repository): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int|bool;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int|bool;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @throws \BadMethodCallException
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @throws \BadMethodCallException
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Flush all locks managed by the store.
+        *
+        * @throws \BadMethodCallException
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Determine if the lock store is separate from the cache store.
+        *
+        * @generated
+        */
+        public function hasSeparateLockStore(): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Prefix the given key.
+        *
+        * @param string $key
+        * @return string
+        * @generated
+        */
+        protected function prefix(string $key): string;
+    }
+    class NoLock extends \Illuminate\Cache\Lock {
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function release(): bool;
+        /**
+        * Releases this lock in disregard of ownership.
+        *
+        * @return void
+        * @generated
+        */
+        public function forceRelease(): void;
+        /**
+        * Determine if the lock is currently held by any process.
+        *
+        * @return bool
+        * @generated
+        */
+        public function isLocked(): bool;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return mixed
+        * @generated
+        */
+        protected function getCurrentOwner(): mixed;
+    }
+    class NullStore extends \Illuminate\Cache\TaggableStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider {
+        use \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return void
+        * @generated
+        */
+        public function get(string $key): void;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return false
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): false;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return false
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): false;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Flush all locks managed by the store.
+        *
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Determine if the lock store is separate from the cache store.
+        *
+        * @generated
+        */
+        public function hasSeparateLockStore(): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+    }
+    class PhpRedisLock extends \Illuminate\Cache\RedisLock {
+        /**
+        * Create a new phpredis lock instance.
+        *
+        * @param \Illuminate\Redis\Connections\PhpRedisConnection $redis
+        * @param string $name
+        * @param int $seconds
+        * @param ?string $owner
+        * @generated
+        */
+        public function __construct(\Illuminate\Redis\Connections\PhpRedisConnection $redis, string $name, int $seconds, ?string $owner = null): void;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function refresh(mixed $seconds = null): mixed;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function release(): mixed;
+    }
+    class RateLimiter {
+        use \Illuminate\Support\InteractsWithTime, \Illuminate\Support\Traits\Macroable;
+        /**
+        * The cache store implementation.
+        *
+        * @var \Illuminate\Contracts\Cache\Repository
+        * @generated
+        */
+        protected \Illuminate\Contracts\Cache\Repository $cache;
+        /**
+        * The configured limit object resolvers.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $limiters ?? [];
+        /**
+        * Create a new rate limiter instance.
+        *
+        * @param \Illuminate\Contracts\Cache\Repository $cache
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Cache\Repository $cache): void;
+        /**
+        * Register a named rate limiter configuration.
+        *
+        * @param \UnitEnum|string $name
+        * @param \Closure $callback
+        * @return static
+        * @generated
+        */
+        public function for(\UnitEnum|string $name, \Closure $callback): static;
+        /**
+        * Get the given named rate limiter.
+        *
+        * @param \UnitEnum|string $name
+        * @return \Closure|null
+        * @generated
+        */
+        public function limiter(\UnitEnum|string $name): \Closure|null;
+        /**
+        * Attempts to execute a callback if it's not limited.
+        *
+        * @param string $key
+        * @param int $maxAttempts
+        * @param \Closure $callback
+        * @param \DateTimeInterface|\DateInterval|int $decaySeconds
+        * @return mixed
+        * @generated
+        */
+        public function attempt(string $key, int $maxAttempts, \Closure $callback, \DateTimeInterface|\DateInterval|int $decaySeconds = 60): mixed;
+        /**
+        * Determine if the given key has been "accessed" too many times.
+        *
+        * @param string $key
+        * @param int $maxAttempts
+        * @return bool
+        * @generated
+        */
+        public function tooManyAttempts(string $key, int $maxAttempts): bool;
+        /**
+        * Increment (by 1) the counter for a given key for a given decay time.
+        *
+        * @param string $key
+        * @param \DateTimeInterface|\DateInterval|int $decaySeconds
+        * @return int
+        * @generated
+        */
+        public function hit(string $key, \DateTimeInterface|\DateInterval|int $decaySeconds = 60): int;
+        /**
+        * Increment the counter for a given key for a given decay time by a given amount.
+        *
+        * @param string $key
+        * @param \DateTimeInterface|\DateInterval|int $decaySeconds
+        * @param int $amount
+        * @return int
+        * @generated
+        */
+        public function increment(string $key, \DateTimeInterface|\DateInterval|int $decaySeconds = 60, int $amount = 1): int;
+        /**
+        * Decrement the counter for a given key for a given decay time by a given amount.
+        *
+        * @param string $key
+        * @param \DateTimeInterface|\DateInterval|int $decaySeconds
+        * @param int $amount
+        * @return int
+        * @generated
+        */
+        public function decrement(string $key, \DateTimeInterface|\DateInterval|int $decaySeconds = 60, int $amount = 1): int;
+        /**
+        * Get the number of attempts for the given key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function attempts(string $key): mixed;
+        /**
+        * Reset the number of attempts for the given key.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function resetAttempts(string $key): bool;
+        /**
+        * Get the number of retries left for the given key.
+        *
+        * @param string $key
+        * @param int $maxAttempts
+        * @return int
+        * @generated
+        */
+        public function remaining(string $key, int $maxAttempts): int;
+        /**
+        * Get the number of retries left for the given key.
+        *
+        * @param string $key
+        * @param int $maxAttempts
+        * @return int
+        * @generated
+        */
+        public function retriesLeft(string $key, int $maxAttempts): int;
+        /**
+        * Clear the hits and lockout timer for the given key.
+        *
+        * @param string $key
+        * @return void
+        * @generated
+        */
+        public function clear(string $key): void;
+        /**
+        * Get the number of seconds until the "key" is accessible again.
+        *
+        * @param string $key
+        * @return int
+        * @generated
+        */
+        public function availableIn(string $key): int;
+        /**
+        * Clean the rate limiter key from unicode characters.
+        *
+        * @param string $key
+        * @return string
+        * @generated
+        */
+        public function cleanRateLimiterKey(string $key): string;
+        /**
+        * Execute the given callback without serialization or compression when applicable.
+        *
+        * @template TReturn
+        * @param callable $callback
+        * @return TReturn
+        * @generated
+        */
+        protected function withoutSerializationOrCompression<TReturn>(callable $callback): TReturn;
+    }
+    class RedisLock extends \Illuminate\Cache\Lock {
+        /**
+        * The Redis factory implementation.
+        *
+        * @var \Illuminate\Redis\Connections\Connection
+        * @generated
+        */
+        protected \Illuminate\Redis\Connections\Connection $redis;
+        /**
+        * Create a new lock instance.
+        *
+        * @param \Illuminate\Redis\Connections\Connection $redis
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @generated
+        */
+        public function __construct(\Illuminate\Redis\Connections\Connection $redis, string $name, int $seconds, string|null $owner = null): void;
+        /**
+        * Attempt to acquire the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function acquire(): bool;
+        /**
+        * Attempt to refresh the lock for the given number of seconds.
+        *
+        * @param int|null $seconds
+        * @return bool
+        * @generated
+        */
+        public function refresh(int|null $seconds = null): bool;
+        /**
+        * Release the lock.
+        *
+        * @return bool
+        * @generated
+        */
+        public function release(): bool;
+        /**
+        * Releases this lock in disregard of ownership.
+        *
+        * @return void
+        * @generated
+        */
+        public function forceRelease(): void;
+        /**
+        * Returns the owner value written into the driver for this lock.
+        *
+        * @return string|null
+        * @generated
+        */
+        protected function getCurrentOwner(): string|null;
+        /**
+        * Get the name of the Redis connection being used to manage the lock.
+        *
+        * @return string
+        * @generated
+        */
+        public function getConnectionName(): string;
+    }
+    class RedisStore extends \Illuminate\Cache\TaggableStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider {
+        use \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * The Redis factory implementation.
+        *
+        * @var \Illuminate\Contracts\Redis\Factory
+        * @generated
+        */
+        protected \Illuminate\Contracts\Redis\Factory $redis;
+        /**
+        * A string that should be prepended to keys.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $prefix;
+        /**
+        * The Redis connection instance that should be used to manage locks.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $connection;
+        /**
+        * The name of the connection that should be used for locks.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $lockConnection;
+        /**
+        * The classes that should be allowed during unserialization.
+        *
+        * @var array|bool|null
+        * @generated
+        */
+        protected array|bool|null $serializableClasses;
+        /**
+        * Create a new Redis store.
+        *
+        * @param \Illuminate\Contracts\Redis\Factory $redis
+        * @param string $prefix
+        * @param string $connection
+        * @param array|bool|null $serializableClasses
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Redis\Factory $redis, string $prefix = '', string $connection = 'default', array|bool|null $serializableClasses = null): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @param array $keys
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param array $values
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int $seconds): bool;
+        /**
+        * Store an item in the cache if the key doesn't exist.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function add(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Get a lock instance.
+        *
+        * @param string $name
+        * @param int $seconds
+        * @param string|null $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function lock(string $name, int $seconds = 0, string|null $owner = null): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Restore a lock instance using the owner identifier.
+        *
+        * @param string $name
+        * @param string $owner
+        * @return \Illuminate\Contracts\Cache\Lock
+        * @generated
+        */
+        public function restoreLock(string $name, string $owner): \Illuminate\Contracts\Cache\Lock;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Remove all locks from the store.
+        *
+        * @return bool
+        * @throws \RuntimeException
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Remove all expired tag set entries.
+        *
+        * @return void
+        * @generated
+        */
+        public function flushStaleTags(): void;
+        /**
+        * Begin executing a new tags operation.
+        *
+        * @param mixed $names
+        * @return \Illuminate\Cache\RedisTaggedCache
+        * @generated
+        */
+        public function tags(mixed $names): \Illuminate\Cache\RedisTaggedCache;
+        /**
+        * Get a collection of all of the cache tags currently being used.
+        *
+        * @param int $chunkSize
+        * @return \Illuminate\Support\LazyCollection
+        * @generated
+        */
+        protected function currentTags(int $chunkSize = 1000): \Illuminate\Support\LazyCollection;
+        /**
+        * Get the Redis connection instance.
+        *
+        * @return \Illuminate\Redis\Connections\Connection
+        * @generated
+        */
+        public function connection(): \Illuminate\Redis\Connections\Connection;
+        /**
+        * Get the Redis connection instance that should be used to manage locks.
+        *
+        * @return \Illuminate\Redis\Connections\Connection
+        * @generated
+        */
+        public function lockConnection(): \Illuminate\Redis\Connections\Connection;
+        /**
+        * Specify the name of the connection that should be used to store data.
+        *
+        * @param string $connection
+        * @return void
+        * @generated
+        */
+        public function setConnection(string $connection): void;
+        /**
+        * Specify the name of the connection that should be used to manage locks.
+        *
+        * @param string $connection
+        * @return static
+        * @generated
+        */
+        public function setLockConnection(string $connection): static;
+        /**
+        * Get the Redis database instance.
+        *
+        * @return \Illuminate\Contracts\Redis\Factory
+        * @generated
+        */
+        public function getRedis(): \Illuminate\Contracts\Redis\Factory;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Set the cache key prefix.
+        *
+        * @param string $prefix
+        * @return void
+        * @generated
+        */
+        public function setPrefix(string $prefix): void;
+        /**
+        * Prepare a value to be used with the Redis cache store when used by eval scripts.
+        *
+        * @param mixed $value
+        * @param \Illuminate\Redis\Connections\Connection $connection
+        * @return mixed
+        * @generated
+        */
+        protected function pack(mixed $value, \Illuminate\Redis\Connections\Connection $connection): mixed;
+        /**
+        * Serialize the value.
+        *
+        * @param mixed $value
+        * @return mixed
+        * @generated
+        */
+        protected function serialize(mixed $value): mixed;
+        /**
+        * Determine if the given value should be stored as plain value.
+        *
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        protected function shouldBeStoredWithoutSerialization(mixed $value): bool;
+        /**
+        * Unserialize the value.
+        *
+        * @param mixed $value
+        * @return mixed
+        * @generated
+        */
+        protected function unserialize(mixed $value): mixed;
+        /**
+        * Handle connection specific considerations when a value needs to be serialized.
+        *
+        * @param mixed $value
+        * @param \Illuminate\Redis\Connections\Connection $connection
+        * @return mixed
+        * @generated
+        */
+        protected function connectionAwareSerialize(mixed $value, \Illuminate\Redis\Connections\Connection $connection): mixed;
+        /**
+        * Handle connection specific considerations when a value needs to be unserialized.
+        *
+        * @param mixed $value
+        * @param \Illuminate\Redis\Connections\Connection $connection
+        * @return mixed
+        * @generated
+        */
+        protected function connectionAwareUnserialize(mixed $value, \Illuminate\Redis\Connections\Connection $connection): mixed;
+        /**
+        * Determine if the lock store is separate from the cache store.
+        *
+        * @return bool
+        * @generated
+        */
+        public function hasSeparateLockStore(): bool;
+    }
+    class RedisTaggedCache extends \Illuminate\Cache\TaggedCache {
+        /**
+        * Store an item in the cache if the key does not exist.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @param \DateTimeInterface|\DateInterval|int|null $ttl
+        * @return bool
+        * @generated
+        */
+        public function add(\UnitEnum|string $key, mixed $value, \DateTimeInterface|\DateInterval|int|null $ttl = null): bool;
+        /**
+        * Store an item in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @param \DateTimeInterface|\DateInterval|int|null $ttl
+        * @return bool
+        * @generated
+        */
+        public function put(\UnitEnum|string $key, mixed $value, \DateTimeInterface|\DateInterval|int|null $ttl = null): bool;
+        /**
+        * Set the expiration of a cached item.
+        *
+        * @param \UnitEnum|string $key
+        * @param \DateTimeInterface|\DateInterval|int $ttl
+        * @return bool
+        * @generated
+        */
+        public function touch(\UnitEnum|string $key, \DateTimeInterface|\DateInterval|int $ttl): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function increment(\UnitEnum|string $key, mixed $value = 1): int|bool;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function decrement(\UnitEnum|string $key, mixed $value = 1): int|bool;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(\UnitEnum|string $key, mixed $value): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        protected function flushClusteredConnection(): bool;
+        /**
+        * Flush the individual cache entries for the tags.
+        *
+        * @return void
+        * @generated
+        */
+        protected function flushValues(): void;
+        /**
+        * Remove all stale reference entries from the tag set.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flushStale(): bool;
+    }
+    class RedisTagSet extends \Illuminate\Cache\TagSet {
+        /**
+        * Add a reference entry to the tag set's underlying sorted set.
+        *
+        * @param string $key
+        * @param ?int $ttl
+        * @param string|null $updateWhen
+        * @return void
+        * @generated
+        */
+        public function addEntry(string $key, ?int $ttl = null, string|null $updateWhen = null): void;
+        /**
+        * Get all of the cache entry keys for the tag set.
+        *
+        * @return \Illuminate\Support\LazyCollection
+        * @generated
+        */
+        public function entries(): \Illuminate\Support\LazyCollection;
+        /**
+        * Remove the stale entries from the tag set.
+        *
+        * @return void
+        * @generated
+        */
+        public function flushStaleEntries(): void;
+        /**
+        * Flush the tag from the cache.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function flushTag(string $name): string;
+        /**
+        * Reset the tag and return the new tag identifier.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function resetTag(string $name): string;
+        /**
+        * Get the unique tag identifier for a given tag.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function tagId(string $name): string;
+        /**
+        * Get the tag identifier key for a given tag.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function tagKey(string $name): string;
+    }
+    /**
+    * @mixin \Illuminate\Contracts\Cache\Store
+    * @generated
+    */
+    class Repository implements \ArrayAccess, \Illuminate\Contracts\Cache\Repository {
+        use \Illuminate\Support\InteractsWithTime, \Illuminate\Support\Traits\Macroable;
+        /**
+        * The cache key prefix used to track when a flexible cache value was last refreshed.
+        *
+        * @var string
+        * @generated
+        */
+        public const string FLEXIBLE_CREATED_KEY_PREFIX ?? 'illuminate:cache:flexible:created:';
+        /**
+        * The cache store implementation.
+        *
+        * @var \Illuminate\Contracts\Cache\Store
+        * @generated
+        */
+        protected \Illuminate\Contracts\Cache\Store $store;
+        /**
+        * The event dispatcher implementation.
+        *
+        * @var \Illuminate\Contracts\Events\Dispatcher|null
+        * @generated
+        */
+        protected \Illuminate\Contracts\Events\Dispatcher|null $events;
+        /**
+        * The default number of seconds to store items.
+        *
+        * @var int|null
+        * @generated
+        */
+        protected int|null $default ?? 3600;
+        /**
+        * The cache store configuration options.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $config ?? [];
+        /**
+        * The callback to invoke when an unserializable class is encountered.
+        *
+        * @var callable|null
+        * @generated
+        */
+        protected static callable|null $unserializableClassHandler;
+        /**
+        * Create a new cache repository instance.
+        *
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Cache\Store $store, array $config = []): void;
+        /**
+        * Determine if an item exists in the cache.
+        *
+        * @param \UnitEnum|array|string $key
+        * @generated
+        */
+        public function has(\UnitEnum|array|string $key): bool;
+        /**
+        * Determine if an item doesn't exist in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @return bool
+        * @generated
+        */
+        public function missing(\UnitEnum|string $key): bool;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param \UnitEnum|array|string $key
+        * @param mixed $default
+        * @generated
+        */
+        public function get(\UnitEnum|array|string $key, mixed $default = null): mixed;
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function getMultiple(mixed $keys, mixed $default = null): iterable;
+        /**
+        * Handle a result for the "many" method.
+        *
+        * @param array $keys
+        * @param string $key
+        * @param mixed $value
+        * @return mixed
+        * @generated
+        */
+        protected function handleManyResult(array $keys, string $key, mixed $value): mixed;
+        /**
+        * Retrieve an item from the cache and delete it.
+        *
+        * @param \UnitEnum|array|string $key
+        * @param mixed $default
+        * @return mixed
+        * @generated
+        */
+        public function pull(\UnitEnum|array|string $key, mixed $default = null): mixed;
+        /**
+        * Retrieve a string item from the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param callable|string|null $default
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function string(\UnitEnum|string $key, callable|string|null $default = null): string;
+        /**
+        * Retrieve an integer item from the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param callable|int|null $default
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function integer(\UnitEnum|string $key, callable|int|null $default = null): int;
+        /**
+        * Retrieve a float item from the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param callable|float|null $default
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function float(\UnitEnum|string $key, callable|float|null $default = null): float;
+        /**
+        * Retrieve a boolean item from the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param callable|bool|null $default
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function boolean(\UnitEnum|string $key, callable|bool|null $default = null): bool;
+        /**
+        * Retrieve an array item from the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param callable|array<mixed, mixed>|null $default
+        * @return array<mixed, mixed>
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function array(\UnitEnum|string $key, callable|array<mixed, mixed>|null $default = null): array<mixed, mixed>;
+        /**
+        * Store an item in the cache.
+        *
+        * @param \UnitEnum|array|string $key
+        * @param mixed $value
+        * @param \DateTimeInterface|\DateInterval|int|null $ttl
+        * @return bool
+        * @generated
+        */
+        public function put(\UnitEnum|array|string $key, mixed $value, \DateTimeInterface|\DateInterval|int|null $ttl = null): bool;
+        /**
+        * Store an item in the cache.
+        *
+        * @param \UnitEnum|array|string $key
+        * @param mixed $value
+        * @param \DateTimeInterface|\DateInterval|int|null $ttl
+        * @generated
+        */
+        public function set(\UnitEnum|array|string $key, mixed $value, \DateTimeInterface|\DateInterval|int|null $ttl = null): bool;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param \DateTimeInterface|\DateInterval|int|null $ttl
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, \DateTimeInterface|\DateInterval|int|null $ttl = null): bool;
+        /**
+        * Store multiple items in the cache indefinitely.
+        *
+        * @return bool
+        * @generated
+        */
+        protected function putManyForever(array $values): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function setMultiple(mixed $values, mixed $ttl = null): bool;
+        /**
+        * Store an item in the cache if the key does not exist.
+        *
+        * @param \UnitEnum|array|string $key
+        * @param mixed $value
+        * @param \DateTimeInterface|\DateInterval|int|null $ttl
+        * @return bool
+        * @generated
+        */
+        public function add(\UnitEnum|array|string $key, mixed $value, \DateTimeInterface|\DateInterval|int|null $ttl = null): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function increment(\UnitEnum|string $key, mixed $value = 1): int|bool;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function decrement(\UnitEnum|string $key, mixed $value = 1): int|bool;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(\UnitEnum|string $key, mixed $value): bool;
+        /**
+        * Get an item from the cache, or execute the given Closure and store the result.
+        *
+        * @template TCacheValue
+        * @param \UnitEnum|string $key
+        * @param \Closure|\DateTimeInterface|\DateInterval|int|null $ttl
+        * @param \Closure $callback
+        * @return TCacheValue
+        * @generated
+        */
+        public function remember<TCacheValue>(\UnitEnum|string $key, \Closure|\DateTimeInterface|\DateInterval|int|null $ttl, \Closure $callback): TCacheValue;
+        /**
+        * Get an item from the cache, or execute the given Closure and store the result.
+        *
+        * @template TCacheValue
+        * @param \UnitEnum|string $key
+        * @param \Closure|\DateTimeInterface|\DateInterval|int|null $ttl
+        * @param \Closure $callback
+        * @return array The cached value and whether it was warm.
+        * @generated
+        */
+        public function rememberWithWarmth<TCacheValue>(\UnitEnum|string $key, \Closure|\DateTimeInterface|\DateInterval|int|null $ttl, \Closure $callback): array;
+        /**
+        * Get an item from the cache, or execute the given Closure and store the result forever.
+        *
+        * @template TCacheValue
+        * @param \UnitEnum|string $key
+        * @param \Closure $callback
+        * @return TCacheValue
+        * @generated
+        */
+        public function sear<TCacheValue>(\UnitEnum|string $key, \Closure $callback): TCacheValue;
+        /**
+        * Get an item from the cache, or execute the given Closure and store the result forever.
+        *
+        * @template TCacheValue
+        * @param \UnitEnum|string $key
+        * @param \Closure $callback
+        * @return TCacheValue
+        * @generated
+        */
+        public function rememberForever<TCacheValue>(\UnitEnum|string $key, \Closure $callback): TCacheValue;
+        /**
+        * Retrieve an item from the cache by key, refreshing it in the background if it is stale.
+        *
+        * @template TCacheValue
+        * @param \UnitEnum|string $key
+        * @param array $ttl
+        * @param callable $callback
+        * @param array|null $lock
+        * @param bool $alwaysDefer
+        * @return TCacheValue
+        * @generated
+        */
+        public function flexible<TCacheValue>(\UnitEnum|string $key, array $ttl, callable $callback, array|null $lock = null, bool $alwaysDefer = false): TCacheValue;
+        /**
+        * Set the expiration of a cached item.
+        *
+        * @param \UnitEnum|string $key
+        * @param \DateTimeInterface|\DateInterval|int $ttl
+        * @return bool
+        * @generated
+        */
+        public function touch(\UnitEnum|string $key, \DateTimeInterface|\DateInterval|int $ttl): bool;
+        /**
+        * Execute a callback while holding an atomic lock on a cache mutex to prevent overlapping calls.
+        *
+        * @template TReturn
+        * @param \UnitEnum|string $key
+        * @param callable $callback
+        * @param int $lockFor
+        * @param int $waitFor
+        * @param string|null $owner
+        * @return TReturn
+        * @throws \Illuminate\Contracts\Cache\LockTimeoutException
+        * @generated
+        */
+        public function withoutOverlapping<TReturn>(\UnitEnum|string $key, callable $callback, int $lockFor = 0, int $waitFor = 10, string|null $owner = null): TReturn;
+        /**
+        * Funnel a callback for a maximum number of simultaneous executions.
+        *
+        * @param \UnitEnum|string $name
+        * @return \Illuminate\Cache\Limiters\ConcurrencyLimiterBuilder
+        * @generated
+        */
+        public function funnel(\UnitEnum|string $name): \Illuminate\Cache\Limiters\ConcurrencyLimiterBuilder;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param \UnitEnum|array|string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(\UnitEnum|array|string $key): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param \UnitEnum|array|string $key
+        * @generated
+        */
+        public function delete(\UnitEnum|array|string $key): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function deleteMultiple(mixed $keys): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        public function clear(): bool;
+        /**
+        * Flush all locks from the cache store.
+        *
+        * @throws \BadMethodCallException
+        * @generated
+        */
+        public function flushLocks(): bool;
+        /**
+        * Begin executing a new tags operation if the store supports it.
+        *
+        * @param mixed $names
+        * @return \Illuminate\Cache\TaggedCache
+        * @throws \BadMethodCallException
+        * @generated
+        */
+        public function tags(mixed $names): \Illuminate\Cache\TaggedCache;
+        /**
+        * Format the key for a cache item.
+        *
+        * @param string $key
+        * @return string
+        * @generated
+        */
+        protected function itemKey(string $key): string;
+        /**
+        * Handle a cache value that contains an incomplete class.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return mixed
+        * @generated
+        */
+        protected function handleIncompleteClass(string $key, mixed $value): mixed;
+        /**
+        * Calculate the number of seconds for the given TTL.
+        *
+        * @param \DateTimeInterface|\DateInterval|int $ttl
+        * @return int
+        * @generated
+        */
+        protected function getSeconds(\DateTimeInterface|\DateInterval|int $ttl): int;
+        /**
+        * Get the name of the cache store.
+        *
+        * @return string|null
+        * @generated
+        */
+        public function getName(): string|null;
+        /**
+        * Determine if the current store supports tags.
+        *
+        * @return bool
+        * @generated
+        */
+        public function supportsTags(): bool;
+        /**
+        * Determine if the current store supports flushing locks.
+        *
+        * @generated
+        */
+        public function supportsFlushingLocks(): bool;
+        /**
+        * Get the default cache time.
+        *
+        * @return int|null
+        * @generated
+        */
+        public function getDefaultCacheTime(): int|null;
+        /**
+        * Set the default cache time in seconds.
+        *
+        * @param int|null $seconds
+        * @return static
+        * @generated
+        */
+        public function setDefaultCacheTime(int|null $seconds): static;
+        /**
+        * Get the cache store implementation.
+        *
+        * @return \Illuminate\Contracts\Cache\Store
+        * @generated
+        */
+        public function getStore(): \Illuminate\Contracts\Cache\Store;
+        /**
+        * Set the cache store implementation.
+        *
+        * @param \Illuminate\Contracts\Cache\Store $store
+        * @return static
+        * @generated
+        */
+        public function setStore(\Illuminate\Contracts\Cache\Store $store): static;
+        /**
+        * Fire an event for this cache instance.
+        *
+        * @param object|string $event
+        * @return void
+        * @generated
+        */
+        protected function event(object|string $event): void;
+        /**
+        * Get the event dispatcher instance.
+        *
+        * @return \Illuminate\Contracts\Events\Dispatcher|null
+        * @generated
+        */
+        public function getEventDispatcher(): \Illuminate\Contracts\Events\Dispatcher|null;
+        /**
+        * Set the event dispatcher instance.
+        *
+        * @return void
+        * @generated
+        */
+        public function setEventDispatcher(\Illuminate\Contracts\Events\Dispatcher $events): void;
+        /**
+        * Register a callback to be invoked when an unserializable class is encountered.
+        *
+        * @param callable|null $callback
+        * @return void
+        * @generated
+        */
+        public static function handleUnserializableClassUsing(callable|null $callback): void;
+        /**
+        * Determine if a cached value exists.
+        *
+        * @param \UnitEnum|string $offset
+        * @generated
+        */
+        public function offsetExists(\UnitEnum|string $offset): bool;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param \UnitEnum|string $offset
+        * @generated
+        */
+        public function offsetGet(\UnitEnum|string $offset): mixed;
+        /**
+        * Store an item in the cache for the default time.
+        *
+        * @param \UnitEnum|string $offset
+        * @param mixed $value
+        * @generated
+        */
+        public function offsetSet(\UnitEnum|string $offset, mixed $value): void;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param \UnitEnum|string $offset
+        * @generated
+        */
+        public function offsetUnset(\UnitEnum|string $offset): void;
+        /**
+        * Handle dynamic calls into macros or pass missing methods to the store.
+        *
+        * @param string $method
+        * @param array $parameters
+        * @return mixed
+        * @generated
+        */
+        public function __call(string $method, array $parameters): mixed;
+        /**
+        * Clone cache repository instance.
+        *
+        * @return void
+        * @generated
+        */
+        public function __clone(): void;
+    }
+    trait RetrievesMultipleKeys {
+        /**
+        * Retrieve multiple items from the cache by key.
+        *
+        * Items not found in the cache will have a null value.
+        *
+        * @param array $keys
+        * @return array
+        * @generated
+        */
+        public function many(array $keys): array;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param array $values
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int $seconds): bool;
+    }
+    class SessionStore implements \Illuminate\Contracts\Cache\Store {
+        use \Illuminate\Support\InteractsWithTime, \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * The key for cache items.
+        *
+        * @var string
+        * @generated
+        */
+        public string $key;
+        /**
+        * The session instance.
+        *
+        * @var \Illuminate\Contracts\Session\Session
+        * @generated
+        */
+        public \Illuminate\Contracts\Session\Session $session;
+        /**
+        * Create a new session cache store.
+        *
+        * @param \Illuminate\Contracts\Session\Session $session
+        * @param string $key
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Session\Session $session, string $key = '_cache'): void;
+        /**
+        * Get all of the cached values and their expiration times.
+        *
+        * @return array<string, array>
+        * @generated
+        */
+        public function all(): array<string, array>;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Determine if the given expiration time is expired.
+        *
+        * @param int|float $expiresAt
+        * @return bool
+        * @generated
+        */
+        protected function isExpired(int|float $expiresAt): bool;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Get the UNIX timestamp, with milliseconds, for the given number of seconds in the future.
+        *
+        * @param int $seconds
+        * @return float
+        * @generated
+        */
+        protected function toTimestamp(int $seconds): float;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function itemKey(mixed $key): string;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+    }
+    class StorageStore implements \Illuminate\Contracts\Cache\Store {
+        use \Illuminate\Support\InteractsWithTime, \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * The filesystem disk instance.
+        *
+        * @var \Illuminate\Contracts\Filesystem\Filesystem
+        * @generated
+        */
+        protected \Illuminate\Contracts\Filesystem\Filesystem $disk;
+        /**
+        * The storage path where cache files should be written.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $directory;
+        /**
+        * A string that should be prepended to keys.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $prefix;
+        /**
+        * The classes that should be allowed during unserialization.
+        *
+        * @var array|bool|null
+        * @generated
+        */
+        protected array|bool|null $serializableClasses;
+        /**
+        * Create a new storage cache store instance.
+        *
+        * @param \Illuminate\Contracts\Filesystem\Filesystem $disk
+        * @param string $directory
+        * @param string $prefix
+        * @param array|bool|null $serializableClasses
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Filesystem\Filesystem $disk, string $directory = '', string $prefix = '', array|bool|null $serializableClasses = null): void;
+        /**
+        * Retrieve an item from the cache by key.
+        *
+        * @param string $key
+        * @return mixed
+        * @generated
+        */
+        public function get(string $key): mixed;
+        /**
+        * Store an item in the cache for a given number of seconds.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function put(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Store an item in the cache if the key doesn't exist.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function add(string $key, mixed $value, int $seconds): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function increment(string $key, mixed $value = 1): int;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return int
+        * @generated
+        */
+        public function decrement(string $key, mixed $value = 1): int;
+        /**
+        * Store an item in the cache indefinitely.
+        *
+        * @param string $key
+        * @param mixed $value
+        * @return bool
+        * @generated
+        */
+        public function forever(string $key, mixed $value): bool;
+        /**
+        * Adjust the expiration time of a cached item.
+        *
+        * @param string $key
+        * @param int $seconds
+        * @return bool
+        * @generated
+        */
+        public function touch(string $key, int $seconds): bool;
+        /**
+        * Remove an item from the cache.
+        *
+        * @param string $key
+        * @return bool
+        * @generated
+        */
+        public function forget(string $key): bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * Retrieve an item and expiry time from the cache by key.
+        *
+        * @param string $key
+        * @return array
+        * @generated
+        */
+        protected function getPayload(string $key): array;
+        /**
+        * Unserialize the given value.
+        *
+        * @param string $value
+        * @return mixed
+        * @generated
+        */
+        protected function unserialize(string $value): mixed;
+        /**
+        * Get a default empty payload for the cache.
+        *
+        * @return array
+        * @generated
+        */
+        protected function emptyPayload(): array;
+        /**
+        * Get the full path for the given cache key.
+        *
+        * @param string $key
+        * @return string
+        * @generated
+        */
+        public function path(string $key): string;
+        /**
+        * Get the expiration time based on the given seconds.
+        *
+        * @param int $seconds
+        * @return int
+        * @generated
+        */
+        protected function expiration(int $seconds): int;
+        /**
+        * Get the filesystem disk instance.
+        *
+        * @return \Illuminate\Contracts\Filesystem\Filesystem
+        * @generated
+        */
+        public function getDisk(): \Illuminate\Contracts\Filesystem\Filesystem;
+        /**
+        * Get the working directory of the cache.
+        *
+        * @return string
+        * @generated
+        */
+        public function getDirectory(): string;
+        /**
+        * Get the cache key prefix.
+        *
+        * @return string
+        * @generated
+        */
+        public function getPrefix(): string;
+        /**
+        * Set the cache key prefix.
+        *
+        * @param string $prefix
+        * @return void
+        * @generated
+        */
+        public function setPrefix(string $prefix): void;
+    }
+    abstract class TaggableStore implements \Illuminate\Contracts\Cache\Store {
+        /**
+        * Begin executing a new tags operation.
+        *
+        * @param mixed $names
+        * @return \Illuminate\Cache\TaggedCache
+        * @generated
+        */
+        public function tags(mixed $names): \Illuminate\Cache\TaggedCache;
+    }
+    class TaggedCache extends \Illuminate\Cache\Repository {
+        use \Illuminate\Cache\RetrievesMultipleKeys;
+        /**
+        * The tag set instance.
+        *
+        * @var \Illuminate\Cache\TagSet
+        * @generated
+        */
+        protected \Illuminate\Cache\TagSet $tags;
+        /**
+        * Create a new tagged cache instance.
+        *
+        * @param \Illuminate\Contracts\Cache\Store $store
+        * @param \Illuminate\Cache\TagSet $tags
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Cache\Store $store, \Illuminate\Cache\TagSet $tags): void;
+        /**
+        * Store multiple items in the cache for a given number of seconds.
+        *
+        * @param array $values
+        * @param int|null $ttl
+        * @return bool
+        * @generated
+        */
+        public function putMany(array $values, int|null $ttl = null): bool;
+        /**
+        * Increment the value of an item in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function increment(\UnitEnum|string $key, mixed $value = 1): int|bool;
+        /**
+        * Decrement the value of an item in the cache.
+        *
+        * @param \UnitEnum|string $key
+        * @param mixed $value
+        * @return int|bool
+        * @generated
+        */
+        public function decrement(\UnitEnum|string $key, mixed $value = 1): int|bool;
+        /**
+        * Remove all items from the cache.
+        *
+        * @return bool
+        * @generated
+        */
+        public function flush(): bool;
+        /**
+        * {@inheritdoc}
+        *
+        * @generated
+        */
+        protected function itemKey(mixed $key): mixed;
+        /**
+        * Get a fully-qualified key for a tagged item.
+        *
+        * @param string $key
+        * @return string
+        * @generated
+        */
+        public function taggedItemKey(string $key): string;
+        /**
+        * Fire an event for this cache instance.
+        *
+        * @param object $event
+        * @return void
+        * @generated
+        */
+        protected function event(object $event): void;
+        /**
+        * Get the tag set instance.
+        *
+        * @return \Illuminate\Cache\TagSet
+        * @generated
+        */
+        public function getTags(): \Illuminate\Cache\TagSet;
+    }
+    class TagSet {
+        /**
+        * The cache store implementation.
+        *
+        * @var \Illuminate\Contracts\Cache\Store
+        * @generated
+        */
+        protected \Illuminate\Contracts\Cache\Store $store;
+        /**
+        * The tag names.
+        *
+        * @var array
+        * @generated
+        */
+        protected array $names ?? [];
+        /**
+        * Create a new TagSet instance.
+        *
+        * @param \Illuminate\Contracts\Cache\Store $store
+        * @param array $names
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Cache\Store $store, array $names = []): void;
+        /**
+        * Reset all tags in the set.
+        *
+        * @return void
+        * @generated
+        */
+        public function reset(): void;
+        /**
+        * Reset the tag and return the new tag identifier.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function resetTag(string $name): string;
+        /**
+        * Flush all the tags in the set.
+        *
+        * @return void
+        * @generated
+        */
+        public function flush(): void;
+        /**
+        * Flush the tag from the cache.
+        *
+        * @param string $name
+        * @generated
+        */
+        public function flushTag(string $name): mixed;
+        /**
+        * Get a unique namespace that changes when any of the tags are flushed.
+        *
+        * @return string
+        * @generated
+        */
+        public function getNamespace(): string;
+        /**
+        * Get an array of tag identifiers for all of the tags in the set.
+        *
+        * @return array
+        * @generated
+        */
+        protected function tagIds(): array;
+        /**
+        * Get the unique tag identifier for a given tag.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function tagId(string $name): string;
+        /**
+        * Get the tag identifier key for a given tag.
+        *
+        * @param string $name
+        * @return string
+        * @generated
+        */
+        public function tagKey(string $name): string;
+        /**
+        * Get all of the tag names in the set.
+        *
+        * @return array
+        * @generated
+        */
+        public function getNames(): array;
+    }
+}
+namespace Illuminate\Cache\Console {
+    class CacheTableCommand extends \Illuminate\Console\MigrationGeneratorCommand {
+        /**
+        * The name and signature of the console command.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $signature ?? 'make:cache-table';
+        /**
+        * The console command name aliases.
+        *
+        * @var array<int, string>
+        * @generated
+        */
+        protected array<int, string> $aliases ?? [];
+        /**
+        * The console command description.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Create a migration for the cache database table';
+        /**
+        * Get the migration table name.
+        *
+        * @return string
+        * @generated
+        */
+        protected function migrationTableName(): string;
+        /**
+        * Get the path to the migration stub file.
+        *
+        * @return string
+        * @generated
+        */
+        protected function migrationStubFile(): string;
+    }
+    class ClearCommand extends \Illuminate\Console\Command {
+        use \Illuminate\Console\Prohibitable;
+        /**
+        * The name and signature of the console command.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $signature ?? 'cache:clear
+                    {store? : The name of the store you would like to clear}
+                    {--tags= : The cache tags you would like to clear}
+                    {--locks : Only clear cache locks}';
+        /**
+        * The console command description.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Flush the application cache';
+        /**
+        * The cache manager instance.
+        *
+        * @var \Illuminate\Cache\CacheManager
+        * @generated
+        */
+        protected \Illuminate\Cache\CacheManager $cache;
+        /**
+        * The filesystem instance.
+        *
+        * @var \Illuminate\Filesystem\Filesystem
+        * @generated
+        */
+        protected \Illuminate\Filesystem\Filesystem $files;
+        /**
+        * Create a new cache clear command instance.
+        *
+        * @param \Illuminate\Cache\CacheManager $cache
+        * @param \Illuminate\Filesystem\Filesystem $files
+        * @generated
+        */
+        public function __construct(\Illuminate\Cache\CacheManager $cache, \Illuminate\Filesystem\Filesystem $files): void;
+        /**
+        * Execute the console command.
+        *
+        * @return int
+        * @generated
+        */
+        public function handle(): int;
+        /**
+        * Clear all locks from the cache store.
+        *
+        * @return int
+        * @generated
+        */
+        protected function clearLocks(): int;
+        /**
+        * Flush the real-time facades stored in the cache directory.
+        *
+        * @return void
+        * @generated
+        */
+        public function flushFacades(): void;
+        /**
+        * Get the cache instance for the command.
+        *
+        * @return \Illuminate\Cache\Repository
+        * @generated
+        */
+        protected function cache(): \Illuminate\Cache\Repository;
+        /**
+        * Get the tags passed to the command.
+        *
+        * @return array
+        * @generated
+        */
+        protected function tags(): array;
+    }
+    class ForgetCommand extends \Illuminate\Console\Command {
+        /**
+        * The console command name.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $signature ?? 'cache:forget {key : The key to remove} {store? : The store to remove the key from}';
+        /**
+        * The console command description.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Remove an item from the cache';
+        /**
+        * The cache manager instance.
+        *
+        * @var \Illuminate\Cache\CacheManager
+        * @generated
+        */
+        protected \Illuminate\Cache\CacheManager $cache;
+        /**
+        * Create a new cache clear command instance.
+        *
+        * @param \Illuminate\Cache\CacheManager $cache
+        * @generated
+        */
+        public function __construct(\Illuminate\Cache\CacheManager $cache): void;
+        /**
+        * Execute the console command.
+        *
+        * @return void
+        * @generated
+        */
+        public function handle(): void;
+    }
+    class PruneStaleTagsCommand extends \Illuminate\Console\Command {
+        /**
+        * The name and signature of the console command.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $signature ?? 'cache:prune-stale-tags {store? : The name of the store you would like to prune tags from}';
+        /**
+        * The console command description.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $description ?? 'Prune stale cache tags from the cache (Redis only)';
+        /**
+        * Execute the console command.
+        *
+        * @param \Illuminate\Cache\CacheManager $cache
+        * @return int|null
+        * @generated
+        */
+        public function handle(\Illuminate\Cache\CacheManager $cache): int|null;
+    }
+}
+namespace Illuminate\Cache\Events {
+    abstract class CacheEvent {
+        /**
+        * The name of the cache store.
+        *
+        * @var string|null
+        * @generated
+        */
+        public string|null $storeName;
+        /**
+        * The key of the event.
+        *
+        * @var string
+        * @generated
+        */
+        public string $key;
+        /**
+        * The tags that were assigned to the key.
+        *
+        * @var array
+        * @generated
+        */
+        public array $tags;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param string $key
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, string $key, array $tags = []): void;
+        /**
+        * Set the tags for the cache event.
+        *
+        * @param array $tags
+        * @return static
+        * @generated
+        */
+        public function setTags(array $tags): static;
+    }
+    class CacheFailedOver {
+        public ?string $storeName;
+        public \Throwable $exception;
+        /**
+        * Create a new event instance.
+        *
+        * @param ?string $storeName The name of the cache store that failed.
+        * @param \Throwable $exception The exception that was thrown.
+        * @generated
+        */
+        public function __construct(?string $storeName, \Throwable $exception): void;
+    }
+    class CacheFlushed {
+        /**
+        * The name of the cache store.
+        *
+        * @var string|null
+        * @generated
+        */
+        public string|null $storeName;
+        /**
+        * The tags that were assigned to the key.
+        *
+        * @var array
+        * @generated
+        */
+        public array $tags;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, array $tags = []): void;
+        /**
+        * Set the tags for the cache event.
+        *
+        * @param array $tags
+        * @return static
+        * @generated
+        */
+        public function setTags(array $tags): static;
+    }
+    class CacheFlushFailed {
+        /**
+        * The name of the cache store.
+        *
+        * @var string|null
+        * @generated
+        */
+        public string|null $storeName;
+        /**
+        * The tags that were assigned to the key.
+        *
+        * @var array
+        * @generated
+        */
+        public array $tags;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, array $tags = []): void;
+        /**
+        * Set the tags for the cache event.
+        *
+        * @param array $tags
+        * @return static
+        * @generated
+        */
+        public function setTags(array $tags): static;
+    }
+    class CacheFlushing {
+        /**
+        * The name of the cache store.
+        *
+        * @var string|null
+        * @generated
+        */
+        public string|null $storeName;
+        /**
+        * The tags that were assigned to the key.
+        *
+        * @var array
+        * @generated
+        */
+        public array $tags;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, array $tags = []): void;
+        /**
+        * Set the tags for the cache event.
+        *
+        * @param array $tags
+        * @return static
+        * @generated
+        */
+        public function setTags(array $tags): static;
+    }
+    class CacheHit extends \Illuminate\Cache\Events\CacheEvent {
+        /**
+        * The value that was retrieved.
+        *
+        * @var mixed
+        * @generated
+        */
+        public mixed $value;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param string $key
+        * @param mixed $value
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, string $key, mixed $value, array $tags = []): void;
+    }
+    class CacheLocksFlushed {
+        /**
+        * The name of the cache store.
+        *
+        * @var ?string
+        * @generated
+        */
+        public ?string $storeName;
+        /**
+        * Create a new event instance.
+        *
+        * @param ?string $storeName
+        * @generated
+        */
+        public function __construct(?string $storeName): void;
+    }
+    class CacheLocksFlushFailed {
+        /**
+        * The name of the cache store.
+        *
+        * @var ?string
+        * @generated
+        */
+        public ?string $storeName;
+        /**
+        * Create a new event instance.
+        *
+        * @param ?string $storeName
+        * @generated
+        */
+        public function __construct(?string $storeName): void;
+    }
+    class CacheLocksFlushing {
+        /**
+        * The name of the cache store.
+        *
+        * @var ?string
+        * @generated
+        */
+        public ?string $storeName;
+        /**
+        * Create a new event instance.
+        *
+        * @param ?string $storeName
+        * @generated
+        */
+        public function __construct(?string $storeName): void;
+    }
+    class CacheMissed extends \Illuminate\Cache\Events\CacheEvent {
+    }
+    class ForgettingKey extends \Illuminate\Cache\Events\CacheEvent {
+    }
+    class KeyForgetFailed extends \Illuminate\Cache\Events\CacheEvent {
+    }
+    class KeyForgotten extends \Illuminate\Cache\Events\CacheEvent {
+    }
+    class KeyWriteFailed extends \Illuminate\Cache\Events\CacheEvent {
+        /**
+        * The value that would have been written.
+        *
+        * @var mixed
+        * @generated
+        */
+        public mixed $value;
+        /**
+        * The number of seconds the key should have been valid.
+        *
+        * @var int|null
+        * @generated
+        */
+        public int|null $seconds;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param string $key
+        * @param mixed $value
+        * @param int|null $seconds
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, string $key, mixed $value, int|null $seconds = null, array $tags = []): void;
+    }
+    class KeyWritten extends \Illuminate\Cache\Events\CacheEvent {
+        /**
+        * The value that was written.
+        *
+        * @var mixed
+        * @generated
+        */
+        public mixed $value;
+        /**
+        * The number of seconds the key should be valid.
+        *
+        * @var int|null
+        * @generated
+        */
+        public int|null $seconds;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param string $key
+        * @param mixed $value
+        * @param int|null $seconds
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, string $key, mixed $value, int|null $seconds = null, array $tags = []): void;
+    }
+    class RetrievingKey extends \Illuminate\Cache\Events\CacheEvent {
+    }
+    class RetrievingManyKeys extends \Illuminate\Cache\Events\CacheEvent {
+        /**
+        * The keys that are being retrieved.
+        *
+        * @var array
+        * @generated
+        */
+        public array $keys;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param array $keys
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, array $keys, array $tags = []): void;
+    }
+    class WritingKey extends \Illuminate\Cache\Events\CacheEvent {
+        /**
+        * The value that will be written.
+        *
+        * @var mixed
+        * @generated
+        */
+        public mixed $value;
+        /**
+        * The number of seconds the key should be valid.
+        *
+        * @var int|null
+        * @generated
+        */
+        public int|null $seconds;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param string $key
+        * @param mixed $value
+        * @param int|null $seconds
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, string $key, mixed $value, int|null $seconds = null, array $tags = []): void;
+    }
+    class WritingManyKeys extends \Illuminate\Cache\Events\CacheEvent {
+        /**
+        * The keys that are being written.
+        *
+        * @var mixed
+        * @generated
+        */
+        public mixed $keys;
+        /**
+        * The value that is being written.
+        *
+        * @var mixed
+        * @generated
+        */
+        public mixed $values;
+        /**
+        * The number of seconds the keys should be valid.
+        *
+        * @var int|null
+        * @generated
+        */
+        public int|null $seconds;
+        /**
+        * Create a new event instance.
+        *
+        * @param string|null $storeName
+        * @param array $keys
+        * @param array $values
+        * @param int|null $seconds
+        * @param array $tags
+        * @generated
+        */
+        public function __construct(string|null $storeName, array $keys, array $values, int|null $seconds = null, array $tags = []): void;
+    }
+}
+namespace Illuminate\Cache\Limiters {
+    class ConcurrencyLimiter {
+        /**
+        * The cache store instance.
+        *
+        * @var \Illuminate\Contracts\Cache\LockProvider
+        * @generated
+        */
+        protected \Illuminate\Contracts\Cache\LockProvider $store;
+        /**
+        * The name of the limiter.
+        *
+        * @var string
+        * @generated
+        */
+        protected string $name;
+        /**
+        * The allowed number of concurrent locks.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $maxLocks;
+        /**
+        * The number of seconds a slot should be maintained.
+        *
+        * @var int
+        * @generated
+        */
+        protected int $releaseAfter;
+        /**
+        * Create a new concurrency limiter instance.
+        *
+        * @param \Illuminate\Contracts\Cache\LockProvider $store
+        * @param string $name
+        * @param int $maxLocks
+        * @param int $releaseAfter
+        * @generated
+        */
+        public function __construct(\Illuminate\Contracts\Cache\LockProvider $store, string $name, int $maxLocks, int $releaseAfter): void;
+        /**
+        * Attempt to acquire the lock for the given number of seconds.
+        *
+        * @param int $timeout
+        * @param callable|null $callback
+        * @param int $sleep
+        * @return mixed
+        * @throws \Illuminate\Cache\Limiters\LimiterTimeoutException
+        * @throws \Throwable
+        * @generated
+        */
+        public function block(int $timeout, callable|null $callback = null, int $sleep = 250): mixed;
+        /**
+        * Attempt to acquire a slot lock.
+        *
+        * @param string $id
+        * @return \Illuminate\Contracts\Cache\Lock|false
+        * @generated
+        */
+        protected function acquire(string $id): \Illuminate\Contracts\Cache\Lock|false;
+        /**
+        * Release the lock.
+        *
+        * @param \Illuminate\Contracts\Cache\Lock $lock
+        * @return void
+        * @generated
+        */
+        protected function release(\Illuminate\Contracts\Cache\Lock $lock): void;
+    }
+    class ConcurrencyLimiterBuilder {
+        use \Illuminate\Support\InteractsWithTime;
+        /**
+        * The cache repository or Redis connection.
+        *
+        * @var \Illuminate\Cache\Repository
+        * @generated
+        */
+        public \Illuminate\Cache\Repository $connection;
+        /**
+        * The name of the lock.
+        *
+        * @var string
+        * @generated
+        */
+        public string $name;
+        /**
+        * The maximum number of entities that can hold the lock at the same time.
+        *
+        * @var int
+        * @generated
+        */
+        public int $maxLocks;
+        /**
+        * The number of seconds to maintain the lock until it is automatically released.
+        *
+        * @var int
+        * @generated
+        */
+        public int $releaseAfter ?? 60;
+        /**
+        * The number of seconds to block until a lock is available.
+        *
+        * @var int
+        * @generated
+        */
+        public int $timeout ?? 3;
+        /**
+        * The number of milliseconds to wait between attempts to acquire the lock.
+        *
+        * @var int
+        * @generated
+        */
+        public int $sleep ?? 250;
+        /**
+        * Create a new builder instance.
+        *
+        * @param mixed $connection
+        * @param string $name
+        * @generated
+        */
+        public function __construct(mixed $connection, string $name): void;
+        /**
+        * Set the maximum number of locks that can be obtained per time window.
+        *
+        * @param int $maxLocks
+        * @return static
+        * @generated
+        */
+        public function limit(int $maxLocks): static;
+        /**
+        * Set the number of seconds until the lock will be released.
+        *
+        * @param int $releaseAfter
+        * @return static
+        * @generated
+        */
+        public function releaseAfter(int $releaseAfter): static;
+        /**
+        * Set the number of seconds to block until a lock is available.
+        *
+        * @param int $timeout
+        * @return static
+        * @generated
+        */
+        public function block(int $timeout): static;
+        /**
+        * The number of milliseconds to wait between lock acquisition attempts.
+        *
+        * @param int $sleep
+        * @return static
+        * @generated
+        */
+        public function sleep(int $sleep): static;
+        /**
+        * Execute the given callback if a lock is obtained, otherwise call the failure callback.
+        *
+        * @param callable $callback
+        * @param callable|null $failure
+        * @return mixed
+        * @throws \Illuminate\Cache\Limiters\LimiterTimeoutException
+        * @generated
+        */
+        public function then(callable $callback, callable|null $failure = null): mixed;
+        /**
+        * Create the concurrency limiter instance.
+        *
+        * @return \Illuminate\Cache\Limiters\ConcurrencyLimiter
+        * @generated
+        */
+        protected function createLimiter(): \Illuminate\Cache\Limiters\ConcurrencyLimiter;
+    }
+    class LimiterTimeoutException extends \Exception {
+    }
+}
+namespace Illuminate\Cache\RateLimiting {
+    class GlobalLimit extends \Illuminate\Cache\RateLimiting\Limit {
+        /**
+        * Create a new limit instance.
+        *
+        * @param int $maxAttempts
+        * @param int $decaySeconds
+        * @generated
+        */
+        public function __construct(int $maxAttempts, int $decaySeconds = 60): void;
+    }
+    class Limit {
+        /**
+        * The rate limit signature key.
+        *
+        * @var mixed
+        * @generated
+        */
+        public mixed $key;
+        /**
+        * The maximum number of attempts allowed within the given number of seconds.
+        *
+        * @var int
+        * @generated
+        */
+        public int $maxAttempts;
+        /**
+        * The number of seconds until the rate limit is reset.
+        *
+        * @var int
+        * @generated
+        */
+        public int $decaySeconds;
+        /**
+        * The after callback used to determine if the limiter should be hit.
+        *
+        * @var ?callable
+        * @generated
+        */
+        public ?callable $afterCallback ?? null;
+        /**
+        * The response generator callback.
+        *
+        * @var callable
+        * @generated
+        */
+        public callable $responseCallback;
+        /**
+        * Create a new limit instance.
+        *
+        * @param mixed $key
+        * @param int $maxAttempts
+        * @param int $decaySeconds
+        * @generated
+        */
+        public function __construct(mixed $key = '', int $maxAttempts = 60, int $decaySeconds = 60): void;
+        /**
+        * Create a new rate limit.
+        *
+        * @param int $maxAttempts
+        * @param int $decaySeconds
+        * @return static
+        * @generated
+        */
+        public static function perSecond(int $maxAttempts, int $decaySeconds = 1): static;
+        /**
+        * Create a new rate limit.
+        *
+        * @param int $maxAttempts
+        * @param int $decayMinutes
+        * @return static
+        * @generated
+        */
+        public static function perMinute(int $maxAttempts, int $decayMinutes = 1): static;
+        /**
+        * Create a new rate limit using minutes as decay time.
+        *
+        * @param int $decayMinutes
+        * @param int $maxAttempts
+        * @return static
+        * @generated
+        */
+        public static function perMinutes(int $decayMinutes, int $maxAttempts): static;
+        /**
+        * Create a new rate limit using hours as decay time.
+        *
+        * @param int $maxAttempts
+        * @param int $decayHours
+        * @return static
+        * @generated
+        */
+        public static function perHour(int $maxAttempts, int $decayHours = 1): static;
+        /**
+        * Create a new rate limit using days as decay time.
+        *
+        * @param int $maxAttempts
+        * @param int $decayDays
+        * @return static
+        * @generated
+        */
+        public static function perDay(int $maxAttempts, int $decayDays = 1): static;
+        /**
+        * Create a new unlimited rate limit.
+        *
+        * @return \Illuminate\Cache\RateLimiting\Unlimited
+        * @generated
+        */
+        public static function none(): \Illuminate\Cache\RateLimiting\Unlimited;
+        /**
+        * Set the key of the rate limit.
+        *
+        * @param mixed $key
+        * @return static
+        * @generated
+        */
+        public function by(mixed $key): static;
+        /**
+        * Set the callback to determine if the limiter should be hit.
+        *
+        * @param callable $callback
+        * @return static
+        * @generated
+        */
+        public function after(callable $callback): static;
+        /**
+        * Set the callback that should generate the response when the limit is exceeded.
+        *
+        * @param callable $callback
+        * @return static
+        * @generated
+        */
+        public function response(callable $callback): static;
+        /**
+        * Get a potential fallback key for the limit.
+        *
+        * @return string
+        * @generated
+        */
+        public function fallbackKey(): string;
+    }
+    class Unlimited extends \Illuminate\Cache\RateLimiting\GlobalLimit {
+        /**
+        * Create a new limit instance.
+        *
+        * @generated
+        */
+        public function __construct(): void;
+    }
+}

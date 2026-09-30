@@ -277,14 +277,21 @@ final class Decimal implements DecimalConvertible, FloatConvertible, IntConverti
             return $backend;
         }
 
-        if (\extension_loaded('decimal')) {
+        declare(ext='decimal') {
             $backend = new PhpDecimalBackend();
-        } elseif (\extension_loaded('bcmath')) {
-            $backend = new BcMathBackend();
-        } elseif (\extension_loaded('gmp')) {
-            $backend = new GmpBackend();
-        } else {
-            $backend = new IntegerScaledBackend();
+        }
+        declare(ext='!decimal') {
+            declare(ext='bcmath') {
+                $backend = new BcMathBackend();
+            }
+            declare(ext='!bcmath') {
+                declare(ext='gmp') {
+                    $backend = new GmpBackend();
+                }
+                declare(ext='!gmp') {
+                    $backend = new IntegerScaledBackend();
+                }
+            }
         }
 
         self::$backend = $backend;
@@ -304,7 +311,7 @@ final class Decimal implements DecimalConvertible, FloatConvertible, IntConverti
     }
 
     private function resultScale(self $other): int {
-        return (int) \max($this->scale, $other->scale);
+        return \max($this->scale, $other->scale);
     }
 
     // =========================================================================
@@ -592,9 +599,9 @@ final class Decimal implements DecimalConvertible, FloatConvertible, IntConverti
         string $thousandsSep = ',',
     ): string {
         self $rounded = $this->round($decimals);
-        array $parts = \explode('.', $rounded->value, 2);
-        string $intPart = (string) $parts[0];
-        string $fracPart = (string) ($parts[1] ?? '');
+        array<int, string> $parts = \explode('.', $rounded->value, 2);
+        string $intPart = $parts[0];
+        string $fracPart = ($parts[1] ?? '');
 
         bool $negative = \str_starts_with($intPart, '-');
         if ($negative) {
@@ -610,7 +617,7 @@ final class Decimal implements DecimalConvertible, FloatConvertible, IntConverti
                 if ($i > 0 && ($len - $i) % 3 === 0) {
                     $formatted .= $thousandsSep;
                 }
-                $formatted .= (string) $intPart[$i];
+                $formatted .= $intPart[$i];
             }
             $intPart = $formatted;
         }

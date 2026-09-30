@@ -1,0 +1,173 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Algolia / Meilisearch / Typesense clients are not wrapped; omit engines
+ * and EngineManager factories that extend or return those missing peers.
+ */
+
+namespace Laravel\Scout {
+    // @overlay-against: class Builder implements \Illuminate\Support\Traits\Conditionable, \Illuminate\Support\Traits\Macroable, \Illuminate\Support\Traits\Tappable
+    partial class Builder {
+        /**
+         * Overlay: `applyAfterRawSearchCallback()` invokes the callback with the raw results.
+         */
+        // @overlay-against: \Closure|null $afterRawSearchCallback
+        public ?\Closure<callable(mixed): mixed> $afterRawSearchCallback;
+
+        /**
+         * Overlay: `queryScoutModelsByIds()` and `DatabaseEngine` invoke the callback with the Eloquent query.
+         */
+        // @overlay-against: \Closure|null $queryCallback
+        public ?\Closure<callable(\Illuminate\Database\Eloquent\Builder): mixed> $queryCallback;
+
+        /**
+         * Overlay: `queryScoutModelsByIds()` and `DatabaseEngine` invoke the callback with the Eloquent query.
+         */
+        // @overlay-against: function query(callable $callback): static
+        public function query(callable(\Illuminate\Database\Eloquent\Builder): mixed $callback): static;
+
+        /**
+         * Overlay: `applyAfterRawSearchCallback()` invokes the callback with the raw results.
+         */
+        // @overlay-against: function withRawResults(callable $callback): static
+        public function withRawResults(callable(mixed): mixed $callback): static;
+    }
+
+    // @overlay-against: class EngineManager extends \Illuminate\Support\Manager
+    partial class EngineManager {
+        // @overlay-against: function configureAlgolia3Driver(): \Laravel\Scout\Engines\Algolia3Engine
+        omit function configureAlgolia3Driver();
+        // @overlay-against: function configureAlgolia4Driver(): \Laravel\Scout\Engines\Algolia4Engine
+        omit function configureAlgolia4Driver();
+        // @overlay-against: function createMeilisearchDriver(): \Laravel\Scout\Engines\MeilisearchEngine
+        omit function createMeilisearchDriver();
+        // @overlay-against: function createTypesenseDriver(): \Laravel\Scout\Engines\TypesenseEngine
+        omit function createTypesenseDriver();
+    }
+
+    // @overlay-against: class ModelObserver
+    partial class ModelObserver {
+        /**
+         * Overlay: `ModelObserver::$syncingDisabledFor` uses the documented type.
+         */
+        // @overlay-against: array $syncingDisabledFor
+        protected static array<__ClassName<\Illuminate\Database\Eloquent\Model>, bool> $syncingDisabledFor ?? [];
+
+        /**
+         * Overlay: `ModelObserver::disableSyncingFor()` uses the documented types.
+         */
+        // @overlay-against: function disableSyncingFor(string $class): void
+        public static function disableSyncingFor(__ClassName<\Illuminate\Database\Eloquent\Model> $class): void;
+
+        /**
+         * Overlay: `ModelObserver::enableSyncingFor()` uses the documented types.
+         */
+        // @overlay-against: function enableSyncingFor(string $class): void
+        public static function enableSyncingFor(__ClassName<\Illuminate\Database\Eloquent\Model> $class): void;
+
+        /**
+         * Overlay: `ModelObserver::syncingDisabledFor()` uses the documented types.
+         */
+        // @overlay-against: function syncingDisabledFor(object|string $class): bool
+        public static function syncingDisabledFor(object|__ClassName<\Illuminate\Database\Eloquent\Model> $class): bool;
+    }
+
+    // @overlay-against: trait Searchable
+    partial trait Searchable {
+        /**
+         * Overlay: `withoutSyncingToSearch()` invokes the callback with no arguments.
+         */
+        // @overlay-against: function withoutSyncingToSearch(callable $callback): mixed
+        public static function withoutSyncingToSearch(callable(): mixed $callback): mixed;
+    }
+}
+
+namespace Laravel\Scout\Engines {
+    /**
+     * Overlay: `CollectionEngine::search()` and `paginate()` return this shape.
+     */
+    type CollectionEngineSearchResult = struct {
+        array<int, \Illuminate\Database\Eloquent\Model> $results;
+        int $total;
+    };
+
+    /**
+     * Overlay: `DatabaseEngine::search()` returns this shape.
+     */
+    type DatabaseEngineSearchResult = struct {
+        \Illuminate\Database\Eloquent\Collection $results;
+        int $total;
+    };
+
+    // @overlay-against: class Algolia3Engine extends \Laravel\Scout\Engines\AlgoliaEngine
+    omit class Algolia3Engine {};
+    // @overlay-against: class Algolia4Engine extends \Laravel\Scout\Engines\AlgoliaEngine
+    omit class Algolia4Engine {};
+
+    // @overlay-against: class CollectionEngine extends \Laravel\Scout\Engines\Engine
+    partial class CollectionEngine {
+        /**
+         * Overlay: `search()` returns the taken models and their count.
+         */
+        // @overlay-against: function search(\Laravel\Scout\Builder $builder): mixed
+        public function search(\Laravel\Scout\Builder $builder): CollectionEngineSearchResult;
+
+        /**
+         * Overlay: `paginate()` returns the page of models and the total count.
+         */
+        // @overlay-against: function paginate(\Laravel\Scout\Builder $builder, int $perPage, int $page): mixed
+        public function paginate(\Laravel\Scout\Builder $builder, int $perPage, int $page): CollectionEngineSearchResult;
+    }
+
+    // @overlay-against: class DatabaseEngine extends \Laravel\Scout\Engines\Engine implements \Laravel\Scout\Contracts\PaginatesEloquentModelsUsingDatabase, \Laravel\Scout\Contracts\SupportsSemanticSearch, \Laravel\Scout\Engines\Concerns\PaginatesDatabaseVectorSearch, \Laravel\Scout\Engines\Concerns\PerformsDatabaseVectorSearch
+    partial class DatabaseEngine {
+        /**
+         * Overlay: `search()` returns the model collection and its count.
+         */
+        // @overlay-against: function search(\Laravel\Scout\Builder $builder): mixed
+        public function search(\Laravel\Scout\Builder $builder): DatabaseEngineSearchResult;
+    }
+
+    // @overlay-against: class MeilisearchEngine extends \Laravel\Scout\Engines\Engine implements \Laravel\Scout\Contracts\SupportsSemanticSearch, \Laravel\Scout\Contracts\UpdatesIndexSettings
+    omit class MeilisearchEngine {};
+
+    /**
+     * Overlay: public methods match Engine.
+     */
+    // @overlay-against: class TurbopufferEngine extends \Laravel\Scout\Engines\Engine implements \Laravel\Scout\Contracts\SupportsSemanticSearch
+    partial class TurbopufferEngine {
+        // @overlay-against: function createIndex(mixed $name, array $options): mixed
+        public function createIndex(string $name, array $options = []): mixed;
+
+        // @overlay-against: function delete(mixed $models): mixed
+        public function delete(\Illuminate\Database\Eloquent\Collection $models): void;
+
+        // @overlay-against: function deleteIndex(mixed $name): mixed
+        public function deleteIndex(string $name): mixed;
+
+        // @overlay-against: function flush(mixed $model): mixed
+        public function flush(\Illuminate\Database\Eloquent\Model $model): void;
+
+        // @overlay-against: function getTotalCount(mixed $results): mixed
+        public function getTotalCount(mixed $results): int;
+
+        // @overlay-against: function lazyMap(\Laravel\Scout\Builder $builder, mixed $results, mixed $model): mixed
+        public function lazyMap(\Laravel\Scout\Builder $builder, mixed $results, \Illuminate\Database\Eloquent\Model $model): \Illuminate\Support\LazyCollection;
+
+        // @overlay-against: function map(\Laravel\Scout\Builder $builder, mixed $results, mixed $model): mixed
+        public function map(\Laravel\Scout\Builder $builder, mixed $results, \Illuminate\Database\Eloquent\Model $model): \Illuminate\Database\Eloquent\Collection;
+
+        // @overlay-against: function mapIds(mixed $results): mixed
+        public function mapIds(mixed $results): \Illuminate\Support\Collection;
+
+        // @overlay-against: function paginate(\Laravel\Scout\Builder $builder, mixed $perPage, mixed $page): mixed
+        public function paginate(\Laravel\Scout\Builder $builder, int $perPage, int $page): mixed;
+
+        // @overlay-against: function update(mixed $models): mixed
+        public function update(\Illuminate\Database\Eloquent\Collection $models): void;
+    }
+
+    // @overlay-against: class TypesenseEngine extends \Laravel\Scout\Engines\Engine implements \Laravel\Scout\Contracts\SupportsSemanticSearch
+    omit class TypesenseEngine {};
+}

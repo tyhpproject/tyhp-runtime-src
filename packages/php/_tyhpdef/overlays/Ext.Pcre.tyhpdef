@@ -1,0 +1,472 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * PCRE signature enrichments: offset-capture structs, literal-flag overloads
+ * for `preg_match` / `preg_match_all` / `preg_split`, and subject-following
+ * generics for replace / grep. Not Pure (see Pure.Pcre.tyhpdef).
+ *
+ * Flag overloads use integer literals (Decision 18: `const int NAME ?? N` is
+ * literal `N` at the call site). Bitwise `|` of `PREG_*` constants is not
+ * folded to a literal, so those calls use the `int $flags` catch-all.
+ */
+
+/**
+ * Overlay: PHP `[0 => string, 1 => int]` from `PREG_SPLIT_OFFSET_CAPTURE` /
+ * `PREG_OFFSET_CAPTURE` (matched text + byte offset into `$subject`).
+ */
+type PregOffsetCapture = struct {
+    string 0 as $match;
+    int 1 as $offset;
+};
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL`. Unmatched groups
+ * are `[null, -1]` (PHP 8).
+ */
+type PregOffsetCaptureNullable = struct {
+    ?string 0 as $match;
+    int 1 as $offset;
+};
+
+type PregOffsetCaptureList = array<int, PregOffsetCapture>;
+type PregOffsetCaptureListNullable = array<int, PregOffsetCaptureNullable>;
+
+/**
+ * Overlay: one `preg_match` / `PREG_SET_ORDER` match set (full match + groups).
+ */
+type PregMatchSet = array<int|string, string>;
+
+type PregMatchList = array<int, string>;
+type PregMatchListNullable = array<int, string|null>;
+
+/**
+ * Overlay: `PREG_UNMATCHED_AS_NULL` match set. Unmatched groups are `null`.
+ */
+type PregMatchSetNullable = array<int|string, string|null>;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE` match set.
+ */
+type PregMatchSetOffset = array<int|string, PregOffsetCapture>;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL` match set.
+ */
+type PregMatchSetOffsetNullable = array<int|string, PregOffsetCaptureNullable>;
+
+type PregMatchAllSet = array<int|string, PregMatchList>;
+type PregMatchAllSetNullable = array<int|string, PregMatchListNullable>;
+type PregMatchAllList = array<int, PregMatchList>;
+type PregOffsetCaptureAllSet = array<int|string, PregOffsetCaptureList>;
+type PregOffsetCaptureAllSetNullable = array<int|string, PregOffsetCaptureListNullable>;
+
+/**
+ * Overlay: return type follows `$subject` (`string` in, `string|null` out).
+ * Unlike `preg_replace`, unmatched subjects are omitted (string subject with
+ * no match is `null`).
+ */
+// @overlay-against: function preg_filter(array|string $pattern, array|string $replacement, array|string $subject, int $limit, mixed $count): array|string|null
+function preg_filter<TSubject extends array<int|string, string>|string>(
+    array<int|string, string>|string $pattern,
+    array<int|string, string>|string $replacement,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0
+): TSubject|null;
+
+/**
+ * Overlay: preserve `$array` keys. Values are strings (PHP stringifies).
+ *
+ * @return array<TKey, string>|false Matching entries, or false on failure.
+ */
+// @overlay-against: function preg_grep(string $pattern, array $array, int $flags): array|false
+function preg_grep<TKey>(string $pattern, array<TKey, string> $array, int $flags = 0): array<TKey, string>|false;
+
+/**
+ * Overlay: match without filling `$matches`.
+ *
+ * @return int|false `1` on match, `0` on no match, or false on failure.
+ */
+// @overlay-against: function preg_match(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match(string $pattern, string $subject): int|false;
+
+/**
+ * Overlay: default flags. `$matches[0]` is the full match; `[1]`… capturing
+ * groups; named groups use string keys. Values are strings (unmatched
+ * subpatterns that still appear are `""`).
+ *
+ * @param PregMatchSet $matches Filled with the match.
+ * @param 0 $flags No `PREG_OFFSET_CAPTURE` / `PREG_UNMATCHED_AS_NULL`.
+ * @return int|false `1` on match, `0` on no match, or false on failure.
+ */
+// @overlay-against: function preg_match(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match(
+    string $pattern,
+    string $subject,
+    PregMatchSet &$matches,
+    0 $flags = 0,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE` (`256`). Each value is text + byte offset.
+ * Unmatched groups that still appear are `["", -1]`.
+ *
+ * @param 256 $flags `PREG_OFFSET_CAPTURE`.
+ */
+// @overlay-against: function preg_match(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match(
+    string $pattern,
+    string $subject,
+    PregMatchSetOffset &$matches,
+    256 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_UNMATCHED_AS_NULL` (`512`). Unmatched groups are `null`.
+ *
+ * @param 512 $flags `PREG_UNMATCHED_AS_NULL`.
+ */
+// @overlay-against: function preg_match(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match(
+    string $pattern,
+    string $subject,
+    PregMatchSetNullable &$matches,
+    512 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL` (`768`). Unmatched
+ * groups are `[null, -1]`.
+ *
+ * @param 768 $flags Both offset-capture and unmatched-as-null.
+ */
+// @overlay-against: function preg_match(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match(
+    string $pattern,
+    string $subject,
+    PregMatchSetOffsetNullable &$matches,
+    768 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: runtime `int` flags (including unfolded `PREG_* | PREG_*`).
+ *
+ * @param int $flags `PREG_OFFSET_CAPTURE` and/or `PREG_UNMATCHED_AS_NULL`.
+ * @return int|false `1` on match, `0` on no match, or false on failure.
+ */
+// @overlay-against: function preg_match(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match(
+    string $pattern,
+    string $subject,
+    PregMatchSetNullable|PregMatchSetOffset|PregMatchSetOffsetNullable &$matches,
+    int $flags = 0,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: match-all without filling `$matches`.
+ *
+ * @return int|false Number of full matches, or false on failure.
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(string $pattern, string $subject): int|false;
+
+/**
+ * Overlay: default / `PREG_PATTERN_ORDER` (`0` or `1`). `$matches[n]` is a list
+ * of strings for group `n` across all matches; named groups use string keys.
+ *
+ * @param 0 $flags Default pattern order.
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(
+    string $pattern,
+    string $subject,
+    PregMatchAllSet &$matches,
+    0 $flags = 0,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_PATTERN_ORDER` (`1`). Same shape as default flags.
+ *
+ * @param 1 $flags `PREG_PATTERN_ORDER`.
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(
+    string $pattern,
+    string $subject,
+    PregMatchAllSet &$matches,
+    1 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_SET_ORDER` (`2`). `$matches[n]` is one match set (like `preg_match`).
+ *
+ * @param 2 $flags `PREG_SET_ORDER`.
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(
+    string $pattern,
+    string $subject,
+    PregMatchAllList &$matches,
+    2 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE` (`256`). Pattern-order lists of offset pairs.
+ *
+ * @param 256 $flags `PREG_OFFSET_CAPTURE` (pattern order).
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(
+    string $pattern,
+    string $subject,
+    PregOffsetCaptureAllSet &$matches,
+    256 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_UNMATCHED_AS_NULL` (`512`). Pattern-order lists; unmatched is `null`.
+ *
+ * @param 512 $flags `PREG_UNMATCHED_AS_NULL` (pattern order).
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(
+    string $pattern,
+    string $subject,
+    PregMatchAllSetNullable &$matches,
+    512 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL` (`768`).
+ *
+ * @param 768 $flags Offset-capture + unmatched-as-null (pattern order).
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(
+    string $pattern,
+    string $subject,
+    PregOffsetCaptureAllSetNullable &$matches,
+    768 $flags,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: runtime `int` flags (including unfolded `PREG_* | PREG_*`).
+ *
+ * @param int $flags `PREG_PATTERN_ORDER` / `PREG_SET_ORDER` plus capture flags.
+ */
+// @overlay-against: function preg_match_all(string $pattern, string $subject, mixed $matches, int $flags, int $offset): int|false
+function preg_match_all(
+    string $pattern,
+    string $subject,
+    array<int|string, mixed> &$matches,
+    int $flags = 0,
+    int $offset = 0
+): int|false;
+
+/**
+ * Overlay: return type follows `$subject`. Failure is `null`.
+ */
+// @overlay-against: function preg_replace(array|string $pattern, array|string $replacement, array|string $subject, int $limit, mixed $count): array|string|null
+function preg_replace<TSubject extends array<int|string, string>|string>(
+    array<int|string, string>|string $pattern,
+    array<int|string, string>|string $replacement,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0
+): TSubject|null;
+
+/**
+ * Overlay: default flags. Callback `$matches` is a `PregMatchSet`. Return follows `$subject`.
+ *
+ * @param 0 $flags No `PREG_OFFSET_CAPTURE` / `PREG_UNMATCHED_AS_NULL`.
+ */
+// @overlay-against: function preg_replace_callback(array|string $pattern, callable $callback, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback<TSubject extends array<int|string, string>|string>(
+    array<int|string, string>|string $pattern,
+    callable(PregMatchSet): string $callback,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    0 $flags = 0
+): TSubject|null;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE` (`256`) on the callback `$matches`.
+ *
+ * @param 256 $flags `PREG_OFFSET_CAPTURE`.
+ */
+// @overlay-against: function preg_replace_callback(array|string $pattern, callable $callback, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback<TSubject extends array<int|string, string>|string>(
+    array<int|string, string>|string $pattern,
+    callable(PregMatchSetOffset): string $callback,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    256 $flags
+): TSubject|null;
+
+/**
+ * Overlay: `PREG_UNMATCHED_AS_NULL` (`512`) on the callback `$matches`.
+ *
+ * @param 512 $flags `PREG_UNMATCHED_AS_NULL`.
+ */
+// @overlay-against: function preg_replace_callback(array|string $pattern, callable $callback, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback<TSubject extends array<int|string, string>|string>(
+    array<int|string, string>|string $pattern,
+    callable(PregMatchSetNullable): string $callback,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    512 $flags
+): TSubject|null;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL` (`768`).
+ *
+ * @param 768 $flags Both offset-capture and unmatched-as-null.
+ */
+// @overlay-against: function preg_replace_callback(array|string $pattern, callable $callback, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback<TSubject extends array<int|string, string>|string>(
+    array<int|string, string>|string $pattern,
+    callable(PregMatchSetOffsetNullable): string $callback,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    768 $flags
+): TSubject|null;
+
+/**
+ * Overlay: runtime `int` flags (including unfolded `PREG_* | PREG_*`).
+ */
+// @overlay-against: function preg_replace_callback(array|string $pattern, callable $callback, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback<TSubject extends array<int|string, string>|string>(
+    array<int|string, string>|string $pattern,
+    callable(PregMatchSetNullable|PregMatchSetOffset|PregMatchSetOffsetNullable): string $callback,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    int $flags = 0
+): TSubject|null;
+
+/**
+ * Overlay: `$pattern` maps regex strings to callbacks (Layer 2 used `array<int, callable>`).
+ * Default flags: each callback receives a `PregMatchSet`.
+ *
+ * @param 0 $flags No `PREG_OFFSET_CAPTURE` / `PREG_UNMATCHED_AS_NULL`.
+ */
+// @overlay-against: function preg_replace_callback_array(array $pattern, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback_array<TSubject extends array<int|string, string>|string>(
+    array<string, callable(PregMatchSet): string> $pattern,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    0 $flags = 0
+): TSubject|null;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE` (`256`) on each callback `$matches`.
+ *
+ * @param 256 $flags `PREG_OFFSET_CAPTURE`.
+ */
+// @overlay-against: function preg_replace_callback_array(array $pattern, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback_array<TSubject extends array<int|string, string>|string>(
+    array<string, callable(PregMatchSetOffset): string> $pattern,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    256 $flags
+): TSubject|null;
+
+/**
+ * Overlay: `PREG_UNMATCHED_AS_NULL` (`512`) on each callback `$matches`.
+ *
+ * @param 512 $flags `PREG_UNMATCHED_AS_NULL`.
+ */
+// @overlay-against: function preg_replace_callback_array(array $pattern, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback_array<TSubject extends array<int|string, string>|string>(
+    array<string, callable(PregMatchSetNullable): string> $pattern,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    512 $flags
+): TSubject|null;
+
+/**
+ * Overlay: `PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL` (`768`).
+ *
+ * @param 768 $flags Both offset-capture and unmatched-as-null.
+ */
+// @overlay-against: function preg_replace_callback_array(array $pattern, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback_array<TSubject extends array<int|string, string>|string>(
+    array<string, callable(PregMatchSetOffsetNullable): string> $pattern,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    768 $flags
+): TSubject|null;
+
+/**
+ * Overlay: runtime `int` flags (including unfolded `PREG_* | PREG_*`).
+ */
+// @overlay-against: function preg_replace_callback_array(array $pattern, array|string $subject, int $limit, mixed $count, int $flags): array|string|null
+function preg_replace_callback_array<TSubject extends array<int|string, string>|string>(
+    array<string, callable(PregMatchSetNullable|PregMatchSetOffset|PregMatchSetOffsetNullable): string> $pattern,
+    TSubject $subject,
+    int $limit = -1,
+    int &$count = 0,
+    int $flags = 0
+): TSubject|null;
+
+/**
+ * Overlay: default flags (and `PREG_SPLIT_NO_EMPTY` / `PREG_SPLIT_DELIM_CAPTURE`,
+ * which only change which pieces appear) return a list of strings.
+ *
+ * `PREG_SPLIT_NO_EMPTY` (`1`) — still a list of strings.
+ * `PREG_SPLIT_DELIM_CAPTURE` (`2`) — still a list of strings.
+ * `PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE` (`3`) — still strings.
+ *
+ * @param string $pattern The pattern to search for.
+ * @param string $subject The input string.
+ * @param int $limit Max pieces; `-1` / `0` means no limit.
+ * @return array<int, string>|false Split pieces, or false on failure.
+ */
+// @overlay-against: function preg_split(string $pattern, string $subject, int $limit, int $flags): array|false
+function preg_split(string $pattern, string $subject, int $limit = -1, 0|1|2|3 $flags = 0): array<int, string>|false;
+
+/**
+ * Overlay: `PREG_SPLIT_OFFSET_CAPTURE` (`4`) — each piece is text + offset.
+ * offset-capture combined with `PREG_SPLIT_NO_EMPTY` (`5`).
+ * offset-capture combined with `PREG_SPLIT_DELIM_CAPTURE` (`6`).
+ * all three split flags (`7`).
+ *
+ * @param 4 $flags `PREG_SPLIT_OFFSET_CAPTURE`.
+ * @return array<int, PregOffsetCapture>|false Offset-capture pairs, or false on failure.
+ */
+// @overlay-against: function preg_split(string $pattern, string $subject, int $limit, int $flags): array|false
+function preg_split(string $pattern, string $subject, int $limit = -1, 4|5|6|7 $flags): array<int, PregOffsetCapture>|false;
+
+/**
+ * Overlay: runtime `int` flags (including unfolded `PREG_* | PREG_*`).
+ *
+ * @param int $flags Any combination of `PREG_SPLIT_*`.
+ * @return array<int, string>|array<int, PregOffsetCapture>|false String list or offset-capture pairs.
+ */
+// @overlay-against: function preg_split(string $pattern, string $subject, int $limit, int $flags): array|false
+function preg_split(
+    string $pattern,
+    string $subject,
+    int $limit = -1,
+    int $flags = 0
+): array<int, string>|array<int, PregOffsetCapture>|false;

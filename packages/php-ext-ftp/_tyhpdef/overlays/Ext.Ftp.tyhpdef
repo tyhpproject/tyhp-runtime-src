@@ -1,0 +1,87 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * FTP list returns and `ftp_mlsd()` fact arrays. Layer 1 already uses
+ * `\FTP\Connection` (PHP 8 object). Layer 2 already narrows stream `resource`
+ * parameters — those are not restated.
+ */
+
+/**
+ * Overlay: documented `ftp_mlsd()` facts. Servers may add extra fact names
+ * (structural extra keys allowed).
+ */
+type FtpMlsdEntry = struct {
+    ?string $modify;
+    ?string $name;
+    ?string $perm;
+    ?string $size;
+    ?string $type;
+    ?string $unique;
+};
+
+/**
+ * Overlay: `FTP_TIMEOUT_SEC` (`0`) returns the timeout in seconds.
+ */
+// @overlay-against: function ftp_get_option(\FTP\Connection $ftp, int $option): int|bool
+function ftp_get_option(\FTP\Connection $ftp, 0 $option): int;
+
+/**
+ * Overlay: `FTP_AUTOSEEK` (`1`) / boolean options.
+ */
+// @overlay-against: function ftp_get_option(\FTP\Connection $ftp, int $option): int|bool
+function ftp_get_option(\FTP\Connection $ftp, 1 $option): bool;
+
+/**
+ * Overlay: `FTP_USEPASVADDRESS` (`2`).
+ */
+// @overlay-against: function ftp_get_option(\FTP\Connection $ftp, int $option): int|bool
+function ftp_get_option(\FTP\Connection $ftp, 2 $option): bool;
+
+/**
+ * Overlay: runtime `int $option` catch-all.
+ */
+// @overlay-against: function ftp_get_option(\FTP\Connection $ftp, int $option): int|bool
+function ftp_get_option(\FTP\Connection $ftp, int $option): int|bool;
+
+/**
+ * Overlay: one fact-array per directory entry.
+ */
+// @overlay-against: function ftp_mlsd(\FTP\Connection $ftp, string $directory): array|false
+function ftp_mlsd(\FTP\Connection $ftp, string $directory): array<int, FtpMlsdEntry>|false;
+
+/**
+ * Overlay: remote names as a list of strings.
+ */
+// @overlay-against: function ftp_nlist(\FTP\Connection $ftp, string $directory): array|false
+function ftp_nlist(\FTP\Connection $ftp, string $directory): array<int, string>|false;
+
+/**
+ * Overlay: raw server reply lines.
+ */
+// @overlay-against: function ftp_raw(\FTP\Connection $ftp, string $command): ?array
+function ftp_raw(\FTP\Connection $ftp, string $command): array<int, string>|null;
+
+/**
+ * Overlay: `LIST` lines as a list of strings.
+ */
+// @overlay-against: function ftp_rawlist(\FTP\Connection $ftp, string $directory, bool $recursive): array|false
+function ftp_rawlist(\FTP\Connection $ftp, string $directory, bool $recursive = false): array<int, string>|false;
+
+declare(php="<8.5") {
+    // @overlay-against: function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): bool
+    function ftp_set_option(\FTP\Connection $ftp, 0 $option, int $value): bool;
+    // @overlay-against: function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): bool
+    function ftp_set_option(\FTP\Connection $ftp, 1|2 $option, bool $value): bool;
+    // @overlay-against: function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): bool
+    function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): bool;
+}
+
+declare(php=">=8.5") {
+    // @overlay-against: function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): true
+    function ftp_set_option(\FTP\Connection $ftp, 0 $option, int $value): true;
+    // @overlay-against: function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): true
+    function ftp_set_option(\FTP\Connection $ftp, 1|2 $option, bool $value): true;
+    // @overlay-against: function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): true
+    function ftp_set_option(\FTP\Connection $ftp, int $option, mixed $value): true;
+}

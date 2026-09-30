@@ -1,0 +1,47 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * DatabaseLock uses illuminate/database `DetectsConcurrencyErrors`, which this
+ * package does not require. Do not inline that trait.
+ */
+
+namespace Illuminate\Cache {
+    /**
+     * One stored row from `ArrayStore` / `SessionStore::all()`.
+     */
+    type CacheStoreEntry = struct {
+        mixed $value;
+        float $expiresAt;
+    };
+
+    /**
+     * Overlay: stored rows are value plus expiry.
+     */
+    // @overlay-against: class ArrayStore extends \Illuminate\Cache\TaggableStore implements \Illuminate\Contracts\Cache\CanFlushLocks, \Illuminate\Contracts\Cache\LockProvider, \Illuminate\Support\InteractsWithTime, \Illuminate\Cache\RetrievesMultipleKeys
+    partial class ArrayStore {
+        // @overlay-against: function all(bool $unserialize): array
+        public function all(bool $unserialize = true): array<string, CacheStoreEntry>;
+    }
+
+    // @overlay-against: class DatabaseLock extends \Illuminate\Cache\Lock implements \Illuminate\Database\DetectsConcurrencyErrors
+    omit class DatabaseLock {};
+
+    /**
+     * Overlay: warmth is the cached value plus whether it was already warm.
+     */
+    // @overlay-against: class Repository implements \ArrayAccess, \Illuminate\Contracts\Cache\Repository, \Illuminate\Support\InteractsWithTime, \Illuminate\Support\Traits\Macroable
+    partial class Repository {
+        // @overlay-against: function rememberWithWarmth(\UnitEnum|string $key, \Closure|\DateTimeInterface|\DateInterval|int|null $ttl, \Closure $callback): array
+        public function rememberWithWarmth<TCacheValue>(\UnitEnum|string $key, \Closure|\DateTimeInterface|\DateInterval|int|null $ttl, \Closure $callback): (struct { TCacheValue 0 as $value; bool 1 as $warm; });
+    }
+
+    /**
+     * Overlay: stored rows are value plus expiry.
+     */
+    // @overlay-against: class SessionStore implements \Illuminate\Contracts\Cache\Store, \Illuminate\Support\InteractsWithTime, \Illuminate\Cache\RetrievesMultipleKeys
+    partial class SessionStore {
+        // @overlay-against: function all(): array
+        public function all(): array<string, CacheStoreEntry>;
+    }
+}

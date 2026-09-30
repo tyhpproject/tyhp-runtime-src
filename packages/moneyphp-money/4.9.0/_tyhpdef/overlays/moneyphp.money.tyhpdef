@@ -1,0 +1,124 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Layer 1 omitted `@internal` Calculator / InvalidArgumentException.
+ * Exchanger and Swap adapters are optional foreign peers.
+ */
+
+namespace Money {
+    /**
+     * `Converter::convertAndReturnWithCurrencyPair()` pair: converted money, then the pair used.
+     */
+    type ConvertedMoney = struct {
+        \Money\Money 0 as $money;
+        \Money\CurrencyPair 1 as $pair;
+    };
+
+    /**
+     * `CurrencyPair::jsonSerialize()`: currency objects and the conversion ratio string.
+     */
+    type CurrencyPairJson = struct {
+        \Money\Currency $baseCurrency;
+        \Money\Currency $counterCurrency;
+        string $ratio;
+    };
+
+    /**
+     * `Money::jsonSerialize()`: amount string and currency code.
+     */
+    type MoneyJson = struct {
+        string $amount;
+        string $currency;
+    };
+
+    /**
+     * Internal calculator used by Money arithmetic.
+     */
+    interface Calculator {
+        public static function compare(string $a, string $b): int;
+        public static function add(string $amount, string $addend): string;
+        public static function subtract(string $amount, string $subtrahend): string;
+        public static function multiply(string $amount, string $multiplier): string;
+        public static function divide(string $amount, string $divisor): string;
+        public static function ceil(string $number): string;
+        public static function floor(string $number): string;
+        public static function absolute(string $number): string;
+        public static function round(string $number, int $roundingMode): string;
+        public static function share(string $amount, string $ratio, string $total): string;
+        public static function mod(string $amount, string $divisor): string;
+    }
+}
+
+namespace Money\Exception {
+    class InvalidArgumentException extends \InvalidArgumentException implements \Money\Exception {
+        public static function divisionByZero(): \Money\Exception\DivisionByZeroException;
+        public static function moduloByZero(): \Money\Exception\ModuloByZeroException;
+        public static function currencyMismatch(): \Money\Exception\CurrencyMismatchException;
+    }
+}
+
+namespace Money\Exchange {
+    // @overlay-against: class ExchangerExchange implements \Money\Exchange
+    omit final class ExchangerExchange {
+    }
+
+    // @overlay-against: class SwapExchange implements \Money\Exchange
+    omit final class SwapExchange {
+    }
+}
+
+namespace Money {
+    // @overlay-against: class Converter
+    partial class Converter {
+        /**
+         * @return \Money\ConvertedMoney Converted money and the currency pair that produced it.
+         */
+        // @overlay-against: function convertAndReturnWithCurrencyPair(\Money\Money $money, \Money\Currency $counterCurrency, int $roundingMode): array
+        public function convertAndReturnWithCurrencyPair(\Money\Money $money, \Money\Currency $counterCurrency, int $roundingMode = \Money\Money::ROUND_HALF_UP): \Money\ConvertedMoney;
+    }
+
+    // @overlay-against: class CurrencyPair implements \JsonSerializable
+    partial class CurrencyPair {
+        // @overlay-against: function jsonSerialize(): array
+        public function jsonSerialize(): \Money\CurrencyPairJson;
+    }
+
+    // @overlay-against: class Money implements \JsonSerializable, \Money\MoneyFactory
+    partial class Money {
+        /**
+         * @param array<TKey, int|float|string> $ratios Share weights. Keys are preserved on the result.
+         * @return array<TKey, \Money\Money>
+         */
+        // @overlay-against: function allocate(TRatios $ratios): array
+        public function allocate<TKey extends int|string>(array<TKey, int|float|string> $ratios): array<TKey, \Money\Money>;
+
+        // @overlay-against: function allocateTo(int $n): array
+        public function allocateTo(int $n): array<int, \Money\Money>;
+
+        // @overlay-against: function jsonSerialize(): array
+        public function jsonSerialize(): \Money\MoneyJson;
+    }
+
+    // @overlay-against: class Teller implements \Money\TellerFactory
+    partial class Teller {
+        // @overlay-against: function allocate(mixed $amount, array $ratios): array
+        public function allocate(mixed $amount, array<int|string, float|int> $ratios): array<int, string>;
+    }
+}
+
+namespace Money\Formatter {
+    // @overlay-against: class AggregateMoneyFormatter implements \Money\MoneyFormatter
+    partial class AggregateMoneyFormatter {
+        // @overlay-against: function __construct(array $formatters): void
+        public function __construct(array<int|string, \Money\MoneyFormatter> $formatters): void;
+    }
+}
+
+namespace Money\Parser {
+    // @overlay-against: class AggregateMoneyParser implements \Money\MoneyParser
+    partial class AggregateMoneyParser {
+        // @overlay-against: function __construct(array $parsers): void
+        public function __construct(array<int|string, \Money\MoneyParser> $parsers): void;
+    }
+}

@@ -1,0 +1,120 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Encoder helpers accept Stringable / BackedEnum / string; keep that union.
+ */
+
+namespace League\Uri {
+    /**
+     * Overlay: user encoding stays `string|Stringable|BackedEnum|null`.
+     */
+    // @overlay-against: class Encoder
+    partial class Encoder {
+        // @overlay-against: function encodeUser(\BackedEnum|\Stringable|string|null $user): ?string
+        public static function encodeUser(\BackedEnum|\Stringable|string|null $user): ?string;
+    }
+
+    /**
+     * Overlay: `convert()` stores decoded strings, null, or nested arrays.
+     * Numeric-looking names and `[]` appends produce int keys.
+     */
+    // @overlay-against: class QueryString
+    partial class QueryString {
+        // @overlay-against: function convert(iterable $pairs, \League\Uri\QueryExtractMode $extractMode): array
+        public static function convert(iterable $pairs, \League\Uri\QueryExtractMode $extractMode = \League\Uri\QueryExtractMode::Unmangled): array<int|string, array|string|null>;
+    }
+}
+
+namespace League\Uri\Contracts {
+    /**
+     * One query pair: offset 0 is the key, offset 1 is the value.
+     * Tyhp encoding of `@extends IteratorAggregate<array{0:string, 1:string|null}>`.
+     */
+    type QueryPair = struct {
+        string '0' as $key;
+        string|null '1' as $value;
+    };
+
+    /**
+     * Overlay: domain labels are `Iterator<int, string>` (`@extends IteratorAggregate<int, string>`).
+     */
+    // @overlay-against: interface DomainHostInterface
+    partial interface DomainHostInterface {
+        // @overlay-against: function getIterator(): \Iterator
+        public function getIterator(): \Iterator<int, string>;
+    }
+
+    /**
+     * Overlay: iteration yields query pairs; `pair()` is one pair.
+     */
+    // @overlay-against: interface QueryInterface
+    partial interface QueryInterface {
+        // @overlay-against: function getIterator(): \Iterator
+        public function getIterator(): \Iterator<mixed, \League\Uri\Contracts\QueryPair>;
+
+        // @overlay-against: function pair(int $offset): array
+        public function pair(int $offset): \League\Uri\Contracts\QueryPair;
+    }
+
+    /**
+     * Overlay: path segments are `Iterator<int, string>` (`@extends IteratorAggregate<string>`, `keys(): array<int>`, `get(int): ?string`).
+     */
+    // @overlay-against: interface SegmentedPathInterface
+    partial interface SegmentedPathInterface {
+        // @overlay-against: function getIterator(): \Iterator
+        public function getIterator(): \Iterator<int, string>;
+    }
+}
+
+namespace League\Uri\Idna {
+    /**
+     * `intl` info array passed to `Result::fromIntl`.
+     */
+    type IntlInfos = struct {
+        string $result;
+        bool $isTransitionalDifferent;
+        int $errors;
+    };
+
+    /**
+     * Overlay: `list()` is the documented `array<string, int>` map.
+     */
+    // @overlay-against: class Option
+    partial class Option {
+        // @overlay-against: function list(): array
+        public function list(): array<string, int>;
+    }
+
+    /**
+     * Overlay: `fromIntl` passes each field into `string`, `bool`, and `int` parameters.
+     */
+    // @overlay-against: class Result
+    partial class Result {
+        // @overlay-against: function fromIntl(array $infos): self
+        public static function fromIntl(\League\Uri\Idna\IntlInfos $infos): self;
+    }
+}
+
+namespace League\Uri\IPv6 {
+    /**
+     * Overlay: `build` reads `ipAddress` and `zoneIdentifier` only.
+     * Null is written when a key is missing, and both values are concatenated, so values stay `mixed`.
+     */
+    // @overlay-against: class Converter
+    partial class Converter {
+        // @overlay-against: function build(array $components): string
+        public static function build(array<string, mixed> $components): string;
+    }
+}
+
+namespace League\Uri\KeyValuePair {
+    /**
+     * Overlay: encoding-map keys must be strings; values must be strings or `Stringable`.
+     */
+    // @overlay-against: class Converter
+    partial class Converter {
+        // @overlay-against: function withEncodingMap(iterable $encodingMap): self
+        public function withEncodingMap(iterable<string, string|\Stringable> $encodingMap): self;
+    }
+}

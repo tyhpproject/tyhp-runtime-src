@@ -1,0 +1,1520 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace DI {
+    /**
+    * Compiled version of the dependency injection container.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    abstract class CompiledContainer extends \DI\Container {
+        /**
+        * This const is overridden in child classes (compiled containers).
+        *
+        * @var array
+        * @generated
+        */
+        protected const array METHOD_MAPPING ?? [];
+        public function get(string $id): mixed;
+        /**
+        * @psalm-suppress UndefinedConstant
+        * @generated
+        */
+        public function has(string $id): bool;
+        /**
+        * @psalm-suppress UndefinedConstant
+        * @generated
+        */
+        protected function setDefinition(string $name, \DI\Definition\Definition $definition): void;
+        /**
+        * Invoke the given callable.
+        *
+        * @generated
+        */
+        protected function resolveFactory(mixed $callable, mixed $entryName, array $extraParameters = []): mixed;
+    }
+    /**
+    * Dependency Injection Container.
+    *
+    * @api
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class Container implements \Psr\Container\ContainerInterface, \DI\FactoryInterface, \Invoker\InvokerInterface {
+        /**
+        * Map of entries that are already resolved.
+        *
+        * @generated
+        */
+        protected array $resolvedEntries ?? [];
+        /**
+        * Array of entries being resolved. Used to avoid circular dependencies and infinite loops.
+        *
+        * @generated
+        */
+        protected array $entriesBeingResolved ?? [];
+        /**
+        * Container that wraps this container. If none, points to $this.
+        *
+        * @generated
+        */
+        protected \Psr\Container\ContainerInterface $delegateContainer;
+        protected \DI\Proxy\ProxyFactoryInterface $proxyFactory;
+        public static function create(array $definitions): static;
+        /**
+        * Use `$container = new Container()` if you want a container with the default configuration.
+        *
+        * If you want to customize the container's behavior, you are discouraged to create and pass the
+        * dependencies yourself, the ContainerBuilder class is here to help you instead.
+        *
+        * @see ContainerBuilder
+        * @param ?\Psr\Container\ContainerInterface $wrapperContainer If the container is wrapped by another container.
+        * @generated
+        */
+        public function __construct(array|\DI\Definition\Source\MutableDefinitionSource $definitions = [], ?\DI\Proxy\ProxyFactoryInterface $proxyFactory = null, ?\Psr\Container\ContainerInterface $wrapperContainer = null): void;
+        /**
+        * Returns an entry of the container by its name.
+        *
+        * @template T
+        * @param string $id Entry name or a class name.
+        * @return mixed
+        * @throws DependencyException Error while resolving the entry.
+        * @throws NotFoundException No entry found for the given name.
+        * @generated
+        */
+        public function get<T>(string $id): mixed;
+        /**
+        * Build an entry of the container by its name.
+        *
+        * This method behave like get() except resolves the entry again every time.
+        * For example if the entry is a class then a new instance will be created each time.
+        * 
+        * This method makes the container behave like a factory.
+        *
+        * @template T
+        * @param string $name Entry name or a class name.
+        * @param array $parameters Optional parameters to use to build the entry. Use this to force
+        *  *                                               specific parameters to specific values. Parameters not defined in this
+        *  *                                               array will be resolved using the container.
+        * @return mixed
+        * @throws InvalidArgumentException The name parameter must be of type string.
+        * @throws DependencyException Error while resolving the entry.
+        * @throws NotFoundException No entry found for the given name.
+        * @generated
+        */
+        public function make<T>(string $name, array $parameters = []): mixed;
+        public function has(string $id): bool;
+        /**
+        * Inject all dependencies on an existing instance.
+        *
+        * @template T
+        * @param object|T $instance Object to perform injection upon
+        * @return object|T $instance Returns the same instance
+        * @throws InvalidArgumentException
+        * @throws DependencyException Error while injecting dependencies
+        * @generated
+        */
+        public function injectOn<T>(object|T $instance): object|T;
+        /**
+        * Call the given function using the given parameters.
+        *
+        * Missing parameters will be resolved from the container.
+        *
+        * @param callable|array|string $callable Function to call.
+        * @param array $parameters Parameters to use. Can be indexed by the parameter names
+        *  *                                 or not indexed (same order as the parameters).
+        *  *                                 The array can also contain DI definitions, e.g. DI\get().
+        * @return mixed Result of the function.
+        * @generated
+        */
+        public function call(callable|array|string $callable, array $parameters = []): mixed;
+        /**
+        * Define an object or a value in the container.
+        *
+        * @param string $name Entry name
+        * @param mixed $value Value, use definition helpers to define objects
+        * @generated
+        */
+        public function set(string $name, mixed $value): void;
+        /**
+        * Get defined container entries.
+        *
+        * @return array<int, string>
+        * @generated
+        */
+        public function getKnownEntryNames(): array<int, string>;
+        /**
+        * Get entry debug information.
+        *
+        * @param string $name Entry name
+        * @throws InvalidDefinition
+        * @throws NotFoundException
+        * @generated
+        */
+        public function debugEntry(string $name): string;
+        protected function setDefinition(string $name, \DI\Definition\Definition $definition): void;
+    }
+    /**
+    * Helper to create and configure a Container.
+    *
+    * With the default options, the container created is appropriate for the development environment.
+    * 
+    * Example:
+    * 
+    *     $builder = new ContainerBuilder();
+    *     $container = $builder->build();
+    *
+    * @api
+    * @since 3.2
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ContainerBuilder<ContainerClass extends \DI\Container> {
+        protected string $sourceCacheNamespace ?? '';
+        /**
+        * @param string $containerClass Name of the container class, used to create the container.
+        * @generated
+        */
+        public function __construct(string $containerClass = \DI\Container::class): void;
+        /**
+        * Build and return a container.
+        *
+        * @return ContainerClass
+        * @generated
+        */
+        public function build(): ContainerClass;
+        /**
+        * Compile the container for optimum performances.
+        *
+        * Be aware that the container is compiled once and never updated!
+        * 
+        * Therefore:
+        * 
+        * - in production you should clear that directory every time you deploy
+        * - in development you should not compile the container
+        *
+        * @see https://php-di.org/doc/performances.html
+        * @param string $directory Directory in which to put the compiled container.
+        * @param string $containerClass Name of the compiled class. Customize only if necessary.
+        * @param string $containerParentClass Name of the compiled container parent class. Customize only if necessary.
+        * @generated
+        */
+        public function enableCompilation<T extends \DI\CompiledContainer>(string $directory, string $containerClass = 'CompiledContainer', string $containerParentClass = \DI\CompiledContainer::class): self;
+        /**
+        * Enable or disable the use of autowiring to guess injections.
+        *
+        * Enabled by default.
+        *
+        * @return self
+        * @generated
+        */
+        public function useAutowiring(bool $bool): self;
+        /**
+        * Enable or disable the use of PHP 8 attributes to configure injections.
+        *
+        * Disabled by default.
+        *
+        * @return self
+        * @generated
+        */
+        public function useAttributes(bool $bool): self;
+        /**
+        * Configure the proxy generation.
+        *
+        * For dev environment, use `writeProxiesToFile(false)` (default configuration)
+        * For production environment, use `writeProxiesToFile(true, 'tmp/proxies')`
+        *
+        * @see https://php-di.org/doc/lazy-injection.html
+        * @param bool $writeToFile If true, write the proxies to disk to improve performances
+        * @param ?string $proxyDirectory Directory where to write the proxies
+        * @return self
+        * @throws InvalidArgumentException when writeToFile is set to true and the proxy directory is null
+        * @generated
+        */
+        public function writeProxiesToFile(bool $writeToFile, ?string $proxyDirectory = null): self;
+        /**
+        * If PHP-DI's container is wrapped by another container, we can
+        *
+        * set this so that PHP-DI will use the wrapper rather than itself for building objects.
+        *
+        * @return self
+        * @generated
+        */
+        public function wrapContainer(\Psr\Container\ContainerInterface $otherContainer): self;
+        /**
+        * Add definitions to the container.
+        *
+        * @param string|array|DefinitionSource $ ...$definitions Can be an array of definitions, the
+        *  *                                                          name of a file containing definitions
+        *  *                                                          or a DefinitionSource object.
+        * @return self
+        * @generated
+        */
+        public function addDefinitions(string|array|\DI\Definition\Source\DefinitionSource ...$definitions): self;
+        /**
+        * Enables the use of APCu to cache definitions.
+        *
+        * You must have APCu enabled to use it.
+        * 
+        * Before using this feature, you should try these steps first:
+        * - enable compilation if not already done (see `enableCompilation()`)
+        * - if you use autowiring or attributes, add all the classes you are using into your configuration so that
+        *   PHP-DI knows about them and compiles them
+        * Once this is done, you can try to optimize performances further with APCu. It can also be useful if you use
+        * `Container::make()` instead of `get()` (`make()` calls cannot be compiled so they are not optimized).
+        * 
+        * Remember to clear APCu on each deploy else your application will have a stale cache. Do not enable the cache
+        * in development environment: any change you will make to the code will be ignored because of the cache.
+        *
+        * @see https://php-di.org/doc/performances.html
+        * @param string $cacheNamespace use unique namespace per container when sharing a single APC memory pool to prevent cache collisions
+        * @return self
+        * @generated
+        */
+        public function enableDefinitionCache(string $cacheNamespace = ''): self;
+        /**
+        * Are we building a compiled container?
+        *
+        * @generated
+        */
+        public function isCompilationEnabled(): bool;
+    }
+    /**
+    * Exception for the Container.
+    *
+    * @generated
+    */
+    class DependencyException extends \Exception implements \Psr\Container\ContainerExceptionInterface {
+    }
+    /**
+    * Describes the basic interface of a factory.
+    *
+    * @api
+    * @since 4.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface FactoryInterface {
+        /**
+        * Resolves an entry by its name. If given a class name, it will return a new instance of that class.
+        *
+        * @param string $name Entry name or a class name.
+        * @param array $parameters Optional parameters to use to build the entry. Use this to force specific
+        *  *                               parameters to specific values. Parameters not defined in this array will
+        *  *                               be automatically resolved.
+        * @throws \InvalidArgumentException The name parameter must be of type string.
+        * @throws DependencyException       Error while resolving the entry.
+        * @throws NotFoundException         No entry or class found for the given name.
+        * @generated
+        */
+        public function make(string $name, array $parameters = []): mixed;
+    }
+    /**
+    * Exception thrown when a class or a value is not found in the container.
+    *
+    * @generated
+    */
+    class NotFoundException extends \Exception implements \Psr\Container\NotFoundExceptionInterface {
+    }
+}
+namespace DI\Attribute {
+    /**
+    * #[Inject] attribute.
+    *
+    * Marks a property or method as an injection point
+    *
+    * @api
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class Inject {
+        /**
+        * @throws InvalidAttribute
+        * @generated
+        */
+        public function __construct(string|array|null $name = null): void;
+        /**
+        * @return ?string Name of the entry to inject
+        * @generated
+        */
+        public function getName(): ?string;
+        /**
+        * @return array Parameters, indexed by the parameter number (index) or name
+        * @generated
+        */
+        public function getParameters(): array;
+    }
+    /**
+    * "Injectable" attribute.
+    *
+    * Marks a class as injectable
+    *
+    * @api
+    * @author Domenic Muskulus <domenic@muskulus.eu>
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class Injectable {
+        /**
+        * @param ?bool $lazy Should the object be lazy-loaded.
+        * @generated
+        */
+        public function __construct(?bool $lazy = null): void;
+        public function isLazy(): ?bool;
+    }
+}
+namespace DI\Compiler {
+    /**
+    * Compiles the container into PHP code much more optimized for performances.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class Compiler {
+        public function __construct(\DI\Proxy\ProxyFactoryInterface $proxyFactory): void;
+        public function getProxyFactory(): \DI\Proxy\ProxyFactoryInterface;
+        /**
+        * Compile the container.
+        *
+        * @return string The compiled container file name.
+        * @generated
+        */
+        public function compile(\DI\Definition\Source\DefinitionSource $definitionSource, string $directory, string $className, string $parentClassName, bool $autowiringEnabled): string;
+        public function compileValue(mixed $value): string;
+    }
+    /**
+    * Compiles an object definition into native PHP code that, when executed, creates the object.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ObjectCreationCompiler {
+        public function __construct(\DI\Compiler\Compiler $compiler): void;
+        public function compile(\DI\Definition\ObjectDefinition $definition): string;
+        /**
+        * @var class-string $className At this point we have checked the class is valid
+        * @generated
+        */
+        public function resolveParameters(?\DI\Definition\ObjectDefinition\MethodInjection $definition, ?\ReflectionMethod $method): array;
+    }
+    /**
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class RequestedEntryHolder implements \DI\Factory\RequestedEntry {
+        public function __construct(string $name): void;
+        public function getName(): string;
+    }
+}
+namespace DI\Definition {
+    /**
+    * Definition of an array containing values or references.
+    *
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ArrayDefinition implements \DI\Definition\Definition {
+        public function __construct(array $values): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        public function getValues(): array;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+    /**
+    * Extends an array definition by adding new elements into it.
+    *
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ArrayDefinitionExtension extends \DI\Definition\ArrayDefinition implements \DI\Definition\ExtendsPreviousDefinition {
+        public function getValues(): array;
+        public function setExtendedDefinition(\DI\Definition\Definition $definition): void;
+    }
+    /**
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class AutowireDefinition extends \DI\Definition\ObjectDefinition {
+    }
+    /**
+    * Factory that decorates a sub-definition.
+    *
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class DecoratorDefinition extends \DI\Definition\FactoryDefinition implements \DI\Definition\Definition, \DI\Definition\ExtendsPreviousDefinition {
+        public function setExtendedDefinition(\DI\Definition\Definition $definition): void;
+        public function getDecoratedDefinition(): ?\DI\Definition\Definition;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+    /**
+    * Defines a reference to an environment variable, with fallback to a default
+    *
+    * value if the environment variable is not defined.
+    *
+    * @author James Harris <james.harris@icecave.com.au>
+    * @generated
+    */
+    class EnvironmentVariableDefinition implements \DI\Definition\Definition {
+        /**
+        * @param string $variableName The name of the environment variable
+        * @param bool $isOptional Whether or not the environment variable definition is optional. If true and the environment variable given by $variableName has not been defined, $defaultValue is used.
+        * @param mixed $defaultValue The default value to use if the environment variable is optional and not provided
+        * @generated
+        */
+        public function __construct(string $variableName, bool $isOptional = false, mixed $defaultValue = null): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        /**
+        * @return string The name of the environment variable
+        * @generated
+        */
+        public function getVariableName(): string;
+        /**
+        * @return bool Whether or not the environment variable definition is optional
+        * @generated
+        */
+        public function isOptional(): bool;
+        /**
+        * @return mixed The default value to use if the environment variable is optional and not provided
+        * @generated
+        */
+        public function getDefaultValue(): mixed;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+    /**
+    * A definition that extends a previous definition with the same name.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface ExtendsPreviousDefinition extends \DI\Definition\Definition {
+        public function setExtendedDefinition(\DI\Definition\Definition $definition): void;
+    }
+    /**
+    * Definition of a value or class with a factory.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class FactoryDefinition implements \DI\Definition\Definition {
+        /**
+        * @param string $name Entry name
+        * @param callable|array|string $factory Callable that returns the value associated to the entry name.
+        * @param array $parameters Parameters to be passed to the callable
+        * @generated
+        */
+        public function __construct(string $name, callable|array|string $factory, array $parameters = []): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        /**
+        * @return callable|array|string Callable that returns the value associated to the entry name.
+        * @generated
+        */
+        public function getCallable(): callable|array|string;
+        /**
+        * @return array Array containing the parameters to be passed to the callable, indexed by name.
+        * @generated
+        */
+        public function getParameters(): array;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+    /**
+    * Defines injections on an existing class instance.
+    *
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class InstanceDefinition implements \DI\Definition\Definition {
+        /**
+        * @param object $instance Instance on which to inject dependencies.
+        * @generated
+        */
+        public function __construct(object $instance, \DI\Definition\ObjectDefinition $objectDefinition): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        public function getInstance(): object;
+        public function getObjectDefinition(): \DI\Definition\ObjectDefinition;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+    /**
+    * Defines how an object can be instantiated.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ObjectDefinition implements \DI\Definition\Definition {
+        /**
+        * Class name (if null, then the class name is $name).
+        *
+        * @generated
+        */
+        protected ?string $className ?? null;
+        protected ?\DI\Definition\ObjectDefinition\MethodInjection $constructorInjection ?? null;
+        protected array $propertyInjections ?? [];
+        /**
+        * Method calls.
+        *
+        * @var array<int, array<int, \DI\Definition\ObjectDefinition\MethodInjection>>
+        * @generated
+        */
+        protected array<int, array<int, \DI\Definition\ObjectDefinition\MethodInjection>> $methodInjections ?? [];
+        protected ?bool $lazy ?? null;
+        /**
+        * @param string $name Entry name
+        * @generated
+        */
+        public function __construct(string $name, ?string $className = null): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        public function setClassName(?string $className): void;
+        public function getClassName(): string;
+        public function getConstructorInjection(): ?\DI\Definition\ObjectDefinition\MethodInjection;
+        public function setConstructorInjection(\DI\Definition\ObjectDefinition\MethodInjection $constructorInjection): void;
+        public function completeConstructorInjection(\DI\Definition\ObjectDefinition\MethodInjection $injection): void;
+        /**
+        * @return array<int, \DI\Definition\ObjectDefinition\PropertyInjection> Property injections
+        * @generated
+        */
+        public function getPropertyInjections(): array<int, \DI\Definition\ObjectDefinition\PropertyInjection>;
+        public function addPropertyInjection(\DI\Definition\ObjectDefinition\PropertyInjection $propertyInjection): void;
+        /**
+        * @return array<int, \DI\Definition\ObjectDefinition\MethodInjection> Method injections
+        * @generated
+        */
+        public function getMethodInjections(): array<int, \DI\Definition\ObjectDefinition\MethodInjection>;
+        public function addMethodInjection(\DI\Definition\ObjectDefinition\MethodInjection $methodInjection): void;
+        public function completeFirstMethodInjection(\DI\Definition\ObjectDefinition\MethodInjection $injection): void;
+        public function setLazy(?bool $lazy = null): void;
+        public function isLazy(): bool;
+        public function classExists(): bool;
+        public function isInstantiable(): bool;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        /**
+        * Replaces all the wildcards in the string with the given replacements.
+        *
+        * @param array<int, string> $replacements
+        * @generated
+        */
+        public function replaceWildcards(array<int, string> $replacements): void;
+        public function __toString(): string;
+    }
+    /**
+    * Represents a reference to another entry.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class Reference implements \DI\Definition\Definition, \DI\Definition\SelfResolvingDefinition {
+        /**
+        * @param string $targetEntryName Name of the target entry
+        * @generated
+        */
+        public function __construct(string $targetEntryName): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        public function getTargetEntryName(): string;
+        public function resolve(\Psr\Container\ContainerInterface $container): mixed;
+        public function isResolvable(\Psr\Container\ContainerInterface $container): bool;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+    /**
+    * Describes a definition that can resolve itself.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface SelfResolvingDefinition {
+        /**
+        * Resolve the definition and return the resulting value.
+        *
+        * @generated
+        */
+        public function resolve(\Psr\Container\ContainerInterface $container): mixed;
+        /**
+        * Check if a definition can be resolved.
+        *
+        * @generated
+        */
+        public function isResolvable(\Psr\Container\ContainerInterface $container): bool;
+    }
+    /**
+    * Definition of a string composed of other strings.
+    *
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class StringDefinition implements \DI\Definition\Definition, \DI\Definition\SelfResolvingDefinition {
+        public function __construct(string $expression): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        public function getExpression(): string;
+        public function resolve(\Psr\Container\ContainerInterface $container): string;
+        public function isResolvable(\Psr\Container\ContainerInterface $container): bool;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+        /**
+        * Resolve a string expression.
+        *
+        * @generated
+        */
+        public static function resolveExpression(string $entryName, string $expression, \Psr\Container\ContainerInterface $container): string;
+    }
+    /**
+    * Definition of a value for dependency injection.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ValueDefinition implements \DI\Definition\Definition, \DI\Definition\SelfResolvingDefinition {
+        public function __construct(mixed $value): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        public function getValue(): mixed;
+        public function resolve(\Psr\Container\ContainerInterface $container): mixed;
+        public function isResolvable(\Psr\Container\ContainerInterface $container): bool;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+}
+namespace DI\Definition\Dumper {
+    /**
+    * Dumps object definitions to string for debugging purposes.
+    *
+    * @since 4.1
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ObjectDefinitionDumper {
+        /**
+        * Returns the definition as string representation.
+        *
+        * @generated
+        */
+        public function dump(\DI\Definition\ObjectDefinition $definition): string;
+    }
+}
+namespace DI\Definition\Exception {
+    /**
+    * Error in the definitions using PHP attributes.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class InvalidAttribute extends \DI\Definition\Exception\InvalidDefinition {
+    }
+    /**
+    * Invalid DI definitions.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class InvalidDefinition extends \Exception implements \Psr\Container\ContainerExceptionInterface {
+        public static function create(\DI\Definition\Definition $definition, string $message, ?\Exception $previous = null): self;
+    }
+}
+namespace DI\Definition\Helper {
+    /**
+    * Helps defining how to create an instance of a class using autowiring.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class AutowireDefinitionHelper extends \DI\Definition\Helper\CreateDefinitionHelper {
+        public const mixed DEFINITION_CLASS ?? \DI\Definition\AutowireDefinition::class;
+        /**
+        * Defines a value for a specific argument of the constructor.
+        *
+        * This method is usually used together with attributes or autowiring, when a parameter
+        * is not (or cannot be) type-hinted. Using this method instead of constructor() allows to
+        * avoid defining all the parameters (letting them being resolved using attributes or autowiring)
+        * and only define one.
+        *
+        * @param string|int $parameter Parameter name of position for which the value will be given.
+        * @param mixed $value Value to give to this parameter.
+        * @return self
+        * @generated
+        */
+        public function constructorParameter(string|int $parameter, mixed $value): self;
+        /**
+        * Defines a method to call and a value for a specific argument.
+        *
+        * This method is usually used together with attributes or autowiring, when a parameter
+        * is not (or cannot be) type-hinted. Using this method instead of method() allows to
+        * avoid defining all the parameters (letting them being resolved using attributes or
+        * autowiring) and only define one.
+        * 
+        * If multiple calls to the method have been configured already (e.g. in a previous definition)
+        * then this method only overrides the parameter for the *first* call.
+        *
+        * @param string $method Name of the method to call.
+        * @param string|int $parameter Parameter name of position for which the value will be given.
+        * @param mixed $value Value to give to this parameter.
+        * @return self
+        * @generated
+        */
+        public function methodParameter(string $method, string|int $parameter, mixed $value): self;
+    }
+    /**
+    * Helps defining how to create an instance of a class.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class CreateDefinitionHelper implements \DI\Definition\Helper\DefinitionHelper {
+        /**
+        * Array of constructor parameters.
+        *
+        * @generated
+        */
+        protected array $constructor ?? [];
+        /**
+        * Array of methods and their parameters.
+        *
+        * @generated
+        */
+        protected array $methods ?? [];
+        /**
+        * Helper for defining an object.
+        *
+        * @param ?string $className Class name of the object.
+        *  *                                   If null, the name of the entry (in the container) will be used as class name.
+        * @generated
+        */
+        public function __construct(?string $className = null): void;
+        /**
+        * Define the entry as lazy.
+        *
+        * A lazy entry is created only when it is used, a proxy is injected instead.
+        *
+        * @return self
+        * @generated
+        */
+        public function lazy(): self;
+        /**
+        * Defines the arguments to use to call the constructor.
+        *
+        * This method takes a variable number of arguments, example:
+        *     ->constructor($param1, $param2, $param3)
+        *
+        * @param mixed $ ...$parameters Parameters to use for calling the constructor of the class.
+        * @return self
+        * @generated
+        */
+        public function constructor(mixed ...$parameters): self;
+        /**
+        * Defines a value to inject in a property of the object.
+        *
+        * @param string $property Entry in which to inject the value.
+        * @param mixed $value Value to inject in the property.
+        * @return self
+        * @generated
+        */
+        public function property(string $property, mixed $value): self;
+        /**
+        * Defines a method to call and the arguments to use.
+        *
+        * This method takes a variable number of arguments after the method name, example:
+        * 
+        *     ->method('myMethod', $param1, $param2)
+        * 
+        * Can be used multiple times to declare multiple calls.
+        *
+        * @param string $method Name of the method to call.
+        * @param mixed $ ...$parameters Parameters to use for calling the method.
+        * @return self
+        * @generated
+        */
+        public function method(string $method, mixed ...$parameters): self;
+        public function getDefinition(string $entryName): \DI\Definition\ObjectDefinition;
+    }
+    /**
+    * Helps defining container entries.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface DefinitionHelper {
+        /**
+        * @param string $entryName Container entry name
+        * @generated
+        */
+        public function getDefinition(string $entryName): \DI\Definition\Definition;
+    }
+    /**
+    * Helps defining how to create an instance of a class using a factory (callable).
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class FactoryDefinitionHelper implements \DI\Definition\Helper\DefinitionHelper {
+        /**
+        * @param bool $decorate Is the factory decorating a previous definition?
+        * @generated
+        */
+        public function __construct(callable|array|string $factory, bool $decorate = false): void;
+        public function getDefinition(string $entryName): \DI\Definition\FactoryDefinition;
+        /**
+        * Defines arguments to pass to the factory.
+        *
+        * Because factory methods do not yet support attributes or autowiring, this method
+        * should be used to define all parameters except the ContainerInterface and RequestedEntry.
+        * 
+        * Multiple calls can be made to the method to override individual values.
+        *
+        * @param string $parameter Name or index of the parameter for which the value will be given.
+        * @param mixed $value Value to give to this parameter.
+        * @return self
+        * @generated
+        */
+        public function parameter(string $parameter, mixed $value): self;
+    }
+}
+namespace DI\Definition\ObjectDefinition {
+    /**
+    * Describe an injection in an object method.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class MethodInjection implements \DI\Definition\Definition {
+        /**
+        * @param array<int, mixed> $parameters
+        * @generated
+        */
+        public function __construct(string $methodName, array<int, mixed> $parameters = []): void;
+        public static function constructor(array $parameters = []): self;
+        public function getMethodName(): string;
+        /**
+        * @return array<int, mixed>
+        * @generated
+        */
+        public function getParameters(): array<int, mixed>;
+        /**
+        * Replace the parameters of the definition by a new array of parameters.
+        *
+        * @generated
+        */
+        public function replaceParameters(array $parameters): void;
+        public function merge(self $definition): void;
+        public function getName(): string;
+        public function setName(string $name): void;
+        public function replaceNestedDefinitions(callable $replacer): void;
+        public function __toString(): string;
+    }
+    /**
+    * Describe an injection in a class property.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class PropertyInjection {
+        /**
+        * @param string $propertyName Property name
+        * @param mixed $value Value that should be injected in the property
+        * @generated
+        */
+        public function __construct(string $propertyName, mixed $value, ?string $className = null): void;
+        public function getPropertyName(): string;
+        /**
+        * @return mixed Value that should be injected in the property
+        * @generated
+        */
+        public function getValue(): mixed;
+        public function getClassName(): ?string;
+        public function replaceNestedDefinition(callable $replacer): void;
+    }
+}
+namespace DI\Definition\Resolver {
+    /**
+    * Resolves an array definition to a value.
+    *
+    * @template-implements DefinitionResolver<ArrayDefinition>
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ArrayResolver implements \DI\Definition\Resolver\DefinitionResolver {
+        /**
+        * @param \DI\Definition\Resolver\DefinitionResolver $definitionResolver Used to resolve nested definitions.
+        * @generated
+        */
+        public function __construct(\DI\Definition\Resolver\DefinitionResolver $definitionResolver): void;
+        /**
+        * {@inheritDoc}
+        *
+        * Resolve an array definition to a value.
+        * 
+        * An array definition can contain simple values or references to other entries.
+        *
+        * @param \DI\Definition\Definition $definition
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): array;
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+    }
+    /**
+    * Resolves a decorator definition to a value.
+    *
+    * @template-implements DefinitionResolver<DecoratorDefinition>
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class DecoratorResolver implements \DI\Definition\Resolver\DefinitionResolver {
+        /**
+        * The resolver needs a container. This container will be passed to the factory as a parameter
+        *
+        * so that the factory can access other entries of the container.
+        *
+        * @param \DI\Definition\Resolver\DefinitionResolver $definitionResolver Used to resolve nested definitions.
+        * @generated
+        */
+        public function __construct(\Psr\Container\ContainerInterface $container, \DI\Definition\Resolver\DefinitionResolver $definitionResolver): void;
+        /**
+        * Resolve a decorator definition to a value.
+        *
+        * This will call the callable of the definition and pass it the decorated entry.
+        *
+        * @param \DI\Definition\Definition $definition
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): mixed;
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+    }
+    /**
+    * Resolves a definition to a value.
+    *
+    * @since 4.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @template T of Definition
+    * @generated
+    */
+    interface DefinitionResolver<T extends \DI\Definition\Definition> {
+        /**
+        * Resolve a definition to a value.
+        *
+        * @param \DI\Definition\Definition $definition Object that defines how the value should be obtained.
+        * @param array $parameters Optional parameters to use to build the entry.
+        * @return mixed Value obtained from the definition.
+        * @throws InvalidDefinition If the definition cannot be resolved.
+        * @throws DependencyException
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): mixed;
+        /**
+        * Check if a definition can be resolved.
+        *
+        * @param \DI\Definition\Definition $definition Object that defines how the value should be obtained.
+        * @param array $parameters Optional parameters to use to build the entry.
+        * @generated
+        */
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+    }
+    /**
+    * Resolves a environment variable definition to a value.
+    *
+    * @template-implements DefinitionResolver<EnvironmentVariableDefinition>
+    * @author James Harris <james.harris@icecave.com.au>
+    * @generated
+    */
+    class EnvironmentVariableResolver implements \DI\Definition\Resolver\DefinitionResolver {
+        public function __construct(\DI\Definition\Resolver\DefinitionResolver $definitionResolver, mixed $variableReader = null): void;
+        /**
+        * Resolve an environment variable definition to a value.
+        *
+        * @param \DI\Definition\Definition $definition
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): mixed;
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+        protected function getEnvVariable(string $variableName): mixed;
+    }
+    /**
+    * Resolves a factory definition to a value.
+    *
+    * @template-implements DefinitionResolver<FactoryDefinition>
+    * @since 4.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class FactoryResolver implements \DI\Definition\Resolver\DefinitionResolver {
+        /**
+        * The resolver needs a container. This container will be passed to the factory as a parameter
+        *
+        * so that the factory can access other entries of the container.
+        *
+        * @generated
+        */
+        public function __construct(\Psr\Container\ContainerInterface $container, \DI\Definition\Resolver\DefinitionResolver $resolver): void;
+        /**
+        * Resolve a factory definition to a value.
+        *
+        * This will call the callable of the definition.
+        *
+        * @param \DI\Definition\Definition $definition
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): mixed;
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+    }
+    /**
+    * Injects dependencies on an existing instance.
+    *
+    * @template-implements DefinitionResolver<InstanceDefinition>
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class InstanceInjector extends \DI\Definition\Resolver\ObjectCreator implements \DI\Definition\Resolver\DefinitionResolver {
+        /**
+        * Injects dependencies on an existing instance.
+        *
+        * @param \DI\Definition\Definition $definition
+        * @psalm-suppress ImplementedParamTypeMismatch
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): ?object;
+        /**
+        * @psalm-suppress InvalidCatch
+        * @generated
+        */
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+    }
+    /**
+    * Create objects based on an object definition.
+    *
+    * @template-implements DefinitionResolver<ObjectDefinition>
+    * @since 4.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ObjectCreator implements \DI\Definition\Resolver\DefinitionResolver {
+        /**
+        * @param \DI\Definition\Resolver\DefinitionResolver $definitionResolver Used to resolve nested definitions.
+        * @param \DI\Proxy\ProxyFactoryInterface $proxyFactory Used to create proxies for lazy injections.
+        * @generated
+        */
+        public function __construct(\DI\Definition\Resolver\DefinitionResolver $definitionResolver, \DI\Proxy\ProxyFactoryInterface $proxyFactory): void;
+        /**
+        * Resolve a class definition to a value.
+        *
+        * This will create a new instance of the class using the injections points defined.
+        *
+        * @param \DI\Definition\Definition $definition
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): ?object;
+        /**
+        * The definition is not resolvable if the class is not instantiable (interface or abstract)
+        *
+        * or if the class doesn't exist.
+        *
+        * @param \DI\Definition\Definition $definition
+        * @generated
+        */
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+        /**
+        * @psalm-suppress InvalidCatch
+        * @generated
+        */
+        protected function injectMethodsAndProperties(object $object, \DI\Definition\ObjectDefinition $objectDefinition): void;
+        public static function setPrivatePropertyValue(?string $className, mixed $object, string $propertyName, mixed $propertyValue): void;
+    }
+    /**
+    * Resolves parameters for a function call.
+    *
+    * @since 4.2
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ParameterResolver {
+        /**
+        * @param \DI\Definition\Resolver\DefinitionResolver $definitionResolver Will be used to resolve nested definitions.
+        * @generated
+        */
+        public function __construct(\DI\Definition\Resolver\DefinitionResolver $definitionResolver): void;
+        /**
+        * @return array Parameters to use to call the function.
+        * @throws InvalidDefinition A parameter has no value defined or guessable.
+        * @generated
+        */
+        public function resolveParameters(?\DI\Definition\ObjectDefinition\MethodInjection $definition = null, ?\ReflectionMethod $method = null, array $parameters = []): array;
+    }
+    /**
+    * Dispatches to more specific resolvers.
+    *
+    * Dynamic dispatch pattern.
+    *
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @psalm-suppress MissingTemplateParam
+    * @generated
+    */
+    class ResolverDispatcher implements \DI\Definition\Resolver\DefinitionResolver {
+        public function __construct(\Psr\Container\ContainerInterface $container, \DI\Proxy\ProxyFactoryInterface $proxyFactory): void;
+        /**
+        * Resolve a definition to a value.
+        *
+        * @param \DI\Definition\Definition $definition Object that defines how the value should be obtained.
+        * @param array $parameters Optional parameters to use to build the entry.
+        * @return mixed Value obtained from the definition.
+        * @throws InvalidDefinition If the definition cannot be resolved.
+        * @generated
+        */
+        public function resolve(\DI\Definition\Definition $definition, array $parameters = []): mixed;
+        public function isResolvable(\DI\Definition\Definition $definition, array $parameters = []): bool;
+    }
+}
+namespace DI\Definition\Source {
+    /**
+    * Provides DI definitions by reading PHP 8 attributes such as #[Inject] and #[Injectable].
+    *
+    * This source automatically includes the reflection source.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class AttributeBasedAutowiring implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\Autowiring {
+        /**
+        * @throws InvalidAttribute
+        * @generated
+        */
+        public function autowire(string $name, ?\DI\Definition\ObjectDefinition $definition = null): ?\DI\Definition\ObjectDefinition;
+        /**
+        * @throws InvalidAttribute
+        * @throws InvalidArgumentException The class doesn't exist
+        * @generated
+        */
+        public function getDefinition(string $name): ?\DI\Definition\ObjectDefinition;
+        /**
+        * Autowiring cannot guess all existing definitions.
+        *
+        * @generated
+        */
+        public function getDefinitions(): array;
+    }
+    /**
+    * Source of definitions for entries of the container.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface Autowiring {
+        /**
+        * Autowire the given definition.
+        *
+        * @throws InvalidDefinition An invalid definition was found.
+        * @generated
+        */
+        public function autowire(string $name, ?\DI\Definition\ObjectDefinition $definition = null): ?\DI\Definition\ObjectDefinition;
+    }
+    /**
+    * Reads DI definitions from a PHP array.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class DefinitionArray implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\MutableDefinitionSource {
+        public const string WILDCARD ?? '*';
+        public function __construct(array $definitions = [], ?\DI\Definition\Source\Autowiring $autowiring = null): void;
+        /**
+        * @param array $definitions DI definitions in a PHP array indexed by the definition name.
+        * @generated
+        */
+        public function addDefinitions(array $definitions): void;
+        public function addDefinition(\DI\Definition\Definition $definition): void;
+        public function getDefinition(string $name): ?\DI\Definition\Definition;
+        public function getDefinitions(): array;
+    }
+    /**
+    * Reads DI definitions from a file returning a PHP array.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class DefinitionFile extends \DI\Definition\Source\DefinitionArray {
+        /**
+        * @param string $file File in which the definitions are returned as an array.
+        * @generated
+        */
+        public function __construct(string $file, ?\DI\Definition\Source\Autowiring $autowiring = null): void;
+        public function getDefinition(string $name): ?\DI\Definition\Definition;
+        public function getDefinitions(): array;
+    }
+    /**
+    * Turns raw definitions/definition helpers into definitions ready
+    *
+    * to be resolved or compiled.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class DefinitionNormalizer {
+        public function __construct(\DI\Definition\Source\Autowiring $autowiring): void;
+        /**
+        * Normalize a definition that is *not* nested in another one.
+        *
+        * This is usually a definition declared at the root of a definition array.
+        *
+        * @param string $name The definition name.
+        * @param array<int, string> $wildcardsReplacements Replacements for wildcard definitions.
+        * @throws InvalidDefinition
+        * @generated
+        */
+        public function normalizeRootDefinition(mixed $definition, string $name, array<int, string> $wildcardsReplacements = null): \DI\Definition\Definition;
+        /**
+        * Normalize a definition that is nested in another one.
+        *
+        * @throws InvalidDefinition
+        * @generated
+        */
+        public function normalizeNestedDefinition(mixed $definition): mixed;
+    }
+    /**
+    * Source of definitions for entries of the container.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface DefinitionSource {
+        /**
+        * Returns the DI definition for the entry name.
+        *
+        * @throws InvalidDefinition An invalid definition was found.
+        * @generated
+        */
+        public function getDefinition(string $name): ?\DI\Definition\Definition;
+        /**
+        * @return array<string, \DI\Definition\Definition> Definitions indexed by their name.
+        * @generated
+        */
+        public function getDefinitions(): array<string, \DI\Definition\Definition>;
+    }
+    /**
+    * Describes a definition source to which we can add new definitions.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface MutableDefinitionSource extends \DI\Definition\Source\DefinitionSource {
+        public function addDefinition(\DI\Definition\Definition $definition): void;
+    }
+    /**
+    * Implementation used when autowiring is completely disabled.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class NoAutowiring implements \DI\Definition\Source\Autowiring {
+        public function autowire(string $name, ?\DI\Definition\ObjectDefinition $definition = null): ?\DI\Definition\ObjectDefinition;
+    }
+    /**
+    * Reads DI class definitions using reflection.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ReflectionBasedAutowiring implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\Autowiring {
+        public function autowire(string $name, ?\DI\Definition\ObjectDefinition $definition = null): ?\DI\Definition\ObjectDefinition;
+        public function getDefinition(string $name): ?\DI\Definition\ObjectDefinition;
+        /**
+        * Autowiring cannot guess all existing definitions.
+        *
+        * @generated
+        */
+        public function getDefinitions(): array;
+    }
+    /**
+    * Decorator that caches another definition source.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class SourceCache implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\MutableDefinitionSource {
+        public const string CACHE_KEY ?? 'php-di.definitions.';
+        public function __construct(\DI\Definition\Source\DefinitionSource $cachedSource, string $cacheNamespace = ''): void;
+        public function getDefinition(string $name): ?\DI\Definition\Definition;
+        /**
+        * Used only for the compilation so we can skip the cache safely.
+        *
+        * @generated
+        */
+        public function getDefinitions(): array;
+        public static function isSupported(): bool;
+        public function getCacheKey(string $name): string;
+        public function addDefinition(\DI\Definition\Definition $definition): void;
+    }
+    /**
+    * Manages a chain of other definition sources.
+    *
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class SourceChain implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\MutableDefinitionSource {
+        /**
+        * @param array<int, DefinitionSource> $sources
+        * @generated
+        */
+        public function __construct(array<int, \DI\Definition\Source\DefinitionSource> $sources): void;
+        /**
+        * @param int $startIndex Use this parameter to start looking from a specific
+        *  *                            point in the source chain.
+        * @generated
+        */
+        public function getDefinition(string $name, int $startIndex = 0): ?\DI\Definition\Definition;
+        public function getDefinitions(): array;
+        /**
+        * @var string[] $allNames
+        * @generated
+        */
+        public function addDefinition(\DI\Definition\Definition $definition): void;
+        public function setMutableDefinitionSource(\DI\Definition\Source\MutableDefinitionSource $mutableSource): void;
+    }
+}
+namespace DI\Factory {
+    /**
+    * Represents the container entry that was requested.
+    *
+    * Implementations of this interface can be injected in factory parameters in order
+    * to know what was the name of the requested entry.
+    *
+    * @api
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    interface RequestedEntry {
+        /**
+        * Returns the name of the entry that was requested by the container.
+        *
+        * @generated
+        */
+        public function getName(): string;
+    }
+}
+namespace DI\Invoker {
+    /**
+    * Resolves callable parameters using definitions.
+    *
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class DefinitionParameterResolver implements \Invoker\ParameterResolver\ParameterResolver {
+        public function __construct(\DI\Definition\Resolver\DefinitionResolver $definitionResolver): void;
+        public function getParameters(\ReflectionFunctionAbstract $reflection, array $providedParameters, array $resolvedParameters): array;
+    }
+    /**
+    * Inject the container, the definition or any other service using type-hints.
+    *
+    * {@internal This class is similar to TypeHintingResolver and TypeHintingContainerResolver,
+    *            we use this instead for performance reasons}
+    *
+    * @author Quim Calpe <quim@kalpe.com>
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class FactoryParameterResolver implements \Invoker\ParameterResolver\ParameterResolver {
+        public function __construct(\Psr\Container\ContainerInterface $container): void;
+        public function getParameters(\ReflectionFunctionAbstract $reflection, array $providedParameters, array $resolvedParameters): array;
+    }
+}
+namespace DI\Proxy {
+    /**
+    * Uses PHP 8.4+'s native support for lazy proxies to generate proxy objects.
+    *
+    * @since 7.1
+    * @author Buster Neece <buster@busterneece.com>
+    * @generated
+    */
+    class NativeProxyFactory implements \DI\Proxy\ProxyFactoryInterface {
+        /**
+        * Creates a new lazy proxy instance of the given class with
+        *
+        * the given initializer.
+        * 
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function createProxy(string $className, \Closure $createFunction): object;
+        public function generateProxyClass(string $className): void;
+    }
+    /**
+    * Creates proxy classes.
+    *
+    * Wraps Ocramius/ProxyManager LazyLoadingValueHolderFactory.
+    *
+    * @see LazyLoadingValueHolderFactory
+    * @since 5.0
+    * @author Matthieu Napoli <matthieu@mnapoli.fr>
+    * @generated
+    */
+    class ProxyFactory implements \DI\Proxy\ProxyFactoryInterface {
+        /**
+        * @param ?string $proxyDirectory If set, write the proxies to disk in this directory to improve performances.
+        * @generated
+        */
+        public function __construct(?string $proxyDirectory = null): void;
+        /**
+        * Creates a new lazy proxy instance of the given class with
+        *
+        * the given initializer.
+        * 
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function createProxy(string $className, \Closure $createFunction): object;
+        /**
+        * Generates and writes the proxy class to file.
+        *
+        * @param string $className name of the class to be proxied
+        * @generated
+        */
+        public function generateProxyClass(string $className): void;
+    }
+    /**
+    * Generic interface for proxy factories.
+    *
+    * @since 7.1
+    * @author Buster Neece <buster@busterneece.com>
+    * @generated
+    */
+    interface ProxyFactoryInterface {
+        /**
+        * Creates a new lazy proxy instance of the given class with
+        *
+        * the given initializer.
+        *
+        * @param string $className name of the class to be proxied
+        * @param \Closure $createFunction initializer to be passed to the proxy initializer to be passed to the proxy
+        * @generated
+        */
+        public function createProxy(string $className, \Closure $createFunction): object;
+        /**
+        * If the proxy generator depends on a filesystem component,
+        *
+        * this step writes the proxy for that class to file. Otherwise,
+        * it is a no-op.
+        *
+        * @param string $className name of the class to be proxied
+        * @generated
+        */
+        public function generateProxyClass(string $className): void;
+    }
+}

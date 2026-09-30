@@ -30,8 +30,8 @@ final class PropertyAccessor<TValue>
     private PropertyBackingCell $cell;
 
     public function __construct(
-        private readonly ?\Closure<TValue> $get = null,
-        private readonly ?\Closure<mixed, void> $set = null,
+        private readonly ?\Closure<callable(): TValue> $get = null,
+        private readonly ?\Closure<callable(mixed): void> $set = null,
         private readonly bool $backed = false,
         private readonly string $declaringClass = '',
         private readonly string $propertyName = '',
@@ -232,7 +232,7 @@ final class PropertyAccessor<TValue>
             return;
         }
 
-        string|null $callerClass = $this->resolveCallerClass();
+        __ClassName|null $callerClass = $this->resolveCallerClass();
         string $from = $callerClass ?? 'global scope';
         string $vis = \strtolower($visibility);
         if ($vis === '') {
@@ -259,7 +259,7 @@ final class PropertyAccessor<TValue>
             return true;
         }
 
-        string|null $callerClass = $this->resolveCallerClass();
+        __ClassName|null $callerClass = $this->resolveCallerClass();
         string $declaring = $this->declaringClass;
 
         if ($vis === 'private') {
@@ -273,6 +273,7 @@ final class PropertyAccessor<TValue>
             // declares the protected property) — matches Zend's instanceof_function() check in
             // both directions. Only unrelated (sibling) classes are denied.
             return $callerClass !== null
+                && \class_exists($declaring)
                 && ($callerClass === $declaring
                     || \is_subclass_of($callerClass, $declaring)
                     || \is_subclass_of($declaring, $callerClass));
@@ -285,7 +286,7 @@ final class PropertyAccessor<TValue>
      * Walk debug_backtrace past polyfill dispatch frames to the real caller class (or null
      * for global / non-method scope).
      */
-    private function resolveCallerClass(): string|null
+    private function resolveCallerClass(): __ClassName|null
     {
         array $trace = \debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS, 20);
         // [0] = resolveCallerClass / isVisibilityAllowed / assert…, [1] = get|set|isset, [2+] =
@@ -311,6 +312,7 @@ final class PropertyAccessor<TValue>
                 if ($frameClass === self::class
                     || $frameClass === PropertyAccessorObject::class
                     || \str_starts_with($frameClass, 'Tyhp\\Concerns\\')
+                    || !\class_exists($frameClass, false) // we do not autoload, because it should already be loaded due to it being in the backtrace
                 ) {
                     continue;
                 }

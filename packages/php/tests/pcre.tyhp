@@ -1,0 +1,65 @@
+<?tyhp
+
+namespace OverlayTests\Pcre;
+
+function pregSplit_defaultFlags_isListOfStringOrFalse(string $s): array<int, string>|false {
+    return \preg_split('/,/', $s);
+}
+
+function pregSplit_noEmptyConst_isStillListOfStringOrFalse(string $s): array<int, string>|false {
+    return \preg_split('/,/', $s, -1, \PREG_SPLIT_NO_EMPTY);
+}
+
+function pregSplit_offsetCaptureConst_isStructListOrFalse(string $s): array<int, \PregOffsetCapture>|false {
+    return \preg_split('/,/', $s, -1, \PREG_SPLIT_OFFSET_CAPTURE);
+}
+
+function pregSplit_offsetCapture_structFieldsAreStringAndInt(\PregOffsetCapture $pair): void {
+    string $text = $pair->match;
+    int $offset = $pair->offset;
+}
+
+function pregSplit_offsetCapture_fromList(array<int, \PregOffsetCapture> $parts): void {
+    pregSplit_offsetCapture_structFieldsAreStringAndInt($parts[0]);
+}
+
+function pregSplit_offsetCapture_demo(string $s): array<int, \PregOffsetCapture>|false {
+    return \preg_split('/,/', $s, -1, \PREG_SPLIT_OFFSET_CAPTURE);
+}
+
+function pregMatch_defaultFlags_matchesAreStringByRef(string $s): void {
+    array<int|string, string> $matches = [];
+    \preg_match('/(?<n>a)/', $s, $matches);
+    string $full = $matches[0];
+    string $named = $matches['n'];
+}
+
+function pregMatch_offsetCaptureConst_matchesAreStructByRef(string $s): void {
+    array<int|string, \PregOffsetCapture> $matches = [];
+    \preg_match('/a/', $s, $matches, \PREG_OFFSET_CAPTURE);
+    \PregOffsetCapture $full = $matches[0];
+    string $text = $full->match;
+    int $offset = $full->offset;
+}
+
+function pregMatch_unmatchedAsNullConst_valuesAreStringOrNull(string $s): void {
+    array<int|string, string|null> $matches = [];
+    \preg_match('/(a)(b)?/', $s, $matches, \PREG_UNMATCHED_AS_NULL);
+    string|null $group = $matches[2];
+}
+
+function pregMatch_returnIsIntOrFalse(string $s): int|false {
+    return \preg_match('/a/', $s);
+}
+
+function pregReplace_stringSubject_isStringOrNull(string $s): string|null {
+    return \preg_replace('/a/', 'b', $s);
+}
+
+function pregReplace_arraySubject_isArrayOfStringOrNull(array<int, string> $s): array<int, string>|null {
+    return \preg_replace('/a/', 'b', $s);
+}
+
+function pregFilter_arraySubject_isArrayOfStringOrNull(array<int, string> $s): array<int, string>|null {
+    return \preg_filter('/a/', 'b', $s);
+}

@@ -1,0 +1,53 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Compound limiter list and RateLimiterFactory option shape.
+ */
+
+namespace Symfony\Component\RateLimiter {
+    /**
+     * Input passed to RateLimiterFactory before OptionsResolver::resolve().
+     * `id` and `policy` are required. `limit`, `interval`, and `rate` are optional.
+     */
+    type RateLimiterFactoryConfig = struct {
+        string $id;
+        'token_bucket'|'fixed_window'|'sliding_window'|'no_limit' $policy;
+        ?int $limit;
+        ?string $interval;
+        ?\Symfony\Component\RateLimiter\TokenBucketRateConfig $rate;
+    };
+
+    /**
+     * Nested `rate` option before OptionsResolver normalizes it to a Rate instance.
+     * `amount` defaults to 1; `interval` is a relative date string.
+     */
+    type TokenBucketRateConfig = struct {
+        int $amount = 1;
+        ?string $interval;
+    };
+
+    /**
+     * Overlay: limiters are a list of LimiterInterface (`LimiterInterface[]`).
+     */
+    // @overlay-against: class CompoundLimiter implements \Symfony\Component\RateLimiter\LimiterInterface
+    partial class CompoundLimiter {
+        /**
+         * @param array<int|string, \Symfony\Component\RateLimiter\LimiterInterface> $limiters
+         */
+        // @overlay-against: function __construct(array $limiters): void
+        public function __construct(array<int|string, \Symfony\Component\RateLimiter\LimiterInterface> $limiters): void;
+    }
+
+    /**
+     * Overlay: `$config` is the OptionsResolver input shape (policy enum, optional limit/interval/rate).
+     */
+    // @overlay-against: class RateLimiterFactory implements \Symfony\Component\RateLimiter\RateLimiterFactoryInterface
+    partial class RateLimiterFactory {
+        /**
+         * @param \Symfony\Component\RateLimiter\RateLimiterFactoryConfig $config
+         */
+        // @overlay-against: function __construct(array $config, \Symfony\Component\RateLimiter\Storage\StorageInterface $storage, ?\Symfony\Component\Lock\LockFactory $lockFactory): void
+        public function __construct(\Symfony\Component\RateLimiter\RateLimiterFactoryConfig $config, \Symfony\Component\RateLimiter\Storage\StorageInterface $storage, ?\Symfony\Component\Lock\LockFactory $lockFactory = null): void;
+    }
+}

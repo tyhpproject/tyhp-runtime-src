@@ -1,0 +1,142 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * Hash signature enrichments: `hash_algos` list typing, Murmur/xxHash options
+ * struct, `hash_init` HMAC-key overloads, and HashContext array shapes.
+ * Not Pure (see Pure.Hash.tyhpdef).
+ *
+ * Flag overloads use integer literals (Decision 18: `const int NAME ?? N` is
+ * literal `N` at the call site). `HASH_HMAC` is `1`.
+ */
+
+/**
+ * Overlay: `HashContext::__debugInfo()` array-shape (`>=8.4`).
+ */
+type HashContextDebugInfo = struct {
+    string $algo;
+};
+
+/**
+ * Overlay: algorithm-specific `$options` for `hash` / `hash_file` / `hash_init` /
+ * `hash_pbkdf2`. MurmurHash uses `$seed`; xxh3 / xxh128 also accept `$secret`
+ * (not together with `$seed`).
+ */
+type HashOptions = struct {
+    ?int $seed;
+    ?string $secret;
+};
+
+/**
+ * Overlay: Murmur/xxHash `$options` as `HashOptions`.
+ *
+ * @param string $algo Name from `hash_algos()`.
+ * @param string $data Message to hash.
+ * @param bool $binary Raw bytes when true; lowercase hexits when false.
+ * @param HashOptions|array<string, mixed> $options Algorithm options (`seed` / `secret`).
+ * @return string Digest.
+ */
+// @overlay-against: function hash(string $algo, string $data, bool $binary, array $options): string
+function hash(string $algo, string $data, bool $binary = false, HashOptions|array<string, mixed> $options = []): string;
+
+/**
+ * Overlay: registered algorithm names as a list of strings.
+ *
+ * @return array<int, string> Names accepted by `hash()`.
+ */
+// @overlay-against: function hash_algos(): array
+function hash_algos(): array<int, string>;
+
+/**
+ * Overlay: Murmur/xxHash `$options` as `HashOptions`.
+ *
+ * @param string $algo Name from `hash_algos()`.
+ * @param string $filename File to hash.
+ * @param bool $binary Raw bytes when true; lowercase hexits when false.
+ * @param HashOptions|array<string, mixed> $options Algorithm options (`seed` / `secret`).
+ * @return string|false Digest, or false if the file cannot be read.
+ */
+// @overlay-against: function hash_file(string $algo, string $filename, bool $binary, array $options): string|false
+function hash_file(string $algo, string $filename, bool $binary = false, HashOptions|array<string, mixed> $options = []): string|false;
+
+/**
+ * Overlay: default flags (no HMAC). `$key` may be omitted.
+ *
+ * @param string $algo Name from `hash_algos()`.
+ * @param 0 $flags No `HASH_HMAC`.
+ * @param string $key Unused unless HMAC is set.
+ * @param HashOptions|array<string, mixed> $options Algorithm options (`seed` / `secret`).
+ * @return \HashContext Incremental hashing context.
+ */
+// @overlay-against: function hash_init(string $algo, int $flags, string $key, array $options): \HashContext
+function hash_init(string $algo, 0 $flags = 0, #[\SensitiveParameter] string $key = '', HashOptions|array<string, mixed> $options = []): \HashContext;
+
+/**
+ * Overlay: `HASH_HMAC` (`1`). `$key` is required.
+ *
+ * @param string $algo Name from `hash_hmac_algos()`.
+ * @param 1 $flags `HASH_HMAC`.
+ * @param string $key HMAC shared secret.
+ * @param HashOptions|array<string, mixed> $options Algorithm options (`seed` / `secret`).
+ * @return \HashContext Incremental HMAC context.
+ */
+// @overlay-against: function hash_init(string $algo, int $flags, string $key, array $options): \HashContext
+function hash_init(string $algo, 1 $flags, #[\SensitiveParameter] string $key, HashOptions|array<string, mixed> $options = []): \HashContext;
+
+/**
+ * Overlay: runtime `int` flags. `$key` has no default so a 2-argument
+ * `hash_init($algo, $flags)` cannot use an empty HMAC key.
+ *
+ * @param string $algo Name from `hash_algos()`.
+ * @param int $flags `0` or `HASH_HMAC`.
+ * @param string $key Required when `$flags` is not the literal `0`.
+ * @param HashOptions|array<string, mixed> $options Algorithm options (`seed` / `secret`).
+ * @return \HashContext Incremental hashing context.
+ */
+// @overlay-against: function hash_init(string $algo, int $flags, string $key, array $options): \HashContext
+function hash_init(string $algo, int $flags, #[\SensitiveParameter] string $key, HashOptions|array<string, mixed> $options = []): \HashContext;
+
+/**
+ * Overlay: Murmur/xxHash `$options` as `HashOptions`.
+ *
+ * @param string $algo Name from `hash_hmac_algos()`.
+ * @param string $password Password to derive from.
+ * @param string $salt Random salt.
+ * @param int $iterations Iteration count.
+ * @param int $length Output length; `0` uses the algorithm size.
+ * @param bool $binary Raw bytes when true; lowercase hexits when false.
+ * @param HashOptions|array<string, mixed> $options Algorithm options (`seed` / `secret`).
+ * @return string Derived key.
+ */
+// @overlay-against: function hash_pbkdf2(string $algo, string $password, string $salt, int $iterations, int $length, bool $binary, array $options): string
+function hash_pbkdf2(
+    string $algo,
+    #[\SensitiveParameter] string $password,
+    string $salt,
+    int $iterations,
+    int $length = 0,
+    bool $binary = false,
+    HashOptions|array<string, mixed> $options = []
+): string;
+
+/**
+ * Overlay: `$stream_context` is a nullable stream-context resource (Layer 2 omitted `?`).
+ *
+ * @param \HashContext $context Context from `hash_init()`.
+ * @param string $filename File to hash.
+ * @param ?resource $stream_context Stream context from `stream_context_create()`.
+ * @return bool True on success, false on failure.
+ */
+// @overlay-against: function hash_update_file(\HashContext $context, string $filename, mixed $stream_context): bool
+function hash_update_file(\HashContext $context, string $filename, ?resource $stream_context = null): bool;
+
+// @overlay-against: class HashContext
+partial class HashContext {
+    #[\Tyhp\Php(">=8.4")]
+    // @overlay-against: function __debugInfo(): array
+    public function __debugInfo(): HashContextDebugInfo;
+    // @overlay-against: function __serialize(): array
+    public function __serialize(): array<int, mixed>;
+    // @overlay-against: function __unserialize(array $data): void
+    public function __unserialize(array<int, mixed> $data): void;
+}

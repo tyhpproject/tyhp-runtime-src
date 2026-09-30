@@ -1,0 +1,2292 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Security\Http {
+    /**
+    * AccessMap allows configuration of different access control rules for
+    *
+    * specific parts of the website.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class AccessMap implements \Symfony\Component\Security\Http\AccessMapInterface {
+        /**
+        * @param array $attributes An array of attributes to pass to the access decision manager (like roles)
+        * @param ?string $channel The channel to enforce (http, https, or null)
+        * @generated
+        */
+        public function add(\Symfony\Component\HttpFoundation\RequestMatcherInterface $requestMatcher, array $attributes = [], ?string $channel = null): void;
+        public function getPatterns(\Symfony\Component\HttpFoundation\Request $request): array;
+    }
+    /**
+    * AccessMap allows configuration of different access control rules for
+    *
+    * specific parts of the website.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Kris Wallsmith <kris@symfony.com>
+    * @generated
+    */
+    interface AccessMapInterface {
+        /**
+        * Returns security attributes and required channel for the supplied request.
+        *
+        * @return array A tuple of security attributes and the required channel
+        * @generated
+        */
+        public function getPatterns(\Symfony\Component\HttpFoundation\Request $request): array;
+    }
+    /**
+    * Firewall uses a FirewallMap to register security listeners for the given
+    *
+    * request.
+    * 
+    * It allows for different security strategies within the same application
+    * (a Basic authentication for the /api, and a web based authentication for
+    * everything else for instance).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Firewall implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Http\FirewallMapInterface $map, \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher): void;
+        /**
+        * @return void
+        * @generated
+        */
+        public function onKernelRequest(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        /**
+        * @return void
+        * @generated
+        */
+        public function onKernelFinishRequest(\Symfony\Component\HttpKernel\Event\FinishRequestEvent $event): void;
+        /**
+        * @return array
+        * @generated
+        */
+        public static function getSubscribedEvents(): array;
+        /**
+        * @return void
+        * @generated
+        */
+        protected function callListeners(\Symfony\Component\HttpKernel\Event\RequestEvent $event, iterable $listeners): void;
+    }
+    /**
+    * FirewallMap allows configuration of different firewalls for specific parts
+    *
+    * of the website.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class FirewallMap implements \Symfony\Component\Security\Http\FirewallMapInterface {
+        /**
+        * @param array<int, callable|\Symfony\Component\Security\Http\Firewall\FirewallListenerInterface> $listeners
+        * @generated
+        */
+        public function add(?\Symfony\Component\HttpFoundation\RequestMatcherInterface $requestMatcher = null, array<int, callable|\Symfony\Component\Security\Http\Firewall\FirewallListenerInterface> $listeners = [], ?\Symfony\Component\Security\Http\Firewall\ExceptionListener $exceptionListener = null, ?\Symfony\Component\Security\Http\Firewall\LogoutListener $logoutListener = null): void;
+        public function getListeners(\Symfony\Component\HttpFoundation\Request $request): array;
+    }
+    /**
+    * This interface must be implemented by firewall maps.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface FirewallMapInterface {
+        /**
+        * Returns the authentication listeners, and the exception listener to use
+        *
+        * for the given request.
+        * 
+        * If there are no authentication listeners, the first inner array must be
+        * empty.
+        * 
+        * If there is no exception listener, the second element of the outer array
+        * must be null.
+        * 
+        * If there is no logout listener, the third element of the outer array
+        * must be null.
+        *
+        * @return array
+        * @generated
+        */
+        public function getListeners(\Symfony\Component\HttpFoundation\Request $request): array;
+    }
+    /**
+    * Encapsulates the logic needed to create sub-requests, redirect the user, and match URLs.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class HttpUtils {
+        /**
+        * @param ?string $domainRegexp A regexp the target of HTTP redirections must match, scheme included
+        * @param ?string $secureDomainRegexp A regexp the target of HTTP redirections must match when the scheme is "https"
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(?\Symfony\Component\Routing\Generator\UrlGeneratorInterface $urlGenerator = null, \Symfony\Component\Routing\Matcher\UrlMatcherInterface|\Symfony\Component\Routing\Matcher\RequestMatcherInterface|null $urlMatcher = null, ?string $domainRegexp = null, ?string $secureDomainRegexp = null): void;
+        /**
+        * Creates a redirect Response.
+        *
+        * @param string $path A path (an absolute path (/foo), an absolute URL (http://...), or a route name (foo))
+        * @param int $status The HTTP status code (302 "Found" by default)
+        * @generated
+        */
+        public function createRedirectResponse(\Symfony\Component\HttpFoundation\Request $request, string $path, int $status = 302): \Symfony\Component\HttpFoundation\RedirectResponse;
+        /**
+        * Creates a Request.
+        *
+        * @param string $path A path (an absolute path (/foo), an absolute URL (http://...), or a route name (foo))
+        * @generated
+        */
+        public function createRequest(\Symfony\Component\HttpFoundation\Request $request, string $path): \Symfony\Component\HttpFoundation\Request;
+        /**
+        * Checks that a given path matches the Request.
+        *
+        * @param string $path A path (an absolute path (/foo), an absolute URL (http://...), or a route name (foo))
+        * @return bool true if the path is the same as the one from the Request, false otherwise
+        * @generated
+        */
+        public function checkRequestPath(\Symfony\Component\HttpFoundation\Request $request, string $path): bool;
+        /**
+        * Generates a URI, based on the given path or absolute URL.
+        *
+        * @param string $path A path (an absolute path (/foo), an absolute URL (http://...), or a route name (foo))
+        * @throws \LogicException
+        * @generated
+        */
+        public function generateUri(\Symfony\Component\HttpFoundation\Request $request, string $path): string;
+    }
+    final class SecurityEvents {
+        /**
+        * The INTERACTIVE_LOGIN event occurs after a user has actively logged
+        *
+        * into your website. It is important to distinguish this action from
+        * non-interactive authentication methods, such as:
+        *   - authentication based on your session.
+        *   - authentication using an HTTP basic or HTTP digest header.
+        *
+        * @event ("Symfony\Component\Security\Http\Event\InteractiveLoginEvent")
+        * @generated
+        */
+        public const string INTERACTIVE_LOGIN ?? 'security.interactive_login';
+        /**
+        * The SWITCH_USER event occurs before switch to another user and
+        *
+        * before exit from an already switched user.
+        *
+        * @event ("Symfony\Component\Security\Http\Event\SwitchUserEvent")
+        * @generated
+        */
+        public const string SWITCH_USER ?? 'security.switch_user';
+        /**
+        * Event aliases.
+        *
+        * These aliases can be consumed by RegisterListenersPass.
+        *
+        * @generated
+        */
+        public const array ALIASES ?? [];
+    }
+    /**
+    * List of request attributes used along the security flow.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    final class SecurityRequestAttributes {
+        public const string ACCESS_DENIED_ERROR ?? '_security.403_error';
+        public const string AUTHENTICATION_ERROR ?? '_security.last_error';
+        public const string LAST_USERNAME ?? '_security.last_username';
+    }
+}
+namespace Symfony\Component\Security\Http\AccessToken {
+    /**
+    * The token extractor retrieves the token from a request.
+    *
+    * @author Florent Morselli <florent.morselli@spomky-labs.com>
+    * @generated
+    */
+    interface AccessTokenExtractorInterface {
+        public function extractAccessToken(\Symfony\Component\HttpFoundation\Request $request): ?string;
+    }
+    /**
+    * The token handler retrieves the user identifier from the token.
+    *
+    * In order to get the user identifier, implementations may need to load and validate the token (e.g. revocation, expiration time, digital signature...).
+    *
+    * @author Florent Morselli <florent.morselli@spomky-labs.com>
+    * @generated
+    */
+    interface AccessTokenHandlerInterface {
+        /**
+        * @throws AuthenticationException
+        * @generated
+        */
+        public function getUserBadgeFrom(string $accessToken): \Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+    }
+    /**
+    * The token extractor retrieves the token from a request.
+    *
+    * @author Florent Morselli <florent.morselli@spomky-labs.com>
+    * @generated
+    */
+    final class ChainAccessTokenExtractor implements \Symfony\Component\Security\Http\AccessToken\AccessTokenExtractorInterface {
+        /**
+        * @param array<int, AccessTokenExtractorInterface> $accessTokenExtractors
+        * @generated
+        */
+        public function __construct(array<int, \Symfony\Component\Security\Http\AccessToken\AccessTokenExtractorInterface> $accessTokenExtractors): void;
+        public function extractAccessToken(\Symfony\Component\HttpFoundation\Request $request): ?string;
+    }
+    /**
+    * Extracts a token from the body request.
+    *
+    * WARNING!
+    * Because of the security weaknesses associated with this method,
+    * the request body method SHOULD NOT be used except in application contexts
+    * where participating browsers do not have access to the "Authorization" request header field.
+    *
+    * @author Florent Morselli <florent.morselli@spomky-labs.com>
+    * @see https://datatracker.ietf.org/doc/html/rfc6750#section-2.2
+    * @generated
+    */
+    final class FormEncodedBodyExtractor implements \Symfony\Component\Security\Http\AccessToken\AccessTokenExtractorInterface {
+        public function __construct(string $parameter = 'access_token'): void;
+        public function extractAccessToken(\Symfony\Component\HttpFoundation\Request $request): ?string;
+    }
+    /**
+    * Extracts a token from the request header.
+    *
+    * @author Florent Morselli <florent.morselli@spomky-labs.com>
+    * @see https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
+    * @generated
+    */
+    final class HeaderAccessTokenExtractor implements \Symfony\Component\Security\Http\AccessToken\AccessTokenExtractorInterface {
+        public function __construct(string $headerParameter = 'Authorization', string $tokenType = 'Bearer'): void;
+        public function extractAccessToken(\Symfony\Component\HttpFoundation\Request $request): ?string;
+    }
+    /**
+    * Extracts a token from a query string parameter.
+    *
+    * WARNING!
+    * Because of the security weaknesses associated with the URI method,
+    * including the high likelihood that the URL containing the access token will be logged,
+    * it SHOULD NOT be used unless it is impossible to transport the access token in the
+    * request header field.
+    *
+    * @author Florent Morselli <florent.morselli@spomky-labs.com>
+    * @see https://datatracker.ietf.org/doc/html/rfc6750#section-2.3
+    * @generated
+    */
+    final class QueryAccessTokenExtractor implements \Symfony\Component\Security\Http\AccessToken\AccessTokenExtractorInterface {
+        public const string PARAMETER ?? 'access_token';
+        public function __construct(string $parameter = self::PARAMETER): void;
+        public function extractAccessToken(\Symfony\Component\HttpFoundation\Request $request): ?string;
+    }
+}
+namespace Symfony\Component\Security\Http\AccessToken\Cas {
+    /**
+    * @see https://apereo.github.io/cas/6.6.x/protocol/CAS-Protocol-V2-Specification.html
+    * @author Nicolas Attard <contact@nicolasattard.fr>
+    * @generated
+    */
+    final class Cas2Handler implements \Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, string $validationUrl, string $prefix = 'cas', ?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null): void;
+        /**
+        * @throws AuthenticationException
+        * @generated
+        */
+        public function getUserBadgeFrom(string $accessToken): \Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+    }
+}
+namespace Symfony\Component\Security\Http\AccessToken\Oidc {
+    class OidcTokenGenerator {
+        public function __construct(\Jose\Component\Core\AlgorithmManager $algorithmManager, \Jose\Component\Core\JWKSet $jwkset, string $audience, array $issuers, string $claim = 'sub', \Psr\Clock\ClockInterface $clock): void;
+        public function generate(string $userIdentifier, ?string $algorithmAlias = null, ?string $issuer = null, ?int $ttl = null, ?\DateTimeImmutable $notBefore = null): string;
+    }
+    /**
+    * The token handler decodes and validates the token, and retrieves the user identifier from it.
+    *
+    * @generated
+    */
+    final class OidcTokenHandler implements \Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface {
+        use \Symfony\Component\Security\Http\AccessToken\Oidc\OidcTrait;
+        public function __construct(\Jose\Component\Core\Algorithm|\Jose\Component\Core\AlgorithmManager $signatureAlgorithm, \Jose\Component\Core\JWK|\Jose\Component\Core\JWKSet|null $signatureKeyset, string $audience, array $issuers, string $claim = 'sub', ?\Psr\Log\LoggerInterface $logger = null, \Psr\Clock\ClockInterface $clock): void;
+        public function enableJweSupport(\Jose\Component\Core\JWKSet $decryptionKeyset, \Jose\Component\Core\AlgorithmManager $decryptionAlgorithms, bool $enforceEncryption): void;
+        /**
+        * @param array|\Symfony\Contracts\HttpClient\HttpClientInterface $client
+        * @generated
+        */
+        public function enableDiscovery(\Symfony\Contracts\Cache\CacheInterface $cache, array|\Symfony\Contracts\HttpClient\HttpClientInterface $client, string $oidcConfigurationCacheKey, ?string $oidcJWKSetCacheKey = null): void;
+        public function getUserBadgeFrom(string $accessToken): \Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+    }
+    /**
+    * The token handler validates the token on the OIDC server and retrieves the user identifier.
+    *
+    * @generated
+    */
+    final class OidcUserInfoTokenHandler implements \Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface {
+        use \Symfony\Component\Security\Http\AccessToken\Oidc\OidcTrait;
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, ?\Psr\Log\LoggerInterface $logger = null, string $claim = 'sub'): void;
+        public function enableDiscovery(\Symfony\Contracts\Cache\CacheInterface $cache, string $oidcConfigurationCacheKey): void;
+        public function getUserBadgeFrom(string $accessToken): \Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+    }
+}
+namespace Symfony\Component\Security\Http\AccessToken\Oidc\Exception {
+    /**
+    * This exception is thrown when the token signature is invalid.
+    *
+    * @generated
+    */
+    class InvalidSignatureException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * This exception is thrown when the user is invalid on the OIDC server (e.g.: "email" property is not in the scope).
+    *
+    * @generated
+    */
+    class MissingClaimException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+}
+namespace Symfony\Component\Security\Http\Attribute {
+    /**
+    * Indicates that a controller argument should receive the current logged user.
+    *
+    * @generated
+    */
+    class CurrentUser extends \Symfony\Component\HttpKernel\Attribute\ValueResolver {
+        /**
+        * @param bool $disabled Whether this value resolver is disabled, which allows to enable a value resolver globally while disabling it in specific cases
+        * @param string $resolver The class name of the resolver to use
+        * @generated
+        */
+        public function __construct(bool $disabled = false, string $resolver = \Symfony\Component\Security\Http\Controller\UserValueResolver::class): void;
+    }
+    final class IsCsrfTokenValid {
+        public const int SOURCE_PAYLOAD ?? 1;
+        public const int SOURCE_QUERY ?? 2;
+        public const int SOURCE_HEADER ?? 4;
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        public readonly array<int, string> $methods;
+        public string|\Symfony\Component\ExpressionLanguage\Expression $id;
+        public string $tokenKey ?? '_token';
+        public int $tokenSource ?? self::SOURCE_PAYLOAD;
+        public function __construct(string|\Symfony\Component\ExpressionLanguage\Expression $id, string $tokenKey = '_token', array|string $methods = [], int $tokenSource = self::SOURCE_PAYLOAD): void;
+    }
+    /**
+    * Checks if user has permission to access to some resource using security roles and voters.
+    *
+    * @see https://symfony.com/doc/current/security.html#roles
+    * @author Ryan Weaver <ryan@knpuniversity.com>
+    * @generated
+    */
+    class IsGranted {
+        /**
+        * @var array<int, string>
+        * @generated
+        */
+        public readonly array<int, string> $methods;
+        public string|\Symfony\Component\ExpressionLanguage\Expression|\Closure $attribute;
+        public array|string|\Symfony\Component\ExpressionLanguage\Expression|\Closure|null $subject ?? null;
+        public ?string $message ?? null;
+        public ?int $statusCode ?? null;
+        public ?int $exceptionCode ?? null;
+        /**
+        * @param string|\Symfony\Component\ExpressionLanguage\Expression|\Closure $attribute The attribute that will be checked against a given authentication token and optional subject
+        * @param array|string|\Symfony\Component\ExpressionLanguage\Expression|\Closure|null $subject An optional subject - e.g. the current object being voted on
+        * @param ?string $message A custom message when access is not granted
+        * @param ?int $statusCode If set, will throw HttpKernel's HttpException with the given $statusCode; if null, Security\Core's AccessDeniedException will be used
+        * @param ?int $exceptionCode If set, will add the exception code to thrown exception
+        * @param array|string $methods HTTP methods to apply validation to. Empty array means all methods are allowed
+        * @generated
+        */
+        public function __construct(string|\Symfony\Component\ExpressionLanguage\Expression|\Closure $attribute, array|string|\Symfony\Component\ExpressionLanguage\Expression|\Closure|null $subject = null, ?string $message = null, ?int $statusCode = null, ?int $exceptionCode = null, array|string $methods = []): void;
+    }
+    class IsGrantedContext implements \Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface {
+        public readonly \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token;
+        public readonly ?\Symfony\Component\Security\Core\User\UserInterface $user;
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, ?\Symfony\Component\Security\Core\User\UserInterface $user, \Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface $authorizationChecker): void;
+        public function isGranted(mixed $attribute, mixed $subject = null, ?\Symfony\Component\Security\Core\Authorization\AccessDecision $accessDecision = null): bool;
+        public function isAuthenticated(): bool;
+        public function isAuthenticatedFully(): bool;
+        public function isImpersonator(): bool;
+    }
+}
+namespace Symfony\Component\Security\Http\Authentication {
+    /**
+    * Interface for custom authentication failure handlers.
+    *
+    * If you want to customize the failure handling process, instead of
+    * overwriting the respective listener globally, you can set a custom failure
+    * handler which implements this interface.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface AuthenticationFailureHandlerInterface {
+        /**
+        * This is called when an interactive authentication attempt fails.
+        *
+        * @generated
+        */
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Interface for a custom authentication success handler.
+    *
+    * If you want to customize the success handling process, instead of
+    * overwriting the respective listener globally, you can set a custom success
+    * handler which implements this interface.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface AuthenticationSuccessHandlerInterface {
+        /**
+        * Usually called by AuthenticatorInterface::onAuthenticationSuccess() implementations.
+        *
+        * @generated
+        */
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Extracts Security Errors from Request.
+    *
+    * @author Boris Vujicic <boris.vujicic@gmail.com>
+    * @generated
+    */
+    class AuthenticationUtils {
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack): void;
+        public function getLastAuthenticationError(bool $clearSession = true): ?\Symfony\Component\Security\Core\Exception\AuthenticationException;
+        public function getLastUsername(): string;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @author Amaury Leroux de Lens <amaury@lerouxdelens.com>
+    * @generated
+    */
+    class AuthenticatorManager implements \Symfony\Component\Security\Http\Authentication\AuthenticatorManagerInterface, \Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface {
+        /**
+        * @param iterable<mixed, \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface> $authenticators
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface> $authenticators, \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $eventDispatcher, string $firewallName, ?\Psr\Log\LoggerInterface $logger = null, bool $eraseCredentials = true, \Symfony\Component\Security\Http\Authentication\ExposeSecurityLevel|bool $exposeSecurityErrors = \Symfony\Component\Security\Http\Authentication\ExposeSecurityLevel::None, array $requiredBadges = []): void;
+        /**
+        * @param array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges Optionally, pass some Passport badges to use for the manual login
+        * @param array<string, mixed> $attributes Optionally, pass some Passport attributes to use for the manual login
+        * @generated
+        */
+        public function authenticateUser(\Symfony\Component\Security\Core\User\UserInterface $user, \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface $authenticator, \Symfony\Component\HttpFoundation\Request $request, array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges = []): ?\Symfony\Component\HttpFoundation\Response;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticateRequest(\Symfony\Component\HttpFoundation\Request $request): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface AuthenticatorManagerInterface {
+        /**
+        * Called to see if authentication should be attempted on this request.
+        *
+        * @see FirewallListenerInterface::supports()
+        * @generated
+        */
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        /**
+        * Tries to authenticate the request and returns a response - if any authenticator set one.
+        *
+        * @generated
+        */
+        public function authenticateRequest(\Symfony\Component\HttpFoundation\Request $request): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class CustomAuthenticationFailureHandler implements \Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface {
+        /**
+        * @param array $options Options for processing a successful authentication attempt
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface $handler, array $options): void;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class CustomAuthenticationSuccessHandler implements \Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface {
+        /**
+        * @param array $options Options for processing a successful authentication attempt
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface $handler, array $options, string $firewallName): void;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Class with the default authentication failure handling logic.
+    *
+    * Can be optionally be extended from by the developer to alter the behavior
+    * while keeping the default behavior.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class DefaultAuthenticationFailureHandler implements \Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface {
+        protected array $options;
+        protected array $defaultOptions ?? [];
+        protected \Symfony\Component\HttpKernel\HttpKernelInterface $httpKernel;
+        protected \Symfony\Component\Security\Http\HttpUtils $httpUtils;
+        protected ?\Psr\Log\LoggerInterface $logger ?? null;
+        public function __construct(\Symfony\Component\HttpKernel\HttpKernelInterface $httpKernel, \Symfony\Component\Security\Http\HttpUtils $httpUtils, array $options = [], ?\Psr\Log\LoggerInterface $logger = null): void;
+        /**
+        * Gets the options.
+        *
+        * @generated
+        */
+        public function getOptions(): array;
+        public function setOptions(array $options): void;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * Class with the default authentication success handling logic.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @generated
+    */
+    class DefaultAuthenticationSuccessHandler implements \Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface {
+        use \Symfony\Component\Security\Http\Util\TargetPathTrait;
+        protected array $options;
+        protected ?string $firewallName ?? null;
+        protected array $defaultOptions ?? [];
+        protected \Symfony\Component\Security\Http\HttpUtils $httpUtils;
+        protected ?\Psr\Log\LoggerInterface $logger ?? null;
+        /**
+        * @param array $options Options for processing a successful authentication attempt
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Http\HttpUtils $httpUtils, array $options = [], ?\Psr\Log\LoggerInterface $logger = null): void;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): ?\Symfony\Component\HttpFoundation\Response;
+        /**
+        * Gets the options.
+        *
+        * @generated
+        */
+        public function getOptions(): array;
+        public function setOptions(array $options): void;
+        public function getFirewallName(): ?string;
+        public function setFirewallName(string $firewallName): void;
+        /**
+        * Builds the target URL according to the defined options.
+        *
+        * @generated
+        */
+        protected function determineTargetUrl(\Symfony\Component\HttpFoundation\Request $request): string;
+    }
+    /**
+    * @author Christian Gripp <mail@core23.de>
+    * @generated
+    */
+    enum ExposeSecurityLevel: string {
+        case None = 'none';
+        case AccountStatus = 'account_status';
+        case All = 'all';
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface UserAuthenticatorInterface {
+        /**
+        * Convenience method to programmatically login a user and return a
+        *
+        * Response *if any* for success.
+        *
+        * @param array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges Optionally, pass some Passport badges to use for the manual login
+        * @param array<string, mixed> $attributes Optionally, pass some Passport attributes to use for the manual login
+        * @generated
+        */
+        public function authenticateUser(\Symfony\Component\Security\Core\User\UserInterface $user, \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface $authenticator, \Symfony\Component\HttpFoundation\Request $request, array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges = []): ?\Symfony\Component\HttpFoundation\Response;
+    }
+}
+namespace Symfony\Component\Security\Http\Authenticator {
+    /**
+    * An optional base class that creates the necessary tokens for you.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    abstract class AbstractAuthenticator implements \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface {
+        /**
+        * Shortcut to create a PostAuthenticationToken for you, if you don't really
+        *
+        * care about which authenticated token you're using.
+        *
+        * @generated
+        */
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+    }
+    /**
+    * A base class to make form login authentication easier!
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    abstract class AbstractLoginFormAuthenticator extends \Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator implements \Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface, \Symfony\Component\Security\Http\Authenticator\InteractiveAuthenticatorInterface {
+        /**
+        * Return the URL to the login page.
+        *
+        * The default `supports()` implementation below compares this value
+        * character-for-character against the current request path
+        * (`$request->getBaseUrl().$request->getPathInfo()`), so this must return a
+        * path (e.g. `/login`). If you build the URL via `HttpUtils::generateUri()`,
+        * which may produce an absolute URL, also override `supports()`.
+        *
+        * @generated
+        */
+        protected abstract function getLoginUrl(\Symfony\Component\HttpFoundation\Request $request): string;
+        /**
+        * Override to change the request conditions that have to be
+        *
+        * matched in order to handle the login form submit.
+        * 
+        * This default implementation handles POST requests whose path equals
+        * the value returned by `getLoginUrl()`; the comparison is strict,
+        * so `getLoginUrl()` must return a path rather than an absolute URL.
+        * Or this method need to be overridden.
+        *
+        * @generated
+        */
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): bool;
+        /**
+        * Override to change what happens after a bad username/password is submitted.
+        *
+        * @generated
+        */
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): \Symfony\Component\HttpFoundation\Response;
+        /**
+        * Override to control what happens when the user hits a secure page
+        *
+        * but isn't logged in yet.
+        *
+        * @generated
+        */
+        public function start(\Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\Security\Core\Exception\AuthenticationException $authException = null): \Symfony\Component\HttpFoundation\Response;
+        public function isInteractive(): bool;
+    }
+    /**
+    * Provides an implementation of the RFC6750 of an authentication via
+    *
+    * an access token.
+    *
+    * @author Florent Morselli <florent.morselli@spomky-labs.com>
+    * @generated
+    */
+    class AccessTokenAuthenticator implements \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface {
+        public function __construct(\Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface $accessTokenHandler, \Symfony\Component\Security\Http\AccessToken\AccessTokenExtractorInterface $accessTokenExtractor, ?\Symfony\Component\Security\Core\User\UserProviderInterface $userProvider = null, ?\Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface $successHandler = null, ?\Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface $failureHandler = null, ?string $realm = null): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): \Symfony\Component\HttpFoundation\Response;
+        public function setTranslator(?\Symfony\Contracts\Translation\TranslatorInterface $translator): void;
+    }
+    /**
+    * The interface for all authenticators.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @author Amaury Leroux de Lens <amaury@lerouxdelens.com>
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface AuthenticatorInterface {
+        /**
+        * Does the authenticator support the given Request?
+        *
+        * If this returns true, authenticate() will be called. If false, the authenticator will be skipped.
+        * 
+        * Returning null means authenticate() can be called lazily when accessing the token storage.
+        *
+        * @generated
+        */
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        /**
+        * Create a passport for the current request.
+        *
+        * The passport contains the user, credentials and any additional information
+        * that has to be checked by the Symfony Security system. For example, a login
+        * form authenticator will probably return a passport containing the user, the
+        * presented password and the CSRF token value.
+        * 
+        * You may throw any AuthenticationException in this method in case of error (e.g.
+        * a UserNotFoundException when the user cannot be found).
+        *
+        * @throws AuthenticationException
+        * @generated
+        */
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        /**
+        * Create an authenticated token for the given user.
+        *
+        * If you don't care about which token class is used or don't really
+        * understand what a "token" is, you can skip this method by extending
+        * the AbstractAuthenticator class from your authenticator.
+        *
+        * @see AbstractAuthenticator
+        * @param \Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport The passport returned from authenticate()
+        * @generated
+        */
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        /**
+        * Called when authentication executed and was successful!
+        *
+        * This should return the Response sent back to the user, like a
+        * RedirectResponse to the last page they visited.
+        * 
+        * If you return null, the current request will continue, and the user
+        * will be authenticated. This makes sense, for example, with an API.
+        *
+        * @generated
+        */
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        /**
+        * Called when authentication executed, but failed (e.g. wrong username password).
+        *
+        * This should return the Response sent back to the user, like a
+        * RedirectResponse to the login page or a 403 response.
+        * 
+        * If you return null, the request will continue, but the user will
+        * not be authenticated. This is probably not what you want to do.
+        *
+        * @generated
+        */
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class FormLoginAuthenticator extends \Symfony\Component\Security\Http\Authenticator\AbstractLoginFormAuthenticator {
+        public function __construct(\Symfony\Component\Security\Http\HttpUtils $httpUtils, \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, \Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface $successHandler, \Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface $failureHandler, array $options): void;
+        protected function getLoginUrl(\Symfony\Component\HttpFoundation\Request $request): string;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): bool;
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): \Symfony\Component\HttpFoundation\Response;
+        public function setHttpKernel(\Symfony\Component\HttpKernel\HttpKernelInterface $httpKernel): void;
+        public function start(\Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\Security\Core\Exception\AuthenticationException $authException = null): \Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class HttpBasicAuthenticator implements \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface, \Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface {
+        public function __construct(string $realmName, \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, ?\Psr\Log\LoggerInterface $logger = null): void;
+        public function start(\Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\Security\Core\Exception\AuthenticationException $authException = null): \Symfony\Component\HttpFoundation\Response;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * This is an extension of the authenticator interface that may
+    *
+    * be used by interactive authenticators.
+    * 
+    * Interactive login requires explicit user action (e.g. a login
+    * form). Implementing this interface will dispatch the InteractiveLoginEvent
+    * upon successful login.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface InteractiveAuthenticatorInterface extends \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface {
+        /**
+        * Should return true to make this authenticator perform
+        *
+        * an interactive login.
+        *
+        * @generated
+        */
+        public function isInteractive(): bool;
+    }
+    /**
+    * Provides a stateless implementation of an authentication via
+    *
+    * a JSON document composed of a username and a password.
+    *
+    * @author Kévin Dunglas <dunglas@gmail.com>
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class JsonLoginAuthenticator implements \Symfony\Component\Security\Http\Authenticator\InteractiveAuthenticatorInterface {
+        public function __construct(\Symfony\Component\Security\Http\HttpUtils $httpUtils, \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, ?\Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface $successHandler = null, ?\Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface $failureHandler = null, array $options = [], ?\Symfony\Component\PropertyAccess\PropertyAccessorInterface $propertyAccessor = null): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): ?\Symfony\Component\HttpFoundation\Response;
+        public function isInteractive(): bool;
+        public function setTranslator(\Symfony\Contracts\Translation\TranslatorInterface $translator): void;
+    }
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    final class LoginLinkAuthenticator extends \Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator implements \Symfony\Component\Security\Http\Authenticator\InteractiveAuthenticatorInterface {
+        public function __construct(\Symfony\Component\Security\Http\LoginLink\LoginLinkHandlerInterface $loginLinkHandler, \Symfony\Component\Security\Http\HttpUtils $httpUtils, \Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface $successHandler, \Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface $failureHandler, array $options): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): \Symfony\Component\HttpFoundation\Response;
+        public function isInteractive(): bool;
+    }
+    /**
+    * The RememberMe *Authenticator* performs remember me authentication.
+    *
+    * This authenticator is executed whenever a user's session
+    * expired and a remember-me cookie was found. This authenticator
+    * then "re-authenticates" the user using the information in the
+    * cookie.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class RememberMeAuthenticator implements \Symfony\Component\Security\Http\Authenticator\InteractiveAuthenticatorInterface {
+        /**
+        * @param \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface|string $tokenStorage
+        * @param string|\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $cookieName
+        * @param \Psr\Log\LoggerInterface|string|null $logger
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Http\RememberMe\RememberMeHandlerInterface $rememberMeHandler, \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface|string $tokenStorage, string|\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $cookieName, \Psr\Log\LoggerInterface|string|null $logger = null): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): ?\Symfony\Component\HttpFoundation\Response;
+        /**
+        * Presenting a cookie is no explicit user action, yet the INTERACTIVE_LOGIN event
+        *
+        * has been dispatched for remember-me logins since 2.0, and listeners reacting to
+        * a user coming back, such as one updating a "last login" date, rely on it.
+        *
+        * @generated
+        */
+        public function isInteractive(): bool;
+    }
+    /**
+    * This authenticator authenticates pre-authenticated (by the
+    *
+    * webserver) X.509 certificates.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class X509Authenticator extends \Symfony\Component\Security\Http\Authenticator\AbstractPreAuthenticatedAuthenticator {
+        public function __construct(\Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, string $firewallName, string $userKey = 'SSL_CLIENT_S_DN_Email', string $credentialsKey = 'SSL_CLIENT_S_DN', ?\Psr\Log\LoggerInterface $logger = null, string $credentialUserIdentifier = 'emailAddress'): void;
+        protected function extractUsername(\Symfony\Component\HttpFoundation\Request $request): string;
+    }
+}
+namespace Symfony\Component\Security\Http\Authenticator\Debug {
+    /**
+    * Collects info about an authenticator for debugging purposes.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    final class TraceableAuthenticator implements \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface, \Symfony\Component\Security\Http\Authenticator\InteractiveAuthenticatorInterface, \Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface {
+        public function __construct(\Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface $authenticator): void;
+        public function getInfo(): array;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function createToken(\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, string $firewallName): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function onAuthenticationSuccess(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, string $firewallName): ?\Symfony\Component\HttpFoundation\Response;
+        public function onAuthenticationFailure(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AuthenticationException $exception): ?\Symfony\Component\HttpFoundation\Response;
+        public function start(\Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\Security\Core\Exception\AuthenticationException $authException = null): \Symfony\Component\HttpFoundation\Response;
+        public function isInteractive(): bool;
+        public function getAuthenticator(): \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface;
+        public function __call(mixed $method, mixed $args): mixed;
+    }
+    /**
+    * Decorates the AuthenticatorManagerListener to collect information about security authenticators.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    final class TraceableAuthenticatorManagerListener extends \Symfony\Component\Security\Http\Firewall\AbstractListener implements \Symfony\Contracts\Service\ResetInterface {
+        public function __construct(\Symfony\Component\Security\Http\Firewall\AuthenticatorManagerListener $authenticationManagerListener): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public function getAuthenticatorManagerListener(): \Symfony\Component\Security\Http\Firewall\AuthenticatorManagerListener;
+        public function getAuthenticatorsInfo(): array;
+        public function reset(): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Authenticator\Passport {
+    /**
+    * A Passport contains all security-related information that needs to be
+    *
+    * validated during authentication.
+    * 
+    * A passport badge can be used to add any additional information to the
+    * passport.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class Passport {
+        protected \Symfony\Component\Security\Core\User\UserInterface $user;
+        /**
+        * @param \Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CredentialsInterface $credentials The credentials to check for this authentication, use
+        *  *                                              SelfValidatingPassport if no credentials should be checked
+        * @param array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge $userBadge, \Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CredentialsInterface $credentials, array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges = []): void;
+        public function getUser(): \Symfony\Component\Security\Core\User\UserInterface;
+        /**
+        * Adds a new security badge.
+        *
+        * A passport can hold only one instance of the same security badge.
+        * This method replaces the current badge if it is already set on this
+        * passport.
+        *
+        * @param ?string $badgeFqcn A FQCN to which the badge should be mapped to.
+        *  *                                   This allows replacing a built-in badge by a custom one using
+        *  *                                   e.g. addBadge(new MyCustomUserBadge(), UserBadge::class)
+        * @return static
+        * @generated
+        */
+        public function addBadge(\Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface $badge, ?string $badgeFqcn = null): static;
+        public function hasBadge(string $badgeFqcn): bool;
+        /**
+        * @template TBadge of BadgeInterface
+        * @param string $badgeFqcn
+        * @return ?\Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface
+        * @generated
+        */
+        public function getBadge<TBadge extends \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface>(string $badgeFqcn): ?\Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface;
+        /**
+        * @return array<string, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface>
+        * @generated
+        */
+        public function getBadges(): array<string, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface>;
+        public function setAttribute(string $name, mixed $value): void;
+        public function getAttribute(string $name, mixed $default = null): mixed;
+        public function getAttributes(): array;
+    }
+    /**
+    * An implementation used when there are no credentials to be checked (e.g.
+    *
+    * API token authentication).
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class SelfValidatingPassport extends \Symfony\Component\Security\Http\Authenticator\Passport\Passport {
+        /**
+        * @param array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge $userBadge, array<int, \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface> $badges = []): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Authenticator\Passport\Badge {
+    /**
+    * Passport badges allow to add more information to a passport (e.g. a CSRF token).
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface BadgeInterface {
+        /**
+        * Checks if this badge is resolved by the security system.
+        *
+        * After authentication, all badges must return `true` in this method in order
+        * for the authentication to succeed.
+        *
+        * @generated
+        */
+        public function isResolved(): bool;
+    }
+    /**
+    * Adds automatic CSRF tokens checking capabilities to this authenticator.
+    *
+    * @see CsrfProtectionListener
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class CsrfTokenBadge implements \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface {
+        /**
+        * @param string $csrfTokenId An arbitrary string used to generate the value of the CSRF token.
+        *  *                                     Using a different string for each authenticator improves its security.
+        * @param ?string $csrfToken The CSRF token presented in the request, if any
+        * @generated
+        */
+        public function __construct(string $csrfTokenId, ?string $csrfToken): void;
+        public function getCsrfTokenId(): string;
+        public function getCsrfToken(): ?string;
+        public function isResolved(): bool;
+    }
+    /**
+    * Adds automatic password migration, if enabled and required in the password encoder.
+    *
+    * @see PasswordUpgraderInterface
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class PasswordUpgradeBadge implements \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface {
+        /**
+        * @param string $plaintextPassword The presented password, used in the rehash
+        * @param ?\Symfony\Component\Security\Core\User\PasswordUpgraderInterface $passwordUpgrader The password upgrader, defaults to the UserProvider if null
+        * @generated
+        */
+        public function __construct(string $plaintextPassword, ?\Symfony\Component\Security\Core\User\PasswordUpgraderInterface $passwordUpgrader = null): void;
+        public function getAndErasePlaintextPassword(): string;
+        public function getPasswordUpgrader(): ?\Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
+        public function isResolved(): bool;
+    }
+    /**
+    * Marks the authentication as being pre-authenticated.
+    *
+    * This disables pre-authentication user checkers.
+    *
+    * @see AbstractPreAuthenticatedAuthenticator
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class PreAuthenticatedUserBadge implements \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface {
+        public function isResolved(): bool;
+    }
+    /**
+    * Adds support for remember me to this authenticator.
+    *
+    * The presence of this badge doesn't create the remember-me cookie. The actual
+    * cookie is only created if this badge is enabled. By default, this is done
+    * by the {@see CheckRememberMeConditionsListener} if all conditions are met.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class RememberMeBadge implements \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface {
+        public readonly array $parameters ?? [];
+        public function __construct(array $parameters = []): void;
+        /**
+        * Enables remember-me cookie creation.
+        *
+        * In most cases, {@see CheckRememberMeConditionsListener} enables this
+        * automatically if always_remember_me is true or the remember_me_parameter
+        * exists in the request.
+        *
+        * @return static
+        * @generated
+        */
+        public function enable(): static;
+        /**
+        * Disables remember-me cookie creation.
+        *
+        * The default is disabled, this can be called to suppress creation
+        * after it was enabled.
+        *
+        * @return static
+        * @generated
+        */
+        public function disable(): static;
+        public function isEnabled(): bool;
+        public function isResolved(): bool;
+    }
+    /**
+    * Represents the user in the authentication process.
+    *
+    * It uses an identifier (e.g. email, or username) and
+    * "user loader" to load the related User object.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class UserBadge implements \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface {
+        public const int MAX_USERNAME_LENGTH ?? 4096;
+        /**
+        * Initializes the user badge.
+        *
+        * You must provide a $userIdentifier. This is a unique string representing the
+        * user for this authentication (e.g. the email if authentication is done using
+        * email + password; or a string combining email+company if authentication is done
+        * based on email *and* company name). This string can be used for e.g. login throttling.
+        * 
+        * Optionally, you may pass a user loader. This callable receives the $userIdentifier
+        * as argument and must return a UserInterface object (otherwise an AuthenticationServiceException
+        * is thrown). If this is not set, the default user provider will be used with
+        * $userIdentifier as username.
+        *
+        * @generated
+        */
+        public function __construct(string $userIdentifier, ?callable $userLoader = null, ?array $attributes = null, ?\Closure $identifierNormalizer = null): void;
+        public function getUserIdentifier(): string;
+        public function getAttributes(): ?array;
+        /**
+        * @throws AuthenticationException when the user cannot be found
+        * @generated
+        */
+        public function getUser(): \Symfony\Component\Security\Core\User\UserInterface;
+        public function getUserLoader(): ?callable;
+        public function setUserLoader(callable $userLoader): void;
+        public function isResolved(): bool;
+    }
+}
+namespace Symfony\Component\Security\Http\Authenticator\Passport\Credentials {
+    /**
+    * Credentials are a special badge used to explicitly mark the
+    *
+    * credential check of an authenticator.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface CredentialsInterface extends \Symfony\Component\Security\Http\Authenticator\Passport\Badge\BadgeInterface {
+    }
+    /**
+    * Implements credentials checking using a custom checker function.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class CustomCredentials implements \Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CredentialsInterface {
+        /**
+        * @param callable $customCredentialsChecker If the callable does not return `true`, a
+        *  *                                                                           BadCredentialsException is thrown. You may
+        *  *                                                                           also throw a more specific exception.
+        * @generated
+        */
+        public function __construct(callable $customCredentialsChecker, mixed $credentials): void;
+        public function executeCustomChecker(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        public function isResolved(): bool;
+    }
+    /**
+    * Implements password credentials.
+    *
+    * These plaintext passwords are checked by the UserPasswordHasher during
+    * authentication.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class PasswordCredentials implements \Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CredentialsInterface {
+        public function __construct(string $password): void;
+        public function getPassword(): string;
+        public function isResolved(): bool;
+    }
+}
+namespace Symfony\Component\Security\Http\Authenticator\Token {
+    class PostAuthenticationToken extends \Symfony\Component\Security\Core\Authentication\Token\AbstractToken {
+        /**
+        * @param array<int, string> $roles An array of roles
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Core\User\UserInterface $user, string $firewallName, array<int, string> $roles): void;
+        /**
+        * This is meant to be only a token, where credentials
+        *
+        * have already been used and are thus cleared.
+        *
+        * @generated
+        */
+        public function getCredentials(): mixed;
+        public function getFirewallName(): string;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Authorization {
+    /**
+    * This is used by the ExceptionListener to translate an AccessDeniedException
+    *
+    * to a Response object.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface AccessDeniedHandlerInterface {
+        /**
+        * Handles an access denied failure.
+        *
+        * @generated
+        */
+        public function handle(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Exception\AccessDeniedException $accessDeniedException): ?\Symfony\Component\HttpFoundation\Response;
+    }
+}
+namespace Symfony\Component\Security\Http\Command {
+    final class OidcTokenGenerateCommand extends \Symfony\Component\Console\Command\Command {
+        protected function configure(): void;
+        /**
+        * @param array<int, string> $algorithms
+        * @param array<int, string> $issuers
+        * @generated
+        */
+        public function addGenerator(string $firewall, \Symfony\Component\Security\Http\AccessToken\Oidc\OidcTokenGenerator $oidcTokenGenerator, array<int, string> $algorithms, array<int, string> $issuers): void;
+        protected function execute(\Symfony\Component\Console\Input\InputInterface $input, \Symfony\Component\Console\Output\OutputInterface $output): int;
+        public function complete(\Symfony\Component\Console\Completion\CompletionInput $input, \Symfony\Component\Console\Completion\CompletionSuggestions $suggestions): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Controller {
+    /**
+    * @author Konstantin Myakshin <molodchick@gmail.com>
+    * @generated
+    */
+    final class SecurityTokenValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage): void;
+        /**
+        * @return array<int, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface>
+        * @generated
+        */
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array<int, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface>;
+    }
+    /**
+    * Supports the argument type of {@see UserInterface}.
+    *
+    * @author Iltar van der Berg <kjarli@gmail.com>
+    * @generated
+    */
+    final class UserValueResolver implements \Symfony\Component\HttpKernel\Controller\ValueResolverInterface {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage): void;
+        public function resolve(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata $argument): array;
+    }
+}
+namespace Symfony\Component\Security\Http\EntryPoint {
+    /**
+    * Implement this interface for any classes that will be called to "start"
+    *
+    * the authentication process (see method for more details).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface AuthenticationEntryPointInterface {
+        /**
+        * Returns a response that directs the user to authenticate.
+        *
+        * This is called when an anonymous request accesses a resource that
+        * requires authentication. The job of this method is to return some
+        * response that "helps" the user start into the authentication process.
+        * 
+        * Examples:
+        * 
+        * - For a form login, you might redirect to the login page
+        * 
+        *     return new RedirectResponse('/login');
+        * 
+        * - For an API token authentication system, you return a 401 response
+        * 
+        *     return new Response('Auth header required', 401);
+        *
+        * @generated
+        */
+        public function start(\Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\Security\Core\Exception\AuthenticationException $authException = null): \Symfony\Component\HttpFoundation\Response;
+    }
+}
+namespace Symfony\Component\Security\Http\EntryPoint\Exception {
+    /**
+    * Thrown by generic decorators when a decorated authenticator does not implement
+    *
+    * {@see AuthenticationEntryPointInterface}.
+    *
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    class NotAnEntryPointException extends \RuntimeException {
+    }
+}
+namespace Symfony\Component\Security\Http\Event {
+    /**
+    * When a newly authenticated security token was created, before it becomes effective in the security system.
+    *
+    * @author Christian Scheb <me@christianscheb.de>
+    * @generated
+    */
+    class AuthenticationTokenCreatedEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token, \Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport): void;
+        public function getAuthenticatedToken(): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function setAuthenticatedToken(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $authenticatedToken): void;
+        public function getPassport(): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+    }
+    /**
+    * This event is dispatched when the credentials have to be checked.
+    *
+    * Listeners to this event must validate the user and the
+    * credentials (e.g. default listeners do password verification and
+    * user checking)
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class CheckPassportEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface $authenticator, \Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport): void;
+        public function getAuthenticator(): \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface;
+        public function getPassport(): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class InteractiveLoginEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $authenticationToken): void;
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        public function getAuthenticationToken(): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+    }
+    /**
+    * Wraps a lazily computed response in a signaling exception.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    final class LazyResponseEvent extends \Symfony\Component\HttpKernel\Event\RequestEvent {
+        public function __construct(parent $event): void;
+        public function setResponse(\Symfony\Component\HttpFoundation\Response $response): never;
+        public function getKernel(): \Symfony\Component\HttpKernel\HttpKernelInterface;
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        public function getRequestType(): int;
+        public function isMainRequest(): bool;
+    }
+    /**
+    * This event is dispatched after an error during authentication.
+    *
+    * Listeners to this event can change state based on authentication
+    * failure (e.g. to implement login throttling).
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class LoginFailureEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\Security\Core\Exception\AuthenticationException $exception, \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface $authenticator, \Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\HttpFoundation\Response $response, string $firewallName, ?\Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport = null): void;
+        public function getException(): \Symfony\Component\Security\Core\Exception\AuthenticationException;
+        public function getAuthenticator(): \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface;
+        public function getFirewallName(): string;
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        public function setResponse(?\Symfony\Component\HttpFoundation\Response $response): void;
+        public function getResponse(): ?\Symfony\Component\HttpFoundation\Response;
+        public function getPassport(): ?\Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+    }
+    /**
+    * This event is dispatched after authentication has successfully completed.
+    *
+    * At this stage, the authenticator created a token and
+    * generated an authentication success response. Listeners to
+    * this event can do actions related to successful authentication
+    * (such as migrating the password).
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class LoginSuccessEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface $authenticator, \Symfony\Component\Security\Http\Authenticator\Passport\Passport $passport, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $authenticatedToken, \Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\HttpFoundation\Response $response, string $firewallName, ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $previousToken = null): void;
+        public function getAuthenticator(): \Symfony\Component\Security\Http\Authenticator\AuthenticatorInterface;
+        public function getPassport(): \Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+        public function getUser(): \Symfony\Component\Security\Core\User\UserInterface;
+        public function getAuthenticatedToken(): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function getPreviousToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        public function getFirewallName(): string;
+        public function setResponse(?\Symfony\Component\HttpFoundation\Response $response): void;
+        public function getResponse(): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class LogoutEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\HttpFoundation\Request $request, ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        public function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function setResponse(\Symfony\Component\HttpFoundation\Response $response): void;
+        public function getResponse(): ?\Symfony\Component\HttpFoundation\Response;
+    }
+    /**
+    * SwitchUserEvent.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class SwitchUserEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\User\UserInterface $targetUser, ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token = null): void;
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+        public function getTargetUser(): \Symfony\Component\Security\Core\User\UserInterface;
+        public function getToken(): ?\Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function setToken(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+    }
+    /**
+    * This event is dispatched when the current security token is deauthenticated
+    *
+    * when trying to reference the token.
+    * 
+    * This includes changes in the user ({@see DeauthenticatedEvent}), but
+    * also cases where there is no user provider available to refresh the user.
+    * 
+    * Use this event if you want to trigger some actions whenever a user is
+    * deauthenticated and redirected back to the authentication entry point
+    * (e.g. clearing all remember-me cookies).
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class TokenDeauthenticatedEvent extends \Symfony\Contracts\EventDispatcher\Event {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface $originalToken, \Symfony\Component\HttpFoundation\Request $request): void;
+        public function getOriginalToken(): \Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+        public function getRequest(): \Symfony\Component\HttpFoundation\Request;
+    }
+}
+namespace Symfony\Component\Security\Http\EventListener {
+    /**
+    * This listeners uses the interfaces of authenticators to
+    *
+    * determine how to check credentials.
+    *
+    * @author Wouter de Jong <wouter@driveamber.com>
+    * @final
+    * @generated
+    */
+    class CheckCredentialsListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface $hasherFactory): void;
+        public function checkPassport(\Symfony\Component\Security\Http\Event\CheckPassportEvent $event): void;
+        /**
+        * @var CustomCredentials $badge
+        * @generated
+        */
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Checks if all conditions are met for remember me.
+    *
+    * The conditions that must be met for this listener to enable remember me:
+    *  A) This badge is present in the Passport
+    *  B) The remember_me key under your firewall is configured
+    *  C) The "remember me" functionality is activated. This is usually
+    *      done by having a _remember_me checkbox in your form, but
+    *      can be configured by the "always_remember_me" and "remember_me_parameter"
+    *      parameters under the "remember_me" firewall key (or "always_remember_me"
+    *      is enabled)
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class CheckRememberMeConditionsListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(array $options = [], ?\Psr\Log\LoggerInterface $logger = null): void;
+        public function onSuccessfulLogin(\Symfony\Component\Security\Http\Event\LoginSuccessEvent $event): void;
+        /**
+        * @var RememberMeBadge $badge
+        * @generated
+        */
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Handler for Clear-Site-Data header during logout.
+    *
+    * @author Max Beckers <beckers.maximilian@gmail.com>
+    * @final
+    * @generated
+    */
+    class ClearSiteDataLogoutListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param array<int, string> $cookieValue The value for the Clear-Site-Data header.
+        *  *                                  Can be '*' or a subset of 'cache', 'cookies', 'storage', 'executionContexts'.
+        * @generated
+        */
+        public function __construct(array<int, string> $cookieValue): void;
+        public function onLogout(\Symfony\Component\Security\Http\Event\LogoutEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * This listener clears the passed cookies when a user logs out.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @final
+    * @generated
+    */
+    class CookieClearingLogoutListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * @param array $cookies An array of cookies (keys are names, values contain path and domain) to unset
+        * @generated
+        */
+        public function __construct(array $cookies): void;
+        public function onLogout(\Symfony\Component\Security\Http\Event\LogoutEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class CsrfProtectionListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Csrf\CsrfTokenManagerInterface $csrfTokenManager): void;
+        public function checkPassport(\Symfony\Component\Security\Http\Event\CheckPassportEvent $event): void;
+        /**
+        * @var CsrfTokenBadge $badge
+        * @generated
+        */
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * @author Christian Flothmann <christian.flothmann@sensiolabs.de>
+    * @final
+    * @generated
+    */
+    class CsrfTokenClearingLogoutListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Csrf\TokenStorage\ClearableTokenStorageInterface $csrfTokenStorage): void;
+        public function onLogout(\Symfony\Component\Security\Http\Event\LogoutEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Default logout listener will redirect users to a configured path.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Alexander <iam.asm89@gmail.com>
+    * @final
+    * @generated
+    */
+    class DefaultLogoutListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Http\HttpUtils $httpUtils, string $targetUrl = '/'): void;
+        public function onLogout(\Symfony\Component\Security\Http\Event\LogoutEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Handles the IsCsrfTokenValid attribute on controllers.
+    *
+    * @generated
+    */
+    final class IsCsrfTokenValidAttributeListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Csrf\CsrfTokenManagerInterface $csrfTokenManager, ?\Symfony\Component\ExpressionLanguage\ExpressionLanguage $expressionLanguage = null): void;
+        public function onKernelControllerArguments(\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Handles the IsGranted attribute on controllers.
+    *
+    * @author Ryan Weaver <ryan@knpuniversity.com>
+    * @generated
+    */
+    class IsGrantedAttributeListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface $authChecker, ?\Symfony\Component\ExpressionLanguage\ExpressionLanguage $expressionLanguage = null): void;
+        public function onKernelControllerArguments(\Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class LoginThrottlingListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, \Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface $limiter): void;
+        public function checkPassport(\Symfony\Component\Security\Http\Event\CheckPassportEvent $event): void;
+        public function onSuccessfulLogin(\Symfony\Component\Security\Http\Event\LoginSuccessEvent $event): void;
+        public function onFailedLogin(\Symfony\Component\Security\Http\Event\LoginFailureEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class PasswordMigratingListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface $hasherFactory): void;
+        public function onLoginSuccess(\Symfony\Component\Security\Http\Event\LoginSuccessEvent $event): void;
+        /**
+        * @var UserBadge $userBadge
+        * @generated
+        */
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * The RememberMe *listener* creates and deletes remember-me cookies.
+    *
+    * Upon login success or failure and support for remember me
+    * in the firewall and authenticator, this listener will create
+    * a remember-me cookie.
+    * Upon login failure, all remember-me cookies are removed.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class RememberMeListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Http\RememberMe\RememberMeHandlerInterface $rememberMeHandler, ?\Psr\Log\LoggerInterface $logger = null): void;
+        public function onSuccessfulLogin(\Symfony\Component\Security\Http\Event\LoginSuccessEvent $event): void;
+        /**
+        * @var RememberMeBadge $badge
+        * @generated
+        */
+        public function clearCookie(): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Handler for clearing invalidating the current session.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @final
+    * @generated
+    */
+    class SessionLogoutListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function onLogout(\Symfony\Component\Security\Http\Event\LogoutEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Migrates/invalidates the session after successful login.
+    *
+    * This should be registered as subscriber to any "stateful" firewalls.
+    *
+    * @see SessionAuthenticationStrategy
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class SessionStrategyListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Http\Session\SessionAuthenticationStrategyInterface $sessionAuthenticationStrategy): void;
+        public function onSuccessfulLogin(\Symfony\Component\Security\Http\Event\LoginSuccessEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class UserCheckerListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        public function __construct(\Symfony\Component\Security\Core\User\UserCheckerInterface $userChecker): void;
+        public function preCheckCredentials(\Symfony\Component\Security\Http\Event\CheckPassportEvent $event): void;
+        public function postCheckCredentials(\Symfony\Component\Security\Core\Event\AuthenticationSuccessEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Configures the user provider as user loader, if no user load
+    *
+    * has been explicitly set.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @final
+    * @generated
+    */
+    class UserProviderListener {
+        public function __construct(\Symfony\Component\Security\Core\User\UserProviderInterface $userProvider): void;
+        public function checkPassport(\Symfony\Component\Security\Http\Event\CheckPassportEvent $event): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Firewall {
+    /**
+    * A base class for listeners that can tell whether they should authenticate incoming requests.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @generated
+    */
+    abstract class AbstractListener implements \Symfony\Component\Security\Http\Firewall\FirewallListenerInterface {
+        /**
+        * @deprecated since Symfony 7.4, to be removed in 8.0
+        * @generated
+        */
+        deprecated public final function __invoke(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public static function getPriority(): int;
+    }
+    /**
+    * AccessListener enforces access control rules.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class AccessListener extends \Symfony\Component\Security\Http\Firewall\AbstractListener {
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, \Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface $accessDecisionManager, \Symfony\Component\Security\Http\AccessMapInterface $map, bool $exceptionOnNoToken = false): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        /**
+        * Handles access authorization.
+        *
+        * @throws AccessDeniedException
+        * @generated
+        */
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        public static function getPriority(): int;
+    }
+    /**
+    * Firewall authentication listener that delegates to the authenticator system.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class AuthenticatorManagerListener extends \Symfony\Component\Security\Http\Firewall\AbstractListener {
+        public function __construct(\Symfony\Component\Security\Http\Authentication\AuthenticatorManagerInterface $authenticatorManager): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+    }
+    /**
+    * ChannelListener switches the HTTP protocol based on the access control
+    *
+    * configuration.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class ChannelListener extends \Symfony\Component\Security\Http\Firewall\AbstractListener {
+        public function __construct(\Symfony\Component\Security\Http\AccessMapInterface $map, ?\Psr\Log\LoggerInterface $logger = null, int $httpPort = 80, int $httpsPort = 443): void;
+        /**
+        * Handles channel management.
+        *
+        * @generated
+        */
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+    }
+    /**
+    * ContextListener manages the SecurityContext persistence through a session.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @final
+    * @generated
+    */
+    class ContextListener extends \Symfony\Component\Security\Http\Firewall\AbstractListener {
+        /**
+        * @param iterable<mixed, \Symfony\Component\Security\Core\User\UserProviderInterface> $userProviders
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, iterable<mixed, \Symfony\Component\Security\Core\User\UserProviderInterface> $userProviders, string $contextKey, ?\Psr\Log\LoggerInterface $logger = null, ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null, ?\Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface $trustResolver = null, ?callable $sessionTrackerEnabler = null): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        /**
+        * Reads the Security Token from the session.
+        *
+        * @generated
+        */
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        /**
+        * Writes the security token into the session.
+        *
+        * @generated
+        */
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+    }
+    /**
+    * ExceptionListener catches authentication exception and converts them to
+    *
+    * Response instances.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class ExceptionListener {
+        use \Symfony\Component\Security\Http\Util\TargetPathTrait;
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, \Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface $authenticationTrustResolver, \Symfony\Component\Security\Http\HttpUtils $httpUtils, string $firewallName, ?\Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface $authenticationEntryPoint = null, ?string $errorPage = null, ?\Symfony\Component\Security\Http\Authorization\AccessDeniedHandlerInterface $accessDeniedHandler = null, ?\Psr\Log\LoggerInterface $logger = null, bool $stateless = false): void;
+        /**
+        * Registers a onKernelException listener to take care of security exceptions.
+        *
+        * @generated
+        */
+        public function register(\Symfony\Component\EventDispatcher\EventDispatcherInterface $dispatcher): void;
+        /**
+        * Unregisters the dispatcher.
+        *
+        * @generated
+        */
+        public function unregister(\Symfony\Component\EventDispatcher\EventDispatcherInterface $dispatcher): void;
+        /**
+        * Handles security related exceptions.
+        *
+        * @generated
+        */
+        public function onKernelException(\Symfony\Component\HttpKernel\Event\ExceptionEvent $event): void;
+        protected function setTargetPath(\Symfony\Component\HttpFoundation\Request $request): void;
+    }
+    /**
+    * Can be implemented by firewall listeners.
+    *
+    * @author Christian Scheb <me@christianscheb.de>
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @author Robin Chalas <robin.chalas@gmail.com>
+    * @generated
+    */
+    interface FirewallListenerInterface {
+        /**
+        * Tells whether the authenticate() method should be called or not depending on the incoming request.
+        *
+        * Returning null means authenticate() can be called lazily when accessing the token storage.
+        *
+        * @generated
+        */
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        /**
+        * Does whatever is required to authenticate the request, typically calling $event->setResponse() internally.
+        *
+        * @generated
+        */
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        /**
+        * Defines the priority of the listener.
+        *
+        * The higher the number, the earlier a listener is executed.
+        *
+        * @generated
+        */
+        public static function getPriority(): int;
+    }
+    /**
+    * LogoutListener logout users.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class LogoutListener extends \Symfony\Component\Security\Http\Firewall\AbstractListener {
+        /**
+        * @param array $options An array of options to process a logout attempt
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, \Symfony\Component\Security\Http\HttpUtils $httpUtils, \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $eventDispatcher, array $options = [], ?\Symfony\Component\Security\Csrf\CsrfTokenManagerInterface $csrfTokenManager = null): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        /**
+        * Performs the logout if requested.
+        *
+        * If a CsrfTokenManagerInterface instance is available, it will be used to
+        * validate the request.
+        *
+        * @throws LogoutException   if the CSRF token is invalid
+        * @throws \RuntimeException if the LogoutEvent listener does not set a response
+        * @generated
+        */
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+        /**
+        * Whether this request is asking for logout.
+        *
+        * The default implementation only processed requests to a specific path,
+        * but a subclass could change this to logout requests where
+        * certain parameters is present.
+        *
+        * @generated
+        */
+        protected function requiresLogout(\Symfony\Component\HttpFoundation\Request $request): bool;
+        public static function getPriority(): int;
+    }
+    /**
+    * SwitchUserListener allows a user to impersonate another one temporarily
+    *
+    * (like the Unix su command).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @final
+    * @generated
+    */
+    class SwitchUserListener extends \Symfony\Component\Security\Http\Firewall\AbstractListener {
+        public const string EXIT_VALUE ?? '_exit';
+        public function __construct(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage, \Symfony\Component\Security\Core\User\UserProviderInterface $provider, \Symfony\Component\Security\Core\User\UserCheckerInterface $userChecker, string $firewallName, \Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface $accessDecisionManager, ?\Psr\Log\LoggerInterface $logger = null, string $usernameParameter = '_switch_user', string $role = 'ROLE_ALLOWED_TO_SWITCH', ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null, bool $stateless = false, ?\Symfony\Component\Routing\Generator\UrlGeneratorInterface $urlGenerator = null, ?string $targetRoute = null): void;
+        public function supports(\Symfony\Component\HttpFoundation\Request $request): ?bool;
+        /**
+        * Handles the switch to another user.
+        *
+        * @throws \LogicException if switching to a user failed
+        * @generated
+        */
+        public function authenticate(\Symfony\Component\HttpKernel\Event\RequestEvent $event): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Impersonate {
+    /**
+    * Provides generator functions for the impersonation urls.
+    *
+    * @author Amrouche Hamza <hamza.simperfit@gmail.com>
+    * @author Damien Fayet <damienf1521@gmail.com>
+    * @generated
+    */
+    class ImpersonateUrlGenerator {
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $requestStack, \Symfony\Bundle\SecurityBundle\Security\FirewallMap $firewallMap, \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage): void;
+        public function generateImpersonationPath(string $identifier): string;
+        public function generateImpersonationUrl(string $identifier): string;
+        public function generateExitPath(?string $targetUri = null): string;
+        public function generateExitUrl(?string $targetUri = null): string;
+    }
+}
+namespace Symfony\Component\Security\Http\LoginLink {
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class LoginLinkDetails {
+        public function __construct(string $url, \DateTimeImmutable $expiresAt): void;
+        public function getUrl(): string;
+        public function getExpiresAt(): \DateTimeImmutable;
+        public function __toString(): string;
+    }
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    final class LoginLinkHandler implements \Symfony\Component\Security\Http\LoginLink\LoginLinkHandlerInterface {
+        public function __construct(\Symfony\Component\Routing\Generator\UrlGeneratorInterface $urlGenerator, \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, \Symfony\Component\Security\Core\Signature\SignatureHasher $signatureHasher, array $options): void;
+        public function createLoginLink(\Symfony\Component\Security\Core\User\UserInterface $user, ?\Symfony\Component\HttpFoundation\Request $request = null, ?int $lifetime = null): \Symfony\Component\Security\Http\LoginLink\LoginLinkDetails;
+        public function consumeLoginLink(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Core\User\UserInterface;
+    }
+    /**
+    * A class that is able to create and handle "magic" login links.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface LoginLinkHandlerInterface {
+        /**
+        * Generate a link that can be used to authenticate as the given user.
+        *
+        * @param ?int $lifetime When not null, the argument overrides any default lifetime previously set
+        * @generated
+        */
+        public function createLoginLink(\Symfony\Component\Security\Core\User\UserInterface $user, ?\Symfony\Component\HttpFoundation\Request $request = null, ?int $lifetime = null): \Symfony\Component\Security\Http\LoginLink\LoginLinkDetails;
+        /**
+        * Validates if this request contains a login link and returns the associated User.
+        *
+        * Throw InvalidLoginLinkExceptionInterface if the link is invalid.
+        *
+        * @generated
+        */
+        public function consumeLoginLink(\Symfony\Component\HttpFoundation\Request $request): \Symfony\Component\Security\Core\User\UserInterface;
+    }
+    /**
+    * Use this notification to ease sending login link
+    *
+    * emails/SMS using the Notifier component.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class LoginLinkNotification extends \Symfony\Component\Notifier\Notification\Notification implements \Symfony\Component\Notifier\Notification\EmailNotificationInterface, \Symfony\Component\Notifier\Notification\SmsNotificationInterface {
+        public function __construct(\Symfony\Component\Security\Http\LoginLink\LoginLinkDetails $loginLinkDetails, string $subject, array $channels = []): void;
+        public function asEmailMessage(\Symfony\Component\Notifier\Recipient\EmailRecipientInterface $recipient, ?string $transport = null): ?\Symfony\Component\Notifier\Message\EmailMessage;
+        public function asSmsMessage(\Symfony\Component\Notifier\Recipient\SmsRecipientInterface $recipient, ?string $transport = null): ?\Symfony\Component\Notifier\Message\SmsMessage;
+    }
+}
+namespace Symfony\Component\Security\Http\LoginLink\Exception {
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class ExpiredLoginLinkException extends \Symfony\Component\Security\Core\Signature\Exception\ExpiredSignatureException implements \Symfony\Component\Security\Http\LoginLink\Exception\InvalidLoginLinkExceptionInterface {
+    }
+    /**
+    * Thrown when a login link is invalid.
+    *
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class InvalidLoginLinkAuthenticationException extends \Symfony\Component\Security\Core\Exception\AuthenticationException {
+        public function getMessageKey(): string;
+    }
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    class InvalidLoginLinkException extends \RuntimeException implements \Symfony\Component\Security\Http\LoginLink\Exception\InvalidLoginLinkExceptionInterface {
+    }
+    /**
+    * @author Ryan Weaver <ryan@symfonycasts.com>
+    * @generated
+    */
+    interface InvalidLoginLinkExceptionInterface extends \Throwable {
+    }
+}
+namespace Symfony\Component\Security\Http\Logout {
+    /**
+    * Provides generator functions for the logout URL.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Jeremy Mikola <jmikola@gmail.com>
+    * @generated
+    */
+    class LogoutUrlGenerator implements \Symfony\Contracts\Service\ResetInterface {
+        public function __construct(?\Symfony\Component\HttpFoundation\RequestStack $requestStack = null, ?\Symfony\Component\Routing\Generator\UrlGeneratorInterface $router = null, ?\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage = null): void;
+        /**
+        * Registers a firewall's LogoutListener, allowing its URL to be generated.
+        *
+        * @param string $key The firewall key
+        * @param string $logoutPath The path that starts the logout process
+        * @param ?string $csrfTokenId The ID of the CSRF token
+        * @param ?string $csrfParameter The CSRF token parameter name
+        * @param ?string $context The listener context
+        * @generated
+        */
+        public function registerListener(string $key, string $logoutPath, ?string $csrfTokenId, ?string $csrfParameter, ?\Symfony\Component\Security\Csrf\CsrfTokenManagerInterface $csrfTokenManager = null, ?string $context = null): void;
+        /**
+        * Generates the absolute logout path for the firewall.
+        *
+        * @generated
+        */
+        public function getLogoutPath(?string $key = null): string;
+        /**
+        * Generates the absolute logout URL for the firewall.
+        *
+        * @generated
+        */
+        public function getLogoutUrl(?string $key = null): string;
+        public function setCurrentFirewall(?string $key, ?string $context = null): void;
+        public function reset(): void;
+    }
+}
+namespace Symfony\Component\Security\Http\RateLimiter {
+    /**
+    * A default login throttling limiter.
+    *
+    * This limiter prevents breadth-first attacks by enforcing
+    * a limit on username+IP and a (higher) limit on IP.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class DefaultLoginRateLimiter extends \Symfony\Component\HttpFoundation\RateLimiter\AbstractRequestRateLimiter {
+        /**
+        * @param string $secret A secret to use for hashing the IP address and username
+        * @generated
+        */
+        public function __construct(\Symfony\Component\RateLimiter\RateLimiterFactory $globalFactory, \Symfony\Component\RateLimiter\RateLimiterFactory $localFactory, string $secret): void;
+        /**
+        * Clears the username+IP limit only.
+        *
+        * The IP limit bounds how many usernames a single client may try, so it
+        * must survive the successful login of any one of them.
+        *
+        * @generated
+        */
+        public function reset(\Symfony\Component\HttpFoundation\Request $request): void;
+        protected function getLimiters(\Symfony\Component\HttpFoundation\Request $request): array;
+    }
+}
+namespace Symfony\Component\Security\Http\RememberMe {
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    abstract class AbstractRememberMeHandler implements \Symfony\Component\Security\Http\RememberMe\RememberMeHandlerInterface {
+        protected array $options;
+        protected \Symfony\Component\HttpFoundation\RequestStack $requestStack;
+        protected ?\Psr\Log\LoggerInterface $logger ?? null;
+        public function __construct(\Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, \Symfony\Component\HttpFoundation\RequestStack $requestStack, array $options = [], ?\Psr\Log\LoggerInterface $logger = null): void;
+        /**
+        * Checks if the RememberMeDetails is a valid cookie to login the given User.
+        *
+        * This method should also:
+        * - Create a new remember-me cookie to be sent with the response (using {@see createCookie()});
+        * - If you store the token somewhere else (e.g. in a database), invalidate the stored token.
+        *
+        * @throws AuthenticationException If the remember-me details are not accepted
+        * @generated
+        */
+        protected abstract function processRememberMe(\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails, \Symfony\Component\Security\Core\User\UserInterface $user): void;
+        public function consumeRememberMeCookie(\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails): \Symfony\Component\Security\Core\User\UserInterface;
+        public function clearRememberMeCookie(): void;
+        /**
+        * Creates the remember-me cookie using the correct configuration.
+        *
+        * @param ?\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails The details for the cookie, or null to clear the remember-me cookie
+        * @generated
+        */
+        protected function createCookie(?\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails): void;
+    }
+    /**
+    * Implements remember-me tokens using a {@see TokenProviderInterface}.
+    *
+    * This requires storing remember-me tokens in a database. This allows
+    * more control over the invalidation of remember-me tokens. See
+    * {@see SignatureRememberMeHandler} if you don't want to use a database.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class PersistentRememberMeHandler extends \Symfony\Component\Security\Http\RememberMe\AbstractRememberMeHandler {
+        /**
+        * @param array|null $signatureProperties Properties of the User; the stored token is invalidated when these properties change.
+        *  *                                            Defaults to ["password"], with the properties the user does not expose being skipped
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Security\Core\Authentication\RememberMe\TokenProviderInterface $tokenProvider, \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, \Symfony\Component\HttpFoundation\RequestStack $requestStack, array $options, ?\Psr\Log\LoggerInterface $logger = null, ?\Symfony\Component\Security\Core\Authentication\RememberMe\TokenVerifierInterface $tokenVerifier = null, array|null $signatureProperties = null, ?\Symfony\Component\PropertyAccess\PropertyAccessorInterface $propertyAccessor = null): void;
+        public function createRememberMeCookie(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        public function consumeRememberMeCookie(\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails): \Symfony\Component\Security\Core\User\UserInterface;
+        public function processRememberMe(\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails, \Symfony\Component\Security\Core\User\UserInterface $user): void;
+        public function clearRememberMeCookie(): void;
+    }
+    /**
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    class RememberMeDetails {
+        public const string COOKIE_DELIMITER ?? ':';
+        /**
+        * @param string $userIdentifier
+        * @param int $expires
+        * @param string $value
+        * @generated
+        */
+        public function __construct(string $userIdentifier, int $expires, string $value): void;
+        public static function fromRawCookie(string $rawCookie): self;
+        public static function fromPersistentToken(\Symfony\Component\Security\Core\Authentication\RememberMe\PersistentToken $token, int $expires): self;
+        public function withValue(string $value): self;
+        /**
+        * @deprecated since Symfony 7.4, the user FQCN will be removed from the remember-me cookie in 8.0
+        * @generated
+        */
+        deprecated public function getUserFqcn(): string;
+        public function getUserIdentifier(): string;
+        public function getExpires(): int;
+        public function getValue(): string;
+        public function toString(): string;
+    }
+    /**
+    * Handles creating and validating remember-me cookies.
+    *
+    * If you want to add a custom implementation, you want to extend from
+    * {@see AbstractRememberMeHandler} instead.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    interface RememberMeHandlerInterface {
+        /**
+        * Creates a remember-me cookie.
+        *
+        * The actual cookie should be set as an attribute on the main request,
+        * which is transformed into a response cookie by {@see ResponseListener}.
+        *
+        * @generated
+        */
+        public function createRememberMeCookie(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        /**
+        * Validates the remember-me cookie and returns the associated User.
+        *
+        * Every cookie should only be used once. This means that this method should also:
+        * - Create a new remember-me cookie to be sent with the response (using the
+        *   {@see ResponseListener::COOKIE_ATTR_NAME} request attribute);
+        * - If you store the token somewhere else (e.g. in a database), invalidate the
+        *   stored token.
+        *
+        * @throws AuthenticationException
+        * @generated
+        */
+        public function consumeRememberMeCookie(\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails): \Symfony\Component\Security\Core\User\UserInterface;
+        /**
+        * Clears the remember-me cookie.
+        *
+        * This should set a cookie with a `null` value on the request attribute.
+        *
+        * @generated
+        */
+        public function clearRememberMeCookie(): void;
+    }
+    /**
+    * Adds remember-me cookies to the Response.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @final
+    * @generated
+    */
+    class ResponseListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
+        /**
+        * This attribute name can be used by the implementation if it needs to set
+        *
+        * a cookie on the Request when there is no actual Response, yet.
+        *
+        * @generated
+        */
+        public const string COOKIE_ATTR_NAME ?? '_security_remember_me_cookie';
+        public function onKernelResponse(\Symfony\Component\HttpKernel\Event\ResponseEvent $event): void;
+        public static function getSubscribedEvents(): array;
+    }
+    /**
+    * Implements safe remember-me cookies using the {@see SignatureHasher}.
+    *
+    * This handler doesn't require a database for the remember-me tokens.
+    * However, it cannot invalidate a specific user session, all sessions for
+    * that user will be invalidated instead. Use {@see PersistentRememberMeHandler}
+    * if you need this.
+    *
+    * @author Wouter de Jong <wouter@wouterj.nl>
+    * @generated
+    */
+    final class SignatureRememberMeHandler extends \Symfony\Component\Security\Http\RememberMe\AbstractRememberMeHandler {
+        public function __construct(\Symfony\Component\Security\Core\Signature\SignatureHasher $signatureHasher, \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider, \Symfony\Component\HttpFoundation\RequestStack $requestStack, array $options, ?\Psr\Log\LoggerInterface $logger = null): void;
+        public function createRememberMeCookie(\Symfony\Component\Security\Core\User\UserInterface $user): void;
+        public function consumeRememberMeCookie(\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails): \Symfony\Component\Security\Core\User\UserInterface;
+        public function processRememberMe(\Symfony\Component\Security\Http\RememberMe\RememberMeDetails $rememberMeDetails, \Symfony\Component\Security\Core\User\UserInterface $user): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Session {
+    /**
+    * The default session strategy implementation.
+    *
+    * Supports the following strategies:
+    * NONE: the session is not changed
+    * MIGRATE: the session id is updated, attributes are kept
+    * INVALIDATE: the session id is updated, attributes are lost
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class SessionAuthenticationStrategy implements \Symfony\Component\Security\Http\Session\SessionAuthenticationStrategyInterface {
+        public const string NONE ?? 'none';
+        public const string MIGRATE ?? 'migrate';
+        public const string INVALIDATE ?? 'invalidate';
+        public function __construct(string $strategy, ?\Symfony\Component\Security\Csrf\TokenStorage\ClearableTokenStorageInterface $csrfTokenStorage = null): void;
+        public function onAuthentication(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+    }
+    /**
+    * SessionAuthenticationStrategyInterface.
+    *
+    * Implementation are responsible for updating the session after an interactive
+    * authentication attempt was successful.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface SessionAuthenticationStrategyInterface {
+        /**
+        * This performs any necessary changes to the session.
+        *
+        * This method should be called before the TokenStorage is populated with a
+        * Token. It should be used by authentication listeners when a session is used.
+        *
+        * @generated
+        */
+        public function onAuthentication(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token): void;
+    }
+}
+namespace Symfony\Component\Security\Http\Util {
+    /**
+    * Trait to get (and set) the URL the user last visited before being forced to authenticate.
+    *
+    * @generated
+    */
+    trait TargetPathTrait {
+    }
+}

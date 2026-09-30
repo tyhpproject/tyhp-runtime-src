@@ -1,0 +1,1381 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * PHPStan plugin types are omitted from Layer 1 (they name unowned PHPStan interfaces).
+ * Json-schema peers are STOP skeletons — do not invent those APIs.
+ */
+
+namespace Composer {
+    /**
+     * Overlay: one `vendor/composer/installed.php` dataset.
+     */
+    type InstalledData = struct {
+        InstalledRootPackage $root;
+        array<string, InstalledVersion> $versions;
+    };
+
+    /**
+     * Overlay: `InstalledVersions::getRootPackage()` root record.
+     */
+    type InstalledRootPackage = struct {
+        string $name;
+        string $pretty_version;
+        string $version;
+        ?string $reference;
+        string $type;
+        string $install_path;
+        array<int, string> $aliases;
+        bool $dev;
+    };
+
+    /**
+     * Overlay: one package entry inside `installed.php` `versions`.
+     */
+    type InstalledVersion = struct {
+        ?string $pretty_version;
+        ?string $version;
+        ?string $reference;
+        ?string $type;
+        ?string $install_path;
+        ?array<int, string> $aliases;
+        bool $dev_requirement;
+        ?array<int, string> $replaced;
+        ?array<int, string> $provided;
+    };
+
+    /**
+     * Overlay: PHPDoc `@return Archiver\ArchiveManager` is relative; the type is Package\Archiver.
+     */
+    // @overlay-against: class Factory
+    partial class Factory {
+        /**
+         * @param \Composer\Config $config The configuration
+         * @param \Composer\Downloader\DownloadManager $dm Manager use to download sources
+         */
+        // @overlay-against: function createArchiveManager(\Composer\Config $config, \Composer\Downloader\DownloadManager $dm, \Composer\Util\Loop $loop): \Archiver\ArchiveManager
+        public function createArchiveManager(\Composer\Config $config, \Composer\Downloader\DownloadManager $dm, \Composer\Util\Loop $loop): \Composer\Package\Archiver\ArchiveManager;
+    }
+}
+
+namespace Composer\MetadataMinifier {
+    /**
+     * Layer 1 omits this Composer sibling; Util\MetadataMinifier extends it.
+     */
+    class MetadataMinifier {
+    }
+}
+
+namespace Composer\EventDispatcher {
+    /**
+     * Overlay: CLI args forwarded to script handlers are a string list.
+     */
+    // @overlay-against: class Event
+    partial class Event {
+        /**
+         * @return array<int, string>
+         */
+        // @overlay-against: function getArguments(): array
+        public function getArguments(): array<int, string>;
+    }
+}
+
+namespace Composer {
+    // @overlay-against: class InstalledVersions
+    partial class InstalledVersions {
+        // @overlay-against: function getAllRawData(): array
+        public static function getAllRawData(): array<int, InstalledData>;
+
+        // @overlay-against: function getRawData(): array
+        deprecated public static function getRawData(): InstalledData|array;
+
+        // @overlay-against: function getRootPackage(): array
+        public static function getRootPackage(): InstalledRootPackage;
+
+        // @overlay-against: function reload(array $data): void
+        public static function reload(InstalledData $data): void;
+    }
+
+    // @overlay-against: class Installer
+    partial class Installer {
+        // @overlay-against: function extractDevPackages(\Composer\DependencyResolver\LockTransaction $lockTransaction, \Composer\Repository\PlatformRepository $platformRepo, array $aliases, \Composer\DependencyResolver\PolicyInterface $policy, ?\Composer\Repository\LockArrayRepository $lockedRepository): int
+        protected function extractDevPackages(\Composer\DependencyResolver\LockTransaction $lockTransaction, \Composer\Repository\PlatformRepository $platformRepo, array<int, array<string, string>> $aliases, \Composer\DependencyResolver\PolicyInterface $policy, ?\Composer\Repository\LockArrayRepository $lockedRepository = null): int;
+    }
+}
+
+namespace Composer\DependencyResolver {
+    // @overlay-against: class DefaultPolicy implements \Composer\DependencyResolver\PolicyInterface
+    partial class DefaultPolicy {
+        // @overlay-against: function groupLiteralsByName(\Composer\DependencyResolver\Pool $pool, array $literals): array
+        protected function groupLiteralsByName(\Composer\DependencyResolver\Pool $pool, array<int|string, int> $literals): array<string, array<int, int>>;
+        // @overlay-against: function selectPreferredPackages(\Composer\DependencyResolver\Pool $pool, array $literals, ?string $requiredPackage): array
+        public function selectPreferredPackages(\Composer\DependencyResolver\Pool $pool, array<int|string, int> $literals, ?string $requiredPackage = null): array<int, int>;
+    }
+
+    // @overlay-against: class MultiConflictRule extends \Composer\DependencyResolver\Rule
+    partial class MultiConflictRule {
+        // @overlay-against: function __construct(array $literals, mixed $reason, mixed $reasonData): void
+        public function __construct(array<int|string, int> $literals, mixed $reason, mixed $reasonData): void;
+        // @overlay-against: function getLiterals(): array
+        public function getLiterals(): array<int, int>;
+    }
+
+    // @overlay-against: interface PolicyInterface
+    partial interface PolicyInterface {
+        // @overlay-against: function selectPreferredPackages(\Composer\DependencyResolver\Pool $pool, array $literals, ?string $requiredPackage): array
+        public function selectPreferredPackages(\Composer\DependencyResolver\Pool $pool, array<int|string, int> $literals, ?string $requiredPackage = null): array<int, int>;
+    }
+
+    // @overlay-against: class PoolBuilder
+    partial class PoolBuilder {
+        // @overlay-against: function __construct(array $acceptableStabilities, array $stabilityFlags, array $rootAliases, array $rootReferences, \Composer\IO\IOInterface $io, ?\Composer\EventDispatcher\EventDispatcher $eventDispatcher, ?\Composer\DependencyResolver\PoolOptimizer $poolOptimizer, array $temporaryConstraints, ?\Composer\DependencyResolver\SecurityAdvisoryPoolFilter $securityAdvisoryPoolFilter, ?\Composer\DependencyResolver\FilterListPoolFilter $filterListPoolFilter): void
+        public function __construct(array<string, int> $acceptableStabilities, array<string, int> $stabilityFlags, array<string, array<string, array>> $rootAliases, array<string, string> $rootReferences, \Composer\IO\IOInterface $io, ?\Composer\EventDispatcher\EventDispatcher $eventDispatcher = null, ?\Composer\DependencyResolver\PoolOptimizer $poolOptimizer = null, array<string, \Composer\Semver\Constraint\ConstraintInterface> $temporaryConstraints = [], ?\Composer\DependencyResolver\SecurityAdvisoryPoolFilter $securityAdvisoryPoolFilter = null, ?\Composer\DependencyResolver\FilterListPoolFilter $filterListPoolFilter = null): void;
+    }
+
+    // @overlay-against: class Request
+    partial class Request {
+        // @overlay-against: function restrictPackages(array $names): void
+        public function restrictPackages(array<int|string, string> $names): void;
+    }
+
+    // @overlay-against: class Rule2Literals extends \Composer\DependencyResolver\Rule
+    partial class Rule2Literals {
+        // @overlay-against: function getLiterals(): array
+        public function getLiterals(): array<int, int>;
+    }
+
+    // @overlay-against: class RuleSetGenerator
+    partial class RuleSetGenerator {
+        // @overlay-against: function createInstallOneOfRule(array $packages, mixed $reason, \Composer\DependencyResolver\RuleReasonData $reasonData): \Composer\DependencyResolver\Rule
+        protected function createInstallOneOfRule(array<int|string, \Composer\Package\BasePackage> $packages, mixed $reason, \Composer\DependencyResolver\RuleReasonData $reasonData): \Composer\DependencyResolver\Rule;
+        // @overlay-against: function createMultiConflictRule(array $packages, mixed $reason, \Composer\DependencyResolver\RuleReasonData $reasonData): \Composer\DependencyResolver\Rule
+        protected function createMultiConflictRule(array<int|string, \Composer\Package\BasePackage> $packages, mixed $reason, \Composer\DependencyResolver\RuleReasonData $reasonData): \Composer\DependencyResolver\Rule;
+    }
+}
+
+namespace Composer\Downloader {
+    // @overlay-against: class SvnDownloader extends \Composer\Downloader\VcsDownloader
+    partial class SvnDownloader {
+        // @overlay-against: function execute(\Composer\Package\PackageInterface $package, string $baseUrl, array $command, string $url, ?string $cwd, ?string $path): string
+        protected function execute(\Composer\Package\PackageInterface $package, string $baseUrl, array<int|string, string> $command, string $url, ?string $cwd = null, ?string $path = null): string;
+    }
+}
+
+namespace Composer\IO {
+    // @overlay-against: class ConsoleIO extends \Composer\IO\BaseIO
+    partial class ConsoleIO {
+        // @overlay-against: function sanitize(string|iterable $messages, bool $allowNewlines): mixed
+        public static function sanitize(string|iterable<string> $messages, bool $allowNewlines = true): string|array<int, string>;
+        // @overlay-against: function isDebug(): mixed
+        public function isDebug(): bool;
+        // @overlay-against: function isDecorated(): mixed
+        public function isDecorated(): bool;
+        // @overlay-against: function isInteractive(): mixed
+        public function isInteractive(): bool;
+        // @overlay-against: function isVerbose(): mixed
+        public function isVerbose(): bool;
+        // @overlay-against: function isVeryVerbose(): mixed
+        public function isVeryVerbose(): bool;
+        // @overlay-against: function overwrite(mixed $messages, bool $newline, ?int $size, int $verbosity): mixed
+        public function overwrite(mixed $messages, bool $newline = true, ?int $size = null, int $verbosity = self::NORMAL): void;
+        // @overlay-against: function overwriteError(mixed $messages, bool $newline, ?int $size, int $verbosity): mixed
+        public function overwriteError(mixed $messages, bool $newline = true, ?int $size = null, int $verbosity = self::NORMAL): void;
+        // @overlay-against: function write(mixed $messages, bool $newline, int $verbosity): mixed
+        public function write(mixed $messages, bool $newline = true, int $verbosity = self::NORMAL): void;
+        // @overlay-against: function writeError(mixed $messages, bool $newline, int $verbosity): mixed
+        public function writeError(mixed $messages, bool $newline = true, int $verbosity = self::NORMAL): void;
+        // @overlay-against: function writeErrorRaw(mixed $messages, bool $newline, int $verbosity): mixed
+        public function writeErrorRaw(mixed $messages, bool $newline = true, int $verbosity = self::NORMAL): void;
+        // @overlay-against: function writeRaw(mixed $messages, bool $newline, int $verbosity): mixed
+        public function writeRaw(mixed $messages, bool $newline = true, int $verbosity = self::NORMAL): void;
+    }
+
+    // @overlay-against: interface IOInterface
+    partial interface IOInterface {
+        // @overlay-against: function select(string $question, array $choices, bool|string $default, bool|int $attempts, string $errorMessage, bool $multiselect): mixed
+        public function select(string $question, array<int, string> $choices, bool|string $default, bool|int $attempts = false, string $errorMessage = 'Value "%s" is invalid', bool $multiselect = false): int|string|array<int, string>|bool;
+    }
+}
+
+namespace Composer\Package {
+    // @overlay-against: class BasePackage implements \Composer\Package\PackageInterface
+    partial class BasePackage {
+        // @overlay-against: function __clone(): mixed
+        public function __clone(): void;
+    }
+
+    // @overlay-against: class AliasPackage extends \Composer\Package\BasePackage
+    partial class AliasPackage {
+        // @overlay-against: function getDevRequires(): array
+        public function getDevRequires(): array<string, \Composer\Package\Link>;
+        // @overlay-against: function getRequires(): array
+        public function getRequires(): array<string, \Composer\Package\Link>;
+    }
+
+    // @overlay-against: class Locker
+    partial class Locker {
+        // @overlay-against: function getAliases(): array
+        public function getAliases(): array<int, array<string, string>>;
+        // @overlay-against: function setLockData(array $packages, array|null $devPackages, array $platformReqs, array $platformDevReqs, array $aliases, string $minimumStability, array $stabilityFlags, bool $preferStable, bool $preferLowest, array $platformOverrides, bool $write): bool
+        public function setLockData(array<int, \Composer\Package\PackageInterface> $packages, array<int, \Composer\Package\PackageInterface>|null $devPackages, array<string, string> $platformReqs, array<string, string> $platformDevReqs, array<int, array<string, string>> $aliases, string $minimumStability, array<string, int> $stabilityFlags, bool $preferStable, bool $preferLowest, array<string, string|false> $platformOverrides, bool $write = true): bool;
+    }
+
+    // @overlay-against: class Package extends \Composer\Package\BasePackage
+    partial class Package {
+        // @overlay-against: function getDevRequires(): array
+        public function getDevRequires(): array<string, \Composer\Package\Link>;
+        // @overlay-against: function getRequires(): array
+        public function getRequires(): array<string, \Composer\Package\Link>;
+    }
+
+    // @overlay-against: class RootAliasPackage extends \Composer\Package\CompleteAliasPackage implements \Composer\Package\RootPackageInterface
+    partial class RootAliasPackage {
+        // @overlay-against: function __clone(): mixed
+        public function __clone(): void;
+    }
+}
+
+namespace Composer\Package\Loader {
+    // @overlay-against: class RootPackageLoader extends \Composer\Package\Loader\ArrayLoader
+    partial class RootPackageLoader {
+        // @overlay-against: function extractStabilityFlags(array $requires, string $minimumStability, array $stabilityFlags): array
+        public static function extractStabilityFlags(array<string, string> $requires, string $minimumStability, array<string, int> $stabilityFlags): array<string, int>;
+        // @overlay-against: function load(array $config, string $class, ?string $cwd): \Composer\Package\BasePackage
+        public function load(array<string, mixed> $config, string $class = 'Composer\Package\RootPackage', ?string $cwd = null): \Composer\Package\BasePackage;
+    }
+}
+
+namespace Composer\Package\Version {
+    // @overlay-against: class StabilityFilter
+    partial class StabilityFilter {
+        // @overlay-against: function isPackageAcceptable(array $acceptableStabilities, array $stabilityFlags, array $names, string $stability): bool
+        public static function isPackageAcceptable(array<string, int> $acceptableStabilities, array<string, int> $stabilityFlags, array<int, string> $names, string $stability): bool;
+    }
+}
+
+namespace Composer\Plugin {
+    // @overlay-against: class PrePoolCreateEvent extends \Composer\EventDispatcher\Event
+    partial class PrePoolCreateEvent {
+        // @overlay-against: function __construct(string $name, array $repositories, \Composer\DependencyResolver\Request $request, array $acceptableStabilities, array $stabilityFlags, array $rootAliases, array $rootReferences, array $packages, array $unacceptableFixedPackages): void
+        public function __construct(string $name, array<int, \Composer\Repository\RepositoryInterface> $repositories, \Composer\DependencyResolver\Request $request, array<string, int> $acceptableStabilities, array<string, int> $stabilityFlags, array<string, array<string, array>> $rootAliases, array<string, string> $rootReferences, array<int, \Composer\Package\BasePackage> $packages, array<int, \Composer\Package\BasePackage> $unacceptableFixedPackages): void;
+        // @overlay-against: function getAcceptableStabilities(): array
+        public function getAcceptableStabilities(): array<string, int>;
+        // @overlay-against: function getStabilityFlags(): array
+        public function getStabilityFlags(): array<string, int>;
+    }
+}
+
+namespace Composer\Repository {
+    // @overlay-against: class ComposerRepository extends \Composer\Repository\ArrayRepository implements \Composer\Repository\ConfigurableRepositoryInterface, \Composer\Repository\AdvisoryProviderInterface, \Composer\Repository\FilterListProviderInterface
+    partial class ComposerRepository {
+        // @overlay-against: function __construct(array $repoConfig, \Composer\IO\IOInterface $io, \Composer\Config $config, \Composer\Util\HttpDownloader $httpDownloader, ?\Composer\EventDispatcher\EventDispatcher $eventDispatcher): void
+        public function __construct(array<string, mixed> $repoConfig, \Composer\IO\IOInterface $io, \Composer\Config $config, \Composer\Util\HttpDownloader $httpDownloader, ?\Composer\EventDispatcher\EventDispatcher $eventDispatcher = null): void;
+    }
+
+    // @overlay-against: interface RepositoryInterface
+    partial interface RepositoryInterface {
+        // @overlay-against: function loadPackages(array $packageNameMap, array $acceptableStabilities, array $stabilityFlags, array $alreadyLoaded): array
+        public function loadPackages(array<string, \Composer\Semver\Constraint\ConstraintInterface|null> $packageNameMap, array<string, int> $acceptableStabilities, array<string, int> $stabilityFlags, array<string, array<string, \Composer\Package\PackageInterface>> $alreadyLoaded = []): array;
+    }
+
+    // @overlay-against: class RepositorySet
+    partial class RepositorySet {
+        // @overlay-against: function __construct(string $minimumStability, array $stabilityFlags, array $rootAliases, array $rootReferences, array $rootRequires, array $temporaryConstraints): void
+        public function __construct(string $minimumStability = 'stable', array<string, int> $stabilityFlags = [], array<int, array> $rootAliases = [], array<string, string> $rootReferences = [], array<string, \Composer\Semver\Constraint\ConstraintInterface> $rootRequires = [], array<string, \Composer\Semver\Constraint\ConstraintInterface> $temporaryConstraints = []): void;
+    }
+}
+
+namespace Composer\Repository\Vcs {
+    // @overlay-against: class SvnDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class SvnDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): null;
+        // @overlay-against: function getSource(string $identifier): array
+        public function getSource(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetSourceReturn;
+        // @overlay-against: function execute(array $command, string $url): string
+        protected function execute(array<int|string, string> $command, string $url): string;
+    }
+}
+
+namespace Composer\Util {
+    // @overlay-against: class Git
+    partial class Git {
+        // @overlay-against: function buildRevListCommand(\Composer\Util\ProcessExecutor $process, array $arguments): array
+        public static function buildRevListCommand(\Composer\Util\ProcessExecutor $process, array<int, string> $arguments): array<int, string>;
+        // @overlay-against: function runCommands(array $commands, string $url, ?string $cwd, bool $initialClone, mixed $commandOutput): void
+        public function runCommands(array<int|string, array<int, string>> $commands, string $url, ?string $cwd, bool $initialClone = false, mixed &$commandOutput = null): void;
+    }
+
+    // @overlay-against: class Perforce
+    partial class Perforce {
+        // @overlay-against: function executeCommand(mixed $command): int
+        protected function executeCommand(string|array<int|string, string> $command): int;
+        // @overlay-against: function generateP4Command(array $arguments, bool $useClient): array
+        public function generateP4Command(array<int|string, string> $arguments, bool $useClient = true): array<int, string>;
+    }
+
+    // @overlay-against: class ProcessExecutor
+    partial class ProcessExecutor {
+        // @overlay-against: function execute(mixed $command, mixed $output, ?string $cwd): int
+        public function execute(string|array<int|string, string> $command, mixed &$output = null, ?string $cwd = null): int;
+        // @overlay-against: function executeTty(mixed $command, ?string $cwd): int
+        public function executeTty(string|array<int|string, string> $command, ?string $cwd = null): int;
+    }
+
+    // @overlay-against: class Svn
+    partial class Svn {
+        // @overlay-against: function execute(array $command, string $url, ?string $cwd, ?string $path, bool $verbose): string
+        public function execute(array<int|string, string> $command, string $url, ?string $cwd = null, ?string $path = null, bool $verbose = false): string;
+        // @overlay-against: function executeLocal(array $command, string $path, ?string $cwd, bool $verbose): string
+        public function executeLocal(array<int|string, string> $command, string $path, ?string $cwd = null, bool $verbose = false): string;
+        // @overlay-against: function getCommand(array $cmd, string $url, ?string $path): array
+        protected function getCommand(array<int|string, string> $cmd, string $url, ?string $path = null): array<int, string>;
+    }
+}
+
+namespace Composer\Package {
+    // @overlay-against: class Package extends \Composer\Package\BasePackage
+    partial class Package {
+        // @overlay-against: function getUrls(?string $url, array|null $mirrors, ?string $ref, ?string $type, string $urlType): array
+        protected function getUrls(?string $url, array<int|string, mixed>|null $mirrors, ?string $ref, ?string $type, string $urlType): array<int, mixed>;
+    }
+}
+
+namespace Composer\Plugin {
+    // @overlay-against: class PrePoolCreateEvent extends \Composer\EventDispatcher\Event
+    partial class PrePoolCreateEvent {
+        // @overlay-against: function getRootAliases(): array
+        public function getRootAliases(): array<int, array>;
+    }
+}
+
+namespace Composer\Repository {
+    /**
+     * Overlay: array shape for `RepositoryloadPackagesReturn`.
+     */
+    type RepositoryloadPackagesReturn = struct {
+        array<int, string> $namesFound;
+        array<int, \Composer\Package\PackageInterface> $packages;
+    };
+
+    /**
+     * Overlay: array shape for `RepositorySetSecurityAdvisoriesReturn`.
+     */
+    type RepositorySetSecurityAdvisoriesReturn = struct {
+        array $advisories;
+        array<int, string> $unreachableRepos;
+    };
+
+    // @overlay-against: class ArrayRepository implements \Composer\Repository\RepositoryInterface
+    partial class ArrayRepository {
+        // @overlay-against: function loadPackages(array $packageNameMap, array $acceptableStabilities, array $stabilityFlags, array $alreadyLoaded): mixed
+        public function loadPackages(array $packageNameMap, array $acceptableStabilities, array $stabilityFlags, array $alreadyLoaded = []): \Composer\Repository\RepositoryloadPackagesReturn;
+    }
+
+    // @overlay-against: class CompositeRepository implements \Composer\Repository\RepositoryInterface
+    partial class CompositeRepository {
+        // @overlay-against: function loadPackages(array $packageNameMap, array $acceptableStabilities, array $stabilityFlags, array $alreadyLoaded): array
+        public function loadPackages(array $packageNameMap, array $acceptableStabilities, array $stabilityFlags, array $alreadyLoaded = []): \Composer\Repository\RepositoryloadPackagesReturn;
+    }
+
+    // @overlay-against: class FilesystemRepository extends \Composer\Repository\WritableArrayRepository
+    partial class FilesystemRepository {
+        // @overlay-against: function reload(): mixed
+        public function reload(): void;
+        // @overlay-against: function write(bool $devMode, \Composer\Installer\InstallationManager $installationManager): mixed
+        public function write(bool $devMode, \Composer\Installer\InstallationManager $installationManager): void;
+    }
+
+    // @overlay-against: interface RepositoryInterface
+    partial interface RepositoryInterface {
+        // @overlay-against: function getProviders(string $packageName): array
+        public function getProviders(string $packageName): array<int, array>;
+    }
+
+    // @overlay-against: class RepositorySet
+    partial class RepositorySet {
+        // @overlay-against: function getMatchingSecurityAdvisories(array $packages, bool $allowPartialAdvisories, bool $ignoreUnreachable): array
+        public function getMatchingSecurityAdvisories(array<int, \Composer\Package\PackageInterface> $packages, bool $allowPartialAdvisories = false, bool $ignoreUnreachable = false): \Composer\Repository\RepositorySetSecurityAdvisoriesReturn;
+        // @overlay-against: function getProviders(string $packageName): array
+        public function getProviders(string $packageName): array<int, array>;
+        // @overlay-against: function getSecurityAdvisories(array $packageNames, bool $allowPartialAdvisories, bool $ignoreUnreachable): array
+        public function getSecurityAdvisories(array<int, string> $packageNames, bool $allowPartialAdvisories, bool $ignoreUnreachable = false): \Composer\Repository\RepositorySetSecurityAdvisoriesReturn;
+    }
+
+    // @overlay-against: class WritableArrayRepository extends \Composer\Repository\ArrayRepository implements \Composer\Repository\WritableRepositoryInterface, \Composer\Repository\CanonicalPackagesTrait
+    partial class WritableArrayRepository {
+        // @overlay-against: function reload(): mixed
+        public function reload(): void;
+        // @overlay-against: function setDevPackageNames(array $devPackageNames): mixed
+        public function setDevPackageNames(array $devPackageNames): void;
+        // @overlay-against: function write(bool $devMode, \Composer\Installer\InstallationManager $installationManager): mixed
+        public function write(bool $devMode, \Composer\Installer\InstallationManager $installationManager): void;
+    }
+}
+
+namespace Composer\Repository {
+    // @overlay-against: class VcsRepository extends \Composer\Repository\ArrayRepository implements \Composer\Repository\ConfigurableRepositoryInterface
+    partial class VcsRepository {
+        // @overlay-against: function getRepoConfig(): mixed
+        public function getRepoConfig(): array<int, mixed>;
+    }
+
+}
+
+namespace Composer {
+    /**
+     * Overlay: array shape for `ConfigmergeConfig`.
+     */
+    type ConfigmergeConfig = struct {
+        ?array<string, mixed> $config;
+        array<int|string, mixed>|null $repositories;
+    };
+
+    /**
+     * Overlay: array shape for `FactorycreateAdditionalStylesReturn`.
+     */
+    type FactorycreateAdditionalStylesReturn = struct {
+        \Symfony\Component\Console\Formatter\OutputFormatterStyle $highlight;
+        \Symfony\Component\Console\Formatter\OutputFormatterStyle $warning;
+    };
+
+    // @overlay-against: class Cache
+    partial class Cache {
+        // @overlay-against: function getAge(string $file): mixed
+        public function getAge(string $file): int|false;
+    }
+
+    // @overlay-against: class Config
+    partial class Config {
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get('bin-compat' $key, int $flags = 0): 'auto'|'full'|'proxy'|'symlink';
+
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get('discard-changes' $key, int $flags = 0): bool|'stash';
+
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get('autoloader-suffix' $key, int $flags = 0): ?string;
+
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get('github-protocols' $key, int $flags = 0): array<int, string>;
+
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get('process-timeout'|'cache-ttl'|'cache-files-maxsize'|'cache-files-ttl' $key, int $flags = 0): int;
+
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get('cache-read-only'|'htaccess-protect'|'disable-tls'|'secure-http'|'use-github-api'|'lock'|'source-fallback' $key, int $flags = 0): bool;
+
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get('vendor-dir'|'bin-dir'|'data-dir'|'cache-dir'|'cache-files-dir'|'cache-repo-dir'|'cache-vcs-dir'|'cafile'|'capath'|'home' $key, int $flags = 0): string;
+
+        // @overlay-against: function get(string $key, int $flags): mixed
+        public function get(string $key, int $flags = 0): mixed;
+
+        // @overlay-against: function merge(array $config, string $source): void
+        public function merge(\Composer\ConfigmergeConfig $config, string $source = self::SOURCE_UNKNOWN): void;
+    }
+
+    // @overlay-against: class Factory
+    partial class Factory {
+        // @overlay-against: function createAdditionalStyles(): array
+        public static function createAdditionalStyles(): \Composer\FactorycreateAdditionalStylesReturn;
+        // @overlay-against: function createComposer(\Composer\IO\IOInterface $io, array|string|null $localConfig, bool|string $disablePlugins, ?string $cwd, bool $fullLoad, bool $disableScripts): mixed
+        public function createComposer(\Composer\IO\IOInterface $io, array<string, mixed>|string|null $localConfig = null, bool|string $disablePlugins = false, ?string $cwd = null, bool $fullLoad = true, bool $disableScripts = false): \Composer\Composer|\Composer\PartialComposer;
+    }
+
+}
+
+namespace Composer\Advisory {
+    /**
+     * Overlay: array shape for `AuditorprocessAdvisoriesReturn`.
+     */
+    type AuditorprocessAdvisoriesReturn = struct {
+        array<string, array<int, \Composer\Advisory\PartialSecurityAdvisory>> $advisories;
+        array<string, array<int, \Composer\Advisory\PartialSecurityAdvisory>> $ignoredAdvisories;
+    };
+
+    /**
+     * Overlay: array shape for `IgnoredSecurityAdvisory__constructSources0`.
+     */
+    type IgnoredSecurityAdvisory__constructSources0 = struct {
+        string $name;
+        string $remoteId;
+    };
+
+    /**
+     * Overlay: array shape for `IgnoredSecurityAdvisoryjsonSerializeReturn`.
+     */
+    type IgnoredSecurityAdvisoryjsonSerializeReturn = struct {
+        string $advisoryId;
+        string $affectedVersions;
+        string|null $cve;
+        ?string $ignoreReason;
+        string|null $link;
+        string $packageName;
+        string $reportedAt;
+        string|null $severity;
+        array<int|string, \Composer\Advisory\IgnoredSecurityAdvisory__constructSources0> $sources;
+        string $title;
+    };
+
+    /**
+     * Overlay: array shape for `SecurityAdvisory__constructSources0`.
+     */
+    type SecurityAdvisory__constructSources0 = struct {
+        string $name;
+        string $remoteId;
+    };
+
+    /**
+     * Overlay: array shape for `SecurityAdvisoryjsonSerializeReturn`.
+     */
+    type SecurityAdvisoryjsonSerializeReturn = struct {
+        string $advisoryId;
+        string $affectedVersions;
+        string|null $cve;
+        string|null $link;
+        string $packageName;
+        string $reportedAt;
+        string|null $severity;
+        array<int|string, \Composer\Advisory\SecurityAdvisory__constructSources0> $sources;
+        string $title;
+    };
+
+    // @overlay-against: class Auditor
+    partial class Auditor {
+        // @overlay-against: function processAdvisories(array $allAdvisories, array $ignoreList, array $ignoredSeverities): array
+        public function processAdvisories(array<string, array<\Composer\Advisory\PartialSecurityAdvisory|\Composer\Advisory\SecurityAdvisory>> $allAdvisories, array<string, string|null> $ignoreList, array<string, string|null> $ignoredSeverities): \Composer\Advisory\AuditorprocessAdvisoriesReturn;
+    }
+
+    // @overlay-against: class IgnoredSecurityAdvisory extends \Composer\Advisory\SecurityAdvisory
+    partial class IgnoredSecurityAdvisory {
+        // @overlay-against: function __construct(string $packageName, string $advisoryId, \Composer\Semver\Constraint\ConstraintInterface $affectedVersions, string $title, array $sources, \DateTimeImmutable $reportedAt, ?string $cve, ?string $link, ?string $ignoreReason, ?string $severity): void
+        public function __construct(string $packageName, string $advisoryId, \Composer\Semver\Constraint\ConstraintInterface $affectedVersions, string $title, array<int|string, \Composer\Advisory\IgnoredSecurityAdvisory__constructSources0> $sources, \DateTimeImmutable $reportedAt, ?string $cve = null, ?string $link = null, ?string $ignoreReason = null, ?string $severity = null): void;
+        // @overlay-against: function jsonSerialize(): mixed
+        public function jsonSerialize(): \Composer\Advisory\IgnoredSecurityAdvisoryjsonSerializeReturn;
+    }
+
+    // @overlay-against: class SecurityAdvisory extends \Composer\Advisory\PartialSecurityAdvisory
+    partial class SecurityAdvisory {
+        // @overlay-against: function __construct(string $packageName, string $advisoryId, \Composer\Semver\Constraint\ConstraintInterface $affectedVersions, string $title, array $sources, \DateTimeImmutable $reportedAt, ?string $cve, ?string $link, ?string $severity): void
+        public function __construct(string $packageName, string $advisoryId, \Composer\Semver\Constraint\ConstraintInterface $affectedVersions, string $title, array<int|string, \Composer\Advisory\SecurityAdvisory__constructSources0> $sources, \DateTimeImmutable $reportedAt, ?string $cve = null, ?string $link = null, ?string $severity = null): void;
+        // @overlay-against: function jsonSerialize(): mixed
+        public function jsonSerialize(): \Composer\Advisory\SecurityAdvisoryjsonSerializeReturn;
+    }
+
+}
+
+namespace Composer\Config {
+    // @overlay-against: class JsonConfigSource implements \Composer\Config\ConfigSourceInterface
+    partial class JsonConfigSource {
+        // @overlay-against: function addProperty(string $name, mixed $value): void
+        public function addProperty(string $name, string|array<int, string> $value): void;
+        // @overlay-against: function addRepository(string $name, mixed $config, bool $append): void
+        public function addRepository(string $name, array<int, mixed>|false $config, bool $append = true): void;
+        // @overlay-against: function insertRepository(string $name, mixed $config, string $referenceName, int $offset): void
+        public function insertRepository(string $name, array<int, mixed>|false $config, string $referenceName, int $offset = 0): void;
+    }
+
+}
+
+namespace Composer\Console\Input {
+    // @overlay-against: class InputArgument extends \Symfony\Component\Console\Input\InputArgument
+    partial class InputArgument {
+        // @overlay-against: function __construct(string $name, ?int $mode, string $description, string|bool|int|float|array|null $default, array|callable $suggestedValues): void
+        public function __construct(string $name, ?int $mode = null, string $description = '', string|bool|int|float|array<int, string>|null $default = null, array<int, string>|(callable(\Symfony\Component\Console\Completion\CompletionInput, \Symfony\Component\Console\Completion\CompletionSuggestions): array<int, string|\Symfony\Component\Console\Completion\Suggestion>) $suggestedValues = []): void;
+    }
+
+    // @overlay-against: class InputOption extends \Symfony\Component\Console\Input\InputOption
+    partial class InputOption {
+        // @overlay-against: function __construct(string $name, string|array|null $shortcut, ?int $mode, string $description, string|bool|int|float|array|null $default, array|callable $suggestedValues): void
+        public function __construct(string $name, string|array<int, string>|null $shortcut = null, ?int $mode = null, string $description = '', string|bool|int|float|array<int, string>|null $default = null, array<int, string>|(callable(\Symfony\Component\Console\Completion\CompletionInput, \Symfony\Component\Console\Completion\CompletionSuggestions): array<int, string|\Symfony\Component\Console\Completion\Suggestion>) $suggestedValues = []): void;
+    }
+
+}
+
+namespace Composer\DependencyResolver {
+    // @overlay-against: class GenericRule extends \Composer\DependencyResolver\Rule
+    partial class GenericRule {
+        // @overlay-against: function __construct(array $literals, mixed $reason, mixed $reasonData): void
+        public function __construct(array<int, int> $literals, mixed $reason, \Composer\DependencyResolver\RuleReasonData $reasonData): void;
+        // @overlay-against: function getHash(): mixed
+        public function getHash(): int|string;
+    }
+
+    // @overlay-against: class MultiConflictRule extends \Composer\DependencyResolver\Rule
+    partial class MultiConflictRule {
+        // @overlay-against: function getHash(): mixed
+        public function getHash(): int|string;
+    }
+
+    // @overlay-against: class Rule
+    partial class Rule {
+        // @overlay-against: function __construct(mixed $reason, \Composer\DependencyResolver\RuleReasonData $reasonData): void
+        public function __construct(int $reason, \Composer\DependencyResolver\RuleReasonData $reasonData): void;
+        // @overlay-against: function setType(mixed $type): void
+        public function setType(0|1|4 $type): void;
+    }
+
+    // @overlay-against: class Rule2Literals extends \Composer\DependencyResolver\Rule
+    partial class Rule2Literals {
+        // @overlay-against: function getHash(): mixed
+        public function getHash(): int|string;
+    }
+
+    // @overlay-against: class RuleSet implements \IteratorAggregate, \Countable
+    partial class RuleSet {
+        // @overlay-against: function add(\Composer\DependencyResolver\Rule $rule, mixed $type): void
+        public function add(\Composer\DependencyResolver\Rule $rule, 0|1|4 $type): void;
+        // @overlay-against: function getIteratorFor(mixed $types): \Composer\DependencyResolver\RuleSetIterator
+        public function getIteratorFor(0|1|4|array<int, 0|1|4> $types): \Composer\DependencyResolver\RuleSetIterator;
+        // @overlay-against: function getIteratorWithout(mixed $types): \Composer\DependencyResolver\RuleSetIterator
+        public function getIteratorWithout(0|1|4|array<int, 0|1|4> $types): \Composer\DependencyResolver\RuleSetIterator;
+        // @overlay-against: function getRules(): array
+        public function getRules(): array<0|1|4, array<int, \Composer\DependencyResolver\Rule>>;
+        // @overlay-against: function getTypes(): array
+        public function getTypes(): array<int, 0|1|4>;
+    }
+
+}
+
+namespace Composer\DependencyResolver\Operation {
+    // @overlay-against: class InstallOperation extends \Composer\DependencyResolver\Operation\SolverOperation implements \Composer\DependencyResolver\Operation\OperationInterface
+    partial class InstallOperation {
+        // @overlay-against: function show(mixed $lock): string
+        public function show(bool $lock): string;
+    }
+
+    // @overlay-against: class MarkAliasInstalledOperation extends \Composer\DependencyResolver\Operation\SolverOperation implements \Composer\DependencyResolver\Operation\OperationInterface
+    partial class MarkAliasInstalledOperation {
+        // @overlay-against: function show(mixed $lock): string
+        public function show(bool $lock): string;
+    }
+
+    // @overlay-against: class MarkAliasUninstalledOperation extends \Composer\DependencyResolver\Operation\SolverOperation implements \Composer\DependencyResolver\Operation\OperationInterface
+    partial class MarkAliasUninstalledOperation {
+        // @overlay-against: function show(mixed $lock): string
+        public function show(bool $lock): string;
+    }
+
+    // @overlay-against: class SolverOperation implements \Composer\DependencyResolver\Operation\OperationInterface
+    partial class SolverOperation {
+        // @overlay-against: function __toString(): mixed
+        public function __toString(): string;
+    }
+
+    // @overlay-against: class UninstallOperation extends \Composer\DependencyResolver\Operation\SolverOperation implements \Composer\DependencyResolver\Operation\OperationInterface
+    partial class UninstallOperation {
+        // @overlay-against: function show(mixed $lock): string
+        public function show(bool $lock): string;
+    }
+
+    // @overlay-against: class UpdateOperation extends \Composer\DependencyResolver\Operation\SolverOperation implements \Composer\DependencyResolver\Operation\OperationInterface
+    partial class UpdateOperation {
+        // @overlay-against: function show(mixed $lock): string
+        public function show(bool $lock): string;
+    }
+
+}
+
+namespace Composer\FilterList {
+    /**
+     * Overlay: array shape for `FilterListAuditorcollectFilterListsReturn`.
+     */
+    type FilterListAuditorcollectFilterListsReturn = struct {
+        array<string, array<string, array<int, \Composer\FilterList\FilterListEntry>>> $filter;
+        array<int|string, string> $unreachableRepos;
+    };
+
+    /**
+     * Overlay: array shape for `FilterListEntrycreateData`.
+     */
+    type FilterListEntrycreateData = struct {
+        string $constraint;
+        ?string $id;
+        string $package;
+        ?string $reason;
+        ?string $source;
+        ?string $url;
+    };
+
+    // @overlay-against: class FilterListAuditor
+    partial class FilterListAuditor {
+        // @overlay-against: function collectFilterLists(array $packages, \Composer\FilterList\FilterListProvider\FilterListProviderSet $providerSet, array $configuredLists, bool $ignoreUnreachable): array
+        public function collectFilterLists(array<int, \Composer\Package\PackageInterface> $packages, \Composer\FilterList\FilterListProvider\FilterListProviderSet $providerSet, array<int, string> $configuredLists, bool $ignoreUnreachable): \Composer\FilterList\FilterListAuditorcollectFilterListsReturn;
+    }
+
+    // @overlay-against: class FilterListEntry
+    partial class FilterListEntry {
+        // @overlay-against: function create(string $listName, array $data, \Composer\Semver\VersionParser $parser): self
+        public static function create(string $listName, \Composer\FilterList\FilterListEntrycreateData $data, \Composer\Semver\VersionParser $parser): self;
+    }
+
+}
+
+namespace Composer\FilterList\FilterListProvider {
+    /**
+     * Overlay: array shape for `FilterListProviderSetgetMatchingFilterListsReturn`.
+     */
+    type FilterListProviderSetgetMatchingFilterListsReturn = struct {
+        array<string, array<int|string, \Composer\FilterList\FilterListEntry>> $filter;
+        array<int|string, string> $unreachableRepos;
+    };
+
+    // @overlay-against: class FilterListProviderSet
+    partial class FilterListProviderSet {
+        // @overlay-against: function getMatchingFilterLists(array $packages, array $configuredLists, bool $ignoreUnreachable): array
+        public function getMatchingFilterLists(array<int, \Composer\Package\PackageInterface> $packages, array<int, string> $configuredLists, bool $ignoreUnreachable = false): \Composer\FilterList\FilterListProvider\FilterListProviderSetgetMatchingFilterListsReturn;
+    }
+
+    // @overlay-against: class UrlSourceFilterListProvider implements \Composer\Repository\FilterListProviderInterface
+    partial class UrlSourceFilterListProvider {
+        // @overlay-against: function getFilter(array $packageConstraintMap, array $configuredLists): array
+        public function getFilter(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, array<int, string> $configuredLists): array;
+        // @overlay-against: function getFilterLists(): array
+        public function getFilterLists(): array<int, string>;
+    }
+
+}
+
+namespace Composer\Installer {
+    // @overlay-against: class LibraryInstaller implements \Composer\Installer\InstallerInterface, \Composer\Installer\BinaryPresenceInterface
+    partial class LibraryInstaller {
+        // @overlay-against: function cleanup(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function cleanup(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function download(\Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function download(\Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function ensureBinariesPresence(\Composer\Package\PackageInterface $package): mixed
+        public function ensureBinariesPresence(\Composer\Package\PackageInterface $package): void;
+        // @overlay-against: function install(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function install(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function isInstalled(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function isInstalled(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): bool;
+        // @overlay-against: function prepare(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function prepare(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function supports(string $packageType): mixed
+        public function supports(string $packageType): bool;
+        // @overlay-against: function uninstall(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function uninstall(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function update(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $initial, \Composer\Package\PackageInterface $target): mixed
+        public function update(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $initial, \Composer\Package\PackageInterface $target): \React\Promise\PromiseInterface<void|null>|null;
+    }
+
+    // @overlay-against: class MetapackageInstaller implements \Composer\Installer\InstallerInterface
+    partial class MetapackageInstaller {
+        // @overlay-against: function cleanup(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function cleanup(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function download(\Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function download(\Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function install(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function install(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function isInstalled(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function isInstalled(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): bool;
+        // @overlay-against: function prepare(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function prepare(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function supports(string $packageType): mixed
+        public function supports(string $packageType): bool;
+        // @overlay-against: function uninstall(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function uninstall(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function update(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $initial, \Composer\Package\PackageInterface $target): mixed
+        public function update(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $initial, \Composer\Package\PackageInterface $target): \React\Promise\PromiseInterface<void|null>|null;
+    }
+
+    // @overlay-against: class NoopInstaller implements \Composer\Installer\InstallerInterface
+    partial class NoopInstaller {
+        // @overlay-against: function cleanup(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function cleanup(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function download(\Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function download(\Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function getInstallPath(\Composer\Package\PackageInterface $package): mixed
+        public function getInstallPath(\Composer\Package\PackageInterface $package): string|null;
+        // @overlay-against: function install(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function install(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function isInstalled(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function isInstalled(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): bool;
+        // @overlay-against: function prepare(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): mixed
+        public function prepare(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function supports(string $packageType): mixed
+        public function supports(string $packageType): bool;
+        // @overlay-against: function uninstall(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): mixed
+        public function uninstall(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $package): \React\Promise\PromiseInterface<void|null>|null;
+        // @overlay-against: function update(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $initial, \Composer\Package\PackageInterface $target): mixed
+        public function update(\Composer\Repository\InstalledRepositoryInterface $repo, \Composer\Package\PackageInterface $initial, \Composer\Package\PackageInterface $target): \React\Promise\PromiseInterface<void|null>|null;
+    }
+
+    // @overlay-against: class ProjectInstaller implements \Composer\Installer\InstallerInterface
+    partial class ProjectInstaller {
+        // @overlay-against: function cleanup(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): ?\React\Promise\PromiseInterface
+        public function cleanup(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): ?\React\Promise\PromiseInterface;
+        // @overlay-against: function prepare(mixed $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage): ?\React\Promise\PromiseInterface
+        public function prepare(string $type, \Composer\Package\PackageInterface $package, ?\Composer\Package\PackageInterface $prevPackage = null): ?\React\Promise\PromiseInterface;
+    }
+
+}
+
+namespace Composer\IO {
+    /**
+     * Overlay: array shape for `IOInterfacegetAuthenticationReturn`.
+     */
+    type IOInterfacegetAuthenticationReturn = struct {
+        ?string $password;
+        ?string $username;
+    };
+
+    // @overlay-against: class BaseIO implements \Composer\IO\IOInterface
+    partial class BaseIO {
+        // @overlay-against: function getAuthentication(mixed $repositoryName): mixed
+        public function getAuthentication(string $repositoryName): array;
+        // @overlay-against: function getAuthentications(): mixed
+        public function getAuthentications(): array<string, array>;
+        // @overlay-against: function hasAuthentication(mixed $repositoryName): mixed
+        public function hasAuthentication(string $repositoryName): bool;
+        // @overlay-against: function loadConfiguration(\Composer\Config $config): mixed
+        public function loadConfiguration(\Composer\Config $config): void;
+        // @overlay-against: function setAuthentication(mixed $repositoryName, mixed $username, mixed $password): mixed
+        public function setAuthentication(string $repositoryName, string $username, ?string $password = null): void;
+        // @overlay-against: function writeErrorRaw(mixed $messages, bool $newline, int $verbosity): mixed
+        public function writeErrorRaw(string|array<int, string> $messages, bool $newline = true, int $verbosity = self::NORMAL): void;
+        // @overlay-against: function writeRaw(mixed $messages, bool $newline, int $verbosity): mixed
+        public function writeRaw(string|array<int, string> $messages, bool $newline = true, int $verbosity = self::NORMAL): void;
+    }
+
+    // @overlay-against: class NullIO extends \Composer\IO\BaseIO
+    partial class NullIO {
+        // @overlay-against: function askAndHideAnswer(mixed $question): ?string
+        public function askAndHideAnswer(mixed $question): null;
+    }
+
+    // @overlay-against: interface IOInterface
+    partial interface IOInterface {
+        // @overlay-against: function getAuthentication(string $repositoryName): array
+        public function getAuthentication(string $repositoryName): \Composer\IO\IOInterfacegetAuthenticationReturn;
+    }
+
+}
+
+namespace Composer\Package\Archiver {
+    // @overlay-against: class PharArchiver implements \Composer\Package\Archiver\ArchiverInterface
+    partial class PharArchiver {
+        // @overlay-against: function archive(string $sources, string $target, string $format, array $excludes, bool $ignoreFilters): string
+        public function archive(string $sources, string $target, string $format, array<int, string> $excludes = [], bool $ignoreFilters = false): string;
+    }
+
+    // @overlay-against: class ZipArchiver implements \Composer\Package\Archiver\ArchiverInterface
+    partial class ZipArchiver {
+        // @overlay-against: function archive(string $sources, string $target, string $format, array $excludes, bool $ignoreFilters): string
+        public function archive(string $sources, string $target, string $format, array<int, string> $excludes = [], bool $ignoreFilters = false): string;
+    }
+
+}
+
+namespace Composer\Package\Comparer {
+    /**
+     * Overlay: array shape for `ComparergetChangedReturn`.
+     */
+    type ComparergetChangedReturn = struct {
+        ?array<int, string> $added;
+        ?array<int, string> $changed;
+        ?array<int, string> $removed;
+    };
+
+    // @overlay-against: class Comparer
+    partial class Comparer {
+        // @overlay-against: function getChanged(bool $explicated): array|false
+        public function getChanged(bool $explicated = false): \Composer\Package\Comparer\ComparergetChangedReturn|false;
+    }
+
+}
+
+namespace Composer\Package\Loader {
+    // @overlay-against: class ArrayLoader implements \Composer\Package\Loader\LoaderInterface
+    partial class ArrayLoader {
+        // @overlay-against: function load(array $config, string $class): \Composer\Package\BasePackage
+        public function load(array<int, mixed> $config, string $class = 'Composer\Package\CompletePackage'): \Composer\Package\BasePackage;
+    }
+
+    // @overlay-against: class ValidatingArrayLoader implements \Composer\Package\Loader\LoaderInterface
+    partial class ValidatingArrayLoader {
+        // @overlay-against: function load(array $config, string $class): \Composer\Package\BasePackage
+        public function load(array<int, mixed> $config, string $class = 'Composer\Package\CompletePackage'): \Composer\Package\BasePackage;
+    }
+
+}
+
+namespace Composer\Package\Version {
+    // @overlay-against: class VersionSelector
+    partial class VersionSelector {
+        // @overlay-against: function findBestCandidate(string $packageName, ?string $targetPackageVersion, string $preferredStability, \Composer\Filter\PlatformRequirementFilter\PlatformRequirementFilterInterface|bool|array $platformRequirementFilter, int $repoSetFlags, ?\Composer\IO\IOInterface $io, callable $showWarnings): \Composer\Package\PackageInterface|false
+        public function findBestCandidate(string $packageName, ?string $targetPackageVersion = null, string $preferredStability = 'stable', \Composer\Filter\PlatformRequirementFilter\PlatformRequirementFilterInterface|bool|array<int, string> $platformRequirementFilter = null, int $repoSetFlags = 0, ?\Composer\IO\IOInterface $io = null, (callable(\Composer\Package\PackageInterface): bool)|bool $showWarnings = true): \Composer\Package\PackageInterface|false;
+    }
+
+}
+
+namespace Composer\Policy {
+    /**
+     * Overlay: array shape for `IgnoreUnreachablefromRawPolicyConfigConfig`.
+     */
+    type IgnoreUnreachablefromRawPolicyConfigConfig = struct {
+        array<int, string>|bool|null 'ignore-unreachable' as $ignore_unreachable;
+    };
+
+    /**
+     * Overlay: array shape for `IgnoreUnreachablefromRawAuditConfigAuditConfig`.
+     */
+    type IgnoreUnreachablefromRawAuditConfigAuditConfig = struct {
+        ?bool 'ignore-unreachable' as $ignore_unreachable;
+    };
+
+    // @overlay-against: class AbandonedPolicyConfig extends \Composer\Policy\ListPolicyConfig
+    partial class AbandonedPolicyConfig {
+        // @overlay-against: function __construct(bool $block, string $audit, array $ignore): void
+        public function __construct(bool $block, string $audit, array<string, array<int, \Composer\Policy\IgnorePackageRule>> $ignore): void;
+        // @overlay-against: function withAudit(string $audit): mixed
+        public function withAudit(string $audit): static;
+        // @overlay-against: function withBlockingDisabled(): mixed
+        public function withBlockingDisabled(): static;
+    }
+
+    // @overlay-against: class AdvisoriesPolicyConfig extends \Composer\Policy\ListPolicyConfig
+    partial class AdvisoriesPolicyConfig {
+        // @overlay-against: function withAudit(string $audit): mixed
+        public function withAudit(string $audit): static;
+        // @overlay-against: function withBlockingDisabled(): mixed
+        public function withBlockingDisabled(): static;
+    }
+
+    // @overlay-against: class CustomListPolicyConfig extends \Composer\Policy\ListPolicyConfig
+    partial class CustomListPolicyConfig {
+        // @overlay-against: function withAudit(string $audit): mixed
+        public function withAudit(string $audit): static;
+        // @overlay-against: function withBlockingDisabled(): mixed
+        public function withBlockingDisabled(): static;
+    }
+
+    // @overlay-against: class IgnoreUnreachable
+    partial class IgnoreUnreachable {
+        // @overlay-against: function fromRawAuditConfig(array $auditConfig): self
+        public static function fromRawAuditConfig(\Composer\Policy\IgnoreUnreachablefromRawAuditConfigAuditConfig $auditConfig): self;
+        // @overlay-against: function fromRawPolicyConfig(array $config): self
+        public static function fromRawPolicyConfig(\Composer\Policy\IgnoreUnreachablefromRawPolicyConfigConfig $config): self;
+    }
+
+    // @overlay-against: class MalwarePolicyConfig extends \Composer\Policy\ListPolicyConfig
+    partial class MalwarePolicyConfig {
+        // @overlay-against: function withAudit(string $audit): mixed
+        public function withAudit(string $audit): static;
+        // @overlay-against: function withBlockingDisabled(): mixed
+        public function withBlockingDisabled(): static;
+    }
+
+}
+
+namespace Composer\Repository {
+    /**
+     * Overlay: array shape for `ArtifactRepository__constructRepoConfig`.
+     */
+    type ArtifactRepository__constructRepoConfig = struct {
+        string $url;
+    };
+
+    /**
+     * Overlay: array shape for `FilterListProviderInterfacegetFilterReturn`.
+     */
+    type FilterListProviderInterfacegetFilterReturn = struct {
+        array<string, array<int, \Composer\FilterList\FilterListEntry>> $filter;
+    };
+
+    /**
+     * Overlay: array shape for `FilterRepository__constructOptions`.
+     */
+    type FilterRepository__constructOptions = struct {
+        ?bool $canonical;
+        array<int|string, string>|null $exclude;
+        array<int|string, string>|null $only;
+    };
+
+    /**
+     * Overlay: array shape for `PackageRepository__constructConfig`.
+     */
+    type PackageRepository__constructConfig = struct {
+        array<int, mixed> $package;
+    };
+
+    /**
+     * Overlay: array shape for `PathRepository__constructRepoConfigoptions`.
+     */
+    type PathRepository__constructRepoConfigoptions = struct {
+        ?string $reference;
+        ?bool $relative;
+        ?bool $symlink;
+        ?array<string, string> $versions;
+    };
+
+    /**
+     * Overlay: array shape for `PathRepository__constructRepoConfig`.
+     */
+    type PathRepository__constructRepoConfig = struct {
+        ?\Composer\Repository\PathRepository__constructRepoConfigoptions $options;
+        ?string $url;
+    };
+
+    // @overlay-against: class ArtifactRepository extends \Composer\Repository\ArrayRepository implements \Composer\Repository\ConfigurableRepositoryInterface
+    partial class ArtifactRepository {
+        // @overlay-against: function __construct(array $repoConfig, \Composer\IO\IOInterface $io): void
+        public function __construct(\Composer\Repository\ArtifactRepository__constructRepoConfig $repoConfig, \Composer\IO\IOInterface $io): void;
+        // @overlay-against: function getRepoConfig(): mixed
+        public function getRepoConfig(): array<int, mixed>;
+    }
+
+    // @overlay-against: class ComposerRepository extends \Composer\Repository\ArrayRepository implements \Composer\Repository\ConfigurableRepositoryInterface, \Composer\Repository\AdvisoryProviderInterface, \Composer\Repository\FilterListProviderInterface
+    partial class ComposerRepository {
+        // @overlay-against: function addPackage(\Composer\Package\PackageInterface $package): mixed
+        public function addPackage(\Composer\Package\PackageInterface $package): void;
+        // @overlay-against: function getFilter(array $packageConstraintMap, array $configuredLists): array
+        public function getFilter(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, array<int, string> $configuredLists): array;
+        // @overlay-against: function getFilterLists(): array
+        public function getFilterLists(): array<int, string>;
+        // @overlay-against: function getRepoConfig(): mixed
+        public function getRepoConfig(): array<int, mixed>;
+        // @overlay-against: function getSecurityAdvisories(array $packageConstraintMap, bool $allowPartialAdvisories): array
+        public function getSecurityAdvisories(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, bool $allowPartialAdvisories = false): array;
+    }
+
+    // @overlay-against: interface FilterListProviderInterface
+    partial interface FilterListProviderInterface {
+        // @overlay-against: function getFilter(array $packageConstraintMap, array $configuredLists): array
+        public function getFilter(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, array<int, string> $configuredLists): \Composer\Repository\FilterListProviderInterfacegetFilterReturn;
+    }
+
+    // @overlay-against: class FilterRepository implements \Composer\Repository\RepositoryInterface, \Composer\Repository\AdvisoryProviderInterface, \Composer\Repository\FilterListProviderInterface
+    partial class FilterRepository {
+        // @overlay-against: function __construct(\Composer\Repository\RepositoryInterface $repo, array $options): void
+        public function __construct(\Composer\Repository\RepositoryInterface $repo, \Composer\Repository\FilterRepository__constructOptions $options): void;
+        // @overlay-against: function getFilter(array $packageConstraintMap, array $configuredLists): array
+        public function getFilter(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, array<int, string> $configuredLists): array;
+        // @overlay-against: function getFilterLists(): array
+        public function getFilterLists(): array<int, string>;
+        // @overlay-against: function getSecurityAdvisories(array $packageConstraintMap, bool $allowPartialAdvisories): array
+        public function getSecurityAdvisories(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, bool $allowPartialAdvisories = false): array;
+    }
+
+    // @overlay-against: class InstalledFilesystemRepository extends \Composer\Repository\FilesystemRepository implements \Composer\Repository\InstalledRepositoryInterface
+    partial class InstalledFilesystemRepository {
+        // @overlay-against: function isFresh(): mixed
+        public function isFresh(): bool;
+    }
+
+    // @overlay-against: class PackageRepository extends \Composer\Repository\ArrayRepository implements \Composer\Repository\AdvisoryProviderInterface, \Composer\Repository\FilterListProviderInterface
+    partial class PackageRepository {
+        // @overlay-against: function __construct(array $config): void
+        public function __construct(\Composer\Repository\PackageRepository__constructConfig $config): void;
+        // @overlay-against: function getFilter(array $packageConstraintMap, array $configuredLists): array
+        public function getFilter(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, array<int, string> $configuredLists): array;
+        // @overlay-against: function getFilterLists(): array
+        public function getFilterLists(): array<int, string>;
+        // @overlay-against: function getSecurityAdvisories(array $packageConstraintMap, bool $allowPartialAdvisories): array
+        public function getSecurityAdvisories(array<string, \Composer\Semver\Constraint\ConstraintInterface> $packageConstraintMap, bool $allowPartialAdvisories = false): array;
+    }
+
+    // @overlay-against: class PathRepository extends \Composer\Repository\ArrayRepository implements \Composer\Repository\ConfigurableRepositoryInterface
+    partial class PathRepository {
+        // @overlay-against: function __construct(array $repoConfig, \Composer\IO\IOInterface $io, \Composer\Config $config, ?\Composer\Util\HttpDownloader $httpDownloader, ?\Composer\EventDispatcher\EventDispatcher $dispatcher, ?\Composer\Util\ProcessExecutor $process): void
+        public function __construct(\Composer\Repository\PathRepository__constructRepoConfig $repoConfig, \Composer\IO\IOInterface $io, \Composer\Config $config, ?\Composer\Util\HttpDownloader $httpDownloader = null, ?\Composer\EventDispatcher\EventDispatcher $dispatcher = null, ?\Composer\Util\ProcessExecutor $process = null): void;
+        // @overlay-against: function getRepoConfig(): array
+        public function getRepoConfig(): array<int, mixed>;
+    }
+
+}
+
+namespace Composer\Repository\Vcs {
+    /**
+     * Overlay: array shape for `VcsDriver__constructRepoConfig`.
+     */
+    type VcsDriver__constructRepoConfig = struct {
+        string $url;
+    };
+
+    /**
+     * Overlay: array shape for `VcsDriverInterfacegetDistReturn`.
+     */
+    type VcsDriverInterfacegetDistReturn = struct {
+        string $reference;
+        string $shasum;
+        string $type;
+        string $url;
+    };
+
+    /**
+     * Overlay: array shape for `VcsDriverInterfacegetSourceReturn`.
+     */
+    type VcsDriverInterfacegetSourceReturn = struct {
+        string $reference;
+        string $type;
+        string $url;
+    };
+
+    // @overlay-against: class ForgejoDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class ForgejoDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetDistReturn;
+    }
+
+    // @overlay-against: class FossilDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class FossilDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): null;
+        // @overlay-against: function getSource(string $identifier): array
+        public function getSource(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetSourceReturn;
+    }
+
+    // @overlay-against: class GitBitbucketDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class GitBitbucketDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): ?\Composer\Repository\Vcs\VcsDriverInterfacegetDistReturn;
+    }
+
+    // @overlay-against: class GitDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class GitDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): null;
+        // @overlay-against: function getSource(string $identifier): array
+        public function getSource(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetSourceReturn;
+    }
+
+    // @overlay-against: class GitHubDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class GitHubDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetDistReturn;
+    }
+
+    // @overlay-against: class GitLabDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class GitLabDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetDistReturn;
+    }
+
+    // @overlay-against: class HgDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class HgDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): null;
+        // @overlay-against: function getSource(string $identifier): array
+        public function getSource(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetSourceReturn;
+    }
+
+    // @overlay-against: class PerforceDriver extends \Composer\Repository\Vcs\VcsDriver
+    partial class PerforceDriver {
+        // @overlay-against: function getDist(string $identifier): ?array
+        public function getDist(string $identifier): null;
+    }
+
+    // @overlay-against: class VcsDriver implements \Composer\Repository\Vcs\VcsDriverInterface
+    partial class VcsDriver {
+        // @overlay-against: function __construct(array&array $repoConfig, \Composer\IO\IOInterface $io, \Composer\Config $config, \Composer\Util\HttpDownloader $httpDownloader, \Composer\Util\ProcessExecutor $process): void
+        public final function __construct(\Composer\Repository\Vcs\VcsDriver__constructRepoConfig&array<string, mixed> $repoConfig, \Composer\IO\IOInterface $io, \Composer\Config $config, \Composer\Util\HttpDownloader $httpDownloader, \Composer\Util\ProcessExecutor $process): void;
+        // @overlay-against: function getComposerInformation(string $identifier): ?array
+        public function getComposerInformation(string $identifier): array<int, mixed>|null;
+    }
+
+    // @overlay-against: interface VcsDriverInterface
+    partial interface VcsDriverInterface {
+        // @overlay-against: function getDist(string $identifier): array|null
+        public function getDist(string $identifier): ?\Composer\Repository\Vcs\VcsDriverInterfacegetDistReturn;
+        // @overlay-against: function getSource(string $identifier): array
+        public function getSource(string $identifier): \Composer\Repository\Vcs\VcsDriverInterfacegetSourceReturn;
+    }
+
+}
+
+namespace Composer\SelfUpdate {
+    /**
+     * Overlay: array shape for `VersionsgetLatestReturn`.
+     */
+    type VersionsgetLatestReturn = struct {
+        ?bool $eol;
+        ?bool $lts;
+        ?string $maintenance;
+        ?string 'maintenance-until' as $maintenance_until;
+        int 'min-php' as $min_php;
+        string $path;
+        string $version;
+    };
+
+    /**
+     * Overlay: array shape for `VersionsgetNewerPhpBlockedVersionReturn`.
+     */
+    type VersionsgetNewerPhpBlockedVersionReturn = struct {
+        ?bool $eol;
+        ?bool $lts;
+        ?string $maintenance;
+        ?string 'maintenance-until' as $maintenance_until;
+        int 'min-php' as $min_php;
+        string $path;
+        string $version;
+    };
+
+    /**
+     * Overlay: array shape for `VersionsgetMaintenanceWarningEntry`.
+     */
+    type VersionsgetMaintenanceWarningEntry = struct {
+        ?bool $lts;
+        ?string $maintenance;
+        ?string 'maintenance-until' as $maintenance_until;
+        string $version;
+    };
+
+    /**
+     * Overlay: array shape for `VersionsgetMaintenanceWarningReturn`.
+     */
+    type VersionsgetMaintenanceWarningReturn = struct {
+        bool $lts;
+        'eol'|'critical-security' $type;
+        ?string $until;
+        string $version;
+    };
+
+    // @overlay-against: class Versions
+    partial class Versions {
+        // @overlay-against: function getMaintenanceWarning(array $entry, \DateTimeImmutable $now): array|null
+        public static function getMaintenanceWarning(\Composer\SelfUpdate\VersionsgetMaintenanceWarningEntry $entry, \DateTimeImmutable $now): ?\Composer\SelfUpdate\VersionsgetMaintenanceWarningReturn;
+        // @overlay-against: function getLatest(?string $channel): array
+        public function getLatest(?string $channel = null): \Composer\SelfUpdate\VersionsgetLatestReturn;
+        // @overlay-against: function getNewerPhpBlockedVersion(?string $channel): array|null
+        public function getNewerPhpBlockedVersion(?string $channel = null): ?\Composer\SelfUpdate\VersionsgetNewerPhpBlockedVersionReturn;
+    }
+
+}
+
+namespace Composer\Util\Http {
+    // @overlay-against: class CurlResponse extends \Composer\Util\Http\Response
+    partial class CurlResponse {
+        // @overlay-against: function __construct(array $request, ?int $code, array $headers, ?string $body, \Composer\Util\Http\CurlResponseCurlInfo $curlInfo): void
+        public function __construct(\Composer\Util\Http\ResponseRequest $request, ?int $code, array<int, string> $headers, ?string $body, \Composer\Util\Http\CurlResponseCurlInfo $curlInfo): void;
+    }
+
+}
+
+namespace Composer\Autoload {
+    /**
+     * Overlay: array shape for `AutoloadGeneratorbuildPackageMapReturn1`.
+     */
+    type AutoloadGeneratorbuildPackageMapReturn1 = struct {
+        \Composer\Package\PackageInterface 0 as $item0;
+        ?string 1 as $item1;
+    };
+
+    /**
+     * Overlay: array shape for `AutoloadGeneratorparseAutoloadsPackageMap1`.
+     */
+    type AutoloadGeneratorparseAutoloadsPackageMap1 = struct {
+        \Composer\Package\PackageInterface 0 as $item0;
+        ?string 1 as $item1;
+    };
+
+    // @overlay-against: class AutoloadGenerator
+    partial class AutoloadGenerator {
+        // @overlay-against: function buildPackageMap(\Composer\Installer\InstallationManager $installationManager, \Composer\Package\PackageInterface $rootPackage, array $packages): mixed
+        public function buildPackageMap(\Composer\Installer\InstallationManager $installationManager, \Composer\Package\PackageInterface $rootPackage, array<int, \Composer\Package\PackageInterface> $packages): array<int, \Composer\Autoload\AutoloadGeneratorbuildPackageMapReturn1>;
+        // @overlay-against: function parseAutoloads(array $packageMap, \Composer\Package\PackageInterface $rootPackage, bool|array $filteredDevPackages): array
+        public function parseAutoloads(array<int, \Composer\Autoload\AutoloadGeneratorparseAutoloadsPackageMap1> $packageMap, \Composer\Package\PackageInterface $rootPackage, bool|array<int, string> $filteredDevPackages = false): array;
+    }
+
+}
+
+namespace Composer\DependencyResolver {
+    /**
+     * Overlay: array shape for `DecisionsatOffsetReturn`.
+     */
+    type DecisionsatOffsetReturn = struct {
+        int 0 as $item0;
+        \Composer\DependencyResolver\Rule 1 as $item1;
+    };
+
+    /**
+     * Overlay: array shape for `DecisionscurrentReturn`.
+     */
+    type DecisionscurrentReturn = struct {
+        int 0 as $item0;
+        \Composer\DependencyResolver\Rule 1 as $item1;
+    };
+
+    /**
+     * Overlay: array shape for `ProblemgetMissingPackageReasonReturn`.
+     */
+    type ProblemgetMissingPackageReasonReturn = struct {
+        string 0 as $item0;
+        string 1 as $item1;
+    };
+
+    /**
+     * Overlay: array shape for `ProblemgetMissingLockedPackageReasonReturn`.
+     */
+    type ProblemgetMissingLockedPackageReasonReturn = struct {
+        string 0 as $item0;
+        string 1 as $item1;
+    };
+
+    // @overlay-against: class Decisions implements \Iterator, \Countable
+    partial class Decisions {
+        // @overlay-against: function atOffset(int $queueOffset): array
+        public function atOffset(int $queueOffset): \Composer\DependencyResolver\DecisionsatOffsetReturn;
+        // @overlay-against: function current(): array|false
+        public function current(): \Composer\DependencyResolver\DecisionscurrentReturn|false;
+    }
+
+    // @overlay-against: class Problem
+    partial class Problem {
+        // @overlay-against: function getMissingLockedPackageReason(\Composer\DependencyResolver\Pool $pool, \Composer\Package\BasePackage $package): array
+        public static function getMissingLockedPackageReason(\Composer\DependencyResolver\Pool $pool, \Composer\Package\BasePackage $package): \Composer\DependencyResolver\ProblemgetMissingLockedPackageReasonReturn;
+        // @overlay-against: function getMissingPackageReason(\Composer\Repository\RepositorySet $repositorySet, \Composer\DependencyResolver\Request $request, \Composer\DependencyResolver\Pool $pool, bool $isVerbose, string $packageName, ?\Composer\Semver\Constraint\ConstraintInterface $constraint): array
+        public static function getMissingPackageReason(\Composer\Repository\RepositorySet $repositorySet, \Composer\DependencyResolver\Request $request, \Composer\DependencyResolver\Pool $pool, bool $isVerbose, string $packageName, ?\Composer\Semver\Constraint\ConstraintInterface $constraint = null): \Composer\DependencyResolver\ProblemgetMissingPackageReasonReturn;
+    }
+
+}
+
+namespace Composer\Package\Archiver {
+    /**
+     * Overlay: array shape for `GitExcludeFilterparseGitAttributesLineReturn`.
+     */
+    type GitExcludeFilterparseGitAttributesLineReturn = struct {
+        string 0 as $item0;
+        bool 1 as $item1;
+        bool 2 as $item2;
+    };
+
+    // @overlay-against: class GitExcludeFilter extends \Composer\Package\Archiver\BaseExcludeFilter
+    partial class GitExcludeFilter {
+        // @overlay-against: function parseGitAttributesLine(string $line): array|null
+        public function parseGitAttributesLine(string $line): ?\Composer\Package\Archiver\GitExcludeFilterparseGitAttributesLineReturn;
+    }
+
+}
+
+namespace Composer\Util {
+    /**
+     * Overlay: array shape for `AuthHelperpromptAuthIfNeededReturn`.
+     */
+    type AuthHelperpromptAuthIfNeededReturn = struct {
+        bool $retry;
+        bool $storeAuth;
+    };
+
+    /**
+     * Overlay: array shape for `ConfigValidatorvalidateReturn`.
+     */
+    type ConfigValidatorvalidateReturn = struct {
+        array<int, string> 0 as $errors;
+        array<int, string> 1 as $publishErrors;
+        array<int, string> 2 as $warnings;
+    };
+
+    // @overlay-against: class AuthHelper
+    partial class AuthHelper {
+        // @overlay-against: function promptAuthIfNeeded(string $url, string $origin, int $statusCode, ?string $reason, array $headers, int $retryCount, ?string $responseBody): array
+        public function promptAuthIfNeeded(string $url, string $origin, int $statusCode, ?string $reason = null, array<int, string> $headers = [], int $retryCount = 0, ?string $responseBody = null): \Composer\Util\AuthHelperpromptAuthIfNeededReturn;
+    }
+
+    // @overlay-against: class ConfigValidator
+    partial class ConfigValidator {
+        // @overlay-against: function validate(string $file, int $arrayLoaderValidationFlags, int $flags): array
+        public function validate(string $file, int $arrayLoaderValidationFlags = \Composer\Package\Loader\ValidatingArrayLoader::CHECK_ALL, int $flags = self::CHECK_VERSION): \Composer\Util\ConfigValidatorvalidateReturn;
+    }
+}

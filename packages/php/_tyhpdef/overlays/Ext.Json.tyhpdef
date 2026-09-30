@@ -1,0 +1,164 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * JSON signature enrichments: JSON-shaped return aliases, literal `$associative` /
+ * flag overloads for `json_decode`, and `json_encode` `JSON_THROW_ON_ERROR`.
+ * Not Pure (see Pure.Json.tyhpdef).
+ *
+ * `$associative` overloads use `true` / `false` / `null` literals. Flag overloads use
+ * integer literals (Decision 18: `const int NAME ?? N` is literal `N` at the call site).
+ * Bitwise `|` of `JSON_*` constants is not folded to a literal, so those calls use the
+ * `int $flags` catch-all.
+ *
+ * JSON scalars (`"hi"`, `42`, `true`, `null`) keep their PHP types in every mode. JSON
+ * arrays are always PHP lists. Only JSON objects follow `$associative` /
+ * `JSON_OBJECT_AS_ARRAY`. Failure without `JSON_THROW_ON_ERROR` is `null` (`json_decode`)
+ * or `false` (`json_encode`).
+ */
+
+/**
+ * Overlay: `json_decode(..., true)` value tree. JSON objects are string-keyed arrays;
+ * JSON arrays are int-keyed lists; nesting stays in this alias.
+ */
+type JsonAssoc = JsonScalar|array<int|string, JsonAssoc>;
+
+/**
+ * Overlay: `json_decode(..., false)` value tree (PHP default). JSON objects are
+ * `\stdClass`; JSON arrays stay lists. Nested object properties on `\stdClass` are untyped.
+ */
+type JsonObject = JsonScalar|array<int, JsonObject>|\stdClass;
+
+/**
+ * Overlay: JSON scalar values (and JSON `null`).
+ */
+type JsonScalar = string|int|float|bool|null;
+
+/**
+ * Overlay: default call (`$associative` null, flags 0). JSON objects are `\stdClass`.
+ *
+ * @return JsonObject|null Decoded value, or null when decoding fails.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, null $associative = null, int $depth = 512, 0 $flags = 0): JsonObject|null;
+
+/**
+ * Overlay: `$associative = true`, default flags. JSON objects are associative arrays.
+ *
+ * @param true $associative JSON objects become arrays.
+ * @return JsonAssoc|null Decoded value, or null when decoding fails.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, true $associative, int $depth = 512, 0 $flags = 0): JsonAssoc|null;
+
+/**
+ * Overlay: `$associative = false`, default flags. JSON objects are `\stdClass`.
+ *
+ * @param false $associative JSON objects become objects.
+ * @return JsonObject|null Decoded value, or null when decoding fails.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, false $associative, int $depth = 512, 0 $flags = 0): JsonObject|null;
+
+/**
+ * Overlay: `$associative` null and `JSON_OBJECT_AS_ARRAY` (`1`). Same tree as `$associative = true`.
+ *
+ * @param 1 $flags `JSON_OBJECT_AS_ARRAY`.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, null $associative = null, int $depth = 512, 1 $flags): JsonAssoc|null;
+
+/**
+ * Overlay: `$associative = true` and `JSON_THROW_ON_ERROR` (`4194304`). Failure throws.
+ *
+ * @param 4194304 $flags `JSON_THROW_ON_ERROR`.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, true $associative, int $depth = 512, 4194304 $flags): JsonAssoc;
+
+/**
+ * Overlay: `$associative = false` and `JSON_THROW_ON_ERROR` (`4194304`). Failure throws.
+ *
+ * @param 4194304 $flags `JSON_THROW_ON_ERROR`.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, false $associative, int $depth = 512, 4194304 $flags): JsonObject;
+
+/**
+ * Overlay: `$associative` null and `JSON_THROW_ON_ERROR` (`4194304`). Objects are `\stdClass`.
+ *
+ * @param 4194304 $flags `JSON_THROW_ON_ERROR`.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, null $associative = null, int $depth = 512, 4194304 $flags): JsonObject;
+
+/**
+ * Overlay: `$associative` null and `JSON_OBJECT_AS_ARRAY | JSON_THROW_ON_ERROR` (`4194305`).
+ *
+ * @param 4194305 $flags Both `JSON_OBJECT_AS_ARRAY` and `JSON_THROW_ON_ERROR`.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, null $associative = null, int $depth = 512, 4194305 $flags): JsonAssoc;
+
+/**
+ * Overlay: `$associative = true` and `JSON_OBJECT_AS_ARRAY | JSON_THROW_ON_ERROR` (`4194305`).
+ *
+ * @param 4194305 $flags Both `JSON_OBJECT_AS_ARRAY` and `JSON_THROW_ON_ERROR`.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, true $associative, int $depth = 512, 4194305 $flags): JsonAssoc;
+
+/**
+ * Overlay: `$associative = false` and `JSON_OBJECT_AS_ARRAY | JSON_THROW_ON_ERROR` (`4194305`).
+ * `$associative = false` wins over the object-as-array flag; throw still drops `|null`.
+ *
+ * @param 4194305 $flags Both `JSON_OBJECT_AS_ARRAY` and `JSON_THROW_ON_ERROR`.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, false $associative, int $depth = 512, 4194305 $flags): JsonObject;
+
+/**
+ * Overlay: `$associative = true` with a runtime `int` flags value (including unfolded `JSON_* | JSON_*`).
+ *
+ * @return JsonAssoc|null Decoded value, or null when decoding fails (unless the flags throw).
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, true $associative, int $depth = 512, int $flags = 0): JsonAssoc|null;
+
+/**
+ * Overlay: `$associative = false` with a runtime `int` flags value.
+ *
+ * @return JsonObject|null Decoded value, or null when decoding fails (unless the flags throw).
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(string $json, false $associative, int $depth = 512, int $flags = 0): JsonObject|null;
+
+/**
+ * Overlay: runtime `?bool $associative` and/or runtime `int $flags`.
+ *
+ * @return JsonAssoc|JsonObject|null Either object-as-array or object-as-`stdClass` tree.
+ */
+// @overlay-against: function json_decode(string $json, ?bool $associative, int $depth, int $flags): mixed
+function json_decode(
+    string $json,
+    ?bool $associative = null,
+    int $depth = 512,
+    int $flags = 0
+): JsonAssoc|JsonObject|null;
+
+/**
+ * Overlay: `JSON_THROW_ON_ERROR` (`4194304`). Failure throws `\JsonException`.
+ *
+ * @param 4194304 $flags `JSON_THROW_ON_ERROR`.
+ * @return string JSON text.
+ */
+// @overlay-against: function json_encode(mixed $value, int $flags, int $depth): string|false
+function json_encode(mixed $value, 4194304 $flags, int $depth = 512): string;
+
+/**
+ * Overlay: runtime `int` flags (including unfolded `JSON_* | JSON_*`).
+ *
+ * @return string|false JSON text, or false when encoding fails (unless the flags throw).
+ */
+// @overlay-against: function json_encode(mixed $value, int $flags, int $depth): string|false
+function json_encode(mixed $value, int $flags = 0, int $depth = 512): string|false;

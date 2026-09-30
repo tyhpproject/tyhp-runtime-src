@@ -1,0 +1,461 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * OpenSSL signature enrichments: `openssl_pkey_get_details` / `openssl_x509_parse`
+ * / cert-location structs, CSR distinguished-name and config option arrays, and
+ * PHP 8 OpenSSLCertificate / OpenSSLAsymmetricKey in place of Layer 2 `resource`.
+ */
+
+/**
+ * Overlay: `openssl_get_cert_locations()` search paths.
+ */
+type OpenSslCertLocations = struct {
+    string $default_cert_dir;
+    string $default_cert_dir_env;
+    string $default_cert_file;
+    string $default_cert_file_env;
+    string $default_default_cert_area;
+    string $default_private_dir;
+    string $ini_cafile;
+    string $ini_capath;
+};
+
+/**
+ * Overlay: `openssl_csr_new()` / `openssl_pkey_new()` / export `$options` keys
+ * documented as openssl.conf overrides.
+ */
+type OpenSslConfigOptions = struct {
+    ?string $config;
+    ?string $config_section_section;
+    ?string $curve_name;
+    ?string $digest_alg;
+    ?bool $encrypt_key;
+    ?int $encrypt_key_cipher;
+    ?int $private_key_bits;
+    ?int $private_key_type;
+    ?string $req_extensions;
+    ?string $x509_extensions;
+};
+
+/**
+ * Overlay: private-key array form `[key, passphrase?]`.
+ */
+type OpenSslKeyPassphrase = struct {
+    string 0 as $key;
+    ?string 1 as $passphrase;
+};
+
+/**
+ * Overlay: `openssl_pkcs12_export*()` `$options`.
+ */
+type OpenSslPkcs12ExportOptions = struct {
+    array<int, \OpenSSLCertificate|string>|\OpenSSLCertificate|string|null $extracerts;
+    ?string $friendly_name;
+};
+
+/**
+ * Overlay: `openssl_pkcs12_read()` certificate-store bag.
+ */
+type OpenSslPkcs12Store = struct {
+    string $cert;
+    ?array<int, string> $extracerts;
+    string $pkey;
+};
+
+/**
+ * Overlay: `openssl_pkey_get_details()` — `bits` / `key` / `type` plus the
+ * algorithm-specific component bag that is present for that key type.
+ */
+type OpenSslPkeyDetails = struct {
+    int $bits;
+    ?array<string, string> $dh;
+    ?array<string, string> $dsa;
+    ?array<string, string> $ec;
+    ?array<string, string> $ed25519;
+    ?array<string, string> $ed448;
+    string $key;
+    ?array<string, string> $rsa;
+    int $type;
+    ?array<string, string> $x25519;
+    ?array<string, string> $x448;
+};
+
+/**
+ * Overlay: well-known `openssl_x509_parse()` keys. PHP leaves the shape
+ * underspecified; extra extension / purpose keys are allowed (structural).
+ */
+type OpenSslX509Parse = struct {
+    ?array<string, string> $extensions;
+    ?string $hash;
+    array<string, string|array<int, string>> $issuer;
+    string $name;
+    ?array<int, mixed> $purposes;
+    string $serialNumber;
+    ?string $serialNumberHex;
+    ?string $signatureTypeLN;
+    ?int $signatureTypeNID;
+    ?string $signatureTypeSN;
+    array<string, string|array<int, string>> $subject;
+    string $validFrom;
+    int $validFrom_time_t;
+    string $validTo;
+    int $validTo_time_t;
+    int $version;
+};
+
+/**
+ * Overlay: distinguished-name / subject arrays (`openssl_csr_new`,
+ * `openssl_csr_get_subject`). Values are a string or a list when a field repeats.
+ */
+type OpenSslDistinguishedName = array<string, string|array<int, string>>;
+
+/**
+ * Overlay: Layer 2 reintroduced `resource`; PHP 8 uses `OpenSSLCertificate`.
+ */
+// @overlay-against: function openssl_cms_decrypt(string $input_filename, string $output_filename, mixed $certificate, mixed $private_key, int $encoding): bool
+function openssl_cms_decrypt(
+    string $input_filename,
+    string $output_filename,
+    #[\SensitiveParameter] \OpenSSLCertificate|string $certificate,
+    #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string|null $private_key = null,
+    int $encoding = OPENSSL_ENCODING_SMIME
+): bool;
+
+/**
+ * Overlay: `$certificates` is a list of PEM strings.
+ */
+// @overlay-against: function openssl_cms_read(string $input_filename, mixed $certificates): bool
+function openssl_cms_read(string $input_filename, array<int, string> &$certificates): bool;
+
+/**
+ * Overlay: `$ca_info` is CA file paths / directory names.
+ */
+// @overlay-against: function openssl_cms_verify(string $input_filename, int $flags, ?string $certificates, array $ca_info, ?string $untrusted_certificates_filename, ?string $content, ?string $pk7, ?string $sigfile, int $encoding): bool
+function openssl_cms_verify(
+    string $input_filename,
+    int $flags = 0,
+    ?string $certificates = null,
+    array<int, string> $ca_info = [],
+    ?string $untrusted_certificates_filename = null,
+    ?string $content = null,
+    ?string $pk7 = null,
+    ?string $sigfile = null,
+    int $encoding = OPENSSL_ENCODING_SMIME
+): bool;
+
+/**
+ * Overlay: CSR subject DN array.
+ */
+// @overlay-against: function openssl_csr_get_subject(\OpenSSLCertificateSigningRequest|string $csr, bool $short_names): array|false
+function openssl_csr_get_subject(\OpenSSLCertificateSigningRequest|string $csr, bool $short_names = true): OpenSslDistinguishedName|false;
+
+/**
+ * Overlay: DN + openssl.conf option structs; `$private_key` is filled on success.
+ */
+// @overlay-against: function openssl_csr_new(array $distinguished_names, mixed $private_key, ?array $options, ?array $extra_attributes): \OpenSSLCertificateSigningRequest|bool
+function openssl_csr_new(
+    OpenSslDistinguishedName $distinguished_names,
+    #[\SensitiveParameter] mixed &$private_key,
+    ?OpenSslConfigOptions $options = null,
+    ?array<string, string> $extra_attributes = null
+): \OpenSSLCertificateSigningRequest|bool;
+
+/**
+ * Overlay: documented cert-location keys.
+ */
+// @overlay-against: function openssl_get_cert_locations(): array
+function openssl_get_cert_locations(): OpenSslCertLocations;
+
+/**
+ * Overlay: cipher method names.
+ */
+// @overlay-against: function openssl_get_cipher_methods(bool $aliases): array
+function openssl_get_cipher_methods(bool $aliases = false): array<int, string>;
+
+/**
+ * Overlay: ECC curve names.
+ */
+// @overlay-against: function openssl_get_curve_names(): array|false
+function openssl_get_curve_names(): array<int, string>|false;
+
+/**
+ * Overlay: digest method names.
+ */
+// @overlay-against: function openssl_get_md_methods(bool $aliases): array
+function openssl_get_md_methods(bool $aliases = false): array<int, string>;
+
+/**
+ * Overlay: PKCS#12 export option bag.
+ */
+// @overlay-against: function openssl_pkcs12_export(\OpenSSLCertificate|string $certificate, mixed $output, mixed $private_key, string $passphrase, array $options): bool
+function openssl_pkcs12_export(
+    \OpenSSLCertificate|string $certificate,
+    mixed &$output,
+    #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+    #[\SensitiveParameter] string $passphrase,
+    OpenSslPkcs12ExportOptions $options = []
+): bool;
+
+/**
+ * Overlay: PKCS#12 export option bag (file form).
+ */
+// @overlay-against: function openssl_pkcs12_export_to_file(\OpenSSLCertificate|string $certificate, string $output_filename, mixed $private_key, string $passphrase, array $options): bool
+function openssl_pkcs12_export_to_file(
+    \OpenSSLCertificate|string $certificate,
+    string $output_filename,
+    #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+    #[\SensitiveParameter] string $passphrase,
+    OpenSslPkcs12ExportOptions $options = []
+): bool;
+
+/**
+ * Overlay: parsed PKCS#12 store.
+ */
+// @overlay-against: function openssl_pkcs12_read(string $pkcs12, mixed $certificates, string $passphrase): bool
+function openssl_pkcs12_read(
+    string $pkcs12,
+    OpenSslPkcs12Store &$certificates,
+    #[\SensitiveParameter] string $passphrase
+): bool;
+
+/**
+ * Overlay: Layer 2 reintroduced `resource`; PHP 8 uses `OpenSSLCertificate`.
+ */
+// @overlay-against: function openssl_pkcs7_decrypt(string $input_filename, string $output_filename, mixed $certificate, mixed $private_key): bool
+function openssl_pkcs7_decrypt(
+    string $input_filename,
+    string $output_filename,
+    #[\SensitiveParameter] \OpenSSLCertificate|string $certificate,
+    #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string|null $private_key = null
+): bool;
+
+/**
+ * Overlay: Layer 2 reintroduced `resource` on `$certificate`.
+ */
+// @overlay-against: function openssl_pkcs7_encrypt(string $input_filename, string $output_filename, mixed $certificate, ?array $headers, int $flags, int $cipher_algo): bool
+function openssl_pkcs7_encrypt(
+    string $input_filename,
+    string $output_filename,
+    array<int, \OpenSSLCertificate|string>|\OpenSSLCertificate|string $certificate,
+    ?array<int|string, string> $headers,
+    int $flags = 0,
+    int $cipher_algo = OPENSSL_CIPHER_AES_128_CBC
+): bool;
+
+/**
+ * Overlay: `$certificates` is a list of PEM strings.
+ */
+// @overlay-against: function openssl_pkcs7_read(string $data, mixed $certificates): bool
+function openssl_pkcs7_read(string $data, array<int, string> &$certificates): bool;
+
+/**
+ * Overlay: `$ca_info` is CA file paths / directory names.
+ */
+// @overlay-against: function openssl_pkcs7_verify(string $input_filename, int $flags, ?string $signers_certificates_filename, array $ca_info, ?string $untrusted_certificates_filename, ?string $content, ?string $output_filename): int|bool
+function openssl_pkcs7_verify(
+    string $input_filename,
+    int $flags,
+    ?string $signers_certificates_filename = null,
+    array<int, string> $ca_info = [],
+    ?string $untrusted_certificates_filename = null,
+    ?string $content = null,
+    ?string $output_filename = null
+): int|bool;
+
+/**
+ * Overlay: documented bits / key / type plus algorithm component bags.
+ */
+// @overlay-against: function openssl_pkey_get_details(\OpenSSLAsymmetricKey $key): array|false
+function openssl_pkey_get_details(\OpenSSLAsymmetricKey $key): OpenSslPkeyDetails|false;
+
+/**
+ * Overlay: openssl.conf option struct used for key generation.
+ */
+// @overlay-against: function openssl_pkey_new(?array $options): \OpenSSLAsymmetricKey|false
+function openssl_pkey_new(?OpenSslConfigOptions $options = null): \OpenSSLAsymmetricKey|false;
+
+/**
+ * Overlay: `$public_key` is a list of public keys; `$encrypted_keys` is filled with envelope keys.
+ */
+// @overlay-against: function openssl_seal(string $data, mixed $sealed_data, mixed $encrypted_keys, array $public_key, string $cipher_algo, mixed $iv): int|false
+function openssl_seal(
+    #[\SensitiveParameter] string $data,
+    mixed &$sealed_data,
+    array<int, string> &$encrypted_keys,
+    array<int, \OpenSSLAsymmetricKey|\OpenSSLCertificate|string> $public_key,
+    string $cipher_algo,
+    mixed &$iv = null
+): int|false;
+
+/**
+ * Overlay: `$ca_info` is CA file paths / directory names.
+ */
+// @overlay-against: function openssl_x509_checkpurpose(\OpenSSLCertificate|string $certificate, int $purpose, array $ca_info, ?string $untrusted_certificates_file): int|bool
+function openssl_x509_checkpurpose(
+    \OpenSSLCertificate|string $certificate,
+    int $purpose,
+    array<int, string> $ca_info = [],
+    ?string $untrusted_certificates_file = null
+): int|bool;
+
+/**
+ * Overlay: parsed certificate fields.
+ */
+// @overlay-against: function openssl_x509_parse(\OpenSSLCertificate|string $certificate, bool $short_names): array|false
+function openssl_x509_parse(\OpenSSLCertificate|string $certificate, bool $short_names = true): OpenSslX509Parse|false;
+
+declare(php="<8.4") {
+    /**
+     * Overlay: `$options` is the openssl.conf override bag; `$private_key` is a key material union.
+     */
+    // @overlay-against: function openssl_csr_sign(\OpenSSLCertificateSigningRequest|string $csr, \OpenSSLCertificate|string|null $ca_certificate, mixed $private_key, int $days, ?array $options, int $serial): \OpenSSLCertificate|false
+    function openssl_csr_sign(
+        \OpenSSLCertificateSigningRequest|string $csr,
+        \OpenSSLCertificate|string|null $ca_certificate,
+        #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+        int $days,
+        ?OpenSslConfigOptions $options = null,
+        int $serial = 0
+    ): \OpenSSLCertificate|false;
+}
+
+declare(php="<8.5") {
+    /**
+     * Overlay: `$certificate` is one or more X.509 certificates.
+     */
+    // @overlay-against: function openssl_cms_encrypt(string $input_filename, string $output_filename, mixed $certificate, ?array $headers, int $flags, int $encoding, int $cipher_algo): bool
+    function openssl_cms_encrypt(
+        string $input_filename,
+        string $output_filename,
+        array<int, \OpenSSLCertificate|string>|\OpenSSLCertificate|string $certificate,
+        ?array<int|string, string> $headers,
+        int $flags = 0,
+        int $encoding = OPENSSL_ENCODING_SMIME,
+        int $cipher_algo = OPENSSL_CIPHER_AES_128_CBC
+    ): bool;
+
+    /**
+     * Overlay: `$private_key` is key material, not `mixed`.
+     */
+    // @overlay-against: function openssl_private_decrypt(string $data, mixed $decrypted_data, mixed $private_key, int $padding): bool
+    function openssl_private_decrypt(
+        string $data,
+        #[\SensitiveParameter] mixed &$decrypted_data,
+        #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+        int $padding = OPENSSL_PKCS1_PADDING
+    ): bool;
+
+    /**
+     * Overlay: `$public_key` is key material, not `mixed`.
+     */
+    // @overlay-against: function openssl_public_encrypt(string $data, mixed $encrypted_data, mixed $public_key, int $padding): bool
+    function openssl_public_encrypt(
+        #[\SensitiveParameter] string $data,
+        mixed &$encrypted_data,
+        OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $public_key,
+        int $padding = OPENSSL_PKCS1_PADDING
+    ): bool;
+
+    /**
+     * Overlay: `$private_key` is key material, not `mixed`.
+     */
+    // @overlay-against: function openssl_sign(string $data, mixed $signature, mixed $private_key, string|int $algorithm): bool
+    function openssl_sign(
+        string $data,
+        mixed &$signature,
+        #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+        string|int $algorithm = OPENSSL_ALGO_SHA1
+    ): bool;
+
+    /**
+     * Overlay: `$public_key` is key material, not `mixed`.
+     */
+    // @overlay-against: function openssl_verify(string $data, string $signature, mixed $public_key, string|int $algorithm): int|false
+    function openssl_verify(
+        string $data,
+        string $signature,
+        OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $public_key,
+        string|int $algorithm = OPENSSL_ALGO_SHA1
+    ): int|false;
+}
+
+declare(php=">=8.4") {
+    /**
+     * Overlay: PHP 8.4+ `$serial_hex`; `$options` is the openssl.conf override bag.
+     */
+    // @overlay-against: function openssl_csr_sign(\OpenSSLCertificateSigningRequest|string $csr, \OpenSSLCertificate|string|null $ca_certificate, mixed $private_key, int $days, ?array $options, int $serial, ?string $serial_hex): \OpenSSLCertificate|false
+    function openssl_csr_sign(
+        \OpenSSLCertificateSigningRequest|string $csr,
+        \OpenSSLCertificate|string|null $ca_certificate,
+        #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+        int $days,
+        ?OpenSslConfigOptions $options = null,
+        int $serial = 0,
+        ?string $serial_hex = null
+    ): \OpenSSLCertificate|false;
+}
+
+declare(php=">=8.5") {
+    /**
+     * Overlay: `$cipher_algo` may be a string name on PHP 8.5+.
+     */
+    // @overlay-against: function openssl_cms_encrypt(string $input_filename, string $output_filename, mixed $certificate, ?array $headers, int $flags, int $encoding, string|int $cipher_algo): bool
+    function openssl_cms_encrypt(
+        string $input_filename,
+        string $output_filename,
+        array<int, \OpenSSLCertificate|string>|\OpenSSLCertificate|string $certificate,
+        ?array<int|string, string> $headers,
+        int $flags = 0,
+        int $encoding = OPENSSL_ENCODING_SMIME,
+        string|int $cipher_algo = OPENSSL_CIPHER_AES_128_CBC
+    ): bool;
+
+    /**
+     * Overlay: PHP 8.5+ `$digest_algo`; `$private_key` is key material.
+     */
+    // @overlay-against: function openssl_private_decrypt(string $data, mixed $decrypted_data, mixed $private_key, int $padding, ?string $digest_algo): bool
+    function openssl_private_decrypt(
+        string $data,
+        #[\SensitiveParameter] mixed &$decrypted_data,
+        #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+        int $padding = OPENSSL_PKCS1_PADDING,
+        ?string $digest_algo = null
+    ): bool;
+
+    /**
+     * Overlay: PHP 8.5+ `$digest_algo`; `$public_key` is key material.
+     */
+    // @overlay-against: function openssl_public_encrypt(string $data, mixed $encrypted_data, mixed $public_key, int $padding, ?string $digest_algo): bool
+    function openssl_public_encrypt(
+        #[\SensitiveParameter] string $data,
+        mixed &$encrypted_data,
+        OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $public_key,
+        int $padding = OPENSSL_PKCS1_PADDING,
+        ?string $digest_algo = null
+    ): bool;
+
+    /**
+     * Overlay: PHP 8.5+ `$padding`; `$private_key` is key material.
+     */
+    // @overlay-against: function openssl_sign(string $data, mixed $signature, mixed $private_key, string|int $algorithm, int $padding): bool
+    function openssl_sign(
+        string $data,
+        mixed &$signature,
+        #[\SensitiveParameter] OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $private_key,
+        string|int $algorithm = OPENSSL_ALGO_SHA1,
+        int $padding = 0
+    ): bool;
+
+    /**
+     * Overlay: PHP 8.5+ `$padding`; `$public_key` is key material.
+     */
+    // @overlay-against: function openssl_verify(string $data, string $signature, mixed $public_key, string|int $algorithm, int $padding): int|false
+    function openssl_verify(
+        string $data,
+        string $signature,
+        OpenSslKeyPassphrase|OpenSslPkeyDetails|\OpenSSLAsymmetricKey|\OpenSSLCertificate|string $public_key,
+        string|int $algorithm = OPENSSL_ALGO_SHA1,
+        int $padding = 0
+    ): int|false;
+}

@@ -69,15 +69,15 @@ final class PropertyAccessorObject
     public function register<TType>(
         string $property,
         object $host,
-        ?\Closure<TType> $get = null,
-        ?\Closure<mixed, void> $set = null,
+        ?\Closure<callable(): TType> $get = null,
+        ?\Closure<callable(mixed): void> $set = null,
         bool $backed = false,
         mixed $defaultValue = null,
         bool $defaultValueIsNull = false,
         string $visibility = 'public',
         string $setVisibility = 'public',
         bool $shadowInherited = true,
-        ?string $declaringClass = null,
+        ?__ClassName $declaringClass = null,
         ?Type $setAcceptType = null,
         bool $finalGet = false,
         bool $finalSet = false,
@@ -103,8 +103,9 @@ final class PropertyAccessorObject
                                 $defaultValueIsNull = $defaultValue === null;
                             }
                         }
-                    } catch (\Throwable) {
+                    } catch (\Throwable $e) {
                         // No inherited plain property (or inaccessible) — leave defaults alone.
+                        (void)$e;
                     }
                 }
             } elseif (!$backed && $this->inheritedPropertyExists($host, $property)) {
@@ -115,7 +116,7 @@ final class PropertyAccessorObject
             $this->shadowInheritedProperty($host, $property);
         }
 
-        string $decl = $declaringClass ?? $host::class;
+        __ClassName $decl = $declaringClass ?? $host::class;
 
         // PHP 8.4: `final get` / `final set` cannot be overridden by a child. Init chain
         // registers most-derived first, so check both already-registered ancestors and a
@@ -178,15 +179,15 @@ final class PropertyAccessorObject
      */
     private function assertFinalHooksAllowRegistration(
         string $property,
-        string $declaringClass,
+        __ClassName $declaringClass,
         bool $hasGet,
         bool $hasSet,
         bool $finalGet,
         bool $finalSet,
     ): void {
-        string|null $ancestorClass = null;
+        __ClassName|null $ancestorClass = null;
         $parent = \get_parent_class($declaringClass);
-        if (\is_string($parent)) {
+        if ($parent !== false) {
             $ancestorClass = $parent;
         }
 
@@ -222,7 +223,7 @@ final class PropertyAccessorObject
 
         PropertyAccessor<mixed> $live = $this->live[$property];
         string $liveDecl = $live->getDeclaringClass();
-        if ($liveDecl === $declaringClass || !\is_subclass_of($liveDecl, $declaringClass)) {
+        if ($liveDecl === $declaringClass || !\class_exists($liveDecl) || !\is_subclass_of($liveDecl, $declaringClass)) {
             return;
         }
 
@@ -302,8 +303,9 @@ final class PropertyAccessorObject
     {
         try {
             unset($host->{$property});
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             // Property may already be unset, private on parent, or otherwise unsettable.
+            (void)$e;
         }
     }
 
@@ -340,7 +342,7 @@ final class PropertyAccessorObject
      * class — the search would land back on the calling level's own accessor and recurse into
      * the very hook currently executing.
      */
-    public function parentGet(object $host, string $property, ?string $declaringClass = null): mixed
+    public function parentGet(object $host, string $property, ?__ClassName $declaringClass = null): mixed
     {
         $ancestor = $this->findAncestorAccessor($host, $property, $declaringClass);
         if ($ancestor !== null) {
@@ -372,7 +374,7 @@ final class PropertyAccessorObject
         object $host,
         string $property,
         mixed $value,
-        ?string $declaringClass = null,
+        ?__ClassName $declaringClass = null,
     ): void {
         $ancestor = $this->findAncestorAccessor($host, $property, $declaringClass);
         if ($ancestor !== null) {
@@ -447,7 +449,7 @@ final class PropertyAccessorObject
     {
         string|null $mostDerived = null;
         foreach ($this->accessors as $decl => $props) {
-            if (!isset($props[$property])) {
+            if (!isset($props[$property]) || !\class_exists($decl)) {
                 continue;
             }
 

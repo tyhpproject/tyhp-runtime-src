@@ -1,0 +1,483 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under `overlays/stubs/`).
+ *
+ * FPM types name unwrapped hollodotme/FastCGI and Hoa sockets.
+ * `VaporWorker` extends illuminate-queue's omitted `Worker`.
+ * Warmer Lambda client and Riverline multipart parser are unwrapped.
+ * AWS S3 types come from path-linked `tyhpdef/aws-aws-sdk-php`.
+ */
+
+namespace Laravel\Vapor\Console\Commands {
+    // @overlay-against: class VaporWorkCommand extends \Illuminate\Console\Command implements \Laravel\Vapor\Console\Commands\WritesQueueEventMessages
+    omit class VaporWorkCommand {
+    }
+}
+
+namespace Laravel\Vapor\Queue {
+    /**
+     * Overlay: `VaporConnector::connect()` reads these keys after merging SQS defaults.
+     */
+    type VaporConnectorConnectConfig = struct {
+        mixed|null $after_commit;
+        mixed $key;
+        array|null $overflow;
+        mixed|null $prefix;
+        mixed $queue;
+        mixed $secret;
+        mixed|null $suffix;
+        mixed|null $token;
+    };
+
+    // @overlay-against: class VaporWorker extends \Illuminate\Queue\Worker
+    omit class VaporWorker {
+    }
+
+    // @overlay-against: class VaporConnector implements \Illuminate\Queue\Connectors\ConnectorInterface
+    partial class VaporConnector {
+        /**
+         * Overlay: `VaporConnector::connect()` reads queue settings and passes the rest of the array to the SQS client.
+         */
+        // @overlay-against: function connect(array $config): \Illuminate\Contracts\Queue\Queue
+        public function connect(VaporConnectorConnectConfig $config): \Illuminate\Contracts\Queue\Queue;
+    }
+}
+
+namespace Laravel\Vapor\Runtime\Fpm {
+    // @overlay-against: trait ActsAsFastCgiDataProvider
+    omit trait ActsAsFastCgiDataProvider {
+    }
+    // @overlay-against: class Fpm
+    omit class Fpm {
+    }
+    // @overlay-against: class FpmApplication
+    omit class FpmApplication {
+    }
+    // @overlay-against: class FpmRequest extends \Laravel\Vapor\Runtime\Request implements \hollodotme\FastCGI\Interfaces\ProvidesRequestData, \Laravel\Vapor\Runtime\Fpm\ActsAsFastCgiDataProvider
+    omit class FpmRequest {
+    }
+    // @overlay-against: class FpmResponse extends \Laravel\Vapor\Runtime\Response
+    omit class FpmResponse {
+    }
+
+    // @overlay-against: class FpmHttpHandlerFactory
+    partial class FpmHttpHandlerFactory {
+        /**
+         * Overlay: `FpmHttpHandlerFactory::make()` branches on warmer, load-balancer, and HTTP discriminator keys.
+         */
+        // @overlay-against: function make(array $event): \Laravel\Vapor\Contracts\LambdaEventHandler
+        public static function make(\Laravel\Vapor\Runtime\HttpHandlerFactoryMakeEvent $event): \Laravel\Vapor\Contracts\LambdaEventHandler;
+    }
+
+    // @overlay-against: class FpmResponseHeaders
+    partial class FpmResponseHeaders {
+        /**
+         * Overlay: `FpmResponseHeaders::fromBody()` maps each header name to the trimmed values on that line.
+         */
+        // @overlay-against: function fromBody(string $body): array
+        public static function fromBody(string $body): array<string, array<int, string>>;
+    }
+}
+
+namespace Laravel\Vapor\Runtime\Handlers {
+    /**
+     * Overlay: `CliHandler::handle()` reads `cli` and `callback` and encodes any other keys.
+     */
+    type CliHandlerHandleEvent = struct {
+        string|null $callback;
+        string|null $cli;
+    };
+
+    /**
+     * Overlay: `WarmerHandler::handle()` reads the warmer concurrency and function target.
+     */
+    type WarmerHandlerHandleEvent = struct {
+        int $concurrency;
+        mixed $functionAlias;
+        mixed $functionName;
+    };
+
+    // @overlay-against: class FpmHandler implements \Laravel\Vapor\Contracts\LambdaEventHandler
+    omit class FpmHandler {
+    }
+    // @overlay-against: class LoadBalancedFpmHandler extends \Laravel\Vapor\Runtime\Handlers\FpmHandler
+    omit class LoadBalancedFpmHandler {
+    }
+    // @overlay-against: class PayloadFormatVersion2FpmHandler extends \Laravel\Vapor\Runtime\Handlers\FpmHandler implements \Laravel\Vapor\Contracts\LambdaEventHandler
+    omit class PayloadFormatVersion2FpmHandler {
+    }
+    // @overlay-against: class LoadBalancedOctaneHandler extends \Laravel\Vapor\Runtime\Handlers\OctaneHandler
+    omit class LoadBalancedOctaneHandler {
+    }
+    // @overlay-against: class OctaneHandler implements \Laravel\Vapor\Contracts\LambdaEventHandler, \Laravel\Octane\MarshalsPsr7RequestsAndResponses
+    omit class OctaneHandler {
+    }
+    // @overlay-against: class PayloadFormatVersion2OctaneHandler extends \Laravel\Vapor\Runtime\Handlers\OctaneHandler implements \Laravel\Vapor\Contracts\LambdaEventHandler
+    omit class PayloadFormatVersion2OctaneHandler {
+    }
+
+    // @overlay-against: class CliHandler implements \Laravel\Vapor\Contracts\LambdaEventHandler
+    partial class CliHandler {
+        /**
+         * Overlay: `CliHandler::handle()` trims `cli` and posts `callback` when it is set.
+         */
+        // @overlay-against: function handle(array $event): \Laravel\Vapor\Contracts\LambdaResponse
+        public function handle(CliHandlerHandleEvent $event): \Laravel\Vapor\Contracts\LambdaResponse;
+    }
+
+    // @overlay-against: class WarmerHandler implements \Laravel\Vapor\Contracts\LambdaEventHandler
+    partial class WarmerHandler {
+        /**
+         * Overlay: `WarmerHandler::handle()` subtracts `concurrency` and passes the function target to Lambda.
+         */
+        // @overlay-against: function handle(array $event): \Laravel\Vapor\Contracts\LambdaResponse
+        public function handle(WarmerHandlerHandleEvent $event): \Laravel\Vapor\Contracts\LambdaResponse;
+    }
+}
+
+namespace Laravel\Vapor {
+    /**
+     * Overlay: documented array shape.
+     */
+    type HasAwsContextAwsContextResult = struct {
+        string|null $function_name;
+        string|null $function_version;
+        string|null $log_group_name;
+        string|null $log_stream_name;
+        string|null $request_id;
+    };
+
+    // @overlay-against: trait HasAwsContext
+    partial trait HasAwsContext {
+        /**
+         * Overlay: `HasAwsContext::awsContext()` uses the documented types.
+         */
+        // @overlay-against: function awsContext(): array
+        protected function awsContext(): HasAwsContextAwsContextResult;
+    }
+}
+
+namespace Laravel\Vapor\Http\Middleware {
+    // @overlay-against: class ServeStaticAssets
+    partial class ServeStaticAssets {
+        /**
+         * Overlay: `ServeStaticAssets::handle()` calls `$next` with the request and uses `getStatusCode()`.
+         */
+        // @overlay-against: function handle(\Illuminate\Http\Request $request, \Closure $next, mixed $guards): mixed
+        public function handle(\Illuminate\Http\Request $request, \Closure<callable(\Illuminate\Http\Request): \Symfony\Component\HttpFoundation\Response> $next, mixed ...$guards): \Symfony\Component\HttpFoundation\Response;
+    }
+}
+
+namespace Laravel\Vapor\Logging {
+    /**
+     * Overlay: `JsonFormatter::format()` merges `context` when the record is not a `LogRecord`.
+     */
+    type JsonFormatterFormatRecord = struct {
+        array|null $context;
+    };
+
+    // @overlay-against: class JsonFormatter extends \Monolog\Formatter\JsonFormatter
+    partial class JsonFormatter {
+        /**
+         * Overlay: `JsonFormatter::format()` accepts a Monolog 3 record or a record array with `context`.
+         */
+        // @overlay-against: function format(mixed $record): string
+        public function format(\Monolog\LogRecord|JsonFormatterFormatRecord $record): string;
+    }
+}
+
+namespace Laravel\Vapor\Runtime {
+    /**
+     * Overlay: `CliHandlerFactory::make()` reads `Records[0].messageId` and `Records[0].body`.
+     */
+    type CliHandlerFactoryMakeEvent = struct {
+        array<int, CliHandlerFactoryMakeEventRecord>|null $Records;
+    };
+
+    /**
+     * Overlay: one SQS record as read by `CliHandlerFactory::make()`.
+     */
+    type CliHandlerFactoryMakeEventRecord = struct {
+        string|null $body;
+        mixed|null $messageId;
+    };
+
+    /**
+     * Overlay: discriminator keys read by the FPM and Octane HTTP handler factories.
+     */
+    type HttpHandlerFactoryMakeEvent = struct {
+        mixed|null $httpMethod;
+        HttpHandlerFactoryMakeEventRequestContext|null $requestContext;
+        mixed|null $vaporWarmer;
+        mixed|null $vaporWarmerPing;
+        string|null $version;
+    };
+
+    /**
+     * Overlay: `requestContext.http.method` presence check in the HTTP handler factories.
+     */
+    type HttpHandlerFactoryMakeEventHttp = struct {
+        mixed|null $method;
+    };
+
+    /**
+     * Overlay: `requestContext.elb` and `requestContext.http` presence checks in the HTTP handler factories.
+     */
+    type HttpHandlerFactoryMakeEventRequestContext = struct {
+        mixed|null $elb;
+        HttpHandlerFactoryMakeEventHttp|null $http;
+    };
+
+    /**
+     * Overlay: `LambdaInvocation::next()` returns the invocation id and the decoded body.
+     */
+    type LambdaInvocationNextResult = struct {
+        string 0 as $invocationId;
+        mixed 1 as $event;
+    };
+
+    /**
+     * Overlay: `LambdaResponse::toApiGatewayFormat()` returns API Gateway proxy fields.
+     */
+    type LambdaResponseToApiGatewayFormatResult = struct {
+        string $body;
+        \stdClass|array<string, mixed> $headers;
+        bool $isBase64Encoded;
+        int $statusCode;
+    };
+
+    /**
+     * Overlay: `LoadBalancedLambdaResponse::toApiGatewayFormat()` returns the load-balancer payload.
+     */
+    type LoadBalancedLambdaResponseToApiGatewayFormatResult = struct {
+        string $body;
+        bool $isBase64Encoded;
+        array<string, array<int, string>> $multiValueHeaders;
+        int $statusCode;
+        string $statusDescription;
+    };
+
+    /**
+     * Overlay: `PayloadFormatVersion2LambdaResponse::toApiGatewayFormat()` returns the v2 proxy payload.
+     */
+    type PayloadFormatVersion2LambdaResponseToApiGatewayFormatResult = struct {
+        string $body;
+        array<int, mixed> $cookies;
+        \stdClass|array<string, mixed> $headers;
+        bool $isBase64Encoded;
+        int $statusCode;
+    };
+
+    /**
+     * Overlay: keys `Request::fromLambdaEvent()` reads from an API Gateway or load-balancer event.
+     */
+    type RequestFromLambdaEventEvent = struct {
+        string|null $body;
+        array<string, mixed>|null $headers;
+        string|null $httpMethod;
+        bool|null $isBase64Encoded;
+        array<string, array<int, mixed>>|null $multiValueHeaders;
+        array<string, array<int, string>>|null $multiValueQueryStringParameters;
+        string|null $path;
+        array<string, string>|null $queryStringParameters;
+        mixed|null $rawQueryString;
+        RequestFromLambdaEventRequestContext|null $requestContext;
+        string|null $version;
+    };
+
+    /**
+     * Overlay: `requestContext` keys read by `Request::fromLambdaEvent()`.
+     */
+    type RequestFromLambdaEventRequestContext = struct {
+        mixed|null $elb;
+        RequestFromLambdaEventRequestContextHttp|null $http;
+        RequestFromLambdaEventRequestContextIdentity|null $identity;
+        string|null $protocol;
+        mixed|null $requestTimeEpoch;
+        mixed|null $timeEpoch;
+    };
+
+    /**
+     * Overlay: `requestContext.http` keys read by `Request::fromLambdaEvent()`.
+     */
+    type RequestFromLambdaEventRequestContextHttp = struct {
+        string|null $method;
+        string|null $path;
+        string|null $protocol;
+        mixed|null $sourceIp;
+    };
+
+    /**
+     * Overlay: `requestContext.identity.sourceIp` as read by `Request::fromLambdaEvent()`.
+     */
+    type RequestFromLambdaEventRequestContextIdentity = struct {
+        mixed|null $sourceIp;
+    };
+
+    // @overlay-against: class CliHandlerFactory
+    partial class CliHandlerFactory {
+        /**
+         * Overlay: `CliHandlerFactory::make()` reads `Records[0]` unless a custom factory is set.
+         */
+        // @overlay-against: function make(array $event): mixed
+        public static function make(CliHandlerFactoryMakeEvent $event): mixed;
+
+        /**
+         * Overlay: `CliHandlerFactory::createHandlerUsing()` is invoked with the CLI event.
+         */
+        // @overlay-against: function createHandlerUsing(callable $callback): void
+        public static function createHandlerUsing(callable(CliHandlerFactoryMakeEvent): mixed $callback): void;
+    }
+
+    // @overlay-against: class Environment
+    partial class Environment {
+        /**
+         * Overlay: `Environment::decrypt()` passes `$app` to the constructor, which requires the application contract.
+         */
+        // @overlay-against: function decrypt(mixed $app): void
+        public static function decrypt(\Illuminate\Contracts\Foundation\Application $app): void;
+    }
+
+    // @overlay-against: class LambdaInvocation
+    partial class LambdaInvocation {
+        /**
+         * Overlay: `LambdaInvocation::next()` returns the request id and `json_decode` of the body.
+         */
+        // @overlay-against: function next(string $apiUrl): array
+        public static function next(string $apiUrl): LambdaInvocationNextResult;
+    }
+
+    // @overlay-against: class LambdaResponse implements \Laravel\Vapor\Contracts\LambdaResponse
+    partial class LambdaResponse {
+        /**
+         * Overlay: `LambdaResponse::__construct()` stores headers as name to list-of-values.
+         */
+        // @overlay-against: function __construct(int $status, array $headers, string $body): void
+        public function __construct(int $status, array<string, array<int, mixed>> $headers, string $body): void;
+
+        /**
+         * Overlay: `LambdaResponse::toApiGatewayFormat()` returns the proxy status, headers, and body.
+         */
+        // @overlay-against: function toApiGatewayFormat(): array
+        public function toApiGatewayFormat(): LambdaResponseToApiGatewayFormatResult;
+    }
+
+    // @overlay-against: class LambdaRuntime implements \Laravel\Vapor\Runtime\NotifiesLambda
+    partial class LambdaRuntime {
+        /**
+         * Overlay: `LambdaRuntime::nextInvocation()` calls the callback with the invocation id and decoded event.
+         */
+        // @overlay-against: function nextInvocation(callable $callback): void
+        public function nextInvocation(callable(string, mixed): mixed $callback): void;
+    }
+
+    // @overlay-against: class LoadBalancedLambdaResponse extends \Laravel\Vapor\Runtime\LambdaResponse
+    partial class LoadBalancedLambdaResponse {
+        /**
+         * Overlay: `LoadBalancedLambdaResponse::toApiGatewayFormat()` returns multi-value headers and a status description.
+         */
+        // @overlay-against: function toApiGatewayFormat(): array
+        public function toApiGatewayFormat(): LoadBalancedLambdaResponseToApiGatewayFormatResult;
+    }
+
+    // @overlay-against: class PayloadFormatVersion2LambdaResponse extends \Laravel\Vapor\Runtime\LambdaResponse implements \Laravel\Vapor\Contracts\LambdaResponse
+    partial class PayloadFormatVersion2LambdaResponse {
+        /**
+         * Overlay: `PayloadFormatVersion2LambdaResponse::toApiGatewayFormat()` returns cookies separately from headers.
+         */
+        // @overlay-against: function toApiGatewayFormat(): array
+        public function toApiGatewayFormat(): PayloadFormatVersion2LambdaResponseToApiGatewayFormatResult;
+    }
+
+    // @overlay-against: class Request
+    partial class Request {
+        /**
+         * Overlay: `Request::fromLambdaEvent()` reads API Gateway v1, v2, and load-balancer keys.
+         */
+        // @overlay-against: function fromLambdaEvent(array $event, array $serverVariables, string|null $handler): static
+        public static function fromLambdaEvent(RequestFromLambdaEventEvent $event, array $serverVariables = [], string|null $handler = null): static;
+    }
+
+    // @overlay-against: class Secrets
+    partial class Secrets {
+        /**
+         * Overlay: `Secrets::addToEnvironment()` returns the parsed secret map.
+         */
+        // @overlay-against: function addToEnvironment(string $path, array|null $parameters, string $file): array
+        public static function addToEnvironment(string $path, array|null $parameters, string $file): array<string, mixed>;
+
+        /**
+         * Overlay: `Secrets::all()` returns secret name to value from each SSM `Name` and `Value`.
+         */
+        // @overlay-against: function all(string $path, array $parameters): array
+        public static function all(string $path, array $parameters = []): array<string, mixed>;
+    }
+}
+
+namespace Laravel\Vapor\Runtime\Http\Middleware {
+    // @overlay-against: class EnsureBinaryEncoding
+    partial class EnsureBinaryEncoding {
+        /**
+         * Overlay: `EnsureBinaryEncoding::handle()` passes `$next`'s return to `isBase64EncodingRequired()`.
+         */
+        // @overlay-against: function handle(\Illuminate\Http\Request $request, callable $next): mixed
+        public function handle(\Illuminate\Http\Request $request, callable(\Illuminate\Http\Request): \Symfony\Component\HttpFoundation\Response $next): \Symfony\Component\HttpFoundation\Response;
+    }
+
+    // @overlay-against: class EnsureOnNakedDomain
+    partial class EnsureOnNakedDomain {
+        /**
+         * Overlay: `EnsureOnNakedDomain::handle()` calls `$next` with the request and returns that result.
+         */
+        // @overlay-against: function handle(\Illuminate\Http\Request $request, callable $next): mixed
+        public function handle(\Illuminate\Http\Request $request, callable(\Illuminate\Http\Request): mixed $next): mixed;
+    }
+
+    // @overlay-against: class EnsureVanityUrlIsNotIndexed
+    partial class EnsureVanityUrlIsNotIndexed {
+        /**
+         * Overlay: `EnsureVanityUrlIsNotIndexed::handle()` sets a header on `$next`'s response.
+         */
+        // @overlay-against: function handle(\Illuminate\Http\Request $request, callable $next): mixed
+        public function handle(\Illuminate\Http\Request $request, callable(\Illuminate\Http\Request): \Symfony\Component\HttpFoundation\Response $next): \Symfony\Component\HttpFoundation\Response;
+    }
+
+    // @overlay-against: class RedirectStaticAssets
+    partial class RedirectStaticAssets {
+        /**
+         * Overlay: `RedirectStaticAssets::handle()` calls `$next` with the request and returns that result.
+         */
+        // @overlay-against: function handle(\Illuminate\Http\Request $request, callable $next): mixed
+        public function handle(\Illuminate\Http\Request $request, callable(\Illuminate\Http\Request): mixed $next): mixed;
+    }
+}
+
+namespace Laravel\Vapor\Runtime\Octane {
+    /**
+     * Overlay: `OctaneRequestContextFactory::fromEvent()` reads the HTTP event plus `cookies`.
+     */
+    type OctaneRequestContextFactoryFromEventEvent = struct extends \Laravel\Vapor\Runtime\RequestFromLambdaEventEvent {
+        array<int, string>|null $cookies;
+    };
+
+    // @overlay-against: class OctaneHttpHandlerFactory
+    partial class OctaneHttpHandlerFactory {
+        /**
+         * Overlay: `OctaneHttpHandlerFactory::make()` branches on the same discriminator keys as the FPM factory.
+         */
+        // @overlay-against: function make(array $event): \Laravel\Vapor\Contracts\LambdaEventHandler
+        public static function make(\Laravel\Vapor\Runtime\HttpHandlerFactoryMakeEvent $event): \Laravel\Vapor\Contracts\LambdaEventHandler;
+    }
+
+    // @overlay-against: class OctaneRequestContextFactory
+    partial class OctaneRequestContextFactory {
+        /**
+         * Overlay: `OctaneRequestContextFactory::fromEvent()` reads cookies and forwards the event to `Request::fromLambdaEvent()`.
+         */
+        // @overlay-against: function fromEvent(array $event, array $serverVariables): \Laravel\Octane\RequestContext
+        public static function fromEvent(OctaneRequestContextFactoryFromEventEvent $event, array $serverVariables): \Laravel\Octane\RequestContext;
+    }
+}
+extern class \Aws\Lambda\LambdaClient;
+extern class \Riverline\MultipartParser\Part;

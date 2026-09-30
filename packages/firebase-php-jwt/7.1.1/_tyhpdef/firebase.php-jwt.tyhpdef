@@ -1,0 +1,278 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Firebase\JWT {
+    class BeforeValidException extends \UnexpectedValueException implements \Firebase\JWT\JWTExceptionWithPayloadInterface {
+        public function setPayload(object $payload): void;
+        public function getPayload(): object;
+    }
+    /**
+    * @implements ArrayAccess<string, Key>
+    * @generated
+    */
+    class CachedKeySet implements \ArrayAccess {
+        public function __construct(string $jwksUri, \Psr\Http\Client\ClientInterface $httpClient, \Psr\Http\Message\RequestFactoryInterface $httpFactory, \Psr\Cache\CacheItemPoolInterface $cache, ?int $expiresAfter = null, bool $rateLimit = false, ?string $defaultAlg = null): void;
+        /**
+        * @param string $keyId
+        * @return \Firebase\JWT\Key
+        * @generated
+        */
+        public function offsetGet(string $keyId): \Firebase\JWT\Key;
+        /**
+        * @param string $keyId
+        * @return bool
+        * @generated
+        */
+        public function offsetExists(string $keyId): bool;
+        /**
+        * @param string $offset
+        * @param Key $value
+        * @generated
+        */
+        public function offsetSet(string $offset, \Firebase\JWT\Key $value): void;
+        /**
+        * @param string $offset
+        * @generated
+        */
+        public function offsetUnset(string $offset): void;
+    }
+    class ExpiredException extends \UnexpectedValueException implements \Firebase\JWT\JWTExceptionWithPayloadInterface {
+        public function setPayload(object $payload): void;
+        public function getPayload(): object;
+        public function setTimestamp(int $timestamp): void;
+        public function getTimestamp(): ?int;
+    }
+    /**
+    * JSON Web Key implementation, based on this spec:
+    *
+    * https://tools.ietf.org/html/draft-ietf-jose-json-web-key-41
+    * 
+    * PHP version 5
+    *
+    * @category Authentication
+    * @package Authentication_JWT
+    * @author Bui Sy Nguyen <nguyenbs@gmail.com>
+    * @license http://opensource.org/licenses/BSD-3-Clause 3-clause BSD
+    * @link https://github.com/firebase/php-jwt
+    * @generated
+    */
+    class JWK {
+        /**
+        * Parse a set of JWK keys
+        *
+        * @param array<mixed> $jwks The JSON Web Key Set as an associative array
+        * @param ?string $defaultAlg The algorithm for the Key object if "alg" is not set in the
+        *  *                                     JSON Web Key Set
+        * @return array<string, Key> An associative array of key IDs (kid) to Key objects
+        * @throws InvalidArgumentException     Provided JWK Set is empty
+        * @throws UnexpectedValueException     Provided JWK Set was invalid
+        * @throws DomainException              OpenSSL failure
+        * @uses parseKey
+        * @generated
+        */
+        public static function parseKeySet(array<mixed> $jwks, ?string $defaultAlg = null): array<string, \Firebase\JWT\Key>;
+        /**
+        * Parse a JWK key
+        *
+        * @param array<mixed> $jwk An individual JWK
+        * @param ?string $defaultAlg The algorithm for the Key object if "alg" is not set in the
+        *  *                                     JSON Web Key Set
+        * @return ?\Firebase\JWT\Key The key object for the JWK
+        * @throws InvalidArgumentException     Provided JWK is empty
+        * @throws UnexpectedValueException     Provided JWK was invalid
+        * @throws DomainException              OpenSSL failure
+        * @uses createPemFromModulusAndExponent
+        * @generated
+        */
+        public static function parseKey(array<mixed> $jwk, ?string $defaultAlg = null): ?\Firebase\JWT\Key;
+    }
+    /**
+    * JSON Web Token implementation, based on this spec:
+    *
+    * https://tools.ietf.org/html/rfc7519
+    * 
+    * PHP version 5
+    *
+    * @category Authentication
+    * @package Authentication_JWT
+    * @author Neuman Vong <neuman@twilio.com>
+    * @author Anant Narayanan <anant@php.net>
+    * @license http://opensource.org/licenses/BSD-3-Clause 3-clause BSD
+    * @link https://github.com/firebase/php-jwt
+    * @generated
+    */
+    class JWT {
+        /**
+        * When checking nbf, iat or expiration times,
+        *
+        * we want to provide some extra leeway time to
+        * account for clock skew.
+        *
+        * @var int
+        * @generated
+        */
+        public static int $leeway ?? 0;
+        /**
+        * Allow the current timestamp to be specified.
+        *
+        * Useful for fixing a value within unit testing.
+        * Will default to PHP time() value if null.
+        *
+        * @var ?int
+        * @generated
+        */
+        public static ?int $timestamp ?? null;
+        /**
+        * @var array<string, array<int, string>>
+        * @generated
+        */
+        public static array<string, array<int, string>> $supported_algs ?? [];
+        /**
+        * Decodes a JWT string into a PHP object.
+        *
+        * @param string $jwt The JWT
+        * @param Key|\ArrayAccess<string, Key>|array<string, Key> $keyOrKeyArray The Key or associative array of key IDs
+        *  *                                                                          (kid) to Key objects.
+        *  *                                                                          If the algorithm used is asymmetric, this is
+        *  *                                                                          the public key.
+        *  *                                                                          Each Key object contains an algorithm and
+        *  *                                                                          matching key.
+        *  *                                                                          Supported algorithms are 'ES384','ES256',
+        *  *                                                                          'HS256', 'HS384', 'HS512', 'RS256', 'RS384'
+        *  *                                                                          and 'RS512'.
+        * @param ?\stdClass $headers Optional. Populates stdClass with headers.
+        * @return \stdClass The JWT's payload as a PHP object
+        * @throws InvalidArgumentException     Provided key/key-array was empty or malformed
+        * @throws DomainException              Provided JWT is malformed
+        * @throws UnexpectedValueException     Provided JWT was invalid
+        * @throws SignatureInvalidException    Provided JWT was invalid because the signature verification failed
+        * @throws BeforeValidException         Provided JWT is trying to be used before it's eligible as defined by 'nbf'
+        * @throws BeforeValidException         Provided JWT is trying to be used before it's been created as defined by 'iat'
+        * @throws ExpiredException             Provided JWT has since expired, as defined by the 'exp' claim
+        * @uses jsonDecode
+        * @uses urlsafeB64Decode
+        * @generated
+        */
+        public static function decode(string $jwt, \Firebase\JWT\Key|\ArrayAccess<string, \Firebase\JWT\Key>|array<string, \Firebase\JWT\Key> $keyOrKeyArray, ?\stdClass &$headers = null): \stdClass;
+        /**
+        * Converts and signs a PHP array into a JWT string.
+        *
+        * @param array<mixed> $payload PHP array
+        * @param string|\OpenSSLAsymmetricKey|\OpenSSLCertificate $key The secret key.
+        * @param string $alg Supported algorithms are 'ES384','ES256', 'ES256K', 'HS256',
+        *  *                                           'HS384', 'HS512', 'RS256', 'RS384', and 'RS512'
+        * @param ?string $keyId
+        * @param array<string, string|array<int, string>> $head An array with header elements to attach
+        * @return string A signed JWT
+        * @uses jsonEncode
+        * @uses urlsafeB64Encode
+        * @generated
+        */
+        public static function encode(array<mixed> $payload, string|\OpenSSLAsymmetricKey|\OpenSSLCertificate $key, string $alg, ?string $keyId = null, array<string, string|array<int, string>> $head = null): string;
+        /**
+        * Sign a string with a given key and algorithm.
+        *
+        * @param string $msg The message to sign
+        * @param string|\OpenSSLAsymmetricKey|\OpenSSLCertificate $key The secret key.
+        * @param string $alg Supported algorithms are 'EdDSA', 'ES384', 'ES256', 'ES256K', 'HS256',
+        *  *                        'HS384', 'HS512', 'RS256', 'RS384', 'PS256' and 'RS512'
+        * @return string An encrypted message
+        * @throws DomainException Unsupported algorithm or bad key was specified
+        * @generated
+        */
+        public static function sign(string $msg, string|\OpenSSLAsymmetricKey|\OpenSSLCertificate $key, string $alg): string;
+        /**
+        * Decode a JSON string into a PHP object.
+        *
+        * @param string $input JSON string
+        * @return mixed The decoded JSON string
+        * @throws DomainException Provided string was invalid JSON
+        * @generated
+        */
+        public static function jsonDecode(string $input): mixed;
+        /**
+        * Encode a PHP array into a JSON string.
+        *
+        * @param array<mixed> $input A PHP array
+        * @return string JSON representation of the PHP array
+        * @throws DomainException Provided object could not be encoded to valid JSON
+        * @generated
+        */
+        public static function jsonEncode(array<mixed> $input): string;
+        /**
+        * Decode a string with URL-safe Base64.
+        *
+        * @param string $input A Base64 encoded string
+        * @return string A decoded string
+        * @throws InvalidArgumentException invalid base64 characters
+        * @generated
+        */
+        public static function urlsafeB64Decode(string $input): string;
+        /**
+        * Convert a string in the base64url (URL-safe Base64) encoding to standard base64.
+        *
+        * @param string $input A Base64 encoded string with URL-safe characters (-_ and no padding)
+        * @return string A Base64 encoded string with standard characters (+/) and padding (=), when
+        *  *     needed.
+        * @see https://www.rfc-editor.org/rfc/rfc4648
+        * @generated
+        */
+        public static function convertBase64UrlToBase64(string $input): string;
+        /**
+        * Encode a string with URL-safe Base64.
+        *
+        * @param string $input The string you want encoded
+        * @return string The base64 encode of what you passed in
+        * @generated
+        */
+        public static function urlsafeB64Encode(string $input): string;
+        /**
+        * @param string $left The string of known length to compare against
+        * @param string $right The user-supplied string
+        * @return bool
+        * @generated
+        */
+        public static function constantTimeEquals(string $left, string $right): bool;
+    }
+    interface JWTExceptionWithPayloadInterface {
+        /**
+        * Get the payload that caused this exception.
+        *
+        * @return object
+        * @generated
+        */
+        public function getPayload(): object;
+        /**
+        * Get the payload that caused this exception.
+        *
+        * @param object $payload
+        * @return void
+        * @generated
+        */
+        public function setPayload(object $payload): void;
+    }
+    class Key {
+        /**
+        * @param string|\OpenSSLAsymmetricKey|\OpenSSLCertificate $keyMaterial
+        * @param string $algorithm
+        * @generated
+        */
+        public function __construct(string|\OpenSSLAsymmetricKey|\OpenSSLCertificate $keyMaterial, string $algorithm): void;
+        /**
+        * Return the algorithm valid for this key
+        *
+        * @return string
+        * @generated
+        */
+        public function getAlgorithm(): string;
+        /**
+        * @return string|\OpenSSLAsymmetricKey|\OpenSSLCertificate
+        * @generated
+        */
+        public function getKeyMaterial(): string|\OpenSSLAsymmetricKey|\OpenSSLCertificate;
+    }
+    class SignatureInvalidException extends \UnexpectedValueException {
+    }
+}

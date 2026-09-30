@@ -1,0 +1,86 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Payload is `@internal` so Layer 1 omitted it; Worker still names it.
+ * Goridge relay types are an unowned peer — extern, do not invent.
+ */
+
+namespace Spiral\RoadRunner {
+    /**
+     * Overlay: log level is a scalar; context is a string-keyed map.
+     */
+    // @overlay-against: class Logger implements \Psr\Log\LoggerInterface, \Psr\Log\LoggerTrait
+    partial class Logger {
+        // @overlay-against: function format(string $level, string $message, array $context): string
+        protected function format(string $level, string $message, array<string, mixed> $context = []): string;
+
+        // @overlay-against: function formatContext(array $context): string
+        protected function formatContext(array<string, mixed> $context): string;
+
+        // @overlay-against: function log(mixed $level, string|\Stringable $message, array $context): void
+        public function log(string|int|float|bool $level, string|\Stringable $message, array<string, mixed> $context = []): void;
+    }
+
+    /**
+     * Execution payload exchanged with the RoadRunner server.
+     */
+    class Payload {
+        public readonly string $body;
+        public readonly string $header;
+        public readonly bool $eos;
+
+        public function __construct(?string $body, ?string $header = null, bool $eos = true);
+    }
+
+    /**
+     * Overlay: PHP defaults the logger to `new Logger()`.
+     */
+    // @overlay-against: class Worker implements \Spiral\RoadRunner\StreamWorkerInterface
+    partial class Worker {
+        // @overlay-against: function create(bool $interceptSideEffects, \Psr\Log\LoggerInterface $logger): self
+        public static function create(bool $interceptSideEffects = true, ?\Psr\Log\LoggerInterface $logger = null): self;
+
+        // @overlay-against: function createFromEnvironment(\Spiral\RoadRunner\EnvironmentInterface $env, bool $interceptSideEffects, \Psr\Log\LoggerInterface $logger): self
+        public static function createFromEnvironment(\Spiral\RoadRunner\EnvironmentInterface $env, bool $interceptSideEffects = true, ?\Psr\Log\LoggerInterface $logger = null): self;
+
+        // @overlay-against: function __construct(\Spiral\Goridge\RelayInterface $relay, bool $interceptSideEffects, \Psr\Log\LoggerInterface $logger): void
+        public function __construct(\Spiral\Goridge\RelayInterface $relay, bool $interceptSideEffects = true, ?\Psr\Log\LoggerInterface $logger = null);
+
+        // @overlay-against: function getPayload(?string $class): ?\Spiral\RoadRunner\Payload
+        public function getPayload(?\__ClassName $class = null): ?\Spiral\RoadRunner\Payload;
+
+        // @overlay-against: function hasPayload(?string $class): bool
+        public function hasPayload(?\__ClassName $class = null): bool;
+    }
+
+    /**
+     * Overlay: cached-payload lookup takes a class name.
+     */
+    // @overlay-against: interface WorkerInterface
+    partial interface WorkerInterface {
+        // @overlay-against: function getPayload(?string $class): ?\Spiral\RoadRunner\Payload
+        public function getPayload(?\__ClassName $class = null): ?\Spiral\RoadRunner\Payload;
+
+        // @overlay-against: function hasPayload(?string $class): bool
+        public function hasPayload(?\__ClassName $class = null): bool;
+    }
+}
+
+namespace Spiral\RoadRunner\Message {
+    /**
+     * Marker for control frames. Layer 1 omitted this `@internal` interface.
+     */
+    interface ControlMessage {
+    }
+
+    /**
+     * Marker for skipped payloads. Layer 1 omitted this `@internal` interface.
+     */
+    interface SkipMessage {
+    }
+}
+
+extern class \Spiral\Goridge\Frame;
+extern interface \Spiral\Goridge\RelayInterface;
+extern interface \Spiral\Goridge\RPC\RPCInterface;

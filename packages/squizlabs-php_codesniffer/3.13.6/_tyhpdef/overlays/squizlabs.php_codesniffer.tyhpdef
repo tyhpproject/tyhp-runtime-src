@@ -1,0 +1,609 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * File token stacks and violation data are keyed arrays.
+ */
+
+namespace PHP_CodeSniffer {
+    /**
+     * Stored settings after `restoreDefaults`. `reportWidth` stays `"auto"` until `__get`.
+     */
+    type ConfigSettings = struct {
+        array<int, string> $files;
+        array<int, string> $standards;
+        int $verbosity;
+        bool $interactive;
+        int $parallel;
+        bool $cache;
+        ?string $cacheFile;
+        bool $colors;
+        bool $explain;
+        bool $local;
+        bool $showSources;
+        bool $showProgress;
+        bool $quiet;
+        bool $annotations;
+        int $tabWidth;
+        string $encoding;
+        array<string, string> $extensions;
+        array<int, string> $sniffs;
+        array<int, string> $exclude;
+        array<int, string> $ignored;
+        ?string $reportFile;
+        ?string $generator;
+        ?string $filter;
+        array<int, string> $bootstrap;
+        array<string, string|null> $reports;
+        ?string $basepath;
+        int|string $reportWidth;
+        int $errorSeverity;
+        int $warningSeverity;
+        bool $recordErrors;
+        string $suffix;
+        bool $stdin;
+        ?string $stdinContent;
+        ?string $stdinPath;
+        bool $trackTime;
+        array<int, string> $unknown;
+    };
+
+    /**
+     * One value from `Config::__get` / `__set`.
+     */
+    type ConfigSettingValue = array<int, string>|array<string, string>|array<string, string|null>|int|string|bool|null;
+
+    /**
+     * `Reporter::prepareFileReport` row passed to `generateFileReport`.
+     */
+    type FileReport = struct {
+        string $filename;
+        int $errors;
+        int $warnings;
+        int $fixable;
+        array<int, array<int, array<int, FileReportMessage>>> $messages;
+    };
+
+    /**
+     * One prepared report message. `type` is `ERROR` or `WARNING`.
+     */
+    type FileReportMessage = struct {
+        string $message;
+        string $source;
+        int $severity;
+        bool $fixable;
+        "ERROR"|"WARNING" $type;
+    };
+
+    /**
+     * One ruleset.xml code. Keys are written only when that rule sets them.
+     */
+    type Rule = struct {
+        ?int $severity;
+        ?string $type;
+        ?string $message;
+        ?array<string, RuleProperty> $properties;
+    };
+
+    /**
+     * One ruleset.xml property. Array values are string lists or string maps.
+     */
+    type RuleProperty = struct {
+        string|array<int|string, string> $value;
+        string $scope;
+    };
+
+    /**
+     * Global ignore patterns are pattern to absolute|relative.
+     * A listener key holds that sniff's pattern map.
+     */
+    type SniffPatternMap = array<string, string|array<string, string>>;
+
+    /**
+     * One token listener registered for a sniff.
+     */
+    type TokenListener = struct {
+        string $class;
+        string $source;
+        array<string, string> $tokenizers;
+        array<int, string> $ignore;
+        array<int, string> $include;
+    };
+
+    // @overlay-against: class Config
+    partial class Config {
+        // @overlay-against: function __construct(array $cliArgs, bool $dieOnUnknownArg): void
+        public function __construct(array<int, string> $cliArgs = [], bool $dieOnUnknownArg = true): void;
+
+        // @overlay-against: function __get(string $name): mixed
+        public function __get(string $name): ConfigSettingValue;
+
+        // @overlay-against: function __set(string $name, mixed $value): void
+        public function __set(string $name, ConfigSettingValue $value): void;
+
+        // @overlay-against: function getSettings(): array
+        public function getSettings(): ConfigSettings;
+
+        // @overlay-against: function printConfigData(array $data): void
+        public function printConfigData(array<string, string> $data): void;
+
+        // @overlay-against: function setCommandLineValues(array $args): void
+        public function setCommandLineValues(array<int, string> $args): void;
+
+        // @overlay-against: function setSettings(array $settings): void
+        public function setSettings(ConfigSettings $settings): void;
+    }
+
+    // @overlay-against: class Reporter
+    partial class Reporter {
+        // @overlay-against: function prepareFileReport(\PHP_CodeSniffer\Files\File $phpcsFile): array
+        public function prepareFileReport(\PHP_CodeSniffer\Files\File $phpcsFile): FileReport;
+    }
+
+    // @overlay-against: class Ruleset
+    partial class Ruleset {
+        // @overlay-against: array $ignorePatterns
+        public SniffPatternMap $ignorePatterns ?? [];
+
+        // @overlay-against: array $ruleset
+        public array<string, Rule> $ruleset ?? [];
+
+        // @overlay-against: array $tokenListeners
+        public array<int|string, array<string, TokenListener>> $tokenListeners ?? [];
+
+        // @overlay-against: function getIgnorePatterns(string|null $listener): array
+        public function getIgnorePatterns(null $listener = null): SniffPatternMap;
+
+        // @overlay-against: function getIgnorePatterns(string|null $listener): array
+        public function getIgnorePatterns(string $listener): array<string, string>;
+
+        // @overlay-against: function getIncludePatterns(string|null $listener): array
+        public function getIncludePatterns(null $listener = null): array<string, array<string, string>>;
+
+        // @overlay-against: function getIncludePatterns(string|null $listener): array
+        public function getIncludePatterns(string $listener): array<string, string>;
+
+        // @overlay-against: function registerSniffs(array $files, array $restrictions, array $exclusions): void
+        public function registerSniffs(array<int, string> $files, array<string, true> $restrictions, array<string, true> $exclusions): void;
+    }
+}
+
+namespace PHP_CodeSniffer\Files {
+    /**
+     * `getClassProperties` return.
+     */
+    type ClassProperties = struct {
+        bool $is_abstract;
+        bool $is_final;
+        bool $is_readonly;
+    };
+
+    /**
+     * `getMemberProperties` return.
+     */
+    type MemberProperties = struct {
+        string $scope;
+        bool $scope_specified;
+        string|false $set_scope;
+        bool $is_static;
+        bool $is_readonly;
+        bool $is_final;
+        bool $is_abstract;
+        string $type;
+        int|false $type_token;
+        int|false $type_end_token;
+        bool $nullable_type;
+    };
+
+    /**
+     * One `getMethodParameters` row. Promotion and default keys are absent when unused.
+     */
+    type MethodParameter = struct {
+        string $name;
+        int $token;
+        string $content;
+        bool $has_attributes;
+        bool $pass_by_reference;
+        int|false $reference_token;
+        bool $variable_length;
+        int|false $variadic_token;
+        string $type_hint;
+        int|false $type_hint_token;
+        int|false $type_hint_end_token;
+        bool $nullable_type;
+        int|false $comma_token;
+        ?string $default;
+        ?int $default_token;
+        ?int $default_equal_token;
+        ?string $property_visibility;
+        int|false|null $visibility_token;
+        ?bool $property_readonly;
+        ?int $readonly_token;
+        ?string $set_visibility;
+        ?int $set_visibility_token;
+    };
+
+    /**
+     * `getMethodProperties` return.
+     */
+    type MethodProperties = struct {
+        string $scope;
+        bool $scope_specified;
+        string $return_type;
+        int|false $return_type_token;
+        int|false $return_type_end_token;
+        bool $nullable_return_type;
+        bool $is_abstract;
+        bool $is_final;
+        bool $is_static;
+        bool $has_body;
+    };
+
+    /**
+     * One recorded metric: value text to hit count.
+     */
+    type MetricRecord = struct {
+        array<string, int> $values;
+    };
+
+    /**
+     * `standardiseToken` / `resolveSimpleToken` row, before line and column exist.
+     */
+    type RawToken = struct {
+        int|string $code;
+        string $type;
+        string $content;
+    };
+
+    /**
+     * One token after the tokenizer finishes.
+     * Position keys are always set. Scope, parenthesis, and annotation keys are omitted when absent.
+     */
+    type Token = struct {
+        int|string $code;
+        string $type;
+        string $content;
+        int $line;
+        int $column;
+        int $length;
+        int $level;
+        array<int, int|string> $conditions;
+        ?int $attribute_closer;
+        ?int $attribute_opener;
+        ?int $bracket_closer;
+        ?int $bracket_opener;
+        ?int $comment_closer;
+        ?int $comment_opener;
+        ?array<int, int> $comment_tags;
+        ?array<int, int> $nested_attributes;
+        ?array<int, int> $nested_parenthesis;
+        ?string $orig_content;
+        ?int $parenthesis_closer;
+        ?int $parenthesis_opener;
+        ?int $parenthesis_owner;
+        ?int $scope_closer;
+        ?int $scope_condition;
+        ?int $scope_opener;
+        ?string $sniffCode;
+        ?array<string, true> $sniffCodes;
+        ?string $sniffProperty;
+        ?string $sniffPropertyValue;
+    };
+
+    /**
+     * Token types accepted by `findNext` / `findPrevious` / `hasCondition`.
+     */
+    type TokenTypeSpec = int|string|array<int|string, int|string>;
+
+    /**
+     * One message from `getErrors` / `getWarnings`.
+     */
+    type Violation = struct {
+        string $message;
+        string $source;
+        string $listener;
+        int $severity;
+        bool $fixable;
+    };
+
+    /**
+     * Line, then column, then message index.
+     */
+    type ViolationMap = array<int, array<int, array<int, Violation>>>;
+
+    /**
+     * Overlay: token stack and violation data are keyed arrays.
+     * Ignored lines are sniff-code maps (`.all` ignores the line).
+     */
+    // @overlay-against: class File
+    partial class File {
+        // @overlay-against: function addError(string $error, int|null $stackPtr, string $code, array $data, int $severity, bool $fixable): bool
+        public function addError(string $error, int|null $stackPtr, string $code, array<int|string, string> $data = [], int $severity = 0, bool $fixable = false): bool;
+
+        // @overlay-against: function addErrorOnLine(string $error, int $line, string $code, array $data, int $severity): bool
+        public function addErrorOnLine(string $error, int $line, string $code, array<int|string, string> $data = [], int $severity = 0): bool;
+
+        // @overlay-against: function addFixableError(string $error, int $stackPtr, string $code, array $data, int $severity): bool
+        public function addFixableError(string $error, int $stackPtr, string $code, array<int|string, string> $data = [], int $severity = 0): bool;
+
+        // @overlay-against: function addFixableWarning(string $warning, int $stackPtr, string $code, array $data, int $severity): bool
+        public function addFixableWarning(string $warning, int $stackPtr, string $code, array<int|string, string> $data = [], int $severity = 0): bool;
+
+        // @overlay-against: function addWarning(string $warning, int|null $stackPtr, string $code, array $data, int $severity, bool $fixable): bool
+        public function addWarning(string $warning, int|null $stackPtr, string $code, array<int|string, string> $data = [], int $severity = 0, bool $fixable = false): bool;
+
+        // @overlay-against: function addWarningOnLine(string $warning, int $line, string $code, array $data, int $severity): bool
+        public function addWarningOnLine(string $warning, int $line, string $code, array<int|string, string> $data = [], int $severity = 0): bool;
+
+        // @overlay-against: function findEndOfStatement(int $start, int|string|array|null $ignore): int
+        public function findEndOfStatement(int $start, TokenTypeSpec|null $ignore = null): int;
+
+        // @overlay-against: function findFirstOnLine(int|string|array $types, int $start, bool $exclude, string|null $value): int|false
+        public function findFirstOnLine(TokenTypeSpec $types, int $start, bool $exclude = false, string|null $value = null): int|false;
+
+        // @overlay-against: function findImplementedInterfaceNames(int $stackPtr): array|false
+        public function findImplementedInterfaceNames(int $stackPtr): array<int, string>|false;
+
+        // @overlay-against: function findNext(int|string|array $types, int $start, int|null $end, bool $exclude, string|null $value, bool $local): int|false
+        public function findNext(TokenTypeSpec $types, int $start, int|null $end = null, bool $exclude = false, string|null $value = null, bool $local = false): int|false;
+
+        // @overlay-against: function findPrevious(int|string|array $types, int $start, int|null $end, bool $exclude, string|null $value, bool $local): int|false
+        public function findPrevious(TokenTypeSpec $types, int $start, int|null $end = null, bool $exclude = false, string|null $value = null, bool $local = false): int|false;
+
+        // @overlay-against: function findStartOfStatement(int $start, int|string|array|null $ignore): int
+        public function findStartOfStatement(int $start, TokenTypeSpec|null $ignore = null): int;
+
+        // @overlay-against: function getClassProperties(int $stackPtr): array
+        public function getClassProperties(int $stackPtr): ClassProperties;
+
+        // @overlay-against: function getErrors(): array
+        public function getErrors(): ViolationMap;
+
+        // @overlay-against: function getIgnoredLines(): array
+        public function getIgnoredLines(): array<int, array<string, true|array<string, true>>>;
+
+        // @overlay-against: function getListenerTimes(): array
+        public function getListenerTimes(): array<string, float>;
+
+        // @overlay-against: function getMemberProperties(int $stackPtr): array
+        public function getMemberProperties(int $stackPtr): MemberProperties;
+
+        // @overlay-against: function getMethodParameters(int $stackPtr): array
+        public function getMethodParameters(int $stackPtr): array<int, MethodParameter>;
+
+        // @overlay-against: function getMethodProperties(int $stackPtr): array
+        public function getMethodProperties(int $stackPtr): MethodProperties;
+
+        // @overlay-against: function getMetrics(): array
+        public function getMetrics(): array<string, MetricRecord>;
+
+        // @overlay-against: function getTokens(): array
+        public function getTokens(): array<int, Token>;
+
+        // @overlay-against: function getWarnings(): array
+        public function getWarnings(): ViolationMap;
+
+        // @overlay-against: function hasCondition(int $stackPtr, int|string|array $types): bool
+        public function hasCondition(int $stackPtr, TokenTypeSpec $types): bool;
+    }
+}
+
+namespace PHP_CodeSniffer\Reports {
+    // @overlay-against: class Cbf implements \PHP_CodeSniffer\Reports\Report
+    partial class Cbf {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Checkstyle implements \PHP_CodeSniffer\Reports\Report
+    partial class Checkstyle {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Code implements \PHP_CodeSniffer\Reports\Report
+    partial class Code {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Csv implements \PHP_CodeSniffer\Reports\Report
+    partial class Csv {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Diff implements \PHP_CodeSniffer\Reports\Report
+    partial class Diff {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Emacs implements \PHP_CodeSniffer\Reports\Report
+    partial class Emacs {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Full implements \PHP_CodeSniffer\Reports\Report
+    partial class Full {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Info implements \PHP_CodeSniffer\Reports\Report
+    partial class Info {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Json implements \PHP_CodeSniffer\Reports\Report
+    partial class Json {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Junit implements \PHP_CodeSniffer\Reports\Report
+    partial class Junit {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Notifysend implements \PHP_CodeSniffer\Reports\Report
+    partial class Notifysend {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Performance implements \PHP_CodeSniffer\Reports\Report
+    partial class Performance {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: interface Report
+    partial interface Report {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Source implements \PHP_CodeSniffer\Reports\Report
+    partial class Source {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Summary implements \PHP_CodeSniffer\Reports\Report
+    partial class Summary {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class VersionControl implements \PHP_CodeSniffer\Reports\Report
+    partial class VersionControl {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+
+    // @overlay-against: class Xml implements \PHP_CodeSniffer\Reports\Report
+    partial class Xml {
+        // @overlay-against: function generateFileReport(array $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources, int $width): bool
+        public function generateFileReport(\PHP_CodeSniffer\FileReport $report, \PHP_CodeSniffer\Files\File $phpcsFile, bool $showSources = false, int $width = 80): bool;
+    }
+}
+
+namespace PHP_CodeSniffer\Sniffs {
+    // @overlay-against: class AbstractScopeSniff implements \PHP_CodeSniffer\Sniffs\Sniff
+    partial class AbstractScopeSniff {
+        // @overlay-against: function __construct(array $scopeTokens, array $tokens, bool $listenOutside): void
+        public function __construct(array<int, int|string> $scopeTokens, array<int, int|string> $tokens, bool $listenOutside = false): void;
+    }
+}
+
+namespace PHP_CodeSniffer\Tests\Standards {
+    /**
+     * The PHP class lives under tests/, outside the src/ harvest glob.
+     * Layer 1 subclasses extend it. The PHP parent is PHPUnit's TestCase, which this tyhpdef does not include.
+     */
+    abstract class AbstractSniffUnitTest {
+        public string|null $standardsDir ?? null;
+
+        public string|null $testsDir ?? null;
+
+        protected bool $backupGlobals ?? false;
+
+        /**
+         * @return array<int, int>
+         */
+        protected abstract function getErrorList(): array<int, int>;
+
+        /**
+         * @return array<int, int>
+         */
+        protected abstract function getWarningList(): array<int, int>;
+
+        /**
+         * @return array<int, string>
+         */
+        public function generateFailureMessages(\PHP_CodeSniffer\Files\LocalFile $file): array<int, string>;
+
+        /**
+         * @return array<int, string>
+         */
+        protected function getTestFiles(string $testFileBase): array<int, string>;
+
+        public function setCliValues(string $filename, \PHP_CodeSniffer\Config $config): void;
+
+        protected function setUpPrerequisites(): void;
+
+        protected function shouldSkipTest(): bool;
+
+        final public function testSniff(): void;
+    }
+}
+
+namespace PHP_CodeSniffer\Tokenizers {
+    /**
+     * One scope-opener row: which tokens open and close the scope.
+     */
+    type ScopeOpener = struct {
+        array<int|string, int|string> $start;
+        array<int|string, int|string> $end;
+        bool $strict;
+        bool $shared;
+        array<int|string, int|string> $with;
+    };
+
+    // @overlay-against: class JS extends \PHP_CodeSniffer\Tokenizers\Tokenizer
+    partial class JS {
+        // @overlay-against: array $scopeOpeners
+        public array<int|string, ScopeOpener> $scopeOpeners ?? [];
+    }
+
+    // @overlay-against: class PHP extends \PHP_CodeSniffer\Tokenizers\Tokenizer
+    partial class PHP {
+        // @overlay-against: array $scopeOpeners
+        public array<int|string, ScopeOpener> $scopeOpeners ?? [];
+
+        // @overlay-against: function resolveSimpleToken(string $token): array
+        public static function resolveSimpleToken(string $token): \PHP_CodeSniffer\Files\RawToken;
+
+        // @overlay-against: function standardiseToken(string|array $token): array
+        public static function standardiseToken(string|array<int, int|string> $token): \PHP_CodeSniffer\Files\RawToken;
+    }
+
+    // @overlay-against: class Tokenizer
+    partial class Tokenizer {
+        // @overlay-against: array $ignoredLines
+        public array<int, array<string, true|array<string, true>>> $ignoredLines ?? [];
+
+        // @overlay-against: array $scopeOpeners
+        public array<int|string, ScopeOpener> $scopeOpeners ?? [];
+
+        // @overlay-against: function getTokens(): array
+        public function getTokens(): array<int, \PHP_CodeSniffer\Files\Token>;
+    }
+}
+
+namespace PHP_CodeSniffer\Util {
+    /**
+     * One installed coding standard from `getInstalledStandardDetails`.
+     */
+    type StandardDetails = struct {
+        string $path;
+        string $name;
+        string $namespace;
+    };
+
+    // @overlay-against: class Standards
+    partial class Standards {
+        // @overlay-against: function getInstalledStandardDetails(bool $includeGeneric, string $standardsDir): array
+        public static function getInstalledStandardDetails(bool $includeGeneric = false, string $standardsDir = ''): array<string, StandardDetails>;
+
+        // @overlay-against: function getInstalledStandardPaths(): array
+        public static function getInstalledStandardPaths(): array<int, string>;
+
+        // @overlay-against: function getInstalledStandards(bool $includeGeneric, string $standardsDir): array
+        public static function getInstalledStandards(bool $includeGeneric = false, string $standardsDir = ''): array<string, string>;
+    }
+}

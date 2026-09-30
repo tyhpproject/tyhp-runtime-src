@@ -1,0 +1,90 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Header lists, upload records, query maps, and stream generators
+ * from the PHP sources.
+ */
+
+namespace Spiral\RoadRunner\Http {
+    /**
+     * One yielded body chunk is a string. The generator's return is the last chunk.
+     */
+    type HttpResponseBody = string|\Generator<mixed, scalar|\Stringable, mixed, scalar|\Stringable|null>;
+
+    /**
+     * `$_SERVER` after `GlobalState::enrichServerVars`.
+     */
+    type ServerVarMap = array<int|string, mixed>;
+
+    /**
+     * One RoadRunner upload (`name`, `error`, `tmpName`, `size`, `mime`).
+     */
+    type UploadedFileRecord = struct {
+        string $name;
+        int $error;
+        string $tmpName;
+        int $size;
+        string $mime;
+    };
+
+    /**
+     * Upload lists nest when a directory of files is sent.
+     */
+    type UploadedFileList = array<int|string, UploadedFileRecord|UploadedFileList>;
+
+    /**
+     * `wrapUploads` nests the same way uploads do.
+     */
+    type WrappedUploadList = array<int|string, \Psr\Http\Message\UploadedFileInterface|WrappedUploadList>;
+
+    // @overlay-against: class GlobalState
+    partial class GlobalState {
+        // @overlay-against: function enrichServerVars(\Spiral\RoadRunner\Http\Request $request): array
+        public static function enrichServerVars(\Spiral\RoadRunner\Http\Request $request): ServerVarMap;
+    }
+
+    // @overlay-against: class HttpWorker implements \Spiral\RoadRunner\Http\HttpWorkerInterface
+    partial class HttpWorker {
+        // @overlay-against: function respond(int $status, string|\Generator $body, array $headers, bool $endOfStream): void
+        public function respond(int $status, HttpResponseBody $body = '', array<string, array<int|string, string>> $headers = [], bool $endOfStream = true): void;
+    }
+
+    // @overlay-against: interface HttpWorkerInterface
+    partial interface HttpWorkerInterface {
+        // @overlay-against: function respond(int $status, string|\Generator $body, \Spiral\RoadRunner\Http\RequestHeadersList|array $headers, bool $endOfStream): void
+        public function respond(int $status, HttpResponseBody $body, array<string, array<int|string, string>> $headers = [], bool $endOfStream = true): void;
+    }
+
+    // @overlay-against: class PSR7Worker implements \Spiral\RoadRunner\Http\PSR7WorkerInterface
+    partial class PSR7Worker {
+        public int $chunkSize;
+
+        // @overlay-against: function configureServer(\Spiral\RoadRunner\Http\Request $request): array
+        protected function configureServer(\Spiral\RoadRunner\Http\Request $request): ServerVarMap;
+
+        // @overlay-against: function mapRequest(\Spiral\RoadRunner\Http\Request $httpRequest, array $server): \Psr\Http\Message\ServerRequestInterface
+        protected function mapRequest(\Spiral\RoadRunner\Http\Request $httpRequest, ServerVarMap $server): \Psr\Http\Message\ServerRequestInterface;
+
+        // @overlay-against: function wrapUploads(\Spiral\RoadRunner\Http\RequestUploadedFilesList $files): array|array
+        protected function wrapUploads(UploadedFileList $files): WrappedUploadList;
+    }
+
+    // @overlay-against: class Request
+    partial class Request {
+        // @overlay-against: \Spiral\RoadRunner\Http\RequestHeadersList $headers
+        public readonly array<string, array<int|string, string>> $headers;
+
+        // @overlay-against: \Spiral\RoadRunner\Http\RequestQueryArgumentsList $query
+        public readonly array<string, mixed> $query;
+
+        // @overlay-against: \Spiral\RoadRunner\Http\RequestUploadedFilesList $uploads
+        public readonly UploadedFileList $uploads;
+
+        // @overlay-against: function __construct(string $remoteAddr, string $protocol, string $method, string $uri, \Spiral\RoadRunner\Http\RequestHeadersList $headers, \Spiral\RoadRunner\Http\RequestCookiesList $cookies, \Spiral\RoadRunner\Http\RequestUploadedFilesList $uploads, \Spiral\RoadRunner\Http\RequestAttributesList $attributes, \Spiral\RoadRunner\Http\RequestQueryArgumentsList $query, string $body, bool $parsed): void
+        public function __construct(string $remoteAddr = '127.0.0.1', string $protocol = 'HTTP/1.0', string $method = 'GET', string $uri = 'http://localhost', array<string, array<int|string, string>> $headers = [], array<string, string> $cookies = [], UploadedFileList $uploads = [], array<string, mixed> $attributes = [], array<string, mixed> $query = [], string $body = '', bool $parsed = false): void;
+
+        // @overlay-against: function getParsedBody(): ?array
+        public function getParsedBody(): ?array<int|string, mixed>;
+    }
+}

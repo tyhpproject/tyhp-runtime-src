@@ -1,0 +1,646 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Plugin lists, header maps, retry/redirect config structs, and Promise returns.
+ */
+
+namespace Http\Client\Common {
+    /**
+     * PSR-7 header map: one string or a list of strings per header name.
+     */
+    type HeaderMap = array<string, string|array<int|string, string>>;
+
+    /**
+     * `PluginChain` / `PluginClient` options. Only `max_restarts` is read.
+     */
+    type PluginChainOptions = struct {
+        ?int $max_restarts;
+    };
+
+    /**
+     * `PluginClientFactory::createClient()` options. `client_name` is removed before the client is built.
+     */
+    type PluginClientFactoryOptions = struct {
+        ?string $client_name;
+        ?int $max_restarts;
+    };
+
+    /**
+     * Next or first plugin in a chain. Both receive the request and return a promise.
+     */
+    type PluginNext = callable(\Psr\Http\Message\RequestInterface): \Http\Promise\Promise;
+
+    /**
+     * Query-string map. Values are encoded by `QueryDefaultsPlugin`.
+     */
+    type QueryMap = array<string, string|int|float|bool|array<int|string, string|int|float|bool>>;
+
+    /**
+     * Overlay: batch lists accept Tyhp list literals.
+     */
+    // @overlay-against: interface BatchClientInterface
+    partial interface BatchClientInterface {
+        /**
+         * @param array<int|string, \Psr\Http\Message\RequestInterface> $requests
+         */
+        // @overlay-against: function sendRequests(array $requests): \Http\Client\Common\BatchResult
+        public function sendRequests(array<int|string, \Psr\Http\Message\RequestInterface> $requests): \Http\Client\Common\BatchResult;
+    }
+
+    /**
+     * Overlay: plugin chain lists and `sendAsyncRequest()` → Promise.
+     */
+    // @overlay-against: class PluginClient implements \Http\Client\HttpClient, \Http\Client\HttpAsyncClient
+    partial class PluginClient {
+        /**
+         * @param array<int|string, \Http\Client\Common\Plugin> $plugins
+         * @param \Http\Client\Common\PluginChainOptions $options
+         */
+        // @overlay-against: function __construct(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, array $plugins, array $options): void
+        public function __construct(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, array<int|string, \Http\Client\Common\Plugin> $plugins = [], \Http\Client\Common\PluginChainOptions $options = []): void;
+
+        // @overlay-against: function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: plugin chain constructor lists.
+     */
+    // @overlay-against: class PluginChain
+    partial class PluginChain {
+        /**
+         * @param array<int|string, \Http\Client\Common\Plugin> $plugins
+         * @param callable(\Psr\Http\Message\RequestInterface): \Http\Promise\Promise $clientCallable
+         * @param \Http\Client\Common\PluginChainOptions $options
+         */
+        // @overlay-against: function __construct(array $plugins, callable $clientCallable, array $options): void
+        public function __construct(array<int|string, \Http\Client\Common\Plugin> $plugins, callable(\Psr\Http\Message\RequestInterface): \Http\Promise\Promise $clientCallable, \Http\Client\Common\PluginChainOptions $options = []): void;
+    }
+
+    /**
+     * Overlay: concrete batch client accepts the same request list as the interface.
+     */
+    // @overlay-against: class BatchClient implements \Http\Client\Common\BatchClientInterface
+    partial class BatchClient {
+        /**
+         * @param array<int|string, \Psr\Http\Message\RequestInterface> $requests
+         */
+        // @overlay-against: function sendRequests(array $requests): \Http\Client\Common\BatchResult
+        public function sendRequests(array<int|string, \Psr\Http\Message\RequestInterface> $requests): \Http\Client\Common\BatchResult;
+    }
+
+    /**
+     * Overlay: `wait(false)` is null; a fulfilled wait is the PSR-7 response.
+     */
+    // @overlay-against: class Deferred implements \Http\Promise\Promise
+    partial class Deferred {
+        /**
+         * @param callable(): void $waitCallback Invoked once while the promise is still pending.
+         */
+        // @overlay-against: function __construct(callable $waitCallback): void
+        public function __construct(callable(): void $waitCallback): void;
+
+        /**
+         * @param (callable(\Psr\Http\Message\ResponseInterface): mixed)|null $onFulfilled
+         * @param (callable(\Psr\Http\Client\ClientExceptionInterface): mixed)|null $onRejected
+         */
+        // @overlay-against: function then(?callable $onFulfilled, ?callable $onRejected): \Http\Promise\Promise
+        public function then(?callable(\Psr\Http\Message\ResponseInterface): mixed $onFulfilled = null, ?callable(\Psr\Http\Client\ClientExceptionInterface): mixed $onRejected = null): \Http\Promise\Promise;
+
+        // @overlay-against: function getState(): string
+        public function getState(): \Http\Promise\PromiseState;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(true $unwrap = true): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(false $unwrap): null;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(bool $unwrap = true): \Psr\Http\Message\ResponseInterface|null;
+    }
+
+    /**
+     * Overlay: decorator forwards `sendAsyncRequest()` as a promise.
+     */
+    // @overlay-against: trait HttpAsyncClientDecorator
+    partial trait HttpAsyncClientDecorator {
+        // @overlay-against: function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: emulator `sendAsyncRequest()` returns a promise.
+     */
+    // @overlay-against: trait HttpAsyncClientEmulator
+    partial trait HttpAsyncClientEmulator {
+        // @overlay-against: function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: emulator requires `sendAsyncRequest()` to return a promise.
+     */
+    // @overlay-against: trait HttpClientEmulator
+    partial trait HttpClientEmulator {
+        // @overlay-against: function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed
+        public abstract function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: router async send returns a promise.
+     */
+    // @overlay-against: class HttpClientRouter implements \Http\Client\Common\HttpClientRouterInterface
+    partial class HttpClientRouter {
+        // @overlay-against: function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: convenience client uses a URI, a header map, and a PSR-7 body.
+     */
+    // @overlay-against: class HttpMethodsClient implements \Http\Client\Common\HttpMethodsClientInterface
+    partial class HttpMethodsClient {
+        // @overlay-against: function get(mixed $uri, array $headers): \Psr\Http\Message\ResponseInterface
+        public function get(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = []): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function head(mixed $uri, array $headers): \Psr\Http\Message\ResponseInterface
+        public function head(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = []): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function trace(mixed $uri, array $headers): \Psr\Http\Message\ResponseInterface
+        public function trace(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = []): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function post(mixed $uri, array $headers, mixed $body): \Psr\Http\Message\ResponseInterface
+        public function post(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function put(mixed $uri, array $headers, mixed $body): \Psr\Http\Message\ResponseInterface
+        public function put(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function patch(mixed $uri, array $headers, mixed $body): \Psr\Http\Message\ResponseInterface
+        public function patch(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function delete(mixed $uri, array $headers, mixed $body): \Psr\Http\Message\ResponseInterface
+        public function delete(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function options(mixed $uri, array $headers, mixed $body): \Psr\Http\Message\ResponseInterface
+        public function options(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function send(string $method, mixed $uri, array $headers, mixed $body): \Psr\Http\Message\ResponseInterface
+        public function send(string $method, string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+    }
+
+    /**
+     * Overlay: interface header arguments are a PSR-7 header map.
+     */
+    // @overlay-against: interface HttpMethodsClientInterface
+    partial interface HttpMethodsClientInterface {
+        // @overlay-against: function get(string|\Psr\Http\Message\UriInterface $uri, array $headers): \Psr\Http\Message\ResponseInterface
+        public function get(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = []): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function head(string|\Psr\Http\Message\UriInterface $uri, array $headers): \Psr\Http\Message\ResponseInterface
+        public function head(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = []): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function trace(string|\Psr\Http\Message\UriInterface $uri, array $headers): \Psr\Http\Message\ResponseInterface
+        public function trace(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = []): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function post(string|\Psr\Http\Message\UriInterface $uri, array $headers, string|\Psr\Http\Message\StreamInterface|null $body): \Psr\Http\Message\ResponseInterface
+        public function post(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function put(string|\Psr\Http\Message\UriInterface $uri, array $headers, string|\Psr\Http\Message\StreamInterface|null $body): \Psr\Http\Message\ResponseInterface
+        public function put(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function patch(string|\Psr\Http\Message\UriInterface $uri, array $headers, string|\Psr\Http\Message\StreamInterface|null $body): \Psr\Http\Message\ResponseInterface
+        public function patch(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function delete(string|\Psr\Http\Message\UriInterface $uri, array $headers, string|\Psr\Http\Message\StreamInterface|null $body): \Psr\Http\Message\ResponseInterface
+        public function delete(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function options(string|\Psr\Http\Message\UriInterface $uri, array $headers, string|\Psr\Http\Message\StreamInterface|null $body): \Psr\Http\Message\ResponseInterface
+        public function options(string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function send(string $method, string|\Psr\Http\Message\UriInterface $uri, array $headers, string|\Psr\Http\Message\StreamInterface|null $body): \Psr\Http\Message\ResponseInterface
+        public function send(string $method, string|\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\HeaderMap $headers = [], string|\Psr\Http\Message\StreamInterface|null $body = null): \Psr\Http\Message\ResponseInterface;
+    }
+
+    /**
+     * Overlay: factory options carry `client_name` plus `PluginClient` options.
+     */
+    // @overlay-against: class PluginClientFactory
+    partial class PluginClientFactory {
+        /**
+         * @param array<int|string, \Http\Client\Common\Plugin> $plugins
+         * @param \Http\Client\Common\PluginClientFactoryOptions $options
+         */
+        // @overlay-against: function createClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, array $plugins, array $options): \Http\Client\Common\PluginClient
+        public function createClient(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, array<int|string, \Http\Client\Common\Plugin> $plugins = [], \Http\Client\Common\PluginClientFactoryOptions $options = []): \Http\Client\Common\PluginClient;
+    }
+
+    /**
+     * Overlay: bridge hook returns the PSR-7 response `sendRequest()` declares.
+     */
+    // @overlay-against: trait VersionBridgeClient
+    partial trait VersionBridgeClient {
+        // @overlay-against: function doSendRequest(\Psr\Http\Message\RequestInterface $request): mixed
+        protected abstract function doSendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+    }
+
+    /**
+     * Overlay: clone is void.
+     */
+    // @overlay-against: class BatchResult
+    partial class BatchResult {
+        // @overlay-against: function __clone(): mixed
+        public function __clone(): void;
+    }
+
+    /**
+     * Overlay: plugin chain callables.
+     */
+    // @overlay-against: interface Plugin
+    partial interface Plugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+}
+
+namespace Http\Client\Common\HttpClientPool {
+    /**
+     * Internal pool member omitted from Layer 1 (`@internal`).
+     */
+    class HttpClientPoolItem implements \Http\Client\HttpClient, \Http\Client\HttpAsyncClient {
+        /**
+         * @param \Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client
+         * @param int|null $reenableAfter Seconds until this client is enabled again after an error.
+         */
+        public function __construct(\Psr\Http\Client\ClientInterface|\Http\Client\HttpAsyncClient $client, ?int $reenableAfter = null): void;
+
+        public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface;
+
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+
+        public function isDisabled(): bool;
+
+        public function getSendingRequestCount(): int;
+    }
+
+    /**
+     * Overlay: pool async send returns a promise.
+     */
+    // @overlay-against: class HttpClientPool implements \Http\Client\Common\HttpClientPool
+    partial class HttpClientPool {
+        // @overlay-against: function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): mixed
+        public function sendAsyncRequest(\Psr\Http\Message\RequestInterface $request): \Http\Promise\Promise;
+    }
+}
+
+namespace Http\Client\Common\Plugin {
+    /**
+     * Buffer settings for `SeekableBodyPlugin`.
+     */
+    type SeekableBodyPluginConfig = struct {
+        ?int $memory_buffer_size;
+        ?bool $use_file_buffer;
+    };
+
+    /**
+     * Internal plugin base omitted from Layer 1 (`@internal`).
+     */
+    abstract class SeekableBodyPlugin implements \Http\Client\Common\Plugin {
+        /**
+         * @param \Http\Client\Common\Plugin\SeekableBodyPluginConfig $config
+         */
+        public function __construct(\Http\Client\Common\Plugin\SeekableBodyPluginConfig $config = []): void;
+    }
+
+    /**
+     * Overlay: replace the request host when it is missing, or always when `replace` is true.
+     */
+    type AddHostPluginConfig = struct {
+        ?bool $replace;
+    };
+
+    /**
+     * Overlay: skip content-type detection above `size_limit`.
+     */
+    type ContentTypePluginConfig = struct {
+        ?bool $skip_detection;
+        ?int $size_limit;
+    };
+
+    /**
+     * Overlay: when false, only Transfer-Encoding is decoded.
+     */
+    type DecoderPluginConfig = struct {
+        ?bool $use_content_encoding;
+    };
+
+    /**
+     * Overlay: when true, only 5xx responses throw.
+     */
+    type ErrorPluginConfig = struct {
+        ?bool $only_server_exception;
+    };
+
+    /**
+     * Overlay: redirect plugin options from the PHP source.
+     */
+    type RedirectPluginConfig = struct {
+        bool|array<int|string, string>|null $preserve_header;
+        ?bool $use_default_for_multiple;
+        ?bool $strict;
+        ?\Psr\Http\Message\StreamFactoryInterface $stream_factory;
+    };
+
+    /**
+     * Overlay: retry deciders and delays. Delays are microseconds.
+     */
+    type RetryErrorResponseDecider = callable(\Psr\Http\Message\RequestInterface, \Psr\Http\Message\ResponseInterface): bool;
+
+    type RetryExceptionDecider = callable(\Psr\Http\Message\RequestInterface, \Psr\Http\Client\ClientExceptionInterface): bool;
+
+    type RetryErrorResponseDelay = callable(\Psr\Http\Message\RequestInterface, \Psr\Http\Message\ResponseInterface, int): int;
+
+    type RetryExceptionDelay = callable(\Psr\Http\Message\RequestInterface, \Psr\Http\Client\ClientExceptionInterface, int): int;
+
+    type RetryPluginConfig = struct {
+        ?int $retries;
+        ?\Http\Client\Common\Plugin\RetryErrorResponseDecider $error_response_decider;
+        ?\Http\Client\Common\Plugin\RetryExceptionDecider $exception_decider;
+        ?\Http\Client\Common\Plugin\RetryErrorResponseDelay $error_response_delay;
+        ?\Http\Client\Common\Plugin\RetryExceptionDelay $exception_delay;
+    };
+
+    /**
+     * Overlay: host plugin config and chain callables.
+     */
+    // @overlay-against: class AddHostPlugin implements \Http\Client\Common\Plugin
+    partial class AddHostPlugin {
+        /**
+         * @param \Http\Client\Common\Plugin\AddHostPluginConfig $config
+         */
+        // @overlay-against: function __construct(\Psr\Http\Message\UriInterface $host, array $config): void
+        public function __construct(\Psr\Http\Message\UriInterface $host, \Http\Client\Common\Plugin\AddHostPluginConfig $config = []): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class AddPathPlugin implements \Http\Client\Common\Plugin
+    partial class AddPathPlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class AuthenticationPlugin implements \Http\Client\Common\Plugin
+    partial class AuthenticationPlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: host config shared with `AddHostPlugin`, plus chain callables.
+     */
+    // @overlay-against: class BaseUriPlugin implements \Http\Client\Common\Plugin
+    partial class BaseUriPlugin {
+        /**
+         * @param \Http\Client\Common\Plugin\AddHostPluginConfig $hostConfig
+         */
+        // @overlay-against: function __construct(\Psr\Http\Message\UriInterface $uri, array $hostConfig): void
+        public function __construct(\Psr\Http\Message\UriInterface $uri, \Http\Client\Common\Plugin\AddHostPluginConfig $hostConfig = []): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class ContentLengthPlugin implements \Http\Client\Common\Plugin
+    partial class ContentLengthPlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: content-type detection config and chain callables.
+     */
+    // @overlay-against: class ContentTypePlugin implements \Http\Client\Common\Plugin
+    partial class ContentTypePlugin {
+        /**
+         * @param \Http\Client\Common\Plugin\ContentTypePluginConfig $config
+         */
+        // @overlay-against: function __construct(array $config): void
+        public function __construct(\Http\Client\Common\Plugin\ContentTypePluginConfig $config = []): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class CookiePlugin implements \Http\Client\Common\Plugin
+    partial class CookiePlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: decoder config and chain callables.
+     */
+    // @overlay-against: class DecoderPlugin implements \Http\Client\Common\Plugin
+    partial class DecoderPlugin {
+        /**
+         * @param \Http\Client\Common\Plugin\DecoderPluginConfig $config
+         */
+        // @overlay-against: function __construct(array $config): void
+        public function __construct(\Http\Client\Common\Plugin\DecoderPluginConfig $config = []): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: error plugin config and chain callables.
+     */
+    // @overlay-against: class ErrorPlugin implements \Http\Client\Common\Plugin
+    partial class ErrorPlugin {
+        /**
+         * @param \Http\Client\Common\Plugin\ErrorPluginConfig $config
+         */
+        // @overlay-against: function __construct(array $config): void
+        public function __construct(\Http\Client\Common\Plugin\ErrorPluginConfig $config = []): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: headers to append, and chain callables.
+     */
+    // @overlay-against: class HeaderAppendPlugin implements \Http\Client\Common\Plugin
+    partial class HeaderAppendPlugin {
+        /**
+         * @param \Http\Client\Common\HeaderMap $headers
+         */
+        // @overlay-against: function __construct(array $headers): void
+        public function __construct(\Http\Client\Common\HeaderMap $headers): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: headers set only when absent, and chain callables.
+     */
+    // @overlay-against: class HeaderDefaultsPlugin implements \Http\Client\Common\Plugin
+    partial class HeaderDefaultsPlugin {
+        /**
+         * @param \Http\Client\Common\HeaderMap $headers
+         */
+        // @overlay-against: function __construct(array $headers): void
+        public function __construct(\Http\Client\Common\HeaderMap $headers): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: header names to remove, and chain callables.
+     */
+    // @overlay-against: class HeaderRemovePlugin implements \Http\Client\Common\Plugin
+    partial class HeaderRemovePlugin {
+        /**
+         * @param array<int|string, string> $headers
+         */
+        // @overlay-against: function __construct(array $headers): void
+        public function __construct(array<int|string, string> $headers): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: headers to set, and chain callables.
+     */
+    // @overlay-against: class HeaderSetPlugin implements \Http\Client\Common\Plugin
+    partial class HeaderSetPlugin {
+        /**
+         * @param \Http\Client\Common\HeaderMap $headers
+         */
+        // @overlay-against: function __construct(array $headers): void
+        public function __construct(\Http\Client\Common\HeaderMap $headers): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class HistoryPlugin implements \Http\Client\Common\Plugin
+    partial class HistoryPlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: journal recorders return void.
+     */
+    // @overlay-against: interface Journal
+    partial interface Journal {
+        // @overlay-against: function addSuccess(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response): mixed
+        public function addSuccess(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response): void;
+
+        // @overlay-against: function addFailure(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Client\ClientExceptionInterface $exception): mixed
+        public function addFailure(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Client\ClientExceptionInterface $exception): void;
+    }
+
+    /**
+     * Overlay: default query map and chain callables.
+     */
+    // @overlay-against: class QueryDefaultsPlugin implements \Http\Client\Common\Plugin
+    partial class QueryDefaultsPlugin {
+        /**
+         * @param \Http\Client\Common\QueryMap $queryParams
+         */
+        // @overlay-against: function __construct(array $queryParams): void
+        public function __construct(\Http\Client\Common\QueryMap $queryParams): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: redirect config and chain callables.
+     */
+    // @overlay-against: class RedirectPlugin implements \Http\Client\Common\Plugin
+    partial class RedirectPlugin {
+        /**
+         * @param \Http\Client\Common\Plugin\RedirectPluginConfig $config
+         */
+        // @overlay-against: function __construct(array $config): void
+        public function __construct(\Http\Client\Common\Plugin\RedirectPluginConfig $config = []): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class RequestMatcherPlugin implements \Http\Client\Common\Plugin
+    partial class RequestMatcherPlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class RequestSeekableBodyPlugin extends \Http\Client\Common\Plugin\SeekableBodyPlugin
+    partial class RequestSeekableBodyPlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: chain callables.
+     */
+    // @overlay-against: class ResponseSeekableBodyPlugin extends \Http\Client\Common\Plugin\SeekableBodyPlugin
+    partial class ResponseSeekableBodyPlugin {
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: retry config and chain callables.
+     */
+    // @overlay-against: class RetryPlugin implements \Http\Client\Common\Plugin
+    partial class RetryPlugin {
+        /**
+         * @param \Http\Client\Common\Plugin\RetryPluginConfig $config
+         */
+        // @overlay-against: function __construct(array $config): void
+        public function __construct(\Http\Client\Common\Plugin\RetryPluginConfig $config = []): void;
+
+        // @overlay-against: function handleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): \Http\Promise\Promise
+        public function handleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+
+    /**
+     * Overlay: bridge hook returns the promise `handleRequest()` declares.
+     */
+    // @overlay-against: trait VersionBridgePlugin
+    partial trait VersionBridgePlugin {
+        // @overlay-against: function doHandleRequest(\Psr\Http\Message\RequestInterface $request, callable $next, callable $first): mixed
+        protected abstract function doHandleRequest(\Psr\Http\Message\RequestInterface $request, \Http\Client\Common\PluginNext $next, \Http\Client\Common\PluginNext $first): \Http\Promise\Promise;
+    }
+}

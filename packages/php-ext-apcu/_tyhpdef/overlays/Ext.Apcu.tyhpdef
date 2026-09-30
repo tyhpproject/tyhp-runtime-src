@@ -1,0 +1,113 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Declaration order: TYHPDEF_ORDERING.md.
+ * Fetch/inc success by-ref bool, entry callback generic, cache_info shape,
+ * APCUIterator as Iterator<string, mixed>.
+ */
+
+/**
+ * Overlay: `apcu_cache_info()` keys from the PHP manual example.
+ */
+type ApcuCacheInfo = struct {
+    int $num_slots;
+    int $ttl;
+    int $num_hits;
+    int $num_misses;
+    int $start_time;
+    array<int, array<string, mixed>> $cache_list;
+};
+
+/**
+ * Overlay: `apcu_key_info()` cache-entry metadata.
+ */
+type ApcuKeyInfo = struct {
+    int $hits;
+    int $access_time;
+    int $mtime;
+    int $creation_time;
+    int $deletion_time;
+    int $ttl;
+    int $refs;
+    int $mem_size;
+};
+
+/**
+ * Overlay: one free block inside `apcu_sma_info()` `$block_lists`.
+ */
+type ApcuSmaBlock = struct {
+    int $size;
+    int $offset;
+};
+
+/**
+ * Overlay: `apcu_sma_info(false)` including per-segment block lists.
+ */
+type ApcuSmaInfo = struct {
+    int $num_seg;
+    int $seg_size;
+    int $avail_mem;
+    array<int, array<int, ApcuSmaBlock>> $block_lists;
+};
+
+/**
+ * Overlay: `apcu_sma_info(true)` omits `$block_lists`.
+ */
+type ApcuSmaInfoLimited = struct {
+    int $num_seg;
+    int $seg_size;
+    int $avail_mem;
+};
+
+// @overlay-against: function apcu_add(mixed $key, mixed $value, int $ttl): array|bool
+function apcu_add(string $key, mixed $value, int $ttl = 0): bool;
+// @overlay-against: function apcu_add(mixed $key, mixed $value, int $ttl): array|bool
+function apcu_add(array<string, mixed> $key, mixed $value = null, int $ttl = 0): array<string, bool>;
+
+// @overlay-against: function apcu_cache_info(bool $limited): array|false
+function apcu_cache_info(bool $limited = false): ApcuCacheInfo|false;
+
+// @overlay-against: function apcu_dec(string $key, int $step, mixed $success, int $ttl): int|false
+function apcu_dec(string $key, int $step = 1, bool &$success = null, int $ttl = 0): int|false;
+
+// @overlay-against: function apcu_delete(mixed $key): array|bool
+function apcu_delete(string $key): bool;
+// @overlay-against: function apcu_delete(mixed $key): array|bool
+function apcu_delete(array<int, string> $key): array<int, string>|bool;
+// @overlay-against: function apcu_delete(mixed $key): array|bool
+function apcu_delete(APCUIterator $key): bool;
+
+// @overlay-against: function apcu_entry(string $key, callable $callback, int $ttl): mixed
+function apcu_entry<T>(string $key, callable(string): T $callback, int $ttl = 0): T;
+
+// @overlay-against: function apcu_exists(mixed $key): array|bool
+function apcu_exists(string $key): bool;
+// @overlay-against: function apcu_exists(mixed $key): array|bool
+function apcu_exists(array<int, string> $key): array<string, bool>;
+
+// @overlay-against: function apcu_fetch(mixed $key, mixed $success): mixed
+function apcu_fetch(string $key, bool &$success = null): mixed;
+// @overlay-against: function apcu_fetch(mixed $key, mixed $success): mixed
+function apcu_fetch(array<int, string> $key, bool &$success = null): array<string, mixed>|false;
+
+// @overlay-against: function apcu_inc(string $key, int $step, mixed $success, int $ttl): int|false
+function apcu_inc(string $key, int $step = 1, bool &$success = null, int $ttl = 0): int|false;
+
+// @overlay-against: function apcu_key_info(string $key): ?array
+function apcu_key_info(string $key): ?ApcuKeyInfo;
+
+// @overlay-against: function apcu_sma_info(bool $limited): array|false
+function apcu_sma_info(true $limited): ApcuSmaInfoLimited|false;
+// @overlay-against: function apcu_sma_info(bool $limited): array|false
+function apcu_sma_info(false $limited = false): ApcuSmaInfo|false;
+// @overlay-against: function apcu_sma_info(bool $limited): array|false
+function apcu_sma_info(bool $limited = false): ApcuSmaInfo|ApcuSmaInfoLimited|false;
+
+// @overlay-against: function apcu_store(mixed $key, mixed $value, int $ttl): array|bool
+function apcu_store(string $key, mixed $value, int $ttl = 0): bool;
+// @overlay-against: function apcu_store(mixed $key, mixed $value, int $ttl): array|bool
+function apcu_store(array<string, mixed> $key, mixed $value = null, int $ttl = 0): array<string, bool>;
+
+// @overlay-against: class APCUIterator implements \Iterator, \Traversable
+partial class APCUIterator implements \Iterator<string, mixed>, \Traversable;

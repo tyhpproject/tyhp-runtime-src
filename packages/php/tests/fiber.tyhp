@@ -1,0 +1,41 @@
+<?tyhp
+
+namespace OverlayTests\Fiber;
+
+function resume_matchingTResume_typeChecks(\Fiber<string> $fiber): void {
+    $fiber->resume("ok");
+}
+
+function startAndThrow_assignedToMixed_typeChecks(\Fiber $fiber): void {
+    mixed $started = $fiber->start();
+    mixed $thrown = $fiber->throw(new \Exception("x"));
+}
+
+function suspend_assignedToMixed_typeChecks(): void {
+    mixed $value = \Fiber::suspend();
+    mixed $withNull = \Fiber::suspend(null);
+}
+
+function getCurrent_assignsToTwoArgShape(): void {
+    ?\Fiber<mixed, callable> $current = \Fiber::getCurrent();
+}
+
+function getReturn_isCallableReturnType_notNull(\Fiber<mixed, callable(): string> $fiber): void {
+    string $result = $fiber->getReturn();
+}
+
+function promiseShapedFiber_twoArgConstructAndSuspendMixed_typeChecks(): void {
+    ?\Fiber<mixed, callable(): void> $fiber = new \Fiber<mixed, callable(): void>(function (): void {
+        mixed $resumed = \Fiber::suspend(null);
+    });
+}
+
+function suspend_narrowedWithIs_assignsToGenericT<T>(T $fallback): T {
+    mixed $resumed = \Fiber::suspend(null);
+    return ($resumed is T ? $resumed : null) ?? $fallback;
+}
+
+function closureCall_andBindTo_typeCheck(\Closure $c, \stdClass $o): void {
+    $c->call($o);
+    $c->bindTo($o);
+}

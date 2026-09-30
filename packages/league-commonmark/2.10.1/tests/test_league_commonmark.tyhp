@@ -1,0 +1,36 @@
+<?tyhp
+
+function test_commonmark_convert(): \League\CommonMark\Output\RenderedContentInterface
+{
+    return (new \League\CommonMark\CommonMarkConverter([
+        'html_input' => 'strip',
+    ]))->convert('# Hello');
+}
+
+function test_gfm_convert(): string
+{
+    return (new \League\CommonMark\GithubFlavoredMarkdownConverter())->convert('**hi**')->getContent();
+}
+
+function test_environment_add_extension(): \League\CommonMark\Environment\EnvironmentBuilderInterface
+{
+    $env = new \League\CommonMark\Environment\Environment(['html_input' => 'strip']);
+    return $env->addExtension(new \League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension());
+}
+
+function test_environment_add_renderer(\League\CommonMark\Environment\Environment $env, \League\CommonMark\Renderer\NodeRendererInterface $renderer): \League\CommonMark\Environment\EnvironmentBuilderInterface
+{
+    return $env->addRenderer(\League\CommonMark\Node\Block\Paragraph::class, $renderer);
+}
+
+function test_query_type(): callable(\League\CommonMark\Node\Node): bool
+{
+    return \League\CommonMark\Node\Query::type(\League\CommonMark\Node\Block\Paragraph::class);
+}
+
+function test_query_find_all(\League\CommonMark\Node\Node $node): iterable<\League\CommonMark\Node\Node>
+{
+    return (new \League\CommonMark\Node\Query())
+        ->where(\League\CommonMark\Node\Query::type(\League\CommonMark\Node\Block\Paragraph::class))
+        ->findAll($node);
+}

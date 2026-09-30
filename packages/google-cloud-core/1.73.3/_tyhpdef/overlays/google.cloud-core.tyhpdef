@@ -1,0 +1,113 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Timestamp and exception types. Other Google Cloud product clients are unowned.
+ */
+extern class \Google\Cloud\BigQuery\BigQueryClient;
+extern class \Google\Cloud\Datastore\DatastoreClient;
+extern class \Google\Cloud\Firestore\FirestoreClient;
+extern class \Google\Cloud\Logging\LoggingClient;
+extern class \Google\Cloud\Language\V2\Client\LanguageServiceClient;
+extern class \Google\Cloud\PubSub\PubSubClient;
+extern class \Google\Cloud\Spanner\SpannerClient;
+extern class \Google\Cloud\Spanner\Duration;
+
+/**
+ * Overlay: PHP phpdoc `Boolean` used by App Engine logger factory.
+ */
+type Boolean = bool;
+
+namespace Google\Cloud\Core {
+    /**
+     * `Duration::get()` seconds and nanos.
+     */
+    type DurationParts = struct {
+        int $seconds;
+        int $nanos;
+    };
+
+    /**
+     * `GeoPoint::point()` / `jsonSerialize()` latitude and longitude.
+     * Null only when the point was constructed with `$allowNull`.
+     */
+    type LatLng = struct {
+        ?float $latitude;
+        ?float $longitude;
+    };
+
+    /**
+     * `Duration::get()` is seconds plus nanos.
+     */
+    // @overlay-against: class Duration
+    partial class Duration {
+        // @overlay-against: function get(): array
+        public function get(): \Google\Cloud\Core\DurationParts;
+    }
+
+    /**
+     * LatLng array and JSON object are the same pair of coordinates.
+     */
+    // @overlay-against: class GeoPoint implements \JsonSerializable
+    partial class GeoPoint {
+        // @overlay-against: function jsonSerialize(): object
+        public function jsonSerialize(): \Google\Cloud\Core\LatLng;
+
+        // @overlay-against: function point(): array
+        public function point(): \Google\Cloud\Core\LatLng;
+    }
+
+    /**
+     * Overlay: deprecated wrapper extends unowned `Google\ApiCore` — omit rather than extend extern.
+     */
+    // @overlay-against: class InsecureCredentialsWrapper extends \Google\ApiCore\InsecureCredentialsWrapper
+    omit class InsecureCredentialsWrapper {
+    }
+
+    /**
+     * Layer 1 omitted this `@internal` trait.
+     */
+    trait RequestProcessorTrait {
+    }
+
+    /**
+     * Overlay: deprecated factory returns unowned product clients.
+     */
+    // @overlay-against: class ServiceBuilder
+    omit class ServiceBuilder {
+    }
+
+    // @overlay-against: class Timestamp implements \JsonSerializable, \Google\Cloud\Core\TimeTrait
+    partial class Timestamp {
+        // @overlay-against: function __construct(\DateTimeInterface $value, int $nanoSeconds): void
+        public function __construct(\DateTimeInterface $value, ?int $nanoSeconds = null);
+    }
+}
+
+namespace Google\Cloud\Core\Logger {
+    /**
+     * Layer 1 omitted handler classes named in the factory return type.
+     */
+    class AppEngineFlexHandler {
+    }
+
+    class AppEngineFlexHandlerV2 {
+    }
+
+    class AppEngineFlexHandlerV3 {
+    }
+
+    // @overlay-against: class AppEngineFlexHandlerFactory
+    partial class AppEngineFlexHandlerFactory {
+        // @overlay-against: function build(int $level, Boolean $bubble, int|null $filePermission, Boolean $useLocking, resource|string|null $stream): AppEngineFlexHandler|AppEngineFlexHandlerV2|AppEngineFlexHandlerV3
+        public static function build(int $level = \Monolog\Logger::INFO, bool $bubble = true, ?int $filePermission = 640, bool $useLocking = false, resource|string|null $stream = null): AppEngineFlexHandler|AppEngineFlexHandlerV2|AppEngineFlexHandlerV3;
+    }
+}
+
+namespace Google\Cloud\Core\LongRunning {
+    /**
+     * Layer 1 omitted this `@internal` connection interface.
+     */
+    interface LongRunningConnectionInterface {
+    }
+}

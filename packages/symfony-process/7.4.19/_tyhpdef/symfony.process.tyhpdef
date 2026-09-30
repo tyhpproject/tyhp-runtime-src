@@ -1,0 +1,877 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Process {
+    /**
+    * Generic executable finder.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ExecutableFinder {
+        /**
+        * Replaces default suffixes of executable.
+        *
+        * @generated
+        */
+        public function setSuffixes(array $suffixes): void;
+        /**
+        * Adds new possible suffix to check for executable, including the dot (.).
+        *
+        *     $finder = new ExecutableFinder();
+        *     $finder->addSuffix('.foo');
+        *
+        * @generated
+        */
+        public function addSuffix(string $suffix): void;
+        /**
+        * Finds an executable by name.
+        *
+        * @param string $name The executable name (without the extension)
+        * @param ?string $default The default to return if no executable is found
+        * @param array $extraDirs Additional dirs to check into
+        * @generated
+        */
+        public function find(string $name, ?string $default = null, array $extraDirs = []): ?string;
+    }
+    /**
+    * Provides a way to continuously write to the input of a Process until the InputStream is closed.
+    *
+    * @author Nicolas Grekas <p@tchwork.com>
+    * @implements \IteratorAggregate<int, string>
+    * @generated
+    */
+    class InputStream implements \IteratorAggregate {
+        /**
+        * Sets a callback that is called when the write buffer becomes empty.
+        *
+        * @generated
+        */
+        public function onEmpty(?callable $onEmpty = null): void;
+        /**
+        * Appends an input to the write buffer.
+        *
+        * @param resource|string|int|float|bool|\Traversable|null $input The input to append as scalar,
+        *  *                                                                    stream resource or \Traversable
+        * @generated
+        */
+        public function write(resource|string|int|float|bool|\Traversable|null $input): void;
+        /**
+        * Closes the write buffer.
+        *
+        * @generated
+        */
+        public function close(): void;
+        /**
+        * Tells whether the write buffer is closed or not.
+        *
+        * @generated
+        */
+        public function isClosed(): bool;
+        public function getIterator(): \Traversable;
+    }
+    /**
+    * An executable finder specifically designed for the PHP executable.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class PhpExecutableFinder {
+        public function __construct(): void;
+        /**
+        * Finds The PHP executable.
+        *
+        * @generated
+        */
+        public function find(bool $includeArgs = true): string|false;
+        /**
+        * Finds the PHP executable arguments.
+        *
+        * @return array<int, mixed>
+        * @generated
+        */
+        public function findArguments(): array<int, mixed>;
+    }
+    /**
+    * PhpProcess runs a PHP script in an independent process.
+    *
+    *     $p = new PhpProcess('<?php echo "foo"; ?>');
+    *     $p->run();
+    *     print $p->getOutput()."\n";
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class PhpProcess extends \Symfony\Component\Process\Process {
+        /**
+        * @param string $script The PHP script to run (as a string)
+        * @param ?string $cwd The working directory or null to use the working dir of the current PHP process
+        * @param array|null $env The environment variables or null to use the same environment as the current PHP process
+        * @param int $timeout The timeout in seconds
+        * @param array|null $php Path to the PHP binary to use with any additional arguments
+        * @generated
+        */
+        public function __construct(string $script, ?string $cwd = null, array|null $env = null, int $timeout = 60, array|null $php = null): void;
+        public static function fromShellCommandline(string $command, ?string $cwd = null, ?array $env = null, mixed $input = null, ?float $timeout = 60): static;
+        /**
+        * @param callable|null $callback
+        * @generated
+        */
+        public function start(callable|null $callback = null, array $env = []): void;
+    }
+    /**
+    * PhpSubprocess runs a PHP command as a subprocess while keeping the original php.ini settings.
+    *
+    * For this, it generates a temporary php.ini file taking over all the current settings and disables
+    * loading additional .ini files. Basically, your command gets prefixed using "php -n -c /tmp/temp.ini".
+    * 
+    * Given your php.ini contains "memory_limit=-1" and you have a "MemoryTest.php" with the following content:
+    * 
+    *     <?php var_dump(ini_get('memory_limit'));
+    * 
+    * These are the differences between the regular Process and PhpSubprocess classes:
+    * 
+    *     $p = new Process(['php', '-d', 'memory_limit=256M', 'MemoryTest.php']);
+    *     $p->run();
+    *     print $p->getOutput()."\n";
+    * 
+    * This will output "string(2) "-1", because the process is started with the default php.ini settings.
+    * 
+    *     $p = new PhpSubprocess(['MemoryTest.php'], null, null, 60, ['php', '-d', 'memory_limit=256M']);
+    *     $p->run();
+    *     print $p->getOutput()."\n";
+    * 
+    * This will output "string(4) "256M"", because the process is started with the temporarily created php.ini settings.
+    *
+    * @author Yanick Witschi <yanick.witschi@terminal42.ch>
+    * @author Partially copied and heavily inspired from composer/xdebug-handler by John Stevenson <john-stevenson@blueyonder.co.uk>
+    * @generated
+    */
+    class PhpSubprocess extends \Symfony\Component\Process\Process {
+        /**
+        * @param array $command The command to run and its arguments listed as separate entries. They will automatically
+        *  *                                 get prefixed with the PHP binary
+        * @param ?string $cwd The working directory or null to use the working dir of the current PHP process
+        * @param array|null $env The environment variables or null to use the same environment as the current PHP process
+        * @param int $timeout The timeout in seconds
+        * @param array|null $php Path to the PHP binary to use with any additional arguments
+        * @generated
+        */
+        public function __construct(array $command, ?string $cwd = null, array|null $env = null, int $timeout = 60, array|null $php = null): void;
+        public static function fromShellCommandline(string $command, ?string $cwd = null, ?array $env = null, mixed $input = null, ?float $timeout = 60): static;
+        /**
+        * @param callable|null $callback
+        * @generated
+        */
+        public function start(callable|null $callback = null, array $env = []): void;
+    }
+    /**
+    * Process is a thin wrapper around proc_* functions to easily
+    *
+    * start independent PHP processes.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Romain Neutron <imprec@gmail.com>
+    * @implements \IteratorAggregate<string, string>
+    * @generated
+    */
+    class Process implements \IteratorAggregate {
+        public const string ERR ?? 'err';
+        public const string OUT ?? 'out';
+        public const string STATUS_READY ?? 'ready';
+        public const string STATUS_STARTED ?? 'started';
+        public const string STATUS_TERMINATED ?? 'terminated';
+        public const int STDIN ?? 0;
+        public const int STDOUT ?? 1;
+        public const int STDERR ?? 2;
+        public const float TIMEOUT_PRECISION ?? 0.2;
+        public const int ITER_NON_BLOCKING ?? 1;
+        public const int ITER_KEEP_OUTPUT ?? 2;
+        public const int ITER_SKIP_OUT ?? 4;
+        public const int ITER_SKIP_ERR ?? 8;
+        /**
+        * Exit codes translation table.
+        *
+        * User-defined errors must use exit codes in the 64-113 range.
+        *
+        * @generated
+        */
+        public static array $exitCodes ?? [];
+        /**
+        * @param array $command The command to run and its arguments listed as separate entries
+        * @param ?string $cwd The working directory or null to use the working dir of the current PHP process
+        * @param array|null $env The environment variables or null to use the same environment as the current PHP process
+        * @param mixed $input The input as stream resource, scalar or \Traversable, or null for no input
+        * @param ?float $timeout The timeout in seconds or null to disable
+        * @throws LogicException When proc_open is not installed
+        * @generated
+        */
+        public function __construct(array $command, ?string $cwd = null, array|null $env = null, mixed $input = null, ?float $timeout = 60): void;
+        /**
+        * Creates a Process instance as a command-line to be run in a shell wrapper.
+        *
+        * Command-lines are parsed by the shell of your OS (/bin/sh on Unix-like, cmd.exe on Windows.)
+        * This allows using e.g. pipes or conditional execution. In this mode, signals are sent to the
+        * shell wrapper and not to your commands.
+        * 
+        * In order to inject dynamic values into command-lines, we strongly recommend using placeholders.
+        * This will save escaping values, which is not portable nor secure anyway:
+        * 
+        *   $process = Process::fromShellCommandline('my_command "${:MY_VAR}"');
+        *   $process->run(null, ['MY_VAR' => $theValue]);
+        *
+        * @param string $command The command line to pass to the shell of the OS
+        * @param ?string $cwd The working directory or null to use the working dir of the current PHP process
+        * @param array|null $env The environment variables or null to use the same environment as the current PHP process
+        * @param mixed $input The input as stream resource, scalar or \Traversable, or null for no input
+        * @param ?float $timeout The timeout in seconds or null to disable
+        * @throws LogicException When proc_open is not installed
+        * @generated
+        */
+        public static function fromShellCommandline(string $command, ?string $cwd = null, array|null $env = null, mixed $input = null, ?float $timeout = 60): static;
+        public function __serialize(): array;
+        public function __unserialize(array $data): void;
+        public function __destruct(): void;
+        public function __clone(): mixed;
+        /**
+        * Runs the process.
+        *
+        * The callback receives the type of output (out or err) and
+        * some bytes from the output in real-time. It allows to have feedback
+        * from the independent process during execution.
+        * 
+        * The STDOUT and STDERR are also available after the process is finished
+        * via the getOutput() and getErrorOutput() methods.
+        *
+        * @param callable|null $callback A PHP callback to run whenever there is some
+        *  *                                                                output available on STDOUT or STDERR
+        * @return int The exit status code
+        * @throws ProcessStartFailedException When process can't be launched
+        * @throws RuntimeException            When process is already running
+        * @throws ProcessTimedOutException    When process timed out
+        * @throws ProcessSignaledException    When process stopped after receiving signal
+        * @final
+        * @generated
+        */
+        public function run(callable|null $callback = null, array $env = []): int;
+        /**
+        * Runs the process.
+        *
+        * This is identical to run() except that an exception is thrown if the process
+        * exits with a non-zero exit code.
+        *
+        * @param callable|null $callback A PHP callback to run whenever there is some
+        *  *                                                                output available on STDOUT or STDERR
+        * @return static
+        * @throws ProcessFailedException   When process didn't terminate successfully
+        * @throws RuntimeException         When process can't be launched
+        * @throws RuntimeException         When process is already running
+        * @throws ProcessTimedOutException When process timed out
+        * @throws ProcessSignaledException When process stopped after receiving signal
+        * @final
+        * @generated
+        */
+        public function mustRun(callable|null $callback = null, array $env = []): static;
+        /**
+        * Starts the process and returns after writing the input to STDIN.
+        *
+        * This method blocks until all STDIN data is sent to the process then it
+        * returns while the process runs in the background.
+        * 
+        * The termination of the process can be awaited with wait().
+        * 
+        * The callback receives the type of output (out or err) and some bytes from
+        * the output in real-time while writing the standard input to the process.
+        * It allows to have feedback from the independent process during execution.
+        *
+        * @param callable|null $callback A PHP callback to run whenever there is some
+        *  *                                                                output available on STDOUT or STDERR
+        * @throws ProcessStartFailedException When process can't be launched
+        * @throws RuntimeException            When process is already running
+        * @generated
+        */
+        public function start(callable|null $callback = null, array $env = []): void;
+        /**
+        * Restarts the process.
+        *
+        * Be warned that the process is cloned before being started.
+        *
+        * @param callable|null $callback A PHP callback to run whenever there is some
+        *  *                                                                output available on STDOUT or STDERR
+        * @throws ProcessStartFailedException When process can't be launched
+        * @throws RuntimeException            When process is already running
+        * @see start()
+        * @final
+        * @generated
+        */
+        public function restart(callable|null $callback = null, array $env = []): static;
+        /**
+        * Waits for the process to terminate.
+        *
+        * The callback receives the type of output (out or err) and some bytes
+        * from the output in real-time while writing the standard input to the process.
+        * It allows to have feedback from the independent process during execution.
+        *
+        * @param callable|null $callback A PHP callback to run whenever there is some
+        *  *                                                                output available on STDOUT or STDERR
+        * @return int The exitcode of the process
+        * @throws ProcessTimedOutException When process timed out
+        * @throws ProcessSignaledException When process stopped after receiving signal
+        * @throws LogicException           When process is not yet started
+        * @generated
+        */
+        public function wait(callable|null $callback = null): int;
+        /**
+        * Waits until the callback returns true.
+        *
+        * The callback receives the type of output (out or err) and some bytes
+        * from the output in real-time while writing the standard input to the process.
+        * It allows to have feedback from the independent process during execution.
+        *
+        * @param callable|null $callback A PHP callback to run whenever there is some
+        *  *                                                                output available on STDOUT or STDERR
+        * @throws RuntimeException         When process timed out
+        * @throws LogicException           When process is not yet started
+        * @throws ProcessTimedOutException In case the timeout was reached
+        * @generated
+        */
+        public function waitUntil(callable|null $callback): bool;
+        /**
+        * Returns the Pid (process identifier), if applicable.
+        *
+        * @return ?int The process id if running, null otherwise
+        * @generated
+        */
+        public function getPid(): ?int;
+        /**
+        * Sends a POSIX signal to the process.
+        *
+        * @param int $signal A valid POSIX signal (see https://php.net/pcntl.constants)
+        * @return static
+        * @throws LogicException   In case the process is not running
+        * @throws RuntimeException In case --enable-sigchild is activated and the process can't be killed
+        * @throws RuntimeException In case of failure
+        * @generated
+        */
+        public function signal(int $signal): static;
+        /**
+        * Disables fetching output and error output from the underlying process.
+        *
+        * @return static
+        * @throws RuntimeException In case the process is already running
+        * @throws LogicException   if an idle timeout is set
+        * @generated
+        */
+        public function disableOutput(): static;
+        /**
+        * Enables fetching output and error output from the underlying process.
+        *
+        * @return static
+        * @throws RuntimeException In case the process is already running
+        * @generated
+        */
+        public function enableOutput(): static;
+        /**
+        * Returns true in case the output is disabled, false otherwise.
+        *
+        * @generated
+        */
+        public function isOutputDisabled(): bool;
+        /**
+        * Returns the current output of the process (STDOUT).
+        *
+        * @throws LogicException in case the output has been disabled
+        * @throws LogicException In case the process is not started
+        * @generated
+        */
+        public function getOutput(): string;
+        /**
+        * Returns the output incrementally.
+        *
+        * In comparison with the getOutput method which always return the whole
+        * output, this one returns the new output since the last call.
+        *
+        * @throws LogicException in case the output has been disabled
+        * @throws LogicException In case the process is not started
+        * @generated
+        */
+        public function getIncrementalOutput(): string;
+        /**
+        * Returns an iterator to the output of the process, with the output type as keys (Process::OUT/ERR).
+        *
+        * @param int $flags A bit field of Process::ITER_* flags
+        * @return \Generator
+        * @throws LogicException in case the output has been disabled
+        * @throws LogicException In case the process is not started
+        * @generated
+        */
+        public function getIterator(int $flags = 0): \Generator;
+        /**
+        * Clears the process output.
+        *
+        * @return static
+        * @generated
+        */
+        public function clearOutput(): static;
+        /**
+        * Returns the current error output of the process (STDERR).
+        *
+        * @throws LogicException in case the output has been disabled
+        * @throws LogicException In case the process is not started
+        * @generated
+        */
+        public function getErrorOutput(): string;
+        /**
+        * Returns the errorOutput incrementally.
+        *
+        * In comparison with the getErrorOutput method which always return the
+        * whole error output, this one returns the new error output since the last
+        * call.
+        *
+        * @throws LogicException in case the output has been disabled
+        * @throws LogicException In case the process is not started
+        * @generated
+        */
+        public function getIncrementalErrorOutput(): string;
+        /**
+        * Clears the process output.
+        *
+        * @return static
+        * @generated
+        */
+        public function clearErrorOutput(): static;
+        /**
+        * Returns the exit code returned by the process.
+        *
+        * @return ?int The exit status code, null if the Process is not terminated
+        * @generated
+        */
+        public function getExitCode(): ?int;
+        /**
+        * Returns a string representation for the exit code returned by the process.
+        *
+        * This method relies on the Unix exit code status standardization
+        * and might not be relevant for other operating systems.
+        *
+        * @return ?string A string representation for the exit status code, null if the Process is not terminated
+        * @see http://tldp.org/LDP/abs/html/exitcodes.html
+        * @see http://en.wikipedia.org/wiki/Unix_signal
+        * @generated
+        */
+        public function getExitCodeText(): ?string;
+        /**
+        * Checks if the process ended successfully.
+        *
+        * @generated
+        */
+        public function isSuccessful(): bool;
+        /**
+        * Returns true if the child process has been terminated by an uncaught signal.
+        *
+        * It always returns false on Windows.
+        *
+        * @throws LogicException In case the process is not terminated
+        * @generated
+        */
+        public function hasBeenSignaled(): bool;
+        /**
+        * Returns the number of the signal that caused the child process to terminate its execution.
+        *
+        * It is only meaningful if hasBeenSignaled() returns true.
+        *
+        * @throws RuntimeException In case --enable-sigchild is activated
+        * @throws LogicException   In case the process is not terminated
+        * @generated
+        */
+        public function getTermSignal(): int;
+        /**
+        * Returns true if the child process has been stopped by a signal.
+        *
+        * It always returns false on Windows.
+        *
+        * @throws LogicException In case the process is not terminated
+        * @generated
+        */
+        public function hasBeenStopped(): bool;
+        /**
+        * Returns the number of the signal that caused the child process to stop its execution.
+        *
+        * It is only meaningful if hasBeenStopped() returns true.
+        *
+        * @throws LogicException In case the process is not terminated
+        * @generated
+        */
+        public function getStopSignal(): int;
+        /**
+        * Checks if the process is currently running.
+        *
+        * @generated
+        */
+        public function isRunning(): bool;
+        /**
+        * Checks if the process has been started with no regard to the current state.
+        *
+        * @generated
+        */
+        public function isStarted(): bool;
+        /**
+        * Checks if the process is terminated.
+        *
+        * @generated
+        */
+        public function isTerminated(): bool;
+        /**
+        * Gets the process status.
+        *
+        * The status is one of: ready, started, terminated.
+        *
+        * @generated
+        */
+        public function getStatus(): string;
+        /**
+        * Stops the process.
+        *
+        * @param float $timeout The timeout in seconds
+        * @param ?int $signal A POSIX signal to send in case the process has not stop at timeout, default is SIGKILL (9)
+        * @return ?int The exit-code of the process or null if it's not running
+        * @generated
+        */
+        public function stop(float $timeout = 10, ?int $signal = null): ?int;
+        /**
+        * Gets the last output time in seconds.
+        *
+        * @generated
+        */
+        public function getLastOutputTime(): ?float;
+        /**
+        * Gets the command line to be executed.
+        *
+        * @generated
+        */
+        public function getCommandLine(): string;
+        /**
+        * Gets the process timeout in seconds (max. runtime).
+        *
+        * @generated
+        */
+        public function getTimeout(): ?float;
+        /**
+        * Gets the process idle timeout in seconds (max. time since last output).
+        *
+        * @generated
+        */
+        public function getIdleTimeout(): ?float;
+        /**
+        * Sets the process timeout (max. runtime) in seconds.
+        *
+        * To disable the timeout, set this value to null.
+        *
+        * @return static
+        * @throws InvalidArgumentException if the timeout is negative
+        * @generated
+        */
+        public function setTimeout(?float $timeout): static;
+        /**
+        * Sets the process idle timeout (max. time since last output) in seconds.
+        *
+        * To disable the timeout, set this value to null.
+        *
+        * @return static
+        * @throws LogicException           if the output is disabled
+        * @throws InvalidArgumentException if the timeout is negative
+        * @generated
+        */
+        public function setIdleTimeout(?float $timeout): static;
+        /**
+        * Enables or disables the TTY mode.
+        *
+        * @return static
+        * @throws RuntimeException In case the TTY mode is not supported
+        * @generated
+        */
+        public function setTty(bool $tty): static;
+        /**
+        * Checks if the TTY mode is enabled.
+        *
+        * @generated
+        */
+        public function isTty(): bool;
+        /**
+        * Sets PTY mode.
+        *
+        * @return static
+        * @generated
+        */
+        public function setPty(bool $bool): static;
+        /**
+        * Returns PTY state.
+        *
+        * @generated
+        */
+        public function isPty(): bool;
+        /**
+        * Gets the working directory.
+        *
+        * @generated
+        */
+        public function getWorkingDirectory(): ?string;
+        /**
+        * Sets the current working directory.
+        *
+        * @return static
+        * @generated
+        */
+        public function setWorkingDirectory(string $cwd): static;
+        /**
+        * Gets the environment variables.
+        *
+        * @generated
+        */
+        public function getEnv(): array;
+        /**
+        * Sets the environment variables.
+        *
+        * @param array<string|\Stringable> $env The new environment variables
+        * @return static
+        * @generated
+        */
+        public function setEnv(array<string|\Stringable> $env): static;
+        /**
+        * Gets the Process input.
+        *
+        * @return resource|string|\Iterator|null
+        * @generated
+        */
+        public function getInput(): resource|string|\Iterator|null;
+        /**
+        * Sets the input.
+        *
+        * This content will be passed to the underlying process standard input.
+        *
+        * @param string|resource|\Traversable|self|null $input The content
+        * @return static
+        * @throws LogicException In case the process is running
+        * @generated
+        */
+        public function setInput(string|resource|\Traversable|self|null $input): static;
+        /**
+        * Performs a check between the timeout definition and the time the process started.
+        *
+        * In case you run a background process (with the start method), you should
+        * trigger this method regularly to ensure the process timeout
+        *
+        * @throws ProcessTimedOutException In case the timeout was reached
+        * @generated
+        */
+        public function checkTimeout(): void;
+        /**
+        * @throws LogicException in case process is not started
+        * @generated
+        */
+        public function getStartTime(): float;
+        /**
+        * Defines options to pass to the underlying proc_open().
+        *
+        * @see https://php.net/proc_open for the options supported by PHP.
+        * 
+        * Enabling the "create_new_console" option allows a subprocess to continue
+        * to run after the main process exited, on both Windows and *nix
+        * @generated
+        */
+        public function setOptions(array $options): void;
+        /**
+        * Defines a list of posix signals that will not be propagated to the process.
+        *
+        * @param array $signals
+        * @generated
+        */
+        public function setIgnoredSignals(array $signals): void;
+        /**
+        * Returns whether TTY is supported on the current operating system.
+        *
+        * @generated
+        */
+        public static function isTtySupported(): bool;
+        /**
+        * Returns whether PTY is supported on the current operating system.
+        *
+        * @generated
+        */
+        public static function isPtySupported(): bool;
+        /**
+        * Builds up the callback used by wait().
+        *
+        * The callbacks adds all occurred output to the specific buffer and calls
+        * the user callback (if present) with the received output.
+        *
+        * @param callable|null $callback
+        * @return \Closure
+        * @generated
+        */
+        protected function buildCallback(callable|null $callback = null): \Closure;
+        /**
+        * Updates the status of the process, reads pipes.
+        *
+        * @param bool $blocking Whether to use a blocking read call
+        * @generated
+        */
+        protected function updateStatus(bool $blocking): void;
+        /**
+        * Returns whether PHP has been compiled with the '--enable-sigchild' option or not.
+        *
+        * @generated
+        */
+        protected function isSigchildEnabled(): bool;
+    }
+    /**
+    * ProcessUtils is a bunch of utility methods.
+    *
+    * This class contains static methods only and is not meant to be instantiated.
+    *
+    * @author Martin Hasoň <martin.hason@gmail.com>
+    * @generated
+    */
+    class ProcessUtils {
+        /**
+        * Validates and normalizes a Process input.
+        *
+        * @param string $caller The name of method call that validates the input
+        * @param mixed $input The input to validate
+        * @throws InvalidArgumentException In case the input is not valid
+        * @generated
+        */
+        public static function validateInput(string $caller, mixed $input): mixed;
+    }
+}
+namespace Symfony\Component\Process\Exception {
+    /**
+    * Marker Interface for the Process Component.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    interface ExceptionInterface extends \Throwable {
+    }
+    /**
+    * InvalidArgumentException for the Process Component.
+    *
+    * @author Romain Neutron <imprec@gmail.com>
+    * @generated
+    */
+    class InvalidArgumentException extends \InvalidArgumentException implements \Symfony\Component\Process\Exception\ExceptionInterface {
+    }
+    /**
+    * LogicException for the Process Component.
+    *
+    * @author Romain Neutron <imprec@gmail.com>
+    * @generated
+    */
+    class LogicException extends \LogicException implements \Symfony\Component\Process\Exception\ExceptionInterface {
+    }
+    /**
+    * Exception for failed processes.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ProcessFailedException extends \Symfony\Component\Process\Exception\RuntimeException {
+        public function __construct(\Symfony\Component\Process\Process $process): void;
+        public function getProcess(): \Symfony\Component\Process\Process;
+    }
+    /**
+    * Exception that is thrown when a process has been signaled.
+    *
+    * @author Sullivan Senechal <soullivaneuh@gmail.com>
+    * @generated
+    */
+    final class ProcessSignaledException extends \Symfony\Component\Process\Exception\RuntimeException {
+        public function __construct(\Symfony\Component\Process\Process $process): void;
+        public function getProcess(): \Symfony\Component\Process\Process;
+        public function getSignal(): int;
+    }
+    /**
+    * Exception for processes failed during startup.
+    *
+    * @generated
+    */
+    class ProcessStartFailedException extends \Symfony\Component\Process\Exception\ProcessFailedException {
+        public function __construct(\Symfony\Component\Process\Process $process, ?string $message): void;
+        public function getProcess(): \Symfony\Component\Process\Process;
+    }
+    /**
+    * Exception that is thrown when a process times out.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class ProcessTimedOutException extends \Symfony\Component\Process\Exception\RuntimeException {
+        public const int TYPE_GENERAL ?? 1;
+        public const int TYPE_IDLE ?? 2;
+        public function __construct(\Symfony\Component\Process\Process $process, int $timeoutType): void;
+        public function getProcess(): \Symfony\Component\Process\Process;
+        public function isGeneralTimeout(): bool;
+        public function isIdleTimeout(): bool;
+        public function getExceededTimeout(): ?float;
+    }
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    final class RunProcessFailedException extends \Symfony\Component\Process\Exception\RuntimeException {
+        public readonly \Symfony\Component\Process\Messenger\RunProcessContext $context;
+        public function __construct(\Symfony\Component\Process\Exception\ProcessFailedException $exception, \Symfony\Component\Process\Messenger\RunProcessContext $context): void;
+    }
+    /**
+    * RuntimeException for the Process Component.
+    *
+    * @author Johannes M. Schmitt <schmittjoh@gmail.com>
+    * @generated
+    */
+    class RuntimeException extends \RuntimeException implements \Symfony\Component\Process\Exception\ExceptionInterface {
+    }
+}
+namespace Symfony\Component\Process\Messenger {
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    final class RunProcessContext {
+        public readonly ?int $exitCode;
+        public readonly ?string $output;
+        public readonly ?string $errorOutput;
+        public readonly \Symfony\Component\Process\Messenger\RunProcessMessage $message;
+        public function __construct(\Symfony\Component\Process\Messenger\RunProcessMessage $message, \Symfony\Component\Process\Process $process): void;
+    }
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    class RunProcessMessage implements \Stringable {
+        public ?string $commandLine ?? null;
+        public readonly array $command;
+        public readonly ?string $cwd ?? null;
+        public readonly ?array $env ?? null;
+        public readonly mixed $input ?? null;
+        public readonly ?float $timeout ?? 60.0;
+        public function __construct(array $command, ?string $cwd = null, ?array $env = null, mixed $input = null, ?float $timeout = 60.0): void;
+        public function __toString(): string;
+        /**
+        * Create a process message instance that will instantiate a Process using the fromShellCommandline method.
+        *
+        * @see Process::fromShellCommandline
+        * @generated
+        */
+        public static function fromShellCommandline(string $command, ?string $cwd = null, ?array $env = null, mixed $input = null, ?float $timeout = 60): self;
+    }
+    /**
+    * @author Kevin Bond <kevinbond@gmail.com>
+    * @generated
+    */
+    final class RunProcessMessageHandler {
+        public function __invoke(\Symfony\Component\Process\Messenger\RunProcessMessage $message): \Symfony\Component\Process\Messenger\RunProcessContext;
+    }
+}

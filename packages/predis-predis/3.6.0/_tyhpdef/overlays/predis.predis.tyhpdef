@@ -1,0 +1,115 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Client command replies with known list, map, and scan-page shapes, plus
+ * Relay placeholders so Predis\Connection\RelayConnection type-checks.
+ */
+
+namespace Predis {
+    /**
+     * Overlay: `BLPOP` / `BRPOP` reply, key then element.
+     */
+    type PredisBlockingPop = struct {
+        string 0 as $key;
+        string 1 as $element;
+    };
+
+    /**
+     * Overlay: `BZPOPMIN` / `BZPOPMAX` reply, key, member, then score.
+     */
+    type PredisBlockingZPop = struct {
+        string 0 as $key;
+        string 1 as $member;
+        string 2 as $score;
+    };
+
+    /**
+     * Overlay: `HSCAN` page, cursor then field map.
+     */
+    type PredisHashScanPage = struct {
+        string 0 as $cursor;
+        array<string, string> 1 as $fields;
+    };
+
+    /**
+     * Overlay: `SCAN` / `SSCAN` page, cursor then member list.
+     */
+    type PredisScanPage = struct {
+        string 0 as $cursor;
+        array<int, string> 1 as $members;
+    };
+
+    // @overlay-against: interface ClientInterface
+    partial interface ClientInterface {
+        // @overlay-against: function blpop(array|string $keys, int|float $timeout): array|null
+        public function blpop(array<int, string>|string $keys, int|float $timeout): PredisBlockingPop|null;
+        // @overlay-against: function brpop(array|string $keys, int|float $timeout): array|null
+        public function brpop(array<int, string>|string $keys, int|float $timeout): PredisBlockingPop|null;
+        // @overlay-against: function bzpopmax(array $keys, int $timeout): array
+        public function bzpopmax(array<int, string> $keys, int $timeout): PredisBlockingZPop;
+        // @overlay-against: function bzpopmin(array $keys, int $timeout): array
+        public function bzpopmin(array<int, string> $keys, int $timeout): PredisBlockingZPop;
+        // @overlay-against: function hgetall(string $key): array
+        public function hgetall(string $key): array<string, string>;
+        // @overlay-against: function hgetdel(string $key, array $fields): array
+        public function hgetdel(string $key, array<int, string> $fields): array<int, string|null>;
+        // @overlay-against: function hgetex(string $key, array $fields, string $modifier, int|bool $modifierValue): array|null
+        public function hgetex(string $key, array<int, string> $fields, string $modifier, int|bool $modifierValue): array<int, string|null>|null;
+        // @overlay-against: function hexpire(string $key, int $seconds, array $fields, string $flag): array|null
+        public function hexpire(string $key, int $seconds, array<int, string> $fields, string $flag): array<int, int>|null;
+        // @overlay-against: function hexpireat(string $key, int $unixTimeSeconds, array $fields, string $flag): array|null
+        public function hexpireat(string $key, int $unixTimeSeconds, array<int, string> $fields, string $flag): array<int, int>|null;
+        // @overlay-against: function hexpiretime(string $key, array $fields): array|null
+        public function hexpiretime(string $key, array<int, string> $fields): array<int, int>|null;
+        // @overlay-against: function hkeys(string $key): array
+        public function hkeys(string $key): array<int, string>;
+        // @overlay-against: function hmget(string $key, array $fields): array
+        public function hmget(string $key, array<int, string> $fields): array<int, string|null>;
+        // @overlay-against: function hpersist(string $key, array $fields): array|null
+        public function hpersist(string $key, array<int, string> $fields): array<int, int>|null;
+        // @overlay-against: function hpexpire(string $key, int $milliseconds, array $fields, string $flag): array|null
+        public function hpexpire(string $key, int $milliseconds, array<int, string> $fields, string $flag): array<int, int>|null;
+        // @overlay-against: function hpexpireat(string $key, int $unixTimeMilliseconds, array $fields, string $flag): array|null
+        public function hpexpireat(string $key, int $unixTimeMilliseconds, array<int, string> $fields, string $flag): array<int, int>|null;
+        // @overlay-against: function hpexpiretime(string $key, array $fields): array|null
+        public function hpexpiretime(string $key, array<int, string> $fields): array<int, int>|null;
+        // @overlay-against: function hpttl(string $key, array $fields): array|null
+        public function hpttl(string $key, array<int, string> $fields): array<int, int>|null;
+        // @overlay-against: function hscan(string $key, mixed $cursor, ?array $options): array
+        public function hscan(string $key, mixed $cursor, ?array<string, mixed> $options): PredisHashScanPage;
+        // @overlay-against: function httl(string $key, array $fields): array|null
+        public function httl(string $key, array<int, string> $fields): array<int, int>|null;
+        // @overlay-against: function hvals(string $key): array
+        public function hvals(string $key): array<int, string>;
+        // @overlay-against: function keys(string $pattern): array
+        public function keys(string $pattern): array<int, string>;
+        // @overlay-against: function mget(array|string $keyOrKeys, mixed $keys): array
+        public function mget(array<int, string>|string $keyOrKeys, mixed $keys): array<int, string|null>;
+        // @overlay-against: function scan(mixed $cursor, ?array $options): array
+        public function scan(mixed $cursor, ?array<string, mixed> $options): PredisScanPage;
+        // @overlay-against: function smismember(string $key, mixed $members): array
+        public function smismember(string $key, mixed $members): array<int, int>;
+        // @overlay-against: function sscan(string $key, int $cursor, array $options): array
+        public function sscan(string $key, int $cursor, array<string, mixed> $options): PredisScanPage;
+    }
+}
+
+namespace Predis\Command\Redis {
+    // @overlay-against: class ZMPOP extends \Predis\Command\Command implements \Predis\Command\Traits\Keys, \Predis\Command\Traits\Count, \Predis\Command\Traits\MinMaxModifier
+    partial class ZMPOP {
+        // @overlay-against: function parseResp3Response(mixed $data): mixed
+        public function parseResp3Response(mixed $data): array|array<int, array>|false|mixed|array<int, null>|string|null;
+    }
+}
+
+namespace Predis\Command\Redis\AbstractCommand {
+    // @overlay-against: class BZPOPBase extends \Predis\Command\Command implements \Predis\Command\Traits\Keys
+    partial class BZPOPBase {
+        // @overlay-against: function parseResp3Response(mixed $data): mixed
+        public function parseResp3Response(mixed $data): array|false|mixed|array<int, null>|string|null;
+    }
+}
+
+extern class \Relay\Exception;
+extern class \Relay\Relay;

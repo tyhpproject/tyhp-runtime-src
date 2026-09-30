@@ -1,0 +1,715 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ */
+
+namespace Illuminate\Database {
+    /**
+     * One column's `generation` object from `Schema\Builder::getColumns()`.
+     */
+    type DatabaseColumnGeneration = struct {
+        string $type;
+        string|null $expression;
+    };
+
+    /**
+     * One row from `Schema\Builder::getColumns()`.
+     */
+    type DatabaseColumnInfo = struct {
+        string $name;
+        string $type;
+        string $type_name;
+        string|null $collation;
+        bool $nullable;
+        mixed $default;
+        bool $auto_increment;
+        string|null $comment;
+        DatabaseColumnGeneration|null $generation;
+    };
+
+    /**
+     * One row from `Schema\Builder::getForeignKeys()`.
+     */
+    type DatabaseForeignKeyInfo = struct {
+        string|null $name;
+        array<int, string> $columns;
+        string|null $foreign_schema;
+        string $foreign_table;
+        array<int, string> $foreign_columns;
+        string|null $on_update;
+        string|null $on_delete;
+    };
+
+    /**
+     * One row from `Schema\Builder::getIndexes()`.
+     */
+    type DatabaseIndexInfo = struct {
+        string $name;
+        array<int, string> $columns;
+        string $type;
+        bool $unique;
+        bool $primary;
+    };
+
+    /**
+     * `Processor::processColumns()` generation object. `type` may be null.
+     */
+    type DatabaseProcessedColumnGeneration = struct {
+        string|null $type;
+        string|null $expression;
+    };
+
+    /**
+     * One row from `Processor::processColumns()`.
+     */
+    type DatabaseProcessedColumnInfo = struct {
+        string $name;
+        string $type;
+        string $type_name;
+        string|null $collation;
+        bool $nullable;
+        mixed $default;
+        bool $auto_increment;
+        string|null $comment;
+        DatabaseProcessedColumnGeneration|null $generation;
+    };
+
+    /**
+     * One row from `Processor::processIndexes()`. `type` may be null.
+     */
+    type DatabaseProcessedIndexInfo = struct {
+        string $name;
+        array<int, string> $columns;
+        string|null $type;
+        bool $unique;
+        bool $primary;
+    };
+
+    /**
+     * One row from `Schema\Builder::getSchemas()`.
+     */
+    type DatabaseSchemaInfo = struct {
+        string $name;
+        string|null $path;
+        bool $default;
+    };
+
+    /**
+     * One row from `Schema\Builder::getTables()`.
+     */
+    type DatabaseTableInfo = struct {
+        string $name;
+        string|null $schema;
+        string $schema_qualified_name;
+        int|null $size;
+        string|null $comment;
+        string|null $collation;
+        string|null $engine;
+    };
+
+    /**
+     * One row from `Schema\Builder::getTypes()`.
+     */
+    type DatabaseTypeInfo = struct {
+        string $name;
+        string $schema;
+        string $schema_qualified_name;
+        string $type;
+        string $category;
+        bool $implicit;
+    };
+
+    /**
+     * One row from `Schema\Builder::getViews()`.
+     */
+    type DatabaseViewInfo = struct {
+        string $name;
+        string|null $schema;
+        string $schema_qualified_name;
+        string $definition;
+    };
+
+    /**
+     * One pretended query from `Connection::pretend()` / `getQueryLog()`.
+     * Binding values are whatever the statement bound.
+     */
+    type QueryLogEntry = struct {
+        string $query;
+        array<int, mixed> $bindings;
+        float|null $time;
+    };
+
+    /**
+     * `Schema\Builder::parseSchemaAndTable()` pair: schema, then table.
+     */
+    type SchemaAndTable = struct {
+        string|null 0 as $schema;
+        string 1 as $table;
+    };
+
+    /**
+     * Overlay: pretend/query-log rows are `QueryLogEntry` records.
+     * The pretend callback receives this connection.
+     */
+    // @overlay-against: class Connection implements \Illuminate\Database\ConnectionInterface, \Illuminate\Database\DetectsConcurrencyErrors, \Illuminate\Database\DetectsLostConnections, \Illuminate\Database\Concerns\ManagesTransactions, \Illuminate\Support\InteractsWithTime, \Illuminate\Support\Traits\Macroable
+    partial class Connection {
+        // @overlay-against: function getQueryLog(): array
+        public function getQueryLog(): array<int, QueryLogEntry>;
+        // @overlay-against: function pretend(\Closure $callback): array
+        public function pretend(\Closure<callable(\Illuminate\Database\Connection): mixed> $callback): array<int, QueryLogEntry>;
+    }
+
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: interface ConnectionInterface
+    partial interface ConnectionInterface {
+        // @overlay-against: function cursor(string $query, array $bindings, bool $useReadPdo, array $fetchUsing): \Generator
+        public function cursor(string $query, array<int, mixed> $bindings = [], bool $useReadPdo = true, array<int, mixed> $fetchUsing = []): \Generator<int, \stdClass>;
+        // @overlay-against: function pretend(\Closure $callback): array
+        public function pretend(\Closure<callable(\Illuminate\Database\Connection): mixed> $callback): array<int, QueryLogEntry>;
+        // @overlay-against: function raw(mixed $value): \Illuminate\Contracts\Database\Query\Expression
+        public function raw(string|int|float $value): \Illuminate\Contracts\Database\Query\Expression;
+        // @overlay-against: function unprepared(mixed $query): bool
+        public function unprepared(string $query): bool;
+    }
+}
+
+namespace Illuminate\Database\Console\Migrations {
+    /**
+     * `TableGuesser::guess()` pair: table name, then whether the migration creates it.
+     */
+    type MigrationTableGuess = struct {
+        string 0 as $table;
+        bool 1 as $create;
+    };
+
+    /**
+     * Overlay: pattern lists are regex strings. `guess()` returns the table/create pair.
+     */
+    // @overlay-against: class TableGuesser
+    partial class TableGuesser {
+        // @overlay-against: const array CHANGE_PATTERNS ?? []
+        public const array<int, string> CHANGE_PATTERNS ?? [];
+        // @overlay-against: const array CREATE_PATTERNS ?? []
+        public const array<int, string> CREATE_PATTERNS ?? [];
+        // @overlay-against: function guess(string $migration): array
+        public static function guess(string $migration): MigrationTableGuess;
+    }
+}
+
+namespace Illuminate\Database\Eloquent {
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Builder implements \Illuminate\Contracts\Database\Eloquent\Builder, \Illuminate\Database\Concerns\BuildsQueries, \Illuminate\Support\Traits\ForwardsCalls, \Illuminate\Database\Eloquent\Concerns\QueriesRelationships
+    partial class Builder {
+        // @overlay-against: function find(mixed $id, array|string $columns): mixed
+        public function find(mixed $id, array|string $columns = []): \Illuminate\Database\Eloquent\Collection<int, TModel>|TModel|null;
+        // @overlay-against: function findOrFail(mixed $id, array|string $columns): mixed
+        public function findOrFail(mixed $id, array|string $columns = []): \Illuminate\Database\Eloquent\Collection<int, TModel>|TModel;
+        // @overlay-against: function findOrNew(mixed $id, array|string $columns): mixed
+        public function findOrNew(mixed $id, array|string $columns = []): \Illuminate\Database\Eloquent\Collection<int, TModel>|TModel;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Collection extends \Illuminate\Support\Collection implements \Illuminate\Contracts\Queue\QueueableCollection, \Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithDictionary
+    partial class Collection {
+        // @overlay-against: function find(mixed $key, TFindDefault $default): mixed
+        public function find<TFindDefault>(mixed $key, TFindDefault $default = null): static|TFindDefault|TModel;
+    }
+    /**
+     * Overlay: the missing model is a class-string of `TModel`.
+     */
+    // @overlay-against: class ModelNotFoundException extends \Illuminate\Database\RecordsNotFoundException
+    partial class ModelNotFoundException {
+        // @overlay-against: function getModel(): string
+        public function getModel(): __ClassName<TModel>;
+        // @overlay-against: function setModel(string $model, array|int|string $ids): static
+        public function setModel(__ClassName<TModel> $model, array<int, int|string>|int|string $ids = []): static;
+    }
+}
+
+namespace Illuminate\Database\Eloquent\Attributes {
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Appends
+    partial class Appends {
+        // @overlay-against: function __construct(array|string $columns): void
+        public function __construct(array<int, string>|string ...$columns): void;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Fillable
+    partial class Fillable {
+        // @overlay-against: function __construct(array|string $columns): void
+        public function __construct(array<int, string>|string ...$columns): void;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Guarded
+    partial class Guarded {
+        // @overlay-against: function __construct(array|string $columns): void
+        public function __construct(array<int, string>|string ...$columns): void;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Hidden
+    partial class Hidden {
+        // @overlay-against: function __construct(array|string $columns): void
+        public function __construct(array<int, string>|string ...$columns): void;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Touches
+    partial class Touches {
+        // @overlay-against: function __construct(array|string $relations): void
+        public function __construct(array<int, string>|string ...$relations): void;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class UseEloquentBuilder
+    partial class UseEloquentBuilder {
+        // @overlay-against: function __construct(string $builderClass): void
+        public function __construct(__ClassName<\Illuminate\Database\Eloquent\Builder> $builderClass): void;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class UseFactory
+    partial class UseFactory {
+        // @overlay-against: function __construct(string $factoryClass): void
+        public function __construct(__ClassName<\Illuminate\Database\Eloquent\Factories\Factory> $factoryClass): void;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Visible
+    partial class Visible {
+        // @overlay-against: function __construct(array|string $columns): void
+        public function __construct(array<int, string>|string ...$columns): void;
+    }
+}
+
+namespace Illuminate\Database\Eloquent\Casts {
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class AsCollection implements \Illuminate\Contracts\Database\Eloquent\Castable
+    partial class AsCollection {
+        // @overlay-against: function using(string $class, array|string|null $map): string
+        public static function using(__ClassName $class, array|string|null $map = null): string;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class AsEncryptedCollection implements \Illuminate\Contracts\Database\Eloquent\Castable
+    partial class AsEncryptedCollection {
+        // @overlay-against: function using(string $class, array|string|null $map): string
+        public static function using(__ClassName $class, array|string|null $map = null): string;
+    }
+}
+
+namespace Illuminate\Database\Eloquent\Concerns {
+    /**
+     * `TransformsToResource::guessResourceName()` pair: resource class, then collection class.
+     */
+    type ResourceNameGuess = struct {
+        __ClassName<\Illuminate\Http\Resources\Json\JsonResource> 0 as $resource;
+        __ClassName<\Illuminate\Http\Resources\Json\JsonResource> 1 as $collection;
+    };
+
+    /**
+     * Overlay: the event map values are listener class-strings.
+     */
+    // @overlay-against: trait HasEvents
+    partial trait HasEvents {
+        // @overlay-against: function dispatchesEvents(): array
+        public function dispatchesEvents(): array<string, __ClassName>;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: trait HasRelationships
+    partial trait HasRelationships {
+        // @overlay-against: function belongsTo(string $related, string|null $foreignKey, string|null $ownerKey, string|null $relation): \Illuminate\Database\Eloquent\Relations\BelongsTo
+        public function belongsTo<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, string|null $foreignKey = null, string|null $ownerKey = null, string|null $relation = null): \Illuminate\Database\Eloquent\Relations\BelongsTo<TRelatedModel, static>;
+        // @overlay-against: function belongsToMany(string $related, string|TPivotTable $table, string|null $foreignPivotKey, string|null $relatedPivotKey, string|null $parentKey, string|null $relatedKey, string|null $relation): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+        public function belongsToMany<TRelatedModel extends \Illuminate\Database\Eloquent\Model, TPivotModel extends \Illuminate\Database\Eloquent\Relations\Pivot, TPivotTable extends string|null>(__ClassName<TRelatedModel> $related, string|TPivotTable $table = null, string|null $foreignPivotKey = null, string|null $relatedPivotKey = null, string|null $parentKey = null, string|null $relatedKey = null, string|null $relation = null): \Illuminate\Database\Eloquent\Relations\BelongsToMany<TRelatedModel, static, TPivotModel>;
+        // @overlay-against: function hasMany(string $related, string|null $foreignKey, string|null $localKey): \Illuminate\Database\Eloquent\Relations\HasMany
+        public function hasMany<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, string|null $foreignKey = null, string|null $localKey = null): \Illuminate\Database\Eloquent\Relations\HasMany<TRelatedModel, static>;
+        // @overlay-against: function hasManyThrough(string $related, string $through, string|null $firstKey, string|null $secondKey, string|null $localKey, string|null $secondLocalKey): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+        public function hasManyThrough<TRelatedModel extends \Illuminate\Database\Eloquent\Model, TIntermediateModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, __ClassName<TIntermediateModel> $through, string|null $firstKey = null, string|null $secondKey = null, string|null $localKey = null, string|null $secondLocalKey = null): \Illuminate\Database\Eloquent\Relations\HasManyThrough<TRelatedModel, TIntermediateModel, static>;
+        // @overlay-against: function hasOne(string $related, string|null $foreignKey, string|null $localKey): \Illuminate\Database\Eloquent\Relations\HasOne
+        public function hasOne<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, string|null $foreignKey = null, string|null $localKey = null): \Illuminate\Database\Eloquent\Relations\HasOne<TRelatedModel, static>;
+        // @overlay-against: function hasOneThrough(string $related, string $through, string|null $firstKey, string|null $secondKey, string|null $localKey, string|null $secondLocalKey): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+        public function hasOneThrough<TRelatedModel extends \Illuminate\Database\Eloquent\Model, TIntermediateModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, __ClassName<TIntermediateModel> $through, string|null $firstKey = null, string|null $secondKey = null, string|null $localKey = null, string|null $secondLocalKey = null): \Illuminate\Database\Eloquent\Relations\HasOneThrough<TRelatedModel, TIntermediateModel, static>;
+        // @overlay-against: function morphedByMany(string $related, string $name, string|null $table, string|null $foreignPivotKey, string|null $relatedPivotKey, string|null $parentKey, string|null $relatedKey, string|null $relation): \Illuminate\Database\Eloquent\Relations\MorphToMany
+        public function morphedByMany<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, string $name, string|null $table = null, string|null $foreignPivotKey = null, string|null $relatedPivotKey = null, string|null $parentKey = null, string|null $relatedKey = null, string|null $relation = null): \Illuminate\Database\Eloquent\Relations\MorphToMany<TRelatedModel, static>;
+        // @overlay-against: function morphMany(string $related, string $name, string|null $type, string|null $id, string|null $localKey): \Illuminate\Database\Eloquent\Relations\MorphMany
+        public function morphMany<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, string $name, string|null $type = null, string|null $id = null, string|null $localKey = null): \Illuminate\Database\Eloquent\Relations\MorphMany<TRelatedModel, static>;
+        // @overlay-against: function morphOne(string $related, string $name, string|null $type, string|null $id, string|null $localKey): \Illuminate\Database\Eloquent\Relations\MorphOne
+        public function morphOne<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, string $name, string|null $type = null, string|null $id = null, string|null $localKey = null): \Illuminate\Database\Eloquent\Relations\MorphOne<TRelatedModel, static>;
+        // @overlay-against: function morphToMany(string $related, string $name, string|null $table, string|null $foreignPivotKey, string|null $relatedPivotKey, string|null $parentKey, string|null $relatedKey, string|null $relation, bool $inverse): \Illuminate\Database\Eloquent\Relations\MorphToMany
+        public function morphToMany<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $related, string $name, string|null $table = null, string|null $foreignPivotKey = null, string|null $relatedPivotKey = null, string|null $parentKey = null, string|null $relatedKey = null, string|null $relation = null, bool $inverse = false): \Illuminate\Database\Eloquent\Relations\MorphToMany<TRelatedModel, static>;
+        // @overlay-against: function relationResolver(string $class, string $key): \Closure|null
+        public function relationResolver<TRelatedModel extends \Illuminate\Database\Eloquent\Model>(__ClassName<TRelatedModel> $class, string $key): \Closure|null;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: trait TransformsToResource
+    partial trait TransformsToResource {
+        // @overlay-against: function guessResourceName(): array
+        public static function guessResourceName(): ResourceNameGuess;
+        // @overlay-against: function toResource(?string $resourceClass): \Illuminate\Http\Resources\Json\JsonResource
+        public function toResource(__ClassName<\Illuminate\Http\Resources\Json\JsonResource>|null $resourceClass = null): \Illuminate\Http\Resources\Json\JsonResource;
+    }
+}
+
+namespace Illuminate\Database\Eloquent\Factories {
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class CrossJoinSequence extends \Illuminate\Database\Eloquent\Factories\Sequence
+    partial class CrossJoinSequence {
+        // @overlay-against: function __construct(mixed $sequences): void
+        public function __construct(array ...$sequences): void;
+    }
+    /**
+     * Overlay: model and factory names are class-strings.
+     */
+    // @overlay-against: class Factory implements \Illuminate\Support\Traits\Conditionable, \Illuminate\Support\Traits\ForwardsCalls, \Illuminate\Support\Traits\Macroable
+    partial class Factory {
+        // @overlay-against: function factoryForModel(string $modelName): \Illuminate\Database\Eloquent\Factories\Factory
+        public static function factoryForModel<TClass extends \Illuminate\Database\Eloquent\Model>(__ClassName<TClass> $modelName): \Illuminate\Database\Eloquent\Factories\Factory<TClass>;
+        // @overlay-against: function guessFactoryNamesUsing(callable $callback): void
+        public static function guessFactoryNamesUsing(callable(__ClassName<\Illuminate\Database\Eloquent\Model>): __ClassName<\Illuminate\Database\Eloquent\Factories\Factory> $callback): void;
+        // @overlay-against: function guessModelNamesUsing(callable $callback): void
+        public static function guessModelNamesUsing(callable(\Illuminate\Database\Eloquent\Factories\Factory): __ClassName<\Illuminate\Database\Eloquent\Model> $callback): void;
+        // @overlay-against: function resolveFactoryName(string $modelName): string
+        public static function resolveFactoryName<TClass extends \Illuminate\Database\Eloquent\Model>(__ClassName<TClass> $modelName): __ClassName<\Illuminate\Database\Eloquent\Factories\Factory<TClass>>;
+        // @overlay-against: function modelName(): string
+        public function modelName(): __ClassName<TModel>;
+    }
+}
+
+namespace Illuminate\Database\Eloquent\Relations {
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class BelongsToMany extends \Illuminate\Database\Eloquent\Relations\Relation implements \Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithDictionary, \Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithPivotTable, \Illuminate\Database\Eloquent\Relations\Concerns\SupportsPivotInverseRelations
+    partial class BelongsToMany {
+        // @overlay-against: function __construct(\Illuminate\Database\Eloquent\Builder $query, \Illuminate\Database\Eloquent\Model $parent, string $table, string $foreignPivotKey, string $relatedPivotKey, string $parentKey, string $relatedKey, string|null $relationName): void
+        public function __construct(\Illuminate\Database\Eloquent\Builder $query, \Illuminate\Database\Eloquent\Model $parent, string|__ClassName<TRelatedModel> $table, string $foreignPivotKey, string $relatedPivotKey, string $parentKey, string $relatedKey, string|null $relationName = null): void;
+        // @overlay-against: function getPivotClass(): string
+        public function getPivotClass(): __ClassName<TPivotModel>;
+        // @overlay-against: function using(string $class): static
+        public function using<TNewPivotModel extends \Illuminate\Database\Eloquent\Relations\Pivot>(__ClassName<TNewPivotModel> $class): static;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class HasOneOrMany extends \Illuminate\Database\Eloquent\Relations\Relation implements \Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithDictionary, \Illuminate\Database\Eloquent\Relations\Concerns\SupportsInverseRelations
+    partial class HasOneOrMany {
+        // @overlay-against: function findOrNew(mixed $id, array $columns): mixed
+        public function findOrNew(mixed $id, array $columns = []): \Illuminate\Database\Eloquent\Collection<int, TRelatedModel>|TRelatedModel;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class HasOneOrManyThrough extends \Illuminate\Database\Eloquent\Relations\Relation implements \Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithDictionary
+    partial class HasOneOrManyThrough {
+        // @overlay-against: function find(mixed $id, array $columns): mixed
+        public function find(mixed $id, array $columns = []): \Illuminate\Database\Eloquent\Collection<int, TRelatedModel>|TRelatedModel|null;
+        // @overlay-against: function findOrFail(mixed $id, array $columns): mixed
+        public function findOrFail(mixed $id, array $columns = []): \Illuminate\Database\Eloquent\Collection<int, TRelatedModel>|TRelatedModel;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class MorphOneOrMany extends \Illuminate\Database\Eloquent\Relations\HasOneOrMany
+    partial class MorphOneOrMany {
+        // @overlay-against: function getMorphClass(): string
+        public function getMorphClass(): __ClassName<TDeclaringModel>|string;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class MorphPivot extends \Illuminate\Database\Eloquent\Relations\Pivot
+    partial class MorphPivot {
+        // @overlay-against: function setMorphClass(string $morphClass): \Illuminate\Database\Eloquent\Relations\MorphPivot
+        public function setMorphClass(__ClassName|string $morphClass): \Illuminate\Database\Eloquent\Relations\MorphPivot;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class MorphToMany extends \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    partial class MorphToMany {
+        // @overlay-against: function getMorphClass(): string
+        public function getMorphClass(): __ClassName|string;
+    }
+    /**
+     * Overlay: PHPDoc shapes, class-strings, and conditionals harvest left loose.
+     */
+    // @overlay-against: class Relation implements \Illuminate\Contracts\Database\Eloquent\Builder, \Illuminate\Support\Traits\ForwardsCalls, \Illuminate\Support\Traits\Macroable
+    partial class Relation {
+        // @overlay-against: function enforceMorphMap(array $map, bool $merge): array
+        public static function enforceMorphMap(array<int|string, __ClassName<\Illuminate\Database\Eloquent\Model>> $map, bool $merge = true): array<string, __ClassName<\Illuminate\Database\Eloquent\Model>>;
+        // @overlay-against: function getMorphAlias(string $className): int|string
+        public static function getMorphAlias(__ClassName<\Illuminate\Database\Eloquent\Model> $className): int|string;
+        // @overlay-against: function getMorphedModel(string|int|null $alias): string|null
+        public static function getMorphedModel(string|int|null $alias): __ClassName<\Illuminate\Database\Eloquent\Model>|null;
+        // @overlay-against: function morphMap(array|null $map, bool $merge): array
+        public static function morphMap(array<int|string, __ClassName<\Illuminate\Database\Eloquent\Model>>|null $map = null, bool $merge = true): array<string, __ClassName<\Illuminate\Database\Eloquent\Model>>;
+        // @overlay-against: function getRelatedClass(): string
+        public function getRelatedClass(): __ClassName<TRelatedModel>;
+    }
+}
+
+namespace Illuminate\Database\Eloquent\Relations\Concerns {
+    /**
+     * `sync()` change map. Each list is the affected pivot ids.
+     */
+    type PivotSyncResult = struct {
+        array<int, int|string> $attached;
+        array<int, int|string> $detached;
+        array<int, int|string> $updated;
+    };
+
+    /**
+     * Overlay: sync returns attached/detached/updated id lists.
+     * An id array is a list or an id-to-pivot map. Pivot `$values` are column maps.
+     */
+    // @overlay-against: trait InteractsWithPivotTable
+    partial trait InteractsWithPivotTable {
+        // @overlay-against: function sync(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array|int|string $ids, bool $detaching): array
+        public function sync(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array<int|string, mixed>|int|string $ids, bool $detaching = true): PivotSyncResult;
+        // @overlay-against: function syncOrFail(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array $ids, bool $detaching): array
+        public function syncOrFail(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array<int|string, mixed> $ids, bool $detaching = true): PivotSyncResult;
+        // @overlay-against: function syncWithPivotValues(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array|int|string $ids, array $values, bool $detaching): array
+        public function syncWithPivotValues(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array<int|string, mixed>|int|string $ids, array<string, mixed> $values, bool $detaching = true): PivotSyncResult;
+        // @overlay-against: function syncWithPivotValuesOrFail(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array|int|string $ids, array $values, bool $detaching): array
+        public function syncWithPivotValuesOrFail(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array<int|string, mixed>|int|string $ids, array<string, mixed> $values, bool $detaching = true): PivotSyncResult;
+        // @overlay-against: function syncWithoutDetaching(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array|int|string $ids): array
+        public function syncWithoutDetaching(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array<int|string, mixed>|int|string $ids): PivotSyncResult;
+        // @overlay-against: function syncWithoutDetachingOrFail(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array $ids): array
+        public function syncWithoutDetachingOrFail(\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|array<int|string, mixed> $ids): PivotSyncResult;
+    }
+}
+
+namespace Illuminate\Database\Query {
+    /**
+     * `Builder::getRawBindings()` groups. Each list holds the bound values for that clause.
+     */
+    type QueryRawBindings = struct {
+        array<int, mixed> $select;
+        array<int, mixed> $from;
+        array<int, mixed> $join;
+        array<int, mixed> $where;
+        array<int, mixed> $groupBy;
+        array<int, mixed> $having;
+        array<int, mixed> $order;
+        array<int, mixed> $union;
+        array<int, mixed> $unionOrder;
+    };
+
+    /**
+     * Overlay: raw bindings are the nine clause lists.
+     */
+    // @overlay-against: class Builder implements \Illuminate\Contracts\Database\Query\Builder, \Illuminate\Database\Concerns\BuildsWhereDateClauses, \Illuminate\Database\Concerns\BuildsQueries, \Illuminate\Database\Concerns\ExplainsQueries, \Illuminate\Support\Traits\ForwardsCalls, \Illuminate\Support\Traits\Macroable
+    partial class Builder {
+        // @overlay-against: function getRawBindings(): array
+        public function getRawBindings(): QueryRawBindings;
+    }
+}
+
+namespace Illuminate\Database\Query\Processors {
+    /**
+     * Overlay: schema introspection rows and insert bindings.
+     */
+    // @overlay-against: class MySqlProcessor extends \Illuminate\Database\Query\Processors\Processor
+    partial class MySqlProcessor {
+        // @overlay-against: function processColumns(mixed $results): mixed
+        public function processColumns(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedColumnInfo>;
+        // @overlay-against: function processForeignKeys(mixed $results): mixed
+        public function processForeignKeys(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseForeignKeyInfo>;
+        // @overlay-against: function processIndexes(mixed $results): mixed
+        public function processIndexes(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedIndexInfo>;
+        // @overlay-against: function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array $values, string|null $sequence): int
+        public function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array<int, mixed> $values, string|null $sequence = null): int;
+    }
+
+    /**
+     * Overlay: schema introspection rows and insert bindings.
+     */
+    // @overlay-against: class PostgresProcessor extends \Illuminate\Database\Query\Processors\Processor
+    partial class PostgresProcessor {
+        // @overlay-against: function processColumns(mixed $results): mixed
+        public function processColumns(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedColumnInfo>;
+        // @overlay-against: function processForeignKeys(mixed $results): mixed
+        public function processForeignKeys(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseForeignKeyInfo>;
+        // @overlay-against: function processIndexes(mixed $results): mixed
+        public function processIndexes(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedIndexInfo>;
+        // @overlay-against: function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array $values, string|null $sequence): int
+        public function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array<int, mixed> $values, string|null $sequence = null): int;
+        // @overlay-against: function processTypes(mixed $results): mixed
+        public function processTypes(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseTypeInfo>;
+    }
+
+    /**
+     * Overlay: schema introspection rows, select rows, and insert bindings.
+     */
+    // @overlay-against: class Processor
+    partial class Processor {
+        // @overlay-against: function processColumns(array $results): array
+        public function processColumns(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedColumnInfo>;
+        // @overlay-against: function processForeignKeys(array $results): array
+        public function processForeignKeys(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseForeignKeyInfo>;
+        // @overlay-against: function processIndexes(array $results): array
+        public function processIndexes(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedIndexInfo>;
+        // @overlay-against: function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array $values, string|null $sequence): int
+        public function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array<int, mixed> $values, string|null $sequence = null): int;
+        // @overlay-against: function processSchemas(array $results): array
+        public function processSchemas(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseSchemaInfo>;
+        // @overlay-against: function processSelect(\Illuminate\Database\Query\Builder $query, array $results): array
+        public function processSelect(\Illuminate\Database\Query\Builder $query, array<int, array<string, mixed>> $results): array<int, array<string, mixed>>;
+        // @overlay-against: function processTables(array $results): array
+        public function processTables(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseTableInfo>;
+        // @overlay-against: function processTypes(array $results): array
+        public function processTypes(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseTypeInfo>;
+        // @overlay-against: function processViews(array $results): array
+        public function processViews(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseViewInfo>;
+    }
+
+    /**
+     * Overlay: schema introspection rows. `$sql` is the table-creation statement.
+     */
+    // @overlay-against: class SQLiteProcessor extends \Illuminate\Database\Query\Processors\Processor
+    partial class SQLiteProcessor {
+        // @overlay-against: function processColumns(mixed $results, mixed $sql): mixed
+        public function processColumns(array<int, array<string, mixed>> $results, string $sql = ''): array<int, \Illuminate\Database\DatabaseProcessedColumnInfo>;
+        // @overlay-against: function processForeignKeys(mixed $results): mixed
+        public function processForeignKeys(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseForeignKeyInfo>;
+        // @overlay-against: function processIndexes(mixed $results): mixed
+        public function processIndexes(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedIndexInfo>;
+    }
+
+    /**
+     * Overlay: schema introspection rows and insert bindings.
+     */
+    // @overlay-against: class SqlServerProcessor extends \Illuminate\Database\Query\Processors\Processor
+    partial class SqlServerProcessor {
+        // @overlay-against: function processColumns(mixed $results): mixed
+        public function processColumns(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedColumnInfo>;
+        // @overlay-against: function processForeignKeys(mixed $results): mixed
+        public function processForeignKeys(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseForeignKeyInfo>;
+        // @overlay-against: function processIndexes(mixed $results): mixed
+        public function processIndexes(array<int, array<string, mixed>> $results): array<int, \Illuminate\Database\DatabaseProcessedIndexInfo>;
+        // @overlay-against: function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array $values, string|null $sequence): int
+        public function processInsertGetId(\Illuminate\Database\Query\Builder $query, string $sql, array<int, mixed> $values, string|null $sequence = null): int;
+    }
+}
+
+namespace Illuminate\Database\Schema {
+    /**
+     * Overlay: introspection rows, index/foreign-key probes, and blueprint callbacks.
+     */
+    // @overlay-against: class Builder implements \Illuminate\Support\Traits\Macroable
+    partial class Builder {
+        // @overlay-against: function defaultStringLength(mixed $length): void
+        public static function defaultStringLength(int $length): void;
+        // @overlay-against: function getColumns(string $table): array
+        public function getColumns(string $table): array<int, \Illuminate\Database\DatabaseColumnInfo>;
+        // @overlay-against: function getForeignKeys(string $table): array
+        public function getForeignKeys(string $table): array<int, \Illuminate\Database\DatabaseForeignKeyInfo>;
+        // @overlay-against: function getIndexes(string $table): array
+        public function getIndexes(string $table): array<int, \Illuminate\Database\DatabaseIndexInfo>;
+        // @overlay-against: function getSchemas(): array
+        public function getSchemas(): array<int, \Illuminate\Database\DatabaseSchemaInfo>;
+        // @overlay-against: function getTables(string|array|null $schema): array
+        public function getTables(string|array<int, string>|null $schema = null): array<int, \Illuminate\Database\DatabaseTableInfo>;
+        // @overlay-against: function getTypes(string|array|null $schema): array
+        public function getTypes(string|array<int, string>|null $schema = null): array<int, \Illuminate\Database\DatabaseTypeInfo>;
+        // @overlay-against: function getViews(string|array|null $schema): array
+        public function getViews(string|array<int, string>|null $schema = null): array<int, \Illuminate\Database\DatabaseViewInfo>;
+        // @overlay-against: function hasForeignKey(string $table, array|string $foreignKey): bool
+        public function hasForeignKey(string $table, array<int, string>|string $foreignKey): bool;
+        // @overlay-against: function hasIndex(string $table, string|array $index, string|null $type): bool
+        public function hasIndex(string $table, string|array<int, string> $index, string|null $type = null): bool;
+        // @overlay-against: function parseSchemaAndTable(string $reference, string|bool|null $withDefaultSchema): array
+        public function parseSchemaAndTable(string $reference, string|bool|null $withDefaultSchema = null): \Illuminate\Database\SchemaAndTable;
+        // @overlay-against: function whenTableDoesntHaveIndex(string $table, string|array $index, \Closure $callback, ?string $type): void
+        public function whenTableDoesntHaveIndex(string $table, string|array<int, string> $index, \Closure<callable(\Illuminate\Database\Schema\Blueprint): void> $callback, ?string $type = null): void;
+        // @overlay-against: function whenTableHasIndex(string $table, string|array $index, \Closure $callback, ?string $type): void
+        public function whenTableHasIndex(string $table, string|array<int, string> $index, \Closure<callable(\Illuminate\Database\Schema\Blueprint): void> $callback, ?string $type = null): void;
+    }
+
+    /**
+     * Overlay: SQLite overrides keep the parent introspection rows.
+     */
+    // @overlay-against: class SQLiteBuilder extends \Illuminate\Database\Schema\Builder
+    partial class SQLiteBuilder {
+        // @overlay-against: function getColumns(mixed $table): mixed
+        public function getColumns(string $table): array<int, \Illuminate\Database\DatabaseColumnInfo>;
+        // @overlay-against: function getTables(mixed $schema): mixed
+        public function getTables(string|array<int, string>|null $schema = null): array<int, \Illuminate\Database\DatabaseTableInfo>;
+        // @overlay-against: function getViews(mixed $schema): mixed
+        public function getViews(string|array<int, string>|null $schema = null): array<int, \Illuminate\Database\DatabaseViewInfo>;
+    }
+}
+
+namespace Illuminate\Database\Schema\Grammars {
+    /**
+     * Overlay: dialect overrides return the same statement list or single SQL string as `Grammar`.
+     */
+    // @overlay-against: class MariaDbGrammar extends \Illuminate\Database\Schema\Grammars\MySqlGrammar
+    partial class MariaDbGrammar {
+        // @overlay-against: function compileRenameColumn(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): mixed
+        public function compileRenameColumn(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): array<int, string>|string;
+    }
+    /**
+     * Overlay: dialect overrides return the same statement list or single SQL string as `Grammar`.
+     */
+    // @overlay-against: class MySqlGrammar extends \Illuminate\Database\Schema\Grammars\Grammar
+    partial class MySqlGrammar {
+        // @overlay-against: function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): mixed
+        public function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): array<int, string>|string;
+        // @overlay-against: function compileRenameColumn(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): mixed
+        public function compileRenameColumn(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): array<int, string>|string;
+    }
+    /**
+     * Overlay: dialect overrides return the same statement list or single SQL string as `Grammar`.
+     */
+    // @overlay-against: class PostgresGrammar extends \Illuminate\Database\Schema\Grammars\Grammar
+    partial class PostgresGrammar {
+        // @overlay-against: function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): mixed
+        public function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): array<int, string>|string;
+    }
+    /**
+     * Overlay: dialect overrides return the same statement list or single SQL string as `Grammar`.
+     */
+    // @overlay-against: class SQLiteGrammar extends \Illuminate\Database\Schema\Grammars\Grammar
+    partial class SQLiteGrammar {
+        // @overlay-against: function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): mixed
+        public function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): array<int, string>|string;
+    }
+    /**
+     * Overlay: dialect overrides return the same statement list or single SQL string as `Grammar`.
+     */
+    // @overlay-against: class SqlServerGrammar extends \Illuminate\Database\Schema\Grammars\Grammar
+    partial class SqlServerGrammar {
+        // @overlay-against: function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): mixed
+        public function compileChange(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): array<int, string>|string;
+        // @overlay-against: function compileRenameColumn(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): mixed
+        public function compileRenameColumn(\Illuminate\Database\Schema\Blueprint $blueprint, \Illuminate\Support\Fluent $command): array<int, string>|string;
+    }
+}

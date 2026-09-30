@@ -1,0 +1,190 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * `@internal` Definition plus class-string `get()` / `make()`. Invoker types come from
+ * tyhpdef/php-di-invoker.
+ */
+
+namespace DI\Definition {
+    /**
+     * Internal PHP-DI definition. Layer 1 omits `@internal`.
+     */
+    interface Definition extends \DI\Factory\RequestedEntry, \Stringable {
+        public function getName(): string;
+
+        public function setName(string $name): void;
+
+        public function replaceNestedDefinitions(callable(mixed): mixed $replacer): void;
+
+        public function __toString(): string;
+    }
+}
+
+namespace DI {
+    /**
+     * Overlay: class-string `get()` like PSR-11.
+     */
+    // @overlay-against: class Container implements \Psr\Container\ContainerInterface, \DI\FactoryInterface, \Invoker\InvokerInterface
+    partial class Container {
+        /**
+         * @param \__ClassName<T> $id
+         * @return T
+         */
+        // @overlay-against: function get(string $id): mixed
+        public function get<T extends object>(\__ClassName<T> $id): T;
+
+        /**
+         * @param string $id
+         * @return T
+         */
+        // @overlay-against: function get(string $id): mixed
+        public function get<T = mixed>(string $id): T;
+
+        /**
+         * @param array<string, mixed> $definitions
+         */
+        // @overlay-against: function create(array $definitions): static
+        public static function create(array<string, mixed> $definitions): static;
+
+        /**
+         * @param \__ClassName<T> $name
+         * @param array<int|string, mixed> $parameters
+         * @return T
+         */
+        // @overlay-against: function make(string $name, array $parameters): mixed
+        public function make<T extends object>(\__ClassName<T> $name, array<int|string, mixed> $parameters = []): T;
+
+        /**
+         * @param array<int|string, mixed> $parameters
+         * @return T
+         */
+        // @overlay-against: function make(string $name, array $parameters): mixed
+        public function make<T = mixed>(string $name, array<int|string, mixed> $parameters = []): T;
+
+        /**
+         * @return T
+         */
+        // @overlay-against: function injectOn(object|T $instance): object|T
+        public function injectOn<T extends object>(T $instance): T;
+
+        /**
+         * @param callable|array<int|string, mixed>|string $callable
+         * @param array<int|string, mixed> $parameters
+         */
+        // @overlay-against: function call(callable|array|string $callable, array $parameters): mixed
+        public function call(callable|array<int|string, mixed>|string $callable, array<int|string, mixed> $parameters = []): mixed;
+    }
+
+    /**
+     * Overlay: `make()` matches `Container::make()`.
+     */
+    // @overlay-against: interface FactoryInterface
+    partial interface FactoryInterface {
+        /**
+         * @param \__ClassName<T> $name
+         * @param array<int|string, mixed> $parameters
+         * @return T
+         */
+        // @overlay-against: function make(string $name, array $parameters): mixed
+        public function make<T extends object>(\__ClassName<T> $name, array<int|string, mixed> $parameters = []): T;
+
+        /**
+         * @param array<int|string, mixed> $parameters
+         * @return T
+         */
+        // @overlay-against: function make(string $name, array $parameters): mixed
+        public function make<T = mixed>(string $name, array<int|string, mixed> $parameters = []): T;
+    }
+}
+
+namespace DI\Definition {
+    /**
+     * Overlay: nested values are definitions or scalars.
+     */
+    // @overlay-against: class ArrayDefinition implements \DI\Definition\Definition
+    partial class ArrayDefinition {
+        /**
+         * @param array<int|string, mixed> $values
+         */
+        // @overlay-against: function __construct(array $values): void
+        public function __construct(array<int|string, mixed> $values): void;
+
+        /**
+         * @return array<int|string, mixed>
+         */
+        // @overlay-against: function getValues(): array
+        public function getValues(): array<int|string, mixed>;
+
+        // @overlay-against: function replaceNestedDefinitions(callable $replacer): void
+        public function replaceNestedDefinitions(callable(mixed): mixed $replacer): void;
+    }
+}
+
+namespace DI\Definition\Source {
+    /**
+     * Overlay: definition maps are keyed by entry name.
+     */
+    // @overlay-against: class DefinitionArray implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\MutableDefinitionSource
+    partial class DefinitionArray {
+        /**
+         * @param array<string, mixed> $definitions
+         */
+        // @overlay-against: function __construct(array $definitions, ?\DI\Definition\Source\Autowiring $autowiring): void
+        public function __construct(array<string, mixed> $definitions = [], ?\DI\Definition\Source\Autowiring $autowiring = null): void;
+
+        /**
+         * @param array<string, mixed> $definitions
+         */
+        // @overlay-against: function addDefinitions(array $definitions): void
+        public function addDefinitions(array<string, mixed> $definitions): void;
+
+        /**
+         * @return array<string, \DI\Definition\Definition>
+         */
+        // @overlay-against: function getDefinitions(): array
+        public function getDefinitions(): array<string, \DI\Definition\Definition>;
+    }
+
+    /**
+     * Overlay: cached sources still return a name-indexed definition map.
+     */
+    // @overlay-against: class SourceCache implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\MutableDefinitionSource
+    partial class SourceCache {
+        /**
+         * @return array<string, \DI\Definition\Definition>
+         */
+        // @overlay-against: function getDefinitions(): array
+        public function getDefinitions(): array<string, \DI\Definition\Definition>;
+    }
+
+    /**
+     * Overlay: the chain merges name-indexed definition maps.
+     */
+    // @overlay-against: class SourceChain implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\MutableDefinitionSource
+    partial class SourceChain {
+        /**
+         * @param array<int|string, \DI\Definition\Source\DefinitionSource> $sources
+         */
+        // @overlay-against: function __construct(array $sources): void
+        public function __construct(array<int|string, \DI\Definition\Source\DefinitionSource> $sources): void;
+
+        /**
+         * @return array<string, \DI\Definition\Definition>
+         */
+        // @overlay-against: function getDefinitions(): array
+        public function getDefinitions(): array<string, \DI\Definition\Definition>;
+    }
+
+    /**
+     * Overlay: reflection autowiring returns the same map shape (often empty).
+     */
+    // @overlay-against: class ReflectionBasedAutowiring implements \DI\Definition\Source\DefinitionSource, \DI\Definition\Source\Autowiring
+    partial class ReflectionBasedAutowiring {
+        /**
+         * @return array<string, \DI\Definition\Definition>
+         */
+        // @overlay-against: function getDefinitions(): array
+        public function getDefinitions(): array<string, \DI\Definition\Definition>;
+    }
+}

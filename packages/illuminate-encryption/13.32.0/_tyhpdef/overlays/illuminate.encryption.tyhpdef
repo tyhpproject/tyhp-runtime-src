@@ -1,0 +1,73 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Key lists are strings. `decrypt($payload, false)` returns the raw string;
+ * `true` unserializes to an unknown value.
+ */
+
+namespace Illuminate\Encryption {
+    /**
+     * `config/app` encryption settings read by the service provider.
+     * `key` may be null until `APP_KEY` is set.
+     */
+    type EncryptionConfig = struct {
+        string|null $key;
+        ?string $cipher;
+        ?array<int, string> $previous_keys;
+    };
+
+    /**
+     * JSON body inside an encrypted payload. `tag` is present for AEAD ciphers.
+     */
+    type EncryptionPayload = struct {
+        string $iv;
+        string $value;
+        string $mac;
+        ?string $tag;
+    };
+
+    /**
+     * Overlay: key lists, payload shape, and serialize/unserialize overloads.
+     */
+    // @overlay-against: class Encrypter implements \Illuminate\Contracts\Encryption\Encrypter, \Illuminate\Contracts\Encryption\StringEncrypter
+    partial class Encrypter {
+        // @overlay-against: array $previousKeys
+        protected array<int, string> $previousKeys ?? [];
+        // @overlay-against: function decrypt(string $payload, bool $unserialize): mixed
+        public function decrypt(string $payload, false $unserialize): string;
+        // @overlay-against: function decrypt(string $payload, bool $unserialize): mixed
+        public function decrypt(string $payload, true $unserialize = true): mixed;
+        // @overlay-against: function decrypt(string $payload, bool $unserialize): mixed
+        public function decrypt(string $payload, bool $unserialize): mixed;
+        // @overlay-against: function encrypt(mixed $value, bool $serialize): string
+        public function encrypt(string $value, false $serialize): string;
+        // @overlay-against: function encrypt(mixed $value, bool $serialize): string
+        public function encrypt(mixed $value, true $serialize = true): string;
+        // @overlay-against: function encrypt(mixed $value, bool $serialize): string
+        public function encrypt(mixed $value, bool $serialize): string;
+        // @overlay-against: function getAllKeys(): array
+        public function getAllKeys(): array<int, string>;
+        // @overlay-against: function getPreviousKeys(): array
+        public function getPreviousKeys(): array<int, string>;
+        // @overlay-against: function previousKeys(array $keys): static
+        public function previousKeys(array<int, string> $keys): static;
+        // @overlay-against: function getJsonPayload(string $payload): array
+        protected function getJsonPayload(string $payload): EncryptionPayload;
+        // @overlay-against: function validMac(array $payload): bool
+        protected function validMac(EncryptionPayload $payload): bool;
+        // @overlay-against: function validMacForKey(array $payload, string $key): bool
+        protected function validMacForKey(EncryptionPayload $payload, string $key): bool;
+    }
+
+    /**
+     * Overlay: encryption config is key, cipher, and previous keys.
+     */
+    // @overlay-against: class EncryptionServiceProvider extends \Illuminate\Support\ServiceProvider
+    partial class EncryptionServiceProvider {
+        // @overlay-against: function key(array $config): string
+        protected function key(EncryptionConfig $config): string;
+        // @overlay-against: function parseKey(array $config): string
+        protected function parseKey(EncryptionConfig $config): string;
+    }
+}

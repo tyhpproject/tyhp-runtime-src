@@ -1,0 +1,102 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Callback shapes, fetch array types, and SQLite3::version() struct.
+ */
+
+/**
+ * SQLite3::version() keys.
+ */
+type Sqlite3Version = struct {
+    int $versionNumber;
+    string $versionString;
+};
+
+/**
+ * Aggregate finalize: last step context and row number (always `0`).
+ */
+type Sqlite3AggregateFinalCallback = callable(mixed, int): mixed;
+
+/**
+ * Aggregate step: context, row number, then SQL arguments.
+ */
+type Sqlite3AggregateStepCallback = (callable(mixed, int): mixed)&(callable(mixed, int, mixed): mixed);
+
+/**
+ * SQLite3::setAuthorizer() callback. Return `SQLite3::OK`, `SQLite3::DENY`,
+ * or `SQLite3::IGNORE`.
+ */
+type Sqlite3AuthorizerCallback = callable(int, ?string, ?string, ?string, ?string): int;
+
+/**
+ * SQLite collating callback: two values, `strcmp`-style return.
+ */
+type Sqlite3CollationCallback = callable(mixed, mixed): int;
+
+/**
+ * Scalar SQL function. Intersection covers 0–2 SQL arguments.
+ */
+type Sqlite3FunctionCallback = (callable(): mixed)&(callable(mixed): mixed)&(callable(mixed, mixed): mixed);
+
+// @overlay-against: class SQLite3
+partial class SQLite3 {
+    // @overlay-against: function version(): array
+    static public function version(): Sqlite3Version;
+    // @overlay-against: function createAggregate(string $name, callable $stepCallback, callable $finalCallback, int $argCount): bool
+    public function createAggregate(string $name, Sqlite3AggregateStepCallback $stepCallback, Sqlite3AggregateFinalCallback $finalCallback, int $argCount = -1): bool;
+    // @overlay-against: function createCollation(string $name, callable $callback): bool
+    public function createCollation(string $name, Sqlite3CollationCallback $callback): bool;
+    // @overlay-against: function createFunction(string $name, callable $callback, int $argCount, int $flags): bool
+    public function createFunction(string $name, Sqlite3FunctionCallback $callback, int $argCount = -1, int $flags = 0): bool;
+    // @overlay-against: function querySingle(string $query, bool $entireRow): mixed
+    public function querySingle(string $query, false $entireRow = false): mixed;
+    // @overlay-against: function querySingle(string $query, bool $entireRow): mixed
+    public function querySingle(string $query, true $entireRow): array<int|string, mixed>|false;
+    // @overlay-against: function querySingle(string $query, bool $entireRow): mixed
+    public function querySingle(string $query, bool $entireRow = false): mixed;
+    // @overlay-against: function setAuthorizer(?callable $callback): bool
+    public function setAuthorizer(?Sqlite3AuthorizerCallback $callback): bool;
+}
+
+// @overlay-against: class SQLite3Result
+partial class SQLite3Result {
+    #[\Tyhp\Php(">=8.5")]
+    /**
+     * SQLITE3_ASSOC (`1`).
+     */
+    // @overlay-against: function fetchAll(int $mode): array|false
+    public function fetchAll(1 $mode): array<int, array<string, mixed>>|false;
+    #[\Tyhp\Php(">=8.5")]
+    /**
+     * SQLITE3_NUM (`2`).
+     */
+    // @overlay-against: function fetchAll(int $mode): array|false
+    public function fetchAll(2 $mode): array<int, array<int, mixed>>|false;
+    #[\Tyhp\Php(">=8.5")]
+    /**
+     * SQLITE3_BOTH (`3`, default).
+     */
+    // @overlay-against: function fetchAll(int $mode): array|false
+    public function fetchAll(3 $mode = SQLITE3_BOTH): array<int, array<int|string, mixed>>|false;
+    #[\Tyhp\Php(">=8.5")]
+    // @overlay-against: function fetchAll(int $mode): array|false
+    public function fetchAll(int $mode): array<int, array<int|string, mixed>>|false;
+    /**
+     * SQLITE3_ASSOC (`1`).
+     */
+    // @overlay-against: function fetchArray(int $mode): array|false
+    public function fetchArray(1 $mode): array<string, mixed>|false;
+    /**
+     * SQLITE3_NUM (`2`).
+     */
+    // @overlay-against: function fetchArray(int $mode): array|false
+    public function fetchArray(2 $mode): array<int, mixed>|false;
+    /**
+     * SQLITE3_BOTH (`3`, default).
+     */
+    // @overlay-against: function fetchArray(int $mode): array|false
+    public function fetchArray(3 $mode = SQLITE3_BOTH): array<int|string, mixed>|false;
+    // @overlay-against: function fetchArray(int $mode): array|false
+    public function fetchArray(int $mode): array<int|string, mixed>|false;
+}

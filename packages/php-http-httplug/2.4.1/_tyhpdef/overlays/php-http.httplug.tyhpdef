@@ -1,0 +1,69 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * `HttpException::create()` return type and Promise `wait($unwrap)` overloads.
+ */
+
+namespace Http\Client\Exception {
+    /**
+     * Overlay: factory returns `HttpException` (`new static` in PHP).
+     */
+    // @overlay-against: class HttpException extends \Http\Client\Exception\RequestException
+    partial class HttpException {
+        // @overlay-against: function create(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response, ?\Exception $previous): mixed
+        public static function create(\Psr\Http\Message\RequestInterface $request, \Psr\Http\Message\ResponseInterface $response, ?\Exception $previous = null): \Http\Client\Exception\HttpException;
+    }
+}
+
+namespace Http\Client\Promise {
+    /**
+     * Overlay: fulfilled HTTPlug promise matches `Http\Promise\Promise`.
+     */
+    // @overlay-against: class HttpFulfilledPromise implements \Http\Promise\Promise
+    partial class HttpFulfilledPromise {
+        /**
+         * @param (callable(mixed): mixed)|null $onFulfilled Called with the PSR-7 response.
+         * @param (callable(\Throwable): mixed)|null $onRejected Ignored when already fulfilled.
+         */
+        // @overlay-against: function then(?callable $onFulfilled, ?callable $onRejected): mixed
+        public function then(?callable(mixed): mixed $onFulfilled = null, ?callable(\Throwable): mixed $onRejected = null): \Http\Promise\Promise;
+
+        // @overlay-against: function getState(): mixed
+        public function getState(): \Http\Promise\PromiseState;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(true $unwrap = true): \Psr\Http\Message\ResponseInterface;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(false $unwrap): null;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(bool $unwrap = true): \Psr\Http\Message\ResponseInterface|null;
+    }
+
+    /**
+     * Overlay: rejected HTTPlug promise matches `Http\Promise\Promise`.
+     */
+    // @overlay-against: class HttpRejectedPromise implements \Http\Promise\Promise
+    partial class HttpRejectedPromise {
+        /**
+         * @param (callable(mixed): mixed)|null $onFulfilled Ignored when already rejected.
+         * @param (callable(\Throwable): mixed)|null $onRejected Called with the HTTPlug exception.
+         */
+        // @overlay-against: function then(?callable $onFulfilled, ?callable $onRejected): mixed
+        public function then(?callable(mixed): mixed $onFulfilled = null, ?callable(\Throwable): mixed $onRejected = null): \Http\Promise\Promise;
+
+        // @overlay-against: function getState(): mixed
+        public function getState(): \Http\Promise\PromiseState;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(true $unwrap = true): mixed;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(false $unwrap): null;
+
+        // @overlay-against: function wait(mixed $unwrap): mixed
+        public function wait(bool $unwrap = true): mixed;
+    }
+}

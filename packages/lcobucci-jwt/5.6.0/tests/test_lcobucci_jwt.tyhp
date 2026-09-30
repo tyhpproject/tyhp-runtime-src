@@ -1,0 +1,23 @@
+<?tyhp
+
+function test_jwt_config(): \Lcobucci\JWT\Configuration
+{
+    return \Lcobucci\JWT\Configuration::forSymmetricSigner(
+        new \Lcobucci\JWT\Signer\Hmac\Sha256(),
+        \Lcobucci\JWT\Signer\Key\InMemory::plainText('01234567890123456789012345678901'),
+    );
+}
+
+function test_jwt_builder(\Lcobucci\JWT\Configuration $config): \Lcobucci\JWT\UnencryptedToken
+{
+    $key = \Lcobucci\JWT\Signer\Key\InMemory::plainText('01234567890123456789012345678901');
+    return $config->builder()
+        ->issuedBy('example')
+        ->withClaim('uid', 1)
+        ->getToken(new \Lcobucci\JWT\Signer\Hmac\Sha256(), $key);
+}
+
+function test_jwt_parse(\Lcobucci\JWT\Configuration $config, string $jwt): \Lcobucci\JWT\Token
+{
+    return $config->parser()->parse($jwt);
+}

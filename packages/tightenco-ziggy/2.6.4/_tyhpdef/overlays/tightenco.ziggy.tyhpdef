@@ -1,0 +1,90 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Illuminate types come from path-linked wrappers; do not inline them.
+ * Route payloads are the filtered Ziggy shape (empty values omitted).
+ */
+
+namespace Tighten\Ziggy {
+    /**
+     * One named route after `filter()` drops empty values.
+     */
+    type ZiggyRoute = struct {
+        ?string $uri;
+        ?array<int, string> $methods;
+        ?array<string, string> $wheres;
+        ?string $domain;
+        ?array<int, string> $parameters;
+        ?array<string, string> $bindings;
+        ?array<int, string> $middleware;
+    };
+
+    /**
+     * `Ziggy::toArray()` payload.
+     */
+    type ZiggyArray = struct {
+        string $url;
+        ?int $port;
+        array<string, mixed> $defaults;
+        array<string, ZiggyRoute> $routes;
+    };
+
+    /**
+     * `jsonSerialize()` payload. `defaults` is cast to an object.
+     */
+    type ZiggyJson = struct {
+        string $url;
+        ?int $port;
+        \stdClass $defaults;
+        array<string, ZiggyRoute> $routes;
+    };
+
+    // @overlay-against: class BladeRouteGenerator
+    partial class BladeRouteGenerator {
+        // @overlay-against: mixed $generated
+        public static true|null $generated;
+
+        // @overlay-against: function generate(array|string|null $group, ?string $nonce, ?bool $json): string
+        public function generate(array<int|string, string>|string|null $group = null, ?string $nonce = null, ?bool $json = false): string;
+    }
+
+    // @overlay-against: class CommandRouteGenerator extends \Illuminate\Console\Command
+    partial class CommandRouteGenerator {
+        // @overlay-against: mixed $description
+        protected string $description;
+
+        // @overlay-against: mixed $signature
+        protected string $signature;
+
+        // @overlay-against: function handle(\Illuminate\Filesystem\Filesystem $filesystem): mixed
+        public function handle(\Illuminate\Filesystem\Filesystem $filesystem): null;
+    }
+
+    // @overlay-against: class Ziggy implements \JsonSerializable
+    partial class Ziggy {
+        // @overlay-against: mixed $cache
+        protected static ?\Illuminate\Support\Collection<string, \Illuminate\Support\Collection<string, mixed>|array<string, mixed>> $cache;
+
+        // @overlay-against: array|string|null $group
+        protected array<int|string, string>|string|null $group;
+
+        // @overlay-against: \Illuminate\Support\Collection $routes
+        protected \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<string, mixed>|array<string, mixed>> $routes;
+
+        // @overlay-against: function clearRoutes(): mixed
+        public static function clearRoutes(): null;
+
+        // @overlay-against: function __construct(array|string|null $group, ?string $url): void
+        public function __construct(array<int|string, string>|string|null $group = null, ?string $url = null): void;
+
+        // @overlay-against: function filter(mixed $filters, mixed $include): self
+        public function filter(string|array<int|string, string> $filters = [], bool $include = true): self;
+
+        // @overlay-against: function jsonSerialize(): array
+        public function jsonSerialize(): ZiggyJson;
+
+        // @overlay-against: function toArray(): array
+        public function toArray(): ZiggyArray;
+    }
+}

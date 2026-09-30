@@ -1,0 +1,3430 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Money {
+    /**
+    * Provides a way to convert Money to Money in another Currency using an exchange rate.
+    *
+    * @generated
+    */
+    final class Converter {
+        public function __construct(\Money\Currencies $currencies, \Money\Exchange $exchange): void;
+        /**
+        * @param Money::ROUND_ $ * $roundingMode
+        * @generated
+        */
+        public function convert(\Money\Money $money, \Money\Currency $counterCurrency, int $roundingMode = \Money\Money::ROUND_HALF_UP): \Money\Money;
+        /**
+        * @param Money::ROUND_ $ * $roundingMode
+        * @return array
+        * @generated
+        */
+        public function convertAndReturnWithCurrencyPair(\Money\Money $money, \Money\Currency $counterCurrency, int $roundingMode = \Money\Money::ROUND_HALF_UP): array;
+        /**
+        * @param Money::ROUND_ $ * $roundingMode
+        * @generated
+        */
+        public function convertAgainstCurrencyPair(\Money\Money $money, \Money\CurrencyPair $currencyPair, int $roundingMode = \Money\Money::ROUND_HALF_UP): \Money\Money;
+    }
+    /**
+    * Implement this to provide a list of currencies.
+    *
+    * @extends IteratorAggregate<int|string, Currency>
+    * @generated
+    */
+    interface Currencies extends \IteratorAggregate {
+        /**
+        * Checks whether a currency is available in the current context.
+        *
+        * @generated
+        */
+        public function contains(\Money\Currency $currency): bool;
+        /**
+        * Returns the subunit for a currency.
+        *
+        * @throws UnknownCurrencyException If currency is not available in the current context.
+        * @generated
+        */
+        public function subunitFor(\Money\Currency $currency): int;
+        /**
+        * @return \Traversable
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+    }
+    /**
+    * Currency Value Object.
+    *
+    * Holds Currency specific data.
+    *
+    * @phpstan-immutable
+    * @generated
+    */
+    final class Currency implements \JsonSerializable {
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public function __construct(string $code): void;
+        /**
+        * Returns the currency code.
+        *
+        * @generated
+        */
+        public function getCode(): string;
+        /**
+        * Checks whether this currency is the same as an other.
+        *
+        * @generated
+        */
+        public function equals(\Money\Currency $other): bool;
+        /**
+        * Returns a new Money with zero amount in this currency.
+        *
+        * @generated
+        */
+        public function zero(): \Money\Money;
+        public function __toString(): string;
+        public function jsonSerialize(): string;
+    }
+    /**
+    * Currency Pair holding a base, a counter currency and a conversion ratio.
+    *
+    * @see http://en.wikipedia.org/wiki/Currency_pair
+    * @generated
+    */
+    final class CurrencyPair implements \JsonSerializable {
+        /**
+        * @generated
+        */
+        public function __construct(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency, string $conversionRatio): void;
+        /**
+        * Creates a new Currency Pair based on "EUR/USD 1.2500" form representation.
+        *
+        * @param string $iso String representation of the form "EUR/USD 1.2500"
+        * @throws InvalidArgumentException Format of $iso is invalid.
+        * @generated
+        */
+        public static function createFromIso(string $iso): \Money\CurrencyPair;
+        /**
+        * Returns the counter currency.
+        *
+        * @generated
+        */
+        public function getCounterCurrency(): \Money\Currency;
+        /**
+        * Returns the base currency.
+        *
+        * @generated
+        */
+        public function getBaseCurrency(): \Money\Currency;
+        /**
+        * Returns the conversion ratio.
+        *
+        * @generated
+        */
+        public function getConversionRatio(): string;
+        /**
+        * Checks if another CurrencyPair has the same parameters as this.
+        *
+        * @generated
+        */
+        public function equals(\Money\CurrencyPair $other): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function jsonSerialize(): array;
+    }
+    /**
+    * Common interface for all exceptions thrown by this library.
+    *
+    * @generated
+    */
+    interface Exception {
+    }
+    /**
+    * Provides a way to get exchange rate from a third-party source and return a currency pair.
+    *
+    * @generated
+    */
+    interface Exchange {
+        /**
+        * Returns a currency pair for the passed currencies with the rate coming from a third-party source.
+        *
+        * @throws UnresolvableCurrencyPairException When there is no currency pair (rate) available for the given currencies.
+        * @generated
+        */
+        public function quote(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency): \Money\CurrencyPair;
+    }
+    /**
+    * Money Value Object.
+    *
+    * @generated
+    */
+    final class Money implements \JsonSerializable {
+        use \Money\MoneyFactory;
+        public const mixed ROUND_HALF_UP;
+        public const mixed ROUND_HALF_DOWN;
+        public const mixed ROUND_HALF_EVEN;
+        public const mixed ROUND_HALF_ODD;
+        public const int ROUND_UP ?? 5;
+        public const int ROUND_DOWN ?? 6;
+        public const int ROUND_HALF_POSITIVE_INFINITY ?? 7;
+        public const int ROUND_HALF_NEGATIVE_INFINITY ?? 8;
+        /**
+        * @param int|string $amount Amount, expressed in the smallest units of $currency (eg cents)
+        * @throws InvalidArgumentException If amount is not integer(ish).
+        * @phpstan-pure
+        * @generated
+        */
+        public function __construct(int|string $amount, \Money\Currency $currency): void;
+        /**
+        * Checks whether a Money has the same Currency as this.
+        *
+        * @generated
+        */
+        public function isSameCurrency(\Money\Money ...$others): bool;
+        /**
+        * Checks whether the value represented by this object equals to the other.
+        *
+        * @phpstan-pure
+        * @generated
+        */
+        public function equals(\Money\Money $other): bool;
+        /**
+        * Returns an integer less than, equal to, or greater than zero
+        *
+        * if the value of this object is considered to be respectively
+        * less than, equal to, or greater than the other.
+        *
+        * @phpstan-pure
+        * @generated
+        */
+        public function compare(\Money\Money $other): int;
+        /**
+        * Checks whether the value represented by this object is greater than the other.
+        *
+        * @phpstan-pure
+        * @generated
+        */
+        public function greaterThan(\Money\Money $other): bool;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public function greaterThanOrEqual(\Money\Money $other): bool;
+        /**
+        * Checks whether the value represented by this object is less than the other.
+        *
+        * @phpstan-pure
+        * @generated
+        */
+        public function lessThan(\Money\Money $other): bool;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public function lessThanOrEqual(\Money\Money $other): bool;
+        /**
+        * Returns the value represented by this object - amount, expressed in the smallest currency units (eg cents).
+        *
+        * @generated
+        */
+        public function getAmount(): string;
+        /**
+        * Returns the currency of this object.
+        *
+        * @generated
+        */
+        public function getCurrency(): \Money\Currency;
+        /**
+        * Returns a new Money object that represents
+        *
+        * the sum of this and an other Money object.
+        *
+        * @phpstan-pure
+        * @generated
+        */
+        public function add(\Money\Money ...$addends): \Money\Money;
+        /**
+        * Returns a new Money object that represents
+        *
+        * the difference of this and an other Money object.
+        *
+        * @phpstan-pure
+        * @generated
+        */
+        public function subtract(\Money\Money ...$subtrahends): \Money\Money;
+        /**
+        * Returns a new Money object that represents
+        *
+        * the multiplied value by the given factor.
+        *
+        * @generated
+        */
+        public function multiply(int|string $multiplier, int $roundingMode = self::ROUND_HALF_UP): \Money\Money;
+        /**
+        * Returns a new Money object that represents
+        *
+        * the divided value by the given factor.
+        *
+        * @phpstan-pure
+        * @generated
+        */
+        public function divide(int|string $divisor, int $roundingMode = self::ROUND_HALF_UP): \Money\Money;
+        /**
+        * Returns a new Money object that represents
+        *
+        * the remainder after dividing the value by
+        * the given factor.
+        *
+        * @generated
+        */
+        public function mod(\Money\Money|int|string $divisor): \Money\Money;
+        /**
+        * Allocate the money according to a list of ratios.
+        *
+        * @return array
+        * @template TRatios of mixed
+        * @generated
+        */
+        public function allocate<TRatios extends mixed>(TRatios $ratios): array;
+        /**
+        * Allocate the money among N targets.
+        *
+        * @return array
+        * @throws InvalidArgumentException If number of targets is not an integer.
+        * @generated
+        */
+        public function allocateTo(int $n): array;
+        /**
+        * @throws InvalidArgumentException if the given $money is zero.
+        * @generated
+        */
+        public function ratioOf(\Money\Money $money): string;
+        /**
+        * Round to a specific unit.
+        *
+        * @generated
+        */
+        public function roundToUnit(int $unit, int $roundingMode = self::ROUND_HALF_UP): self;
+        public function absolute(): \Money\Money;
+        public function negative(): \Money\Money;
+        /**
+        * Checks if the value represented by this object is zero.
+        *
+        * @generated
+        */
+        public function isZero(): bool;
+        /**
+        * Checks if the value represented by this object is positive.
+        *
+        * @generated
+        */
+        public function isPositive(): bool;
+        /**
+        * Checks if the value represented by this object is negative.
+        *
+        * @generated
+        */
+        public function isNegative(): bool;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function jsonSerialize(): array;
+        /**
+        * @param self $first
+        * @param Money $ ...$collection
+        * @phpstan-pure
+        * @generated
+        */
+        public static function min(self $first, self ...$collection): \Money\Money;
+        /**
+        * @param self $first
+        * @param Money $ ...$collection
+        * @phpstan-pure
+        * @generated
+        */
+        public static function max(self $first, self ...$collection): \Money\Money;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function sum(self $first, self ...$collection): \Money\Money;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function avg(self $first, self ...$collection): \Money\Money;
+        /**
+        * @generated
+        */
+        public static function registerCalculator(string $calculator): void;
+        /**
+        * @generated
+        */
+        public static function getCalculator(): string;
+    }
+    /**
+    * This is a generated file. Do not edit it manually!
+    *
+    * @method static Money ONETHOUSANDCAT(numeric-string|int $amount)
+    * @method static Money ONETHOUSANDCHEEMS(numeric-string|int $amount)
+    * @method static Money ONETHOUSANDSATS(numeric-string|int $amount)
+    * @method static Money ONEINCH(numeric-string|int $amount)
+    * @method static Money ONEMBABYDOGE(numeric-string|int $amount)
+    * @method static Money A(numeric-string|int $amount)
+    * @method static Money AAVE(numeric-string|int $amount)
+    * @method static Money ACA(numeric-string|int $amount)
+    * @method static Money ACE(numeric-string|int $amount)
+    * @method static Money ACH(numeric-string|int $amount)
+    * @method static Money ACM(numeric-string|int $amount)
+    * @method static Money ACT(numeric-string|int $amount)
+    * @method static Money ACX(numeric-string|int $amount)
+    * @method static Money ADA(numeric-string|int $amount)
+    * @method static Money ADX(numeric-string|int $amount)
+    * @method static Money AED(numeric-string|int $amount)
+    * @method static Money AEUR(numeric-string|int $amount)
+    * @method static Money AEVO(numeric-string|int $amount)
+    * @method static Money AFN(numeric-string|int $amount)
+    * @method static Money AGLD(numeric-string|int $amount)
+    * @method static Money AI(numeric-string|int $amount)
+    * @method static Money AIXBT(numeric-string|int $amount)
+    * @method static Money ALCX(numeric-string|int $amount)
+    * @method static Money ALGO(numeric-string|int $amount)
+    * @method static Money ALICE(numeric-string|int $amount)
+    * @method static Money ALL(numeric-string|int $amount)
+    * @method static Money ALPHA(numeric-string|int $amount)
+    * @method static Money ALPINE(numeric-string|int $amount)
+    * @method static Money ALT(numeric-string|int $amount)
+    * @method static Money AMD(numeric-string|int $amount)
+    * @method static Money AMP(numeric-string|int $amount)
+    * @method static Money ANIME(numeric-string|int $amount)
+    * @method static Money ANKR(numeric-string|int $amount)
+    * @method static Money AOA(numeric-string|int $amount)
+    * @method static Money APE(numeric-string|int $amount)
+    * @method static Money API3(numeric-string|int $amount)
+    * @method static Money APT(numeric-string|int $amount)
+    * @method static Money AR(numeric-string|int $amount)
+    * @method static Money ARB(numeric-string|int $amount)
+    * @method static Money ARDR(numeric-string|int $amount)
+    * @method static Money ARK(numeric-string|int $amount)
+    * @method static Money ARKM(numeric-string|int $amount)
+    * @method static Money ARPA(numeric-string|int $amount)
+    * @method static Money ARS(numeric-string|int $amount)
+    * @method static Money ASR(numeric-string|int $amount)
+    * @method static Money ASTR(numeric-string|int $amount)
+    * @method static Money ATA(numeric-string|int $amount)
+    * @method static Money ATM(numeric-string|int $amount)
+    * @method static Money ATOM(numeric-string|int $amount)
+    * @method static Money AUCTION(numeric-string|int $amount)
+    * @method static Money AUD(numeric-string|int $amount)
+    * @method static Money AUDIO(numeric-string|int $amount)
+    * @method static Money AVA(numeric-string|int $amount)
+    * @method static Money AVAX(numeric-string|int $amount)
+    * @method static Money AWE(numeric-string|int $amount)
+    * @method static Money AWG(numeric-string|int $amount)
+    * @method static Money AXL(numeric-string|int $amount)
+    * @method static Money AXS(numeric-string|int $amount)
+    * @method static Money AZN(numeric-string|int $amount)
+    * @method static Money BABY(numeric-string|int $amount)
+    * @method static Money BAKE(numeric-string|int $amount)
+    * @method static Money BAM(numeric-string|int $amount)
+    * @method static Money BANANA(numeric-string|int $amount)
+    * @method static Money BANANAS31(numeric-string|int $amount)
+    * @method static Money BAND(numeric-string|int $amount)
+    * @method static Money BAR(numeric-string|int $amount)
+    * @method static Money BAT(numeric-string|int $amount)
+    * @method static Money BB(numeric-string|int $amount)
+    * @method static Money BBD(numeric-string|int $amount)
+    * @method static Money BCH(numeric-string|int $amount)
+    * @method static Money BDT(numeric-string|int $amount)
+    * @method static Money BEAMX(numeric-string|int $amount)
+    * @method static Money BEL(numeric-string|int $amount)
+    * @method static Money BERA(numeric-string|int $amount)
+    * @method static Money BGN(numeric-string|int $amount)
+    * @method static Money BHD(numeric-string|int $amount)
+    * @method static Money BICO(numeric-string|int $amount)
+    * @method static Money BIF(numeric-string|int $amount)
+    * @method static Money BIFI(numeric-string|int $amount)
+    * @method static Money BIGTIME(numeric-string|int $amount)
+    * @method static Money BIO(numeric-string|int $amount)
+    * @method static Money BLUR(numeric-string|int $amount)
+    * @method static Money BMD(numeric-string|int $amount)
+    * @method static Money BMT(numeric-string|int $amount)
+    * @method static Money BNB(numeric-string|int $amount)
+    * @method static Money BND(numeric-string|int $amount)
+    * @method static Money BNSOL(numeric-string|int $amount)
+    * @method static Money BNT(numeric-string|int $amount)
+    * @method static Money BOB(numeric-string|int $amount)
+    * @method static Money BOME(numeric-string|int $amount)
+    * @method static Money BONK(numeric-string|int $amount)
+    * @method static Money BOV(numeric-string|int $amount)
+    * @method static Money BRL(numeric-string|int $amount)
+    * @method static Money BROCCOLI714(numeric-string|int $amount)
+    * @method static Money BSD(numeric-string|int $amount)
+    * @method static Money BSW(numeric-string|int $amount)
+    * @method static Money BTC(numeric-string|int $amount)
+    * @method static Money BTN(numeric-string|int $amount)
+    * @method static Money BTTC(numeric-string|int $amount)
+    * @method static Money BWP(numeric-string|int $amount)
+    * @method static Money BYN(numeric-string|int $amount)
+    * @method static Money BZD(numeric-string|int $amount)
+    * @method static Money C98(numeric-string|int $amount)
+    * @method static Money CAD(numeric-string|int $amount)
+    * @method static Money CAKE(numeric-string|int $amount)
+    * @method static Money CATI(numeric-string|int $amount)
+    * @method static Money CDF(numeric-string|int $amount)
+    * @method static Money CELO(numeric-string|int $amount)
+    * @method static Money CELR(numeric-string|int $amount)
+    * @method static Money CETUS(numeric-string|int $amount)
+    * @method static Money CFX(numeric-string|int $amount)
+    * @method static Money CGPT(numeric-string|int $amount)
+    * @method static Money CHE(numeric-string|int $amount)
+    * @method static Money CHESS(numeric-string|int $amount)
+    * @method static Money CHF(numeric-string|int $amount)
+    * @method static Money CHR(numeric-string|int $amount)
+    * @method static Money CHW(numeric-string|int $amount)
+    * @method static Money CHZ(numeric-string|int $amount)
+    * @method static Money CITY(numeric-string|int $amount)
+    * @method static Money CKB(numeric-string|int $amount)
+    * @method static Money CLF(numeric-string|int $amount)
+    * @method static Money CLP(numeric-string|int $amount)
+    * @method static Money CNY(numeric-string|int $amount)
+    * @method static Money COMP(numeric-string|int $amount)
+    * @method static Money COOKIE(numeric-string|int $amount)
+    * @method static Money COP(numeric-string|int $amount)
+    * @method static Money COS(numeric-string|int $amount)
+    * @method static Money COTI(numeric-string|int $amount)
+    * @method static Money COU(numeric-string|int $amount)
+    * @method static Money COW(numeric-string|int $amount)
+    * @method static Money CRC(numeric-string|int $amount)
+    * @method static Money CRV(numeric-string|int $amount)
+    * @method static Money CTK(numeric-string|int $amount)
+    * @method static Money CTSI(numeric-string|int $amount)
+    * @method static Money CUP(numeric-string|int $amount)
+    * @method static Money CVC(numeric-string|int $amount)
+    * @method static Money CVE(numeric-string|int $amount)
+    * @method static Money CVX(numeric-string|int $amount)
+    * @method static Money CYBER(numeric-string|int $amount)
+    * @method static Money CZK(numeric-string|int $amount)
+    * @method static Money D(numeric-string|int $amount)
+    * @method static Money DAI(numeric-string|int $amount)
+    * @method static Money DASH(numeric-string|int $amount)
+    * @method static Money DATA(numeric-string|int $amount)
+    * @method static Money DCR(numeric-string|int $amount)
+    * @method static Money DEGO(numeric-string|int $amount)
+    * @method static Money DENT(numeric-string|int $amount)
+    * @method static Money DEXE(numeric-string|int $amount)
+    * @method static Money DF(numeric-string|int $amount)
+    * @method static Money DGB(numeric-string|int $amount)
+    * @method static Money DIA(numeric-string|int $amount)
+    * @method static Money DJF(numeric-string|int $amount)
+    * @method static Money DKK(numeric-string|int $amount)
+    * @method static Money DODO(numeric-string|int $amount)
+    * @method static Money DOGE(numeric-string|int $amount)
+    * @method static Money DOGS(numeric-string|int $amount)
+    * @method static Money DOP(numeric-string|int $amount)
+    * @method static Money DOT(numeric-string|int $amount)
+    * @method static Money DUSK(numeric-string|int $amount)
+    * @method static Money DYDX(numeric-string|int $amount)
+    * @method static Money DYM(numeric-string|int $amount)
+    * @method static Money DZD(numeric-string|int $amount)
+    * @method static Money EDU(numeric-string|int $amount)
+    * @method static Money EGLD(numeric-string|int $amount)
+    * @method static Money EGP(numeric-string|int $amount)
+    * @method static Money EIGEN(numeric-string|int $amount)
+    * @method static Money ENA(numeric-string|int $amount)
+    * @method static Money ENJ(numeric-string|int $amount)
+    * @method static Money ENS(numeric-string|int $amount)
+    * @method static Money EPIC(numeric-string|int $amount)
+    * @method static Money ERN(numeric-string|int $amount)
+    * @method static Money ETB(numeric-string|int $amount)
+    * @method static Money ETC(numeric-string|int $amount)
+    * @method static Money ETH(numeric-string|int $amount)
+    * @method static Money ETHFI(numeric-string|int $amount)
+    * @method static Money EUR(numeric-string|int $amount)
+    * @method static Money EURI(numeric-string|int $amount)
+    * @method static Money FARM(numeric-string|int $amount)
+    * @method static Money FDUSD(numeric-string|int $amount)
+    * @method static Money FET(numeric-string|int $amount)
+    * @method static Money FIDA(numeric-string|int $amount)
+    * @method static Money FIL(numeric-string|int $amount)
+    * @method static Money FIO(numeric-string|int $amount)
+    * @method static Money FIS(numeric-string|int $amount)
+    * @method static Money FJD(numeric-string|int $amount)
+    * @method static Money FKP(numeric-string|int $amount)
+    * @method static Money FLM(numeric-string|int $amount)
+    * @method static Money FLOKI(numeric-string|int $amount)
+    * @method static Money FLOW(numeric-string|int $amount)
+    * @method static Money FLUX(numeric-string|int $amount)
+    * @method static Money FORM(numeric-string|int $amount)
+    * @method static Money FORTH(numeric-string|int $amount)
+    * @method static Money FTT(numeric-string|int $amount)
+    * @method static Money FUN(numeric-string|int $amount)
+    * @method static Money FXS(numeric-string|int $amount)
+    * @method static Money G(numeric-string|int $amount)
+    * @method static Money GALA(numeric-string|int $amount)
+    * @method static Money GAS(numeric-string|int $amount)
+    * @method static Money GBP(numeric-string|int $amount)
+    * @method static Money GEL(numeric-string|int $amount)
+    * @method static Money GHS(numeric-string|int $amount)
+    * @method static Money GHST(numeric-string|int $amount)
+    * @method static Money GIP(numeric-string|int $amount)
+    * @method static Money GLM(numeric-string|int $amount)
+    * @method static Money GLMR(numeric-string|int $amount)
+    * @method static Money GMD(numeric-string|int $amount)
+    * @method static Money GMT(numeric-string|int $amount)
+    * @method static Money GMX(numeric-string|int $amount)
+    * @method static Money GNF(numeric-string|int $amount)
+    * @method static Money GNO(numeric-string|int $amount)
+    * @method static Money GNS(numeric-string|int $amount)
+    * @method static Money GPS(numeric-string|int $amount)
+    * @method static Money GRT(numeric-string|int $amount)
+    * @method static Money GTC(numeric-string|int $amount)
+    * @method static Money GTQ(numeric-string|int $amount)
+    * @method static Money GUN(numeric-string|int $amount)
+    * @method static Money GYD(numeric-string|int $amount)
+    * @method static Money HAEDAL(numeric-string|int $amount)
+    * @method static Money HBAR(numeric-string|int $amount)
+    * @method static Money HEI(numeric-string|int $amount)
+    * @method static Money HFT(numeric-string|int $amount)
+    * @method static Money HIFI(numeric-string|int $amount)
+    * @method static Money HIGH(numeric-string|int $amount)
+    * @method static Money HIVE(numeric-string|int $amount)
+    * @method static Money HKD(numeric-string|int $amount)
+    * @method static Money HMSTR(numeric-string|int $amount)
+    * @method static Money HNL(numeric-string|int $amount)
+    * @method static Money HOOK(numeric-string|int $amount)
+    * @method static Money HOT(numeric-string|int $amount)
+    * @method static Money HTG(numeric-string|int $amount)
+    * @method static Money HUF(numeric-string|int $amount)
+    * @method static Money HUMA(numeric-string|int $amount)
+    * @method static Money HYPER(numeric-string|int $amount)
+    * @method static Money ICP(numeric-string|int $amount)
+    * @method static Money ICX(numeric-string|int $amount)
+    * @method static Money ID(numeric-string|int $amount)
+    * @method static Money IDEX(numeric-string|int $amount)
+    * @method static Money IDR(numeric-string|int $amount)
+    * @method static Money ILS(numeric-string|int $amount)
+    * @method static Money ILV(numeric-string|int $amount)
+    * @method static Money IMX(numeric-string|int $amount)
+    * @method static Money INIT(numeric-string|int $amount)
+    * @method static Money INJ(numeric-string|int $amount)
+    * @method static Money INR(numeric-string|int $amount)
+    * @method static Money IO(numeric-string|int $amount)
+    * @method static Money IOST(numeric-string|int $amount)
+    * @method static Money IOTA(numeric-string|int $amount)
+    * @method static Money IOTX(numeric-string|int $amount)
+    * @method static Money IQ(numeric-string|int $amount)
+    * @method static Money IQD(numeric-string|int $amount)
+    * @method static Money IRR(numeric-string|int $amount)
+    * @method static Money ISK(numeric-string|int $amount)
+    * @method static Money JASMY(numeric-string|int $amount)
+    * @method static Money JMD(numeric-string|int $amount)
+    * @method static Money JOD(numeric-string|int $amount)
+    * @method static Money JOE(numeric-string|int $amount)
+    * @method static Money JPY(numeric-string|int $amount)
+    * @method static Money JST(numeric-string|int $amount)
+    * @method static Money JTO(numeric-string|int $amount)
+    * @method static Money JUP(numeric-string|int $amount)
+    * @method static Money JUV(numeric-string|int $amount)
+    * @method static Money KAIA(numeric-string|int $amount)
+    * @method static Money KAITO(numeric-string|int $amount)
+    * @method static Money KAVA(numeric-string|int $amount)
+    * @method static Money KDA(numeric-string|int $amount)
+    * @method static Money KERNEL(numeric-string|int $amount)
+    * @method static Money KES(numeric-string|int $amount)
+    * @method static Money KGS(numeric-string|int $amount)
+    * @method static Money KHR(numeric-string|int $amount)
+    * @method static Money KMD(numeric-string|int $amount)
+    * @method static Money KMF(numeric-string|int $amount)
+    * @method static Money KMNO(numeric-string|int $amount)
+    * @method static Money KNC(numeric-string|int $amount)
+    * @method static Money KPW(numeric-string|int $amount)
+    * @method static Money KRW(numeric-string|int $amount)
+    * @method static Money KSM(numeric-string|int $amount)
+    * @method static Money KWD(numeric-string|int $amount)
+    * @method static Money KYD(numeric-string|int $amount)
+    * @method static Money KZT(numeric-string|int $amount)
+    * @method static Money LAK(numeric-string|int $amount)
+    * @method static Money LAYER(numeric-string|int $amount)
+    * @method static Money LAZIO(numeric-string|int $amount)
+    * @method static Money LBP(numeric-string|int $amount)
+    * @method static Money LDO(numeric-string|int $amount)
+    * @method static Money LEVER(numeric-string|int $amount)
+    * @method static Money LINK(numeric-string|int $amount)
+    * @method static Money LISTA(numeric-string|int $amount)
+    * @method static Money LKR(numeric-string|int $amount)
+    * @method static Money LOKA(numeric-string|int $amount)
+    * @method static Money LPT(numeric-string|int $amount)
+    * @method static Money LQTY(numeric-string|int $amount)
+    * @method static Money LRC(numeric-string|int $amount)
+    * @method static Money LRD(numeric-string|int $amount)
+    * @method static Money LSK(numeric-string|int $amount)
+    * @method static Money LSL(numeric-string|int $amount)
+    * @method static Money LTC(numeric-string|int $amount)
+    * @method static Money LTO(numeric-string|int $amount)
+    * @method static Money LUMIA(numeric-string|int $amount)
+    * @method static Money LUNA(numeric-string|int $amount)
+    * @method static Money LUNC(numeric-string|int $amount)
+    * @method static Money LYD(numeric-string|int $amount)
+    * @method static Money MAD(numeric-string|int $amount)
+    * @method static Money MAGIC(numeric-string|int $amount)
+    * @method static Money MANA(numeric-string|int $amount)
+    * @method static Money MANTA(numeric-string|int $amount)
+    * @method static Money MASK(numeric-string|int $amount)
+    * @method static Money MAV(numeric-string|int $amount)
+    * @method static Money MBL(numeric-string|int $amount)
+    * @method static Money MBOX(numeric-string|int $amount)
+    * @method static Money MDL(numeric-string|int $amount)
+    * @method static Money MDT(numeric-string|int $amount)
+    * @method static Money ME(numeric-string|int $amount)
+    * @method static Money MEME(numeric-string|int $amount)
+    * @method static Money METIS(numeric-string|int $amount)
+    * @method static Money MGA(numeric-string|int $amount)
+    * @method static Money MINA(numeric-string|int $amount)
+    * @method static Money MKD(numeric-string|int $amount)
+    * @method static Money MKR(numeric-string|int $amount)
+    * @method static Money MLN(numeric-string|int $amount)
+    * @method static Money MMK(numeric-string|int $amount)
+    * @method static Money MNT(numeric-string|int $amount)
+    * @method static Money MOP(numeric-string|int $amount)
+    * @method static Money MOVE(numeric-string|int $amount)
+    * @method static Money MOVR(numeric-string|int $amount)
+    * @method static Money MRU(numeric-string|int $amount)
+    * @method static Money MTL(numeric-string|int $amount)
+    * @method static Money MUBARAK(numeric-string|int $amount)
+    * @method static Money MUR(numeric-string|int $amount)
+    * @method static Money MVR(numeric-string|int $amount)
+    * @method static Money MWK(numeric-string|int $amount)
+    * @method static Money MXN(numeric-string|int $amount)
+    * @method static Money MXV(numeric-string|int $amount)
+    * @method static Money MYR(numeric-string|int $amount)
+    * @method static Money MZN(numeric-string|int $amount)
+    * @method static Money NAD(numeric-string|int $amount)
+    * @method static Money NEAR(numeric-string|int $amount)
+    * @method static Money NEIRO(numeric-string|int $amount)
+    * @method static Money NEO(numeric-string|int $amount)
+    * @method static Money NEXO(numeric-string|int $amount)
+    * @method static Money NFP(numeric-string|int $amount)
+    * @method static Money NGN(numeric-string|int $amount)
+    * @method static Money NIL(numeric-string|int $amount)
+    * @method static Money NIO(numeric-string|int $amount)
+    * @method static Money NKN(numeric-string|int $amount)
+    * @method static Money NMR(numeric-string|int $amount)
+    * @method static Money NOK(numeric-string|int $amount)
+    * @method static Money NOT(numeric-string|int $amount)
+    * @method static Money NPR(numeric-string|int $amount)
+    * @method static Money NTRN(numeric-string|int $amount)
+    * @method static Money NXPC(numeric-string|int $amount)
+    * @method static Money NZD(numeric-string|int $amount)
+    * @method static Money OG(numeric-string|int $amount)
+    * @method static Money OGN(numeric-string|int $amount)
+    * @method static Money OM(numeric-string|int $amount)
+    * @method static Money OMNI(numeric-string|int $amount)
+    * @method static Money OMR(numeric-string|int $amount)
+    * @method static Money ONDO(numeric-string|int $amount)
+    * @method static Money ONE(numeric-string|int $amount)
+    * @method static Money ONG(numeric-string|int $amount)
+    * @method static Money ONT(numeric-string|int $amount)
+    * @method static Money OP(numeric-string|int $amount)
+    * @method static Money ORCA(numeric-string|int $amount)
+    * @method static Money ORDI(numeric-string|int $amount)
+    * @method static Money OSMO(numeric-string|int $amount)
+    * @method static Money OXT(numeric-string|int $amount)
+    * @method static Money PAB(numeric-string|int $amount)
+    * @method static Money PARTI(numeric-string|int $amount)
+    * @method static Money PAXG(numeric-string|int $amount)
+    * @method static Money PEN(numeric-string|int $amount)
+    * @method static Money PENDLE(numeric-string|int $amount)
+    * @method static Money PENGU(numeric-string|int $amount)
+    * @method static Money PEOPLE(numeric-string|int $amount)
+    * @method static Money PEPE(numeric-string|int $amount)
+    * @method static Money PERP(numeric-string|int $amount)
+    * @method static Money PGK(numeric-string|int $amount)
+    * @method static Money PHA(numeric-string|int $amount)
+    * @method static Money PHB(numeric-string|int $amount)
+    * @method static Money PHP(numeric-string|int $amount)
+    * @method static Money PIVX(numeric-string|int $amount)
+    * @method static Money PIXEL(numeric-string|int $amount)
+    * @method static Money PKR(numeric-string|int $amount)
+    * @method static Money PLN(numeric-string|int $amount)
+    * @method static Money PNUT(numeric-string|int $amount)
+    * @method static Money POL(numeric-string|int $amount)
+    * @method static Money POLYX(numeric-string|int $amount)
+    * @method static Money POND(numeric-string|int $amount)
+    * @method static Money PORTAL(numeric-string|int $amount)
+    * @method static Money PORTO(numeric-string|int $amount)
+    * @method static Money POWR(numeric-string|int $amount)
+    * @method static Money PROM(numeric-string|int $amount)
+    * @method static Money PSG(numeric-string|int $amount)
+    * @method static Money PUNDIX(numeric-string|int $amount)
+    * @method static Money PYG(numeric-string|int $amount)
+    * @method static Money PYR(numeric-string|int $amount)
+    * @method static Money PYTH(numeric-string|int $amount)
+    * @method static Money QAR(numeric-string|int $amount)
+    * @method static Money QI(numeric-string|int $amount)
+    * @method static Money QKC(numeric-string|int $amount)
+    * @method static Money QNT(numeric-string|int $amount)
+    * @method static Money QTUM(numeric-string|int $amount)
+    * @method static Money QUICK(numeric-string|int $amount)
+    * @method static Money RAD(numeric-string|int $amount)
+    * @method static Money RARE(numeric-string|int $amount)
+    * @method static Money RAY(numeric-string|int $amount)
+    * @method static Money RDNT(numeric-string|int $amount)
+    * @method static Money RED(numeric-string|int $amount)
+    * @method static Money REI(numeric-string|int $amount)
+    * @method static Money RENDER(numeric-string|int $amount)
+    * @method static Money REQ(numeric-string|int $amount)
+    * @method static Money REZ(numeric-string|int $amount)
+    * @method static Money RIF(numeric-string|int $amount)
+    * @method static Money RLC(numeric-string|int $amount)
+    * @method static Money RON(numeric-string|int $amount)
+    * @method static Money RONIN(numeric-string|int $amount)
+    * @method static Money ROSE(numeric-string|int $amount)
+    * @method static Money RPL(numeric-string|int $amount)
+    * @method static Money RSD(numeric-string|int $amount)
+    * @method static Money RSR(numeric-string|int $amount)
+    * @method static Money RUB(numeric-string|int $amount)
+    * @method static Money RUNE(numeric-string|int $amount)
+    * @method static Money RVN(numeric-string|int $amount)
+    * @method static Money RWF(numeric-string|int $amount)
+    * @method static Money S(numeric-string|int $amount)
+    * @method static Money SAGA(numeric-string|int $amount)
+    * @method static Money SAND(numeric-string|int $amount)
+    * @method static Money SANTOS(numeric-string|int $amount)
+    * @method static Money SAR(numeric-string|int $amount)
+    * @method static Money SBD(numeric-string|int $amount)
+    * @method static Money SC(numeric-string|int $amount)
+    * @method static Money SCR(numeric-string|int $amount)
+    * @method static Money SCRT(numeric-string|int $amount)
+    * @method static Money SDG(numeric-string|int $amount)
+    * @method static Money SEI(numeric-string|int $amount)
+    * @method static Money SEK(numeric-string|int $amount)
+    * @method static Money SFP(numeric-string|int $amount)
+    * @method static Money SGD(numeric-string|int $amount)
+    * @method static Money SHELL(numeric-string|int $amount)
+    * @method static Money SHIB(numeric-string|int $amount)
+    * @method static Money SHP(numeric-string|int $amount)
+    * @method static Money SIGN(numeric-string|int $amount)
+    * @method static Money SKL(numeric-string|int $amount)
+    * @method static Money SLE(numeric-string|int $amount)
+    * @method static Money SLF(numeric-string|int $amount)
+    * @method static Money SLP(numeric-string|int $amount)
+    * @method static Money SNX(numeric-string|int $amount)
+    * @method static Money SOL(numeric-string|int $amount)
+    * @method static Money SOLV(numeric-string|int $amount)
+    * @method static Money SOPH(numeric-string|int $amount)
+    * @method static Money SOS(numeric-string|int $amount)
+    * @method static Money SPELL(numeric-string|int $amount)
+    * @method static Money SRD(numeric-string|int $amount)
+    * @method static Money SSP(numeric-string|int $amount)
+    * @method static Money SSV(numeric-string|int $amount)
+    * @method static Money STEEM(numeric-string|int $amount)
+    * @method static Money STG(numeric-string|int $amount)
+    * @method static Money STN(numeric-string|int $amount)
+    * @method static Money STO(numeric-string|int $amount)
+    * @method static Money STORJ(numeric-string|int $amount)
+    * @method static Money STRAX(numeric-string|int $amount)
+    * @method static Money STRK(numeric-string|int $amount)
+    * @method static Money STX(numeric-string|int $amount)
+    * @method static Money SUI(numeric-string|int $amount)
+    * @method static Money SUN(numeric-string|int $amount)
+    * @method static Money SUPER(numeric-string|int $amount)
+    * @method static Money SUSHI(numeric-string|int $amount)
+    * @method static Money SVC(numeric-string|int $amount)
+    * @method static Money SXP(numeric-string|int $amount)
+    * @method static Money SXT(numeric-string|int $amount)
+    * @method static Money SYN(numeric-string|int $amount)
+    * @method static Money SYP(numeric-string|int $amount)
+    * @method static Money SYRUP(numeric-string|int $amount)
+    * @method static Money SYS(numeric-string|int $amount)
+    * @method static Money SZL(numeric-string|int $amount)
+    * @method static Money T(numeric-string|int $amount)
+    * @method static Money TAO(numeric-string|int $amount)
+    * @method static Money TFUEL(numeric-string|int $amount)
+    * @method static Money THB(numeric-string|int $amount)
+    * @method static Money THE(numeric-string|int $amount)
+    * @method static Money THETA(numeric-string|int $amount)
+    * @method static Money TIA(numeric-string|int $amount)
+    * @method static Money TJS(numeric-string|int $amount)
+    * @method static Money TKO(numeric-string|int $amount)
+    * @method static Money TLM(numeric-string|int $amount)
+    * @method static Money TMT(numeric-string|int $amount)
+    * @method static Money TND(numeric-string|int $amount)
+    * @method static Money TNSR(numeric-string|int $amount)
+    * @method static Money TON(numeric-string|int $amount)
+    * @method static Money TOP(numeric-string|int $amount)
+    * @method static Money TRB(numeric-string|int $amount)
+    * @method static Money TRU(numeric-string|int $amount)
+    * @method static Money TRUMP(numeric-string|int $amount)
+    * @method static Money TRX(numeric-string|int $amount)
+    * @method static Money TRY(numeric-string|int $amount)
+    * @method static Money TST(numeric-string|int $amount)
+    * @method static Money TTD(numeric-string|int $amount)
+    * @method static Money TURBO(numeric-string|int $amount)
+    * @method static Money TUSD(numeric-string|int $amount)
+    * @method static Money TUT(numeric-string|int $amount)
+    * @method static Money TWD(numeric-string|int $amount)
+    * @method static Money TWT(numeric-string|int $amount)
+    * @method static Money TZS(numeric-string|int $amount)
+    * @method static Money UAH(numeric-string|int $amount)
+    * @method static Money UGX(numeric-string|int $amount)
+    * @method static Money UMA(numeric-string|int $amount)
+    * @method static Money UNI(numeric-string|int $amount)
+    * @method static Money USD(numeric-string|int $amount)
+    * @method static Money USD1(numeric-string|int $amount)
+    * @method static Money USDC(numeric-string|int $amount)
+    * @method static Money USDP(numeric-string|int $amount)
+    * @method static Money USDT(numeric-string|int $amount)
+    * @method static Money USN(numeric-string|int $amount)
+    * @method static Money USTC(numeric-string|int $amount)
+    * @method static Money USUAL(numeric-string|int $amount)
+    * @method static Money UTK(numeric-string|int $amount)
+    * @method static Money UYI(numeric-string|int $amount)
+    * @method static Money UYU(numeric-string|int $amount)
+    * @method static Money UYW(numeric-string|int $amount)
+    * @method static Money UZS(numeric-string|int $amount)
+    * @method static Money VANA(numeric-string|int $amount)
+    * @method static Money VANRY(numeric-string|int $amount)
+    * @method static Money VED(numeric-string|int $amount)
+    * @method static Money VELODROME(numeric-string|int $amount)
+    * @method static Money VES(numeric-string|int $amount)
+    * @method static Money VET(numeric-string|int $amount)
+    * @method static Money VIC(numeric-string|int $amount)
+    * @method static Money VIRTUAL(numeric-string|int $amount)
+    * @method static Money VND(numeric-string|int $amount)
+    * @method static Money VOXEL(numeric-string|int $amount)
+    * @method static Money VTHO(numeric-string|int $amount)
+    * @method static Money VUV(numeric-string|int $amount)
+    * @method static Money W(numeric-string|int $amount)
+    * @method static Money WAN(numeric-string|int $amount)
+    * @method static Money WAXP(numeric-string|int $amount)
+    * @method static Money WBETH(numeric-string|int $amount)
+    * @method static Money WBTC(numeric-string|int $amount)
+    * @method static Money WCT(numeric-string|int $amount)
+    * @method static Money WIF(numeric-string|int $amount)
+    * @method static Money WIN(numeric-string|int $amount)
+    * @method static Money WLD(numeric-string|int $amount)
+    * @method static Money WOO(numeric-string|int $amount)
+    * @method static Money WST(numeric-string|int $amount)
+    * @method static Money XAD(numeric-string|int $amount)
+    * @method static Money XAF(numeric-string|int $amount)
+    * @method static Money XAG(numeric-string|int $amount)
+    * @method static Money XAI(numeric-string|int $amount)
+    * @method static Money XAU(numeric-string|int $amount)
+    * @method static Money XBA(numeric-string|int $amount)
+    * @method static Money XBB(numeric-string|int $amount)
+    * @method static Money XBC(numeric-string|int $amount)
+    * @method static Money XBD(numeric-string|int $amount)
+    * @method static Money XBT(numeric-string|int $amount)
+    * @method static Money XCD(numeric-string|int $amount)
+    * @method static Money XCG(numeric-string|int $amount)
+    * @method static Money XDR(numeric-string|int $amount)
+    * @method static Money XEC(numeric-string|int $amount)
+    * @method static Money XLM(numeric-string|int $amount)
+    * @method static Money XNO(numeric-string|int $amount)
+    * @method static Money XOF(numeric-string|int $amount)
+    * @method static Money XPD(numeric-string|int $amount)
+    * @method static Money XPF(numeric-string|int $amount)
+    * @method static Money XPT(numeric-string|int $amount)
+    * @method static Money XRP(numeric-string|int $amount)
+    * @method static Money XSU(numeric-string|int $amount)
+    * @method static Money XTS(numeric-string|int $amount)
+    * @method static Money XTZ(numeric-string|int $amount)
+    * @method static Money XUA(numeric-string|int $amount)
+    * @method static Money XUSD(numeric-string|int $amount)
+    * @method static Money XVG(numeric-string|int $amount)
+    * @method static Money XVS(numeric-string|int $amount)
+    * @method static Money XXX(numeric-string|int $amount)
+    * @method static Money YER(numeric-string|int $amount)
+    * @method static Money YFI(numeric-string|int $amount)
+    * @method static Money YGG(numeric-string|int $amount)
+    * @method static Money ZAR(numeric-string|int $amount)
+    * @method static Money ZEC(numeric-string|int $amount)
+    * @method static Money ZEN(numeric-string|int $amount)
+    * @method static Money ZIL(numeric-string|int $amount)
+    * @method static Money ZK(numeric-string|int $amount)
+    * @method static Money ZMW(numeric-string|int $amount)
+    * @method static Money ZRO(numeric-string|int $amount)
+    * @method static Money ZRX(numeric-string|int $amount)
+    * @method static Money ZWG(numeric-string|int $amount)
+    * @psalm-immutable
+    * @generated
+    */
+    trait MoneyFactory {
+        /**
+        * Convenience factory method for a Money object.
+        *
+        * <code>
+        * $fiveDollar = Money::USD(500);
+        * </code>
+        *
+        * @param string $method
+        * @param array $arguments
+        * @throws InvalidArgumentException If amount is not integer(ish).
+        * @psalm-pure
+        * @generated
+        */
+        public static function __callStatic(string $method, array $arguments): \Money\Money;
+        public static function ONETHOUSANDCAT(mixed $amount): \Money\Money;
+        public static function ONETHOUSANDCHEEMS(mixed $amount): \Money\Money;
+        public static function ONETHOUSANDSATS(mixed $amount): \Money\Money;
+        public static function ONEINCH(mixed $amount): \Money\Money;
+        public static function ONEMBABYDOGE(mixed $amount): \Money\Money;
+        public static function A(mixed $amount): \Money\Money;
+        public static function AAVE(mixed $amount): \Money\Money;
+        public static function ACA(mixed $amount): \Money\Money;
+        public static function ACE(mixed $amount): \Money\Money;
+        public static function ACH(mixed $amount): \Money\Money;
+        public static function ACM(mixed $amount): \Money\Money;
+        public static function ACT(mixed $amount): \Money\Money;
+        public static function ACX(mixed $amount): \Money\Money;
+        public static function ADA(mixed $amount): \Money\Money;
+        public static function ADX(mixed $amount): \Money\Money;
+        public static function AED(mixed $amount): \Money\Money;
+        public static function AEUR(mixed $amount): \Money\Money;
+        public static function AEVO(mixed $amount): \Money\Money;
+        public static function AFN(mixed $amount): \Money\Money;
+        public static function AGLD(mixed $amount): \Money\Money;
+        public static function AI(mixed $amount): \Money\Money;
+        public static function AIXBT(mixed $amount): \Money\Money;
+        public static function ALCX(mixed $amount): \Money\Money;
+        public static function ALGO(mixed $amount): \Money\Money;
+        public static function ALICE(mixed $amount): \Money\Money;
+        public static function ALL(mixed $amount): \Money\Money;
+        public static function ALPHA(mixed $amount): \Money\Money;
+        public static function ALPINE(mixed $amount): \Money\Money;
+        public static function ALT(mixed $amount): \Money\Money;
+        public static function AMD(mixed $amount): \Money\Money;
+        public static function AMP(mixed $amount): \Money\Money;
+        public static function ANIME(mixed $amount): \Money\Money;
+        public static function ANKR(mixed $amount): \Money\Money;
+        public static function AOA(mixed $amount): \Money\Money;
+        public static function APE(mixed $amount): \Money\Money;
+        public static function API3(mixed $amount): \Money\Money;
+        public static function APT(mixed $amount): \Money\Money;
+        public static function AR(mixed $amount): \Money\Money;
+        public static function ARB(mixed $amount): \Money\Money;
+        public static function ARDR(mixed $amount): \Money\Money;
+        public static function ARK(mixed $amount): \Money\Money;
+        public static function ARKM(mixed $amount): \Money\Money;
+        public static function ARPA(mixed $amount): \Money\Money;
+        public static function ARS(mixed $amount): \Money\Money;
+        public static function ASR(mixed $amount): \Money\Money;
+        public static function ASTR(mixed $amount): \Money\Money;
+        public static function ATA(mixed $amount): \Money\Money;
+        public static function ATM(mixed $amount): \Money\Money;
+        public static function ATOM(mixed $amount): \Money\Money;
+        public static function AUCTION(mixed $amount): \Money\Money;
+        public static function AUD(mixed $amount): \Money\Money;
+        public static function AUDIO(mixed $amount): \Money\Money;
+        public static function AVA(mixed $amount): \Money\Money;
+        public static function AVAX(mixed $amount): \Money\Money;
+        public static function AWE(mixed $amount): \Money\Money;
+        public static function AWG(mixed $amount): \Money\Money;
+        public static function AXL(mixed $amount): \Money\Money;
+        public static function AXS(mixed $amount): \Money\Money;
+        public static function AZN(mixed $amount): \Money\Money;
+        public static function BABY(mixed $amount): \Money\Money;
+        public static function BAKE(mixed $amount): \Money\Money;
+        public static function BAM(mixed $amount): \Money\Money;
+        public static function BANANA(mixed $amount): \Money\Money;
+        public static function BANANAS31(mixed $amount): \Money\Money;
+        public static function BAND(mixed $amount): \Money\Money;
+        public static function BAR(mixed $amount): \Money\Money;
+        public static function BAT(mixed $amount): \Money\Money;
+        public static function BB(mixed $amount): \Money\Money;
+        public static function BBD(mixed $amount): \Money\Money;
+        public static function BCH(mixed $amount): \Money\Money;
+        public static function BDT(mixed $amount): \Money\Money;
+        public static function BEAMX(mixed $amount): \Money\Money;
+        public static function BEL(mixed $amount): \Money\Money;
+        public static function BERA(mixed $amount): \Money\Money;
+        public static function BGN(mixed $amount): \Money\Money;
+        public static function BHD(mixed $amount): \Money\Money;
+        public static function BICO(mixed $amount): \Money\Money;
+        public static function BIF(mixed $amount): \Money\Money;
+        public static function BIFI(mixed $amount): \Money\Money;
+        public static function BIGTIME(mixed $amount): \Money\Money;
+        public static function BIO(mixed $amount): \Money\Money;
+        public static function BLUR(mixed $amount): \Money\Money;
+        public static function BMD(mixed $amount): \Money\Money;
+        public static function BMT(mixed $amount): \Money\Money;
+        public static function BNB(mixed $amount): \Money\Money;
+        public static function BND(mixed $amount): \Money\Money;
+        public static function BNSOL(mixed $amount): \Money\Money;
+        public static function BNT(mixed $amount): \Money\Money;
+        public static function BOB(mixed $amount): \Money\Money;
+        public static function BOME(mixed $amount): \Money\Money;
+        public static function BONK(mixed $amount): \Money\Money;
+        public static function BOV(mixed $amount): \Money\Money;
+        public static function BRL(mixed $amount): \Money\Money;
+        public static function BROCCOLI714(mixed $amount): \Money\Money;
+        public static function BSD(mixed $amount): \Money\Money;
+        public static function BSW(mixed $amount): \Money\Money;
+        public static function BTC(mixed $amount): \Money\Money;
+        public static function BTN(mixed $amount): \Money\Money;
+        public static function BTTC(mixed $amount): \Money\Money;
+        public static function BWP(mixed $amount): \Money\Money;
+        public static function BYN(mixed $amount): \Money\Money;
+        public static function BZD(mixed $amount): \Money\Money;
+        public static function C98(mixed $amount): \Money\Money;
+        public static function CAD(mixed $amount): \Money\Money;
+        public static function CAKE(mixed $amount): \Money\Money;
+        public static function CATI(mixed $amount): \Money\Money;
+        public static function CDF(mixed $amount): \Money\Money;
+        public static function CELO(mixed $amount): \Money\Money;
+        public static function CELR(mixed $amount): \Money\Money;
+        public static function CETUS(mixed $amount): \Money\Money;
+        public static function CFX(mixed $amount): \Money\Money;
+        public static function CGPT(mixed $amount): \Money\Money;
+        public static function CHE(mixed $amount): \Money\Money;
+        public static function CHESS(mixed $amount): \Money\Money;
+        public static function CHF(mixed $amount): \Money\Money;
+        public static function CHR(mixed $amount): \Money\Money;
+        public static function CHW(mixed $amount): \Money\Money;
+        public static function CHZ(mixed $amount): \Money\Money;
+        public static function CITY(mixed $amount): \Money\Money;
+        public static function CKB(mixed $amount): \Money\Money;
+        public static function CLF(mixed $amount): \Money\Money;
+        public static function CLP(mixed $amount): \Money\Money;
+        public static function CNY(mixed $amount): \Money\Money;
+        public static function COMP(mixed $amount): \Money\Money;
+        public static function COOKIE(mixed $amount): \Money\Money;
+        public static function COP(mixed $amount): \Money\Money;
+        public static function COS(mixed $amount): \Money\Money;
+        public static function COTI(mixed $amount): \Money\Money;
+        public static function COU(mixed $amount): \Money\Money;
+        public static function COW(mixed $amount): \Money\Money;
+        public static function CRC(mixed $amount): \Money\Money;
+        public static function CRV(mixed $amount): \Money\Money;
+        public static function CTK(mixed $amount): \Money\Money;
+        public static function CTSI(mixed $amount): \Money\Money;
+        public static function CUP(mixed $amount): \Money\Money;
+        public static function CVC(mixed $amount): \Money\Money;
+        public static function CVE(mixed $amount): \Money\Money;
+        public static function CVX(mixed $amount): \Money\Money;
+        public static function CYBER(mixed $amount): \Money\Money;
+        public static function CZK(mixed $amount): \Money\Money;
+        public static function D(mixed $amount): \Money\Money;
+        public static function DAI(mixed $amount): \Money\Money;
+        public static function DASH(mixed $amount): \Money\Money;
+        public static function DATA(mixed $amount): \Money\Money;
+        public static function DCR(mixed $amount): \Money\Money;
+        public static function DEGO(mixed $amount): \Money\Money;
+        public static function DENT(mixed $amount): \Money\Money;
+        public static function DEXE(mixed $amount): \Money\Money;
+        public static function DF(mixed $amount): \Money\Money;
+        public static function DGB(mixed $amount): \Money\Money;
+        public static function DIA(mixed $amount): \Money\Money;
+        public static function DJF(mixed $amount): \Money\Money;
+        public static function DKK(mixed $amount): \Money\Money;
+        public static function DODO(mixed $amount): \Money\Money;
+        public static function DOGE(mixed $amount): \Money\Money;
+        public static function DOGS(mixed $amount): \Money\Money;
+        public static function DOP(mixed $amount): \Money\Money;
+        public static function DOT(mixed $amount): \Money\Money;
+        public static function DUSK(mixed $amount): \Money\Money;
+        public static function DYDX(mixed $amount): \Money\Money;
+        public static function DYM(mixed $amount): \Money\Money;
+        public static function DZD(mixed $amount): \Money\Money;
+        public static function EDU(mixed $amount): \Money\Money;
+        public static function EGLD(mixed $amount): \Money\Money;
+        public static function EGP(mixed $amount): \Money\Money;
+        public static function EIGEN(mixed $amount): \Money\Money;
+        public static function ENA(mixed $amount): \Money\Money;
+        public static function ENJ(mixed $amount): \Money\Money;
+        public static function ENS(mixed $amount): \Money\Money;
+        public static function EPIC(mixed $amount): \Money\Money;
+        public static function ERN(mixed $amount): \Money\Money;
+        public static function ETB(mixed $amount): \Money\Money;
+        public static function ETC(mixed $amount): \Money\Money;
+        public static function ETH(mixed $amount): \Money\Money;
+        public static function ETHFI(mixed $amount): \Money\Money;
+        public static function EUR(mixed $amount): \Money\Money;
+        public static function EURI(mixed $amount): \Money\Money;
+        public static function FARM(mixed $amount): \Money\Money;
+        public static function FDUSD(mixed $amount): \Money\Money;
+        public static function FET(mixed $amount): \Money\Money;
+        public static function FIDA(mixed $amount): \Money\Money;
+        public static function FIL(mixed $amount): \Money\Money;
+        public static function FIO(mixed $amount): \Money\Money;
+        public static function FIS(mixed $amount): \Money\Money;
+        public static function FJD(mixed $amount): \Money\Money;
+        public static function FKP(mixed $amount): \Money\Money;
+        public static function FLM(mixed $amount): \Money\Money;
+        public static function FLOKI(mixed $amount): \Money\Money;
+        public static function FLOW(mixed $amount): \Money\Money;
+        public static function FLUX(mixed $amount): \Money\Money;
+        public static function FORM(mixed $amount): \Money\Money;
+        public static function FORTH(mixed $amount): \Money\Money;
+        public static function FTT(mixed $amount): \Money\Money;
+        public static function FUN(mixed $amount): \Money\Money;
+        public static function FXS(mixed $amount): \Money\Money;
+        public static function G(mixed $amount): \Money\Money;
+        public static function GALA(mixed $amount): \Money\Money;
+        public static function GAS(mixed $amount): \Money\Money;
+        public static function GBP(mixed $amount): \Money\Money;
+        public static function GEL(mixed $amount): \Money\Money;
+        public static function GHS(mixed $amount): \Money\Money;
+        public static function GHST(mixed $amount): \Money\Money;
+        public static function GIP(mixed $amount): \Money\Money;
+        public static function GLM(mixed $amount): \Money\Money;
+        public static function GLMR(mixed $amount): \Money\Money;
+        public static function GMD(mixed $amount): \Money\Money;
+        public static function GMT(mixed $amount): \Money\Money;
+        public static function GMX(mixed $amount): \Money\Money;
+        public static function GNF(mixed $amount): \Money\Money;
+        public static function GNO(mixed $amount): \Money\Money;
+        public static function GNS(mixed $amount): \Money\Money;
+        public static function GPS(mixed $amount): \Money\Money;
+        public static function GRT(mixed $amount): \Money\Money;
+        public static function GTC(mixed $amount): \Money\Money;
+        public static function GTQ(mixed $amount): \Money\Money;
+        public static function GUN(mixed $amount): \Money\Money;
+        public static function GYD(mixed $amount): \Money\Money;
+        public static function HAEDAL(mixed $amount): \Money\Money;
+        public static function HBAR(mixed $amount): \Money\Money;
+        public static function HEI(mixed $amount): \Money\Money;
+        public static function HFT(mixed $amount): \Money\Money;
+        public static function HIFI(mixed $amount): \Money\Money;
+        public static function HIGH(mixed $amount): \Money\Money;
+        public static function HIVE(mixed $amount): \Money\Money;
+        public static function HKD(mixed $amount): \Money\Money;
+        public static function HMSTR(mixed $amount): \Money\Money;
+        public static function HNL(mixed $amount): \Money\Money;
+        public static function HOOK(mixed $amount): \Money\Money;
+        public static function HOT(mixed $amount): \Money\Money;
+        public static function HTG(mixed $amount): \Money\Money;
+        public static function HUF(mixed $amount): \Money\Money;
+        public static function HUMA(mixed $amount): \Money\Money;
+        public static function HYPER(mixed $amount): \Money\Money;
+        public static function ICP(mixed $amount): \Money\Money;
+        public static function ICX(mixed $amount): \Money\Money;
+        public static function ID(mixed $amount): \Money\Money;
+        public static function IDEX(mixed $amount): \Money\Money;
+        public static function IDR(mixed $amount): \Money\Money;
+        public static function ILS(mixed $amount): \Money\Money;
+        public static function ILV(mixed $amount): \Money\Money;
+        public static function IMX(mixed $amount): \Money\Money;
+        public static function INIT(mixed $amount): \Money\Money;
+        public static function INJ(mixed $amount): \Money\Money;
+        public static function INR(mixed $amount): \Money\Money;
+        public static function IO(mixed $amount): \Money\Money;
+        public static function IOST(mixed $amount): \Money\Money;
+        public static function IOTA(mixed $amount): \Money\Money;
+        public static function IOTX(mixed $amount): \Money\Money;
+        public static function IQ(mixed $amount): \Money\Money;
+        public static function IQD(mixed $amount): \Money\Money;
+        public static function IRR(mixed $amount): \Money\Money;
+        public static function ISK(mixed $amount): \Money\Money;
+        public static function JASMY(mixed $amount): \Money\Money;
+        public static function JMD(mixed $amount): \Money\Money;
+        public static function JOD(mixed $amount): \Money\Money;
+        public static function JOE(mixed $amount): \Money\Money;
+        public static function JPY(mixed $amount): \Money\Money;
+        public static function JST(mixed $amount): \Money\Money;
+        public static function JTO(mixed $amount): \Money\Money;
+        public static function JUP(mixed $amount): \Money\Money;
+        public static function JUV(mixed $amount): \Money\Money;
+        public static function KAIA(mixed $amount): \Money\Money;
+        public static function KAITO(mixed $amount): \Money\Money;
+        public static function KAVA(mixed $amount): \Money\Money;
+        public static function KDA(mixed $amount): \Money\Money;
+        public static function KERNEL(mixed $amount): \Money\Money;
+        public static function KES(mixed $amount): \Money\Money;
+        public static function KGS(mixed $amount): \Money\Money;
+        public static function KHR(mixed $amount): \Money\Money;
+        public static function KMD(mixed $amount): \Money\Money;
+        public static function KMF(mixed $amount): \Money\Money;
+        public static function KMNO(mixed $amount): \Money\Money;
+        public static function KNC(mixed $amount): \Money\Money;
+        public static function KPW(mixed $amount): \Money\Money;
+        public static function KRW(mixed $amount): \Money\Money;
+        public static function KSM(mixed $amount): \Money\Money;
+        public static function KWD(mixed $amount): \Money\Money;
+        public static function KYD(mixed $amount): \Money\Money;
+        public static function KZT(mixed $amount): \Money\Money;
+        public static function LAK(mixed $amount): \Money\Money;
+        public static function LAYER(mixed $amount): \Money\Money;
+        public static function LAZIO(mixed $amount): \Money\Money;
+        public static function LBP(mixed $amount): \Money\Money;
+        public static function LDO(mixed $amount): \Money\Money;
+        public static function LEVER(mixed $amount): \Money\Money;
+        public static function LINK(mixed $amount): \Money\Money;
+        public static function LISTA(mixed $amount): \Money\Money;
+        public static function LKR(mixed $amount): \Money\Money;
+        public static function LOKA(mixed $amount): \Money\Money;
+        public static function LPT(mixed $amount): \Money\Money;
+        public static function LQTY(mixed $amount): \Money\Money;
+        public static function LRC(mixed $amount): \Money\Money;
+        public static function LRD(mixed $amount): \Money\Money;
+        public static function LSK(mixed $amount): \Money\Money;
+        public static function LSL(mixed $amount): \Money\Money;
+        public static function LTC(mixed $amount): \Money\Money;
+        public static function LTO(mixed $amount): \Money\Money;
+        public static function LUMIA(mixed $amount): \Money\Money;
+        public static function LUNA(mixed $amount): \Money\Money;
+        public static function LUNC(mixed $amount): \Money\Money;
+        public static function LYD(mixed $amount): \Money\Money;
+        public static function MAD(mixed $amount): \Money\Money;
+        public static function MAGIC(mixed $amount): \Money\Money;
+        public static function MANA(mixed $amount): \Money\Money;
+        public static function MANTA(mixed $amount): \Money\Money;
+        public static function MASK(mixed $amount): \Money\Money;
+        public static function MAV(mixed $amount): \Money\Money;
+        public static function MBL(mixed $amount): \Money\Money;
+        public static function MBOX(mixed $amount): \Money\Money;
+        public static function MDL(mixed $amount): \Money\Money;
+        public static function MDT(mixed $amount): \Money\Money;
+        public static function ME(mixed $amount): \Money\Money;
+        public static function MEME(mixed $amount): \Money\Money;
+        public static function METIS(mixed $amount): \Money\Money;
+        public static function MGA(mixed $amount): \Money\Money;
+        public static function MINA(mixed $amount): \Money\Money;
+        public static function MKD(mixed $amount): \Money\Money;
+        public static function MKR(mixed $amount): \Money\Money;
+        public static function MLN(mixed $amount): \Money\Money;
+        public static function MMK(mixed $amount): \Money\Money;
+        public static function MNT(mixed $amount): \Money\Money;
+        public static function MOP(mixed $amount): \Money\Money;
+        public static function MOVE(mixed $amount): \Money\Money;
+        public static function MOVR(mixed $amount): \Money\Money;
+        public static function MRU(mixed $amount): \Money\Money;
+        public static function MTL(mixed $amount): \Money\Money;
+        public static function MUBARAK(mixed $amount): \Money\Money;
+        public static function MUR(mixed $amount): \Money\Money;
+        public static function MVR(mixed $amount): \Money\Money;
+        public static function MWK(mixed $amount): \Money\Money;
+        public static function MXN(mixed $amount): \Money\Money;
+        public static function MXV(mixed $amount): \Money\Money;
+        public static function MYR(mixed $amount): \Money\Money;
+        public static function MZN(mixed $amount): \Money\Money;
+        public static function NAD(mixed $amount): \Money\Money;
+        public static function NEAR(mixed $amount): \Money\Money;
+        public static function NEIRO(mixed $amount): \Money\Money;
+        public static function NEO(mixed $amount): \Money\Money;
+        public static function NEXO(mixed $amount): \Money\Money;
+        public static function NFP(mixed $amount): \Money\Money;
+        public static function NGN(mixed $amount): \Money\Money;
+        public static function NIL(mixed $amount): \Money\Money;
+        public static function NIO(mixed $amount): \Money\Money;
+        public static function NKN(mixed $amount): \Money\Money;
+        public static function NMR(mixed $amount): \Money\Money;
+        public static function NOK(mixed $amount): \Money\Money;
+        public static function NOT(mixed $amount): \Money\Money;
+        public static function NPR(mixed $amount): \Money\Money;
+        public static function NTRN(mixed $amount): \Money\Money;
+        public static function NXPC(mixed $amount): \Money\Money;
+        public static function NZD(mixed $amount): \Money\Money;
+        public static function OG(mixed $amount): \Money\Money;
+        public static function OGN(mixed $amount): \Money\Money;
+        public static function OM(mixed $amount): \Money\Money;
+        public static function OMNI(mixed $amount): \Money\Money;
+        public static function OMR(mixed $amount): \Money\Money;
+        public static function ONDO(mixed $amount): \Money\Money;
+        public static function ONE(mixed $amount): \Money\Money;
+        public static function ONG(mixed $amount): \Money\Money;
+        public static function ONT(mixed $amount): \Money\Money;
+        public static function OP(mixed $amount): \Money\Money;
+        public static function ORCA(mixed $amount): \Money\Money;
+        public static function ORDI(mixed $amount): \Money\Money;
+        public static function OSMO(mixed $amount): \Money\Money;
+        public static function OXT(mixed $amount): \Money\Money;
+        public static function PAB(mixed $amount): \Money\Money;
+        public static function PARTI(mixed $amount): \Money\Money;
+        public static function PAXG(mixed $amount): \Money\Money;
+        public static function PEN(mixed $amount): \Money\Money;
+        public static function PENDLE(mixed $amount): \Money\Money;
+        public static function PENGU(mixed $amount): \Money\Money;
+        public static function PEOPLE(mixed $amount): \Money\Money;
+        public static function PEPE(mixed $amount): \Money\Money;
+        public static function PERP(mixed $amount): \Money\Money;
+        public static function PGK(mixed $amount): \Money\Money;
+        public static function PHA(mixed $amount): \Money\Money;
+        public static function PHB(mixed $amount): \Money\Money;
+        public static function PHP(mixed $amount): \Money\Money;
+        public static function PIVX(mixed $amount): \Money\Money;
+        public static function PIXEL(mixed $amount): \Money\Money;
+        public static function PKR(mixed $amount): \Money\Money;
+        public static function PLN(mixed $amount): \Money\Money;
+        public static function PNUT(mixed $amount): \Money\Money;
+        public static function POL(mixed $amount): \Money\Money;
+        public static function POLYX(mixed $amount): \Money\Money;
+        public static function POND(mixed $amount): \Money\Money;
+        public static function PORTAL(mixed $amount): \Money\Money;
+        public static function PORTO(mixed $amount): \Money\Money;
+        public static function POWR(mixed $amount): \Money\Money;
+        public static function PROM(mixed $amount): \Money\Money;
+        public static function PSG(mixed $amount): \Money\Money;
+        public static function PUNDIX(mixed $amount): \Money\Money;
+        public static function PYG(mixed $amount): \Money\Money;
+        public static function PYR(mixed $amount): \Money\Money;
+        public static function PYTH(mixed $amount): \Money\Money;
+        public static function QAR(mixed $amount): \Money\Money;
+        public static function QI(mixed $amount): \Money\Money;
+        public static function QKC(mixed $amount): \Money\Money;
+        public static function QNT(mixed $amount): \Money\Money;
+        public static function QTUM(mixed $amount): \Money\Money;
+        public static function QUICK(mixed $amount): \Money\Money;
+        public static function RAD(mixed $amount): \Money\Money;
+        public static function RARE(mixed $amount): \Money\Money;
+        public static function RAY(mixed $amount): \Money\Money;
+        public static function RDNT(mixed $amount): \Money\Money;
+        public static function RED(mixed $amount): \Money\Money;
+        public static function REI(mixed $amount): \Money\Money;
+        public static function RENDER(mixed $amount): \Money\Money;
+        public static function REQ(mixed $amount): \Money\Money;
+        public static function REZ(mixed $amount): \Money\Money;
+        public static function RIF(mixed $amount): \Money\Money;
+        public static function RLC(mixed $amount): \Money\Money;
+        public static function RON(mixed $amount): \Money\Money;
+        public static function RONIN(mixed $amount): \Money\Money;
+        public static function ROSE(mixed $amount): \Money\Money;
+        public static function RPL(mixed $amount): \Money\Money;
+        public static function RSD(mixed $amount): \Money\Money;
+        public static function RSR(mixed $amount): \Money\Money;
+        public static function RUB(mixed $amount): \Money\Money;
+        public static function RUNE(mixed $amount): \Money\Money;
+        public static function RVN(mixed $amount): \Money\Money;
+        public static function RWF(mixed $amount): \Money\Money;
+        public static function S(mixed $amount): \Money\Money;
+        public static function SAGA(mixed $amount): \Money\Money;
+        public static function SAND(mixed $amount): \Money\Money;
+        public static function SANTOS(mixed $amount): \Money\Money;
+        public static function SAR(mixed $amount): \Money\Money;
+        public static function SBD(mixed $amount): \Money\Money;
+        public static function SC(mixed $amount): \Money\Money;
+        public static function SCR(mixed $amount): \Money\Money;
+        public static function SCRT(mixed $amount): \Money\Money;
+        public static function SDG(mixed $amount): \Money\Money;
+        public static function SEI(mixed $amount): \Money\Money;
+        public static function SEK(mixed $amount): \Money\Money;
+        public static function SFP(mixed $amount): \Money\Money;
+        public static function SGD(mixed $amount): \Money\Money;
+        public static function SHELL(mixed $amount): \Money\Money;
+        public static function SHIB(mixed $amount): \Money\Money;
+        public static function SHP(mixed $amount): \Money\Money;
+        public static function SIGN(mixed $amount): \Money\Money;
+        public static function SKL(mixed $amount): \Money\Money;
+        public static function SLE(mixed $amount): \Money\Money;
+        public static function SLF(mixed $amount): \Money\Money;
+        public static function SLP(mixed $amount): \Money\Money;
+        public static function SNX(mixed $amount): \Money\Money;
+        public static function SOL(mixed $amount): \Money\Money;
+        public static function SOLV(mixed $amount): \Money\Money;
+        public static function SOPH(mixed $amount): \Money\Money;
+        public static function SOS(mixed $amount): \Money\Money;
+        public static function SPELL(mixed $amount): \Money\Money;
+        public static function SRD(mixed $amount): \Money\Money;
+        public static function SSP(mixed $amount): \Money\Money;
+        public static function SSV(mixed $amount): \Money\Money;
+        public static function STEEM(mixed $amount): \Money\Money;
+        public static function STG(mixed $amount): \Money\Money;
+        public static function STN(mixed $amount): \Money\Money;
+        public static function STO(mixed $amount): \Money\Money;
+        public static function STORJ(mixed $amount): \Money\Money;
+        public static function STRAX(mixed $amount): \Money\Money;
+        public static function STRK(mixed $amount): \Money\Money;
+        public static function STX(mixed $amount): \Money\Money;
+        public static function SUI(mixed $amount): \Money\Money;
+        public static function SUN(mixed $amount): \Money\Money;
+        public static function SUPER(mixed $amount): \Money\Money;
+        public static function SUSHI(mixed $amount): \Money\Money;
+        public static function SVC(mixed $amount): \Money\Money;
+        public static function SXP(mixed $amount): \Money\Money;
+        public static function SXT(mixed $amount): \Money\Money;
+        public static function SYN(mixed $amount): \Money\Money;
+        public static function SYP(mixed $amount): \Money\Money;
+        public static function SYRUP(mixed $amount): \Money\Money;
+        public static function SYS(mixed $amount): \Money\Money;
+        public static function SZL(mixed $amount): \Money\Money;
+        public static function T(mixed $amount): \Money\Money;
+        public static function TAO(mixed $amount): \Money\Money;
+        public static function TFUEL(mixed $amount): \Money\Money;
+        public static function THB(mixed $amount): \Money\Money;
+        public static function THE(mixed $amount): \Money\Money;
+        public static function THETA(mixed $amount): \Money\Money;
+        public static function TIA(mixed $amount): \Money\Money;
+        public static function TJS(mixed $amount): \Money\Money;
+        public static function TKO(mixed $amount): \Money\Money;
+        public static function TLM(mixed $amount): \Money\Money;
+        public static function TMT(mixed $amount): \Money\Money;
+        public static function TND(mixed $amount): \Money\Money;
+        public static function TNSR(mixed $amount): \Money\Money;
+        public static function TON(mixed $amount): \Money\Money;
+        public static function TOP(mixed $amount): \Money\Money;
+        public static function TRB(mixed $amount): \Money\Money;
+        public static function TRU(mixed $amount): \Money\Money;
+        public static function TRUMP(mixed $amount): \Money\Money;
+        public static function TRX(mixed $amount): \Money\Money;
+        public static function TRY(mixed $amount): \Money\Money;
+        public static function TST(mixed $amount): \Money\Money;
+        public static function TTD(mixed $amount): \Money\Money;
+        public static function TURBO(mixed $amount): \Money\Money;
+        public static function TUSD(mixed $amount): \Money\Money;
+        public static function TUT(mixed $amount): \Money\Money;
+        public static function TWD(mixed $amount): \Money\Money;
+        public static function TWT(mixed $amount): \Money\Money;
+        public static function TZS(mixed $amount): \Money\Money;
+        public static function UAH(mixed $amount): \Money\Money;
+        public static function UGX(mixed $amount): \Money\Money;
+        public static function UMA(mixed $amount): \Money\Money;
+        public static function UNI(mixed $amount): \Money\Money;
+        public static function USD(mixed $amount): \Money\Money;
+        public static function USD1(mixed $amount): \Money\Money;
+        public static function USDC(mixed $amount): \Money\Money;
+        public static function USDP(mixed $amount): \Money\Money;
+        public static function USDT(mixed $amount): \Money\Money;
+        public static function USN(mixed $amount): \Money\Money;
+        public static function USTC(mixed $amount): \Money\Money;
+        public static function USUAL(mixed $amount): \Money\Money;
+        public static function UTK(mixed $amount): \Money\Money;
+        public static function UYI(mixed $amount): \Money\Money;
+        public static function UYU(mixed $amount): \Money\Money;
+        public static function UYW(mixed $amount): \Money\Money;
+        public static function UZS(mixed $amount): \Money\Money;
+        public static function VANA(mixed $amount): \Money\Money;
+        public static function VANRY(mixed $amount): \Money\Money;
+        public static function VED(mixed $amount): \Money\Money;
+        public static function VELODROME(mixed $amount): \Money\Money;
+        public static function VES(mixed $amount): \Money\Money;
+        public static function VET(mixed $amount): \Money\Money;
+        public static function VIC(mixed $amount): \Money\Money;
+        public static function VIRTUAL(mixed $amount): \Money\Money;
+        public static function VND(mixed $amount): \Money\Money;
+        public static function VOXEL(mixed $amount): \Money\Money;
+        public static function VTHO(mixed $amount): \Money\Money;
+        public static function VUV(mixed $amount): \Money\Money;
+        public static function W(mixed $amount): \Money\Money;
+        public static function WAN(mixed $amount): \Money\Money;
+        public static function WAXP(mixed $amount): \Money\Money;
+        public static function WBETH(mixed $amount): \Money\Money;
+        public static function WBTC(mixed $amount): \Money\Money;
+        public static function WCT(mixed $amount): \Money\Money;
+        public static function WIF(mixed $amount): \Money\Money;
+        public static function WIN(mixed $amount): \Money\Money;
+        public static function WLD(mixed $amount): \Money\Money;
+        public static function WOO(mixed $amount): \Money\Money;
+        public static function WST(mixed $amount): \Money\Money;
+        public static function XAD(mixed $amount): \Money\Money;
+        public static function XAF(mixed $amount): \Money\Money;
+        public static function XAG(mixed $amount): \Money\Money;
+        public static function XAI(mixed $amount): \Money\Money;
+        public static function XAU(mixed $amount): \Money\Money;
+        public static function XBA(mixed $amount): \Money\Money;
+        public static function XBB(mixed $amount): \Money\Money;
+        public static function XBC(mixed $amount): \Money\Money;
+        public static function XBD(mixed $amount): \Money\Money;
+        public static function XBT(mixed $amount): \Money\Money;
+        public static function XCD(mixed $amount): \Money\Money;
+        public static function XCG(mixed $amount): \Money\Money;
+        public static function XDR(mixed $amount): \Money\Money;
+        public static function XEC(mixed $amount): \Money\Money;
+        public static function XLM(mixed $amount): \Money\Money;
+        public static function XNO(mixed $amount): \Money\Money;
+        public static function XOF(mixed $amount): \Money\Money;
+        public static function XPD(mixed $amount): \Money\Money;
+        public static function XPF(mixed $amount): \Money\Money;
+        public static function XPT(mixed $amount): \Money\Money;
+        public static function XRP(mixed $amount): \Money\Money;
+        public static function XSU(mixed $amount): \Money\Money;
+        public static function XTS(mixed $amount): \Money\Money;
+        public static function XTZ(mixed $amount): \Money\Money;
+        public static function XUA(mixed $amount): \Money\Money;
+        public static function XUSD(mixed $amount): \Money\Money;
+        public static function XVG(mixed $amount): \Money\Money;
+        public static function XVS(mixed $amount): \Money\Money;
+        public static function XXX(mixed $amount): \Money\Money;
+        public static function YER(mixed $amount): \Money\Money;
+        public static function YFI(mixed $amount): \Money\Money;
+        public static function YGG(mixed $amount): \Money\Money;
+        public static function ZAR(mixed $amount): \Money\Money;
+        public static function ZEC(mixed $amount): \Money\Money;
+        public static function ZEN(mixed $amount): \Money\Money;
+        public static function ZIL(mixed $amount): \Money\Money;
+        public static function ZK(mixed $amount): \Money\Money;
+        public static function ZMW(mixed $amount): \Money\Money;
+        public static function ZRO(mixed $amount): \Money\Money;
+        public static function ZRX(mixed $amount): \Money\Money;
+        public static function ZWG(mixed $amount): \Money\Money;
+    }
+    /**
+    * Formats Money objects.
+    *
+    * @generated
+    */
+    interface MoneyFormatter {
+        /**
+        * Formats a Money object as string.
+        *
+        * @generated
+        */
+        public function format(\Money\Money $money): string;
+    }
+    /**
+    * Parses a string into a Money object.
+    *
+    * @generated
+    */
+    interface MoneyParser {
+        /**
+        * Parses a string into a Money object (including currency).
+        *
+        * @throws Exception\ParserException
+        * @generated
+        */
+        public function parse(string $money, \Money\Currency|null $fallbackCurrency = null): \Money\Money;
+    }
+    final class Teller {
+        use \Money\TellerFactory;
+        /**
+        * @param Money::ROUND_ $ * $roundingMode
+        * @generated
+        */
+        public function __construct(\Money\Currency $currency, \Money\MoneyParser $parser, \Money\MoneyFormatter $formatter, int $roundingMode = \Money\Money::ROUND_HALF_UP): void;
+        /**
+        * Are two monetary amounts equal to each other?
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @generated
+        */
+        public function equals(mixed $amount, mixed $other): bool;
+        /**
+        * Returns an integer less than, equal to, or greater than zero if a
+        *
+        * monetary amount is respectively less than, equal to, or greater than
+        * another.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @generated
+        */
+        public function compare(mixed $amount, mixed $other): int;
+        /**
+        * Is one monetary amount greater than another?
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @generated
+        */
+        public function greaterThan(mixed $amount, mixed $other): bool;
+        /**
+        * Is one monetary amount greater than or equal to another?
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @generated
+        */
+        public function greaterThanOrEqual(mixed $amount, mixed $other): bool;
+        /**
+        * Is one monetary amount less than another?
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @generated
+        */
+        public function lessThan(mixed $amount, mixed $other): bool;
+        /**
+        * Is one monetary amount less than or equal to another?
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @generated
+        */
+        public function lessThanOrEqual(mixed $amount, mixed $other): bool;
+        /**
+        * Adds a series of monetary amounts to each other in sequence.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @param mixed $others subsequent other monetary amounts
+        * @return string the calculated monetary amount
+        * @generated
+        */
+        public function add(mixed $amount, mixed $other, mixed ...$others): string;
+        /**
+        * Subtracts a series of monetary amounts from each other in sequence.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @param mixed $others subsequent monetary amounts
+        * @generated
+        */
+        public function subtract(mixed $amount, mixed $other, mixed ...$others): string;
+        /**
+        * Multiplies a monetary amount by a factor.
+        *
+        * @param mixed $amount a monetary amount
+        * @param int|float|string $multiplier the multiplier
+        * @generated
+        */
+        public function multiply(mixed $amount, int|float|string $multiplier): string;
+        /**
+        * Divides a monetary amount by a divisor.
+        *
+        * @param mixed $amount a monetary amount
+        * @param int|float|string $divisor the divisor
+        * @generated
+        */
+        public function divide(mixed $amount, int|float|string $divisor): string;
+        /**
+        * Mods a monetary amount by a divisor.
+        *
+        * @param mixed $amount a monetary amount
+        * @param int|float|string $divisor the divisor
+        * @generated
+        */
+        public function mod(mixed $amount, int|float|string $divisor): string;
+        /**
+        * Allocates a monetary amount according to an array of ratios.
+        *
+        * @param mixed $amount a monetary amount
+        * @param array $ratios an array of ratios
+        * @return array<int, string> the calculated monetary amounts
+        * @generated
+        */
+        public function allocate(mixed $amount, array $ratios): array<int, string>;
+        /**
+        * Allocates a monetary amount among N targets.
+        *
+        * @param mixed $amount a monetary amount
+        * @return array<int, string> the calculated monetary amounts
+        * @generated
+        */
+        public function allocateTo(mixed $amount, int $n): array<int, string>;
+        /**
+        * Determines the ratio of one monetary amount to another.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $other another monetary amount
+        * @generated
+        */
+        public function ratioOf(mixed $amount, mixed $other): string;
+        /**
+        * Returns an absolute monetary amount.
+        *
+        * @param mixed $amount a monetary amount
+        * @generated
+        */
+        public function absolute(mixed $amount): string;
+        /**
+        * Returns the negative of an amount; note that this will convert negative
+        *
+        * amounts to positive ones.
+        *
+        * @param mixed $amount a monetary amount
+        * @generated
+        */
+        public function negative(mixed $amount): string;
+        /**
+        * Is a monetary amount equal to zero?
+        *
+        * @param mixed $amount a monetary amount
+        * @generated
+        */
+        public function isZero(mixed $amount): bool;
+        /**
+        * Is a monetary amount greater than zero?
+        *
+        * @param mixed $amount a monetary amount
+        * @generated
+        */
+        public function isPositive(mixed $amount): bool;
+        /**
+        * Is a monetary amount less than zero?
+        *
+        * @param mixed $amount a monetary amount
+        * @generated
+        */
+        public function isNegative(mixed $amount): bool;
+        /**
+        * Returns the lowest of a series of monetary amounts.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $ ...$amounts additional monetary amounts
+        * @generated
+        */
+        public function min(mixed $amount, mixed ...$amounts): string;
+        /**
+        * Returns the highest of a series of monetary amounts.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $ ...$amounts additional monetary amounts
+        * @generated
+        */
+        public function max(mixed $amount, mixed ...$amounts): string;
+        /**
+        * Returns the sum of a series of monetary amounts.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $ ...$amounts additional monetary amounts
+        * @generated
+        */
+        public function sum(mixed $amount, mixed ...$amounts): string;
+        /**
+        * Returns the average of a series of monetary amounts.
+        *
+        * @param mixed $amount a monetary amount
+        * @param mixed $ ...$amounts additional monetary amounts
+        * @generated
+        */
+        public function avg(mixed $amount, mixed ...$amounts): string;
+        /**
+        * Converts a monetary amount to a Money object.
+        *
+        * @param mixed $amount a monetary amount
+        * @generated
+        */
+        public function convertToMoney(mixed $amount): \Money\Money;
+        /**
+        * Converts an array of monetary amounts to an array of Money objects.
+        *
+        * @param array<int|string, mixed> $amounts an array of monetary amounts
+        * @return array<int, Money>
+        * @generated
+        */
+        public function convertToMoneyArray(array<int|string, mixed> $amounts): array<int, \Money\Money>;
+        /**
+        * Converts a monetary amount into a Money object, then into a string.
+        *
+        * @param mixed $amount typically a Money object, int, float, or string
+        *  *                          representing a monetary amount
+        * @generated
+        */
+        public function convertToString(mixed $amount): string;
+        /**
+        * Converts an array of monetary amounts into Money objects, then into
+        *
+        * strings.
+        *
+        * @param array<int|string, mixed> $amounts an array of monetary amounts
+        * @return array<int, string>
+        * @generated
+        */
+        public function convertToStringArray(array<int|string, mixed> $amounts): array<int, string>;
+        /**
+        * Returns a "zero" monetary amount.
+        *
+        * @generated
+        */
+        public function zero(): string;
+    }
+    /**
+    * This is a generated file. Do not edit it manually!
+    *
+    * @method static Teller ONETHOUSANDCAT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONETHOUSANDCHEEMS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONETHOUSANDSATS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONEINCH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONEMBABYDOGE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller A(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AAVE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ACA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ACE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ACH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ACM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ACT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ACX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ADA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ADX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AED(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AEUR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AEVO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AFN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AGLD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AIXBT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ALCX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ALGO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ALICE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ALL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ALPHA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ALPINE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ALT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AMD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AMP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ANIME(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ANKR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AOA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller APE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller API3(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller APT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ARB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ARDR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ARK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ARKM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ARPA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ARS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ASR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ASTR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ATA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ATM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ATOM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AUCTION(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AUD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AUDIO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AVA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AVAX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AWE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AWG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AXL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AXS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller AZN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BABY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BAKE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BAM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BANANA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BANANAS31(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BAND(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BAR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BAT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BBD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BCH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BDT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BEAMX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BEL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BERA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BGN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BHD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BICO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BIF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BIFI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BIGTIME(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BIO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BLUR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BMD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BMT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BNB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BND(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BNSOL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BNT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BOB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BOME(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BONK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BOV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BRL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BROCCOLI714(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BSD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BSW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BTC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BTN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BTTC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BWP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BYN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller BZD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller C98(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CAD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CAKE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CATI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CDF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CELO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CELR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CETUS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CFX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CGPT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CHE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CHESS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CHF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CHR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CHW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CHZ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CITY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CKB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CLF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CLP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CNY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller COMP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller COOKIE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller COP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller COS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller COTI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller COU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller COW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CRC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CRV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CTK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CTSI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CUP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CVC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CVE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CVX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CYBER(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller CZK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller D(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DAI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DASH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DATA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DCR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DEGO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DENT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DEXE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DGB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DIA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DJF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DKK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DODO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DOGE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DOGS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DOP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DOT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DUSK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DYDX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DYM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller DZD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller EDU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller EGLD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller EGP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller EIGEN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ENA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ENJ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ENS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller EPIC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ERN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ETB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ETC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ETH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ETHFI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller EUR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller EURI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FARM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FDUSD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FET(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FIDA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FIL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FIO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FIS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FJD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FKP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FLM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FLOKI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FLOW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FLUX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FORM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FORTH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FTT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FUN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller FXS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller G(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GALA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GAS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GBP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GEL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GHS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GHST(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GIP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GLM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GLMR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GMD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GMT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GMX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GNF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GNO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GNS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GPS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GRT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GTC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GTQ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GUN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller GYD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HAEDAL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HBAR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HEI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HFT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HIFI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HIGH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HIVE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HKD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HMSTR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HNL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HOOK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HOT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HTG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HUF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HUMA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller HYPER(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ICP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ICX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ID(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IDEX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IDR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ILS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ILV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IMX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller INIT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller INJ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller INR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IOST(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IOTA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IOTX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IQ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IQD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller IRR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ISK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JASMY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JMD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JOD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JOE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JPY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JST(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JTO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JUP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller JUV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KAIA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KAITO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KAVA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KDA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KERNEL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KES(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KGS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KHR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KMD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KMF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KMNO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KNC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KPW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KRW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KSM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KWD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KYD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller KZT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LAK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LAYER(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LAZIO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LBP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LDO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LEVER(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LINK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LISTA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LKR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LOKA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LPT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LQTY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LRC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LRD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LSK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LSL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LTC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LTO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LUMIA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LUNA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LUNC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller LYD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MAD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MAGIC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MANA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MANTA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MASK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MAV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MBL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MBOX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MDL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MDT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ME(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MEME(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller METIS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MGA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MINA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MKD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MKR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MLN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MMK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MNT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MOP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MOVE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MOVR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MRU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MTL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MUBARAK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MUR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MVR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MWK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MXN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MXV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MYR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller MZN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NAD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NEAR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NEIRO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NEO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NEXO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NFP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NGN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NIL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NIO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NKN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NMR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NOK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NOT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NPR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NTRN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NXPC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller NZD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OGN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OMNI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OMR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONDO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ONT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ORCA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ORDI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OSMO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller OXT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PAB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PARTI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PAXG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PEN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PENDLE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PENGU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PEOPLE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PEPE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PERP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PGK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PHA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PHB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PHP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PIVX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PIXEL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PKR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PLN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PNUT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller POL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller POLYX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller POND(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PORTAL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PORTO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller POWR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PROM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PSG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PUNDIX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PYG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PYR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller PYTH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller QAR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller QI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller QKC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller QNT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller QTUM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller QUICK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RAD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RARE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RAY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RDNT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RED(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller REI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RENDER(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller REQ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller REZ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RIF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RLC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RON(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RONIN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ROSE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RPL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RSD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RSR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RUB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RUNE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RVN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller RWF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller S(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SAGA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SAND(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SANTOS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SAR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SBD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SCR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SCRT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SDG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SEI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SEK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SFP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SGD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SHELL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SHIB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SHP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SIGN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SKL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SLE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SLF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SLP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SNX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SOL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SOLV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SOPH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SOS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SPELL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SRD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SSP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SSV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STEEM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STORJ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STRAX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STRK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller STX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SUI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SUN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SUPER(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SUSHI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SVC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SXP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SXT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SYN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SYP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SYRUP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SYS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller SZL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller T(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TAO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TFUEL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller THB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller THE(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller THETA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TIA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TJS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TKO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TLM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TMT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TND(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TNSR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TON(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TOP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TRB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TRU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TRUMP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TRX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TRY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TST(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TTD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TURBO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TUSD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TUT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TWD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TWT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller TZS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UAH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UGX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UMA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UNI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USD1(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USDC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USDP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USDT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USTC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller USUAL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UTK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UYI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UYU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UYW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller UZS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VANA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VANRY(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VED(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VELODROME(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VES(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VET(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VIC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VIRTUAL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VND(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VOXEL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VTHO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller VUV(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller W(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WAN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WAXP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WBETH(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WBTC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WCT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WIF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WIN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WLD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WOO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller WST(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XAD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XAF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XAG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XAI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XAU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XBA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XBB(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XBC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XBD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XBT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XCD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XCG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XDR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XEC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XLM(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XNO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XOF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XPD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XPF(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XPT(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XRP(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XSU(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XTS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XTZ(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XUA(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XUSD(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XVG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XVS(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller XXX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller YER(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller YFI(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller YGG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZAR(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZEC(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZEN(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZIL(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZK(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZMW(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZRO(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZRX(int $roundingMode = Money::ROUND_HALF_UP)
+    * @method static Teller ZWG(int $roundingMode = Money::ROUND_HALF_UP)
+    * @psalm-immutable
+    * @generated
+    */
+    trait TellerFactory {
+        /**
+        * Convenience factory method for a Teller object.
+        *
+        * <code>
+        * $teller = Teller::USD();
+        * </code>
+        *
+        * @param string $method
+        * @param array $arguments
+        * @generated
+        */
+        public static function __callStatic(string $method, array $arguments): \Money\Teller;
+        public static function ONETHOUSANDCAT(int $roundingMode): \Money\Teller;
+        public static function ONETHOUSANDCHEEMS(int $roundingMode): \Money\Teller;
+        public static function ONETHOUSANDSATS(int $roundingMode): \Money\Teller;
+        public static function ONEINCH(int $roundingMode): \Money\Teller;
+        public static function ONEMBABYDOGE(int $roundingMode): \Money\Teller;
+        public static function A(int $roundingMode): \Money\Teller;
+        public static function AAVE(int $roundingMode): \Money\Teller;
+        public static function ACA(int $roundingMode): \Money\Teller;
+        public static function ACE(int $roundingMode): \Money\Teller;
+        public static function ACH(int $roundingMode): \Money\Teller;
+        public static function ACM(int $roundingMode): \Money\Teller;
+        public static function ACT(int $roundingMode): \Money\Teller;
+        public static function ACX(int $roundingMode): \Money\Teller;
+        public static function ADA(int $roundingMode): \Money\Teller;
+        public static function ADX(int $roundingMode): \Money\Teller;
+        public static function AED(int $roundingMode): \Money\Teller;
+        public static function AEUR(int $roundingMode): \Money\Teller;
+        public static function AEVO(int $roundingMode): \Money\Teller;
+        public static function AFN(int $roundingMode): \Money\Teller;
+        public static function AGLD(int $roundingMode): \Money\Teller;
+        public static function AI(int $roundingMode): \Money\Teller;
+        public static function AIXBT(int $roundingMode): \Money\Teller;
+        public static function ALCX(int $roundingMode): \Money\Teller;
+        public static function ALGO(int $roundingMode): \Money\Teller;
+        public static function ALICE(int $roundingMode): \Money\Teller;
+        public static function ALL(int $roundingMode): \Money\Teller;
+        public static function ALPHA(int $roundingMode): \Money\Teller;
+        public static function ALPINE(int $roundingMode): \Money\Teller;
+        public static function ALT(int $roundingMode): \Money\Teller;
+        public static function AMD(int $roundingMode): \Money\Teller;
+        public static function AMP(int $roundingMode): \Money\Teller;
+        public static function ANIME(int $roundingMode): \Money\Teller;
+        public static function ANKR(int $roundingMode): \Money\Teller;
+        public static function AOA(int $roundingMode): \Money\Teller;
+        public static function APE(int $roundingMode): \Money\Teller;
+        public static function API3(int $roundingMode): \Money\Teller;
+        public static function APT(int $roundingMode): \Money\Teller;
+        public static function AR(int $roundingMode): \Money\Teller;
+        public static function ARB(int $roundingMode): \Money\Teller;
+        public static function ARDR(int $roundingMode): \Money\Teller;
+        public static function ARK(int $roundingMode): \Money\Teller;
+        public static function ARKM(int $roundingMode): \Money\Teller;
+        public static function ARPA(int $roundingMode): \Money\Teller;
+        public static function ARS(int $roundingMode): \Money\Teller;
+        public static function ASR(int $roundingMode): \Money\Teller;
+        public static function ASTR(int $roundingMode): \Money\Teller;
+        public static function ATA(int $roundingMode): \Money\Teller;
+        public static function ATM(int $roundingMode): \Money\Teller;
+        public static function ATOM(int $roundingMode): \Money\Teller;
+        public static function AUCTION(int $roundingMode): \Money\Teller;
+        public static function AUD(int $roundingMode): \Money\Teller;
+        public static function AUDIO(int $roundingMode): \Money\Teller;
+        public static function AVA(int $roundingMode): \Money\Teller;
+        public static function AVAX(int $roundingMode): \Money\Teller;
+        public static function AWE(int $roundingMode): \Money\Teller;
+        public static function AWG(int $roundingMode): \Money\Teller;
+        public static function AXL(int $roundingMode): \Money\Teller;
+        public static function AXS(int $roundingMode): \Money\Teller;
+        public static function AZN(int $roundingMode): \Money\Teller;
+        public static function BABY(int $roundingMode): \Money\Teller;
+        public static function BAKE(int $roundingMode): \Money\Teller;
+        public static function BAM(int $roundingMode): \Money\Teller;
+        public static function BANANA(int $roundingMode): \Money\Teller;
+        public static function BANANAS31(int $roundingMode): \Money\Teller;
+        public static function BAND(int $roundingMode): \Money\Teller;
+        public static function BAR(int $roundingMode): \Money\Teller;
+        public static function BAT(int $roundingMode): \Money\Teller;
+        public static function BB(int $roundingMode): \Money\Teller;
+        public static function BBD(int $roundingMode): \Money\Teller;
+        public static function BCH(int $roundingMode): \Money\Teller;
+        public static function BDT(int $roundingMode): \Money\Teller;
+        public static function BEAMX(int $roundingMode): \Money\Teller;
+        public static function BEL(int $roundingMode): \Money\Teller;
+        public static function BERA(int $roundingMode): \Money\Teller;
+        public static function BGN(int $roundingMode): \Money\Teller;
+        public static function BHD(int $roundingMode): \Money\Teller;
+        public static function BICO(int $roundingMode): \Money\Teller;
+        public static function BIF(int $roundingMode): \Money\Teller;
+        public static function BIFI(int $roundingMode): \Money\Teller;
+        public static function BIGTIME(int $roundingMode): \Money\Teller;
+        public static function BIO(int $roundingMode): \Money\Teller;
+        public static function BLUR(int $roundingMode): \Money\Teller;
+        public static function BMD(int $roundingMode): \Money\Teller;
+        public static function BMT(int $roundingMode): \Money\Teller;
+        public static function BNB(int $roundingMode): \Money\Teller;
+        public static function BND(int $roundingMode): \Money\Teller;
+        public static function BNSOL(int $roundingMode): \Money\Teller;
+        public static function BNT(int $roundingMode): \Money\Teller;
+        public static function BOB(int $roundingMode): \Money\Teller;
+        public static function BOME(int $roundingMode): \Money\Teller;
+        public static function BONK(int $roundingMode): \Money\Teller;
+        public static function BOV(int $roundingMode): \Money\Teller;
+        public static function BRL(int $roundingMode): \Money\Teller;
+        public static function BROCCOLI714(int $roundingMode): \Money\Teller;
+        public static function BSD(int $roundingMode): \Money\Teller;
+        public static function BSW(int $roundingMode): \Money\Teller;
+        public static function BTC(int $roundingMode): \Money\Teller;
+        public static function BTN(int $roundingMode): \Money\Teller;
+        public static function BTTC(int $roundingMode): \Money\Teller;
+        public static function BWP(int $roundingMode): \Money\Teller;
+        public static function BYN(int $roundingMode): \Money\Teller;
+        public static function BZD(int $roundingMode): \Money\Teller;
+        public static function C98(int $roundingMode): \Money\Teller;
+        public static function CAD(int $roundingMode): \Money\Teller;
+        public static function CAKE(int $roundingMode): \Money\Teller;
+        public static function CATI(int $roundingMode): \Money\Teller;
+        public static function CDF(int $roundingMode): \Money\Teller;
+        public static function CELO(int $roundingMode): \Money\Teller;
+        public static function CELR(int $roundingMode): \Money\Teller;
+        public static function CETUS(int $roundingMode): \Money\Teller;
+        public static function CFX(int $roundingMode): \Money\Teller;
+        public static function CGPT(int $roundingMode): \Money\Teller;
+        public static function CHE(int $roundingMode): \Money\Teller;
+        public static function CHESS(int $roundingMode): \Money\Teller;
+        public static function CHF(int $roundingMode): \Money\Teller;
+        public static function CHR(int $roundingMode): \Money\Teller;
+        public static function CHW(int $roundingMode): \Money\Teller;
+        public static function CHZ(int $roundingMode): \Money\Teller;
+        public static function CITY(int $roundingMode): \Money\Teller;
+        public static function CKB(int $roundingMode): \Money\Teller;
+        public static function CLF(int $roundingMode): \Money\Teller;
+        public static function CLP(int $roundingMode): \Money\Teller;
+        public static function CNY(int $roundingMode): \Money\Teller;
+        public static function COMP(int $roundingMode): \Money\Teller;
+        public static function COOKIE(int $roundingMode): \Money\Teller;
+        public static function COP(int $roundingMode): \Money\Teller;
+        public static function COS(int $roundingMode): \Money\Teller;
+        public static function COTI(int $roundingMode): \Money\Teller;
+        public static function COU(int $roundingMode): \Money\Teller;
+        public static function COW(int $roundingMode): \Money\Teller;
+        public static function CRC(int $roundingMode): \Money\Teller;
+        public static function CRV(int $roundingMode): \Money\Teller;
+        public static function CTK(int $roundingMode): \Money\Teller;
+        public static function CTSI(int $roundingMode): \Money\Teller;
+        public static function CUP(int $roundingMode): \Money\Teller;
+        public static function CVC(int $roundingMode): \Money\Teller;
+        public static function CVE(int $roundingMode): \Money\Teller;
+        public static function CVX(int $roundingMode): \Money\Teller;
+        public static function CYBER(int $roundingMode): \Money\Teller;
+        public static function CZK(int $roundingMode): \Money\Teller;
+        public static function D(int $roundingMode): \Money\Teller;
+        public static function DAI(int $roundingMode): \Money\Teller;
+        public static function DASH(int $roundingMode): \Money\Teller;
+        public static function DATA(int $roundingMode): \Money\Teller;
+        public static function DCR(int $roundingMode): \Money\Teller;
+        public static function DEGO(int $roundingMode): \Money\Teller;
+        public static function DENT(int $roundingMode): \Money\Teller;
+        public static function DEXE(int $roundingMode): \Money\Teller;
+        public static function DF(int $roundingMode): \Money\Teller;
+        public static function DGB(int $roundingMode): \Money\Teller;
+        public static function DIA(int $roundingMode): \Money\Teller;
+        public static function DJF(int $roundingMode): \Money\Teller;
+        public static function DKK(int $roundingMode): \Money\Teller;
+        public static function DODO(int $roundingMode): \Money\Teller;
+        public static function DOGE(int $roundingMode): \Money\Teller;
+        public static function DOGS(int $roundingMode): \Money\Teller;
+        public static function DOP(int $roundingMode): \Money\Teller;
+        public static function DOT(int $roundingMode): \Money\Teller;
+        public static function DUSK(int $roundingMode): \Money\Teller;
+        public static function DYDX(int $roundingMode): \Money\Teller;
+        public static function DYM(int $roundingMode): \Money\Teller;
+        public static function DZD(int $roundingMode): \Money\Teller;
+        public static function EDU(int $roundingMode): \Money\Teller;
+        public static function EGLD(int $roundingMode): \Money\Teller;
+        public static function EGP(int $roundingMode): \Money\Teller;
+        public static function EIGEN(int $roundingMode): \Money\Teller;
+        public static function ENA(int $roundingMode): \Money\Teller;
+        public static function ENJ(int $roundingMode): \Money\Teller;
+        public static function ENS(int $roundingMode): \Money\Teller;
+        public static function EPIC(int $roundingMode): \Money\Teller;
+        public static function ERN(int $roundingMode): \Money\Teller;
+        public static function ETB(int $roundingMode): \Money\Teller;
+        public static function ETC(int $roundingMode): \Money\Teller;
+        public static function ETH(int $roundingMode): \Money\Teller;
+        public static function ETHFI(int $roundingMode): \Money\Teller;
+        public static function EUR(int $roundingMode): \Money\Teller;
+        public static function EURI(int $roundingMode): \Money\Teller;
+        public static function FARM(int $roundingMode): \Money\Teller;
+        public static function FDUSD(int $roundingMode): \Money\Teller;
+        public static function FET(int $roundingMode): \Money\Teller;
+        public static function FIDA(int $roundingMode): \Money\Teller;
+        public static function FIL(int $roundingMode): \Money\Teller;
+        public static function FIO(int $roundingMode): \Money\Teller;
+        public static function FIS(int $roundingMode): \Money\Teller;
+        public static function FJD(int $roundingMode): \Money\Teller;
+        public static function FKP(int $roundingMode): \Money\Teller;
+        public static function FLM(int $roundingMode): \Money\Teller;
+        public static function FLOKI(int $roundingMode): \Money\Teller;
+        public static function FLOW(int $roundingMode): \Money\Teller;
+        public static function FLUX(int $roundingMode): \Money\Teller;
+        public static function FORM(int $roundingMode): \Money\Teller;
+        public static function FORTH(int $roundingMode): \Money\Teller;
+        public static function FTT(int $roundingMode): \Money\Teller;
+        public static function FUN(int $roundingMode): \Money\Teller;
+        public static function FXS(int $roundingMode): \Money\Teller;
+        public static function G(int $roundingMode): \Money\Teller;
+        public static function GALA(int $roundingMode): \Money\Teller;
+        public static function GAS(int $roundingMode): \Money\Teller;
+        public static function GBP(int $roundingMode): \Money\Teller;
+        public static function GEL(int $roundingMode): \Money\Teller;
+        public static function GHS(int $roundingMode): \Money\Teller;
+        public static function GHST(int $roundingMode): \Money\Teller;
+        public static function GIP(int $roundingMode): \Money\Teller;
+        public static function GLM(int $roundingMode): \Money\Teller;
+        public static function GLMR(int $roundingMode): \Money\Teller;
+        public static function GMD(int $roundingMode): \Money\Teller;
+        public static function GMT(int $roundingMode): \Money\Teller;
+        public static function GMX(int $roundingMode): \Money\Teller;
+        public static function GNF(int $roundingMode): \Money\Teller;
+        public static function GNO(int $roundingMode): \Money\Teller;
+        public static function GNS(int $roundingMode): \Money\Teller;
+        public static function GPS(int $roundingMode): \Money\Teller;
+        public static function GRT(int $roundingMode): \Money\Teller;
+        public static function GTC(int $roundingMode): \Money\Teller;
+        public static function GTQ(int $roundingMode): \Money\Teller;
+        public static function GUN(int $roundingMode): \Money\Teller;
+        public static function GYD(int $roundingMode): \Money\Teller;
+        public static function HAEDAL(int $roundingMode): \Money\Teller;
+        public static function HBAR(int $roundingMode): \Money\Teller;
+        public static function HEI(int $roundingMode): \Money\Teller;
+        public static function HFT(int $roundingMode): \Money\Teller;
+        public static function HIFI(int $roundingMode): \Money\Teller;
+        public static function HIGH(int $roundingMode): \Money\Teller;
+        public static function HIVE(int $roundingMode): \Money\Teller;
+        public static function HKD(int $roundingMode): \Money\Teller;
+        public static function HMSTR(int $roundingMode): \Money\Teller;
+        public static function HNL(int $roundingMode): \Money\Teller;
+        public static function HOOK(int $roundingMode): \Money\Teller;
+        public static function HOT(int $roundingMode): \Money\Teller;
+        public static function HTG(int $roundingMode): \Money\Teller;
+        public static function HUF(int $roundingMode): \Money\Teller;
+        public static function HUMA(int $roundingMode): \Money\Teller;
+        public static function HYPER(int $roundingMode): \Money\Teller;
+        public static function ICP(int $roundingMode): \Money\Teller;
+        public static function ICX(int $roundingMode): \Money\Teller;
+        public static function ID(int $roundingMode): \Money\Teller;
+        public static function IDEX(int $roundingMode): \Money\Teller;
+        public static function IDR(int $roundingMode): \Money\Teller;
+        public static function ILS(int $roundingMode): \Money\Teller;
+        public static function ILV(int $roundingMode): \Money\Teller;
+        public static function IMX(int $roundingMode): \Money\Teller;
+        public static function INIT(int $roundingMode): \Money\Teller;
+        public static function INJ(int $roundingMode): \Money\Teller;
+        public static function INR(int $roundingMode): \Money\Teller;
+        public static function IO(int $roundingMode): \Money\Teller;
+        public static function IOST(int $roundingMode): \Money\Teller;
+        public static function IOTA(int $roundingMode): \Money\Teller;
+        public static function IOTX(int $roundingMode): \Money\Teller;
+        public static function IQ(int $roundingMode): \Money\Teller;
+        public static function IQD(int $roundingMode): \Money\Teller;
+        public static function IRR(int $roundingMode): \Money\Teller;
+        public static function ISK(int $roundingMode): \Money\Teller;
+        public static function JASMY(int $roundingMode): \Money\Teller;
+        public static function JMD(int $roundingMode): \Money\Teller;
+        public static function JOD(int $roundingMode): \Money\Teller;
+        public static function JOE(int $roundingMode): \Money\Teller;
+        public static function JPY(int $roundingMode): \Money\Teller;
+        public static function JST(int $roundingMode): \Money\Teller;
+        public static function JTO(int $roundingMode): \Money\Teller;
+        public static function JUP(int $roundingMode): \Money\Teller;
+        public static function JUV(int $roundingMode): \Money\Teller;
+        public static function KAIA(int $roundingMode): \Money\Teller;
+        public static function KAITO(int $roundingMode): \Money\Teller;
+        public static function KAVA(int $roundingMode): \Money\Teller;
+        public static function KDA(int $roundingMode): \Money\Teller;
+        public static function KERNEL(int $roundingMode): \Money\Teller;
+        public static function KES(int $roundingMode): \Money\Teller;
+        public static function KGS(int $roundingMode): \Money\Teller;
+        public static function KHR(int $roundingMode): \Money\Teller;
+        public static function KMD(int $roundingMode): \Money\Teller;
+        public static function KMF(int $roundingMode): \Money\Teller;
+        public static function KMNO(int $roundingMode): \Money\Teller;
+        public static function KNC(int $roundingMode): \Money\Teller;
+        public static function KPW(int $roundingMode): \Money\Teller;
+        public static function KRW(int $roundingMode): \Money\Teller;
+        public static function KSM(int $roundingMode): \Money\Teller;
+        public static function KWD(int $roundingMode): \Money\Teller;
+        public static function KYD(int $roundingMode): \Money\Teller;
+        public static function KZT(int $roundingMode): \Money\Teller;
+        public static function LAK(int $roundingMode): \Money\Teller;
+        public static function LAYER(int $roundingMode): \Money\Teller;
+        public static function LAZIO(int $roundingMode): \Money\Teller;
+        public static function LBP(int $roundingMode): \Money\Teller;
+        public static function LDO(int $roundingMode): \Money\Teller;
+        public static function LEVER(int $roundingMode): \Money\Teller;
+        public static function LINK(int $roundingMode): \Money\Teller;
+        public static function LISTA(int $roundingMode): \Money\Teller;
+        public static function LKR(int $roundingMode): \Money\Teller;
+        public static function LOKA(int $roundingMode): \Money\Teller;
+        public static function LPT(int $roundingMode): \Money\Teller;
+        public static function LQTY(int $roundingMode): \Money\Teller;
+        public static function LRC(int $roundingMode): \Money\Teller;
+        public static function LRD(int $roundingMode): \Money\Teller;
+        public static function LSK(int $roundingMode): \Money\Teller;
+        public static function LSL(int $roundingMode): \Money\Teller;
+        public static function LTC(int $roundingMode): \Money\Teller;
+        public static function LTO(int $roundingMode): \Money\Teller;
+        public static function LUMIA(int $roundingMode): \Money\Teller;
+        public static function LUNA(int $roundingMode): \Money\Teller;
+        public static function LUNC(int $roundingMode): \Money\Teller;
+        public static function LYD(int $roundingMode): \Money\Teller;
+        public static function MAD(int $roundingMode): \Money\Teller;
+        public static function MAGIC(int $roundingMode): \Money\Teller;
+        public static function MANA(int $roundingMode): \Money\Teller;
+        public static function MANTA(int $roundingMode): \Money\Teller;
+        public static function MASK(int $roundingMode): \Money\Teller;
+        public static function MAV(int $roundingMode): \Money\Teller;
+        public static function MBL(int $roundingMode): \Money\Teller;
+        public static function MBOX(int $roundingMode): \Money\Teller;
+        public static function MDL(int $roundingMode): \Money\Teller;
+        public static function MDT(int $roundingMode): \Money\Teller;
+        public static function ME(int $roundingMode): \Money\Teller;
+        public static function MEME(int $roundingMode): \Money\Teller;
+        public static function METIS(int $roundingMode): \Money\Teller;
+        public static function MGA(int $roundingMode): \Money\Teller;
+        public static function MINA(int $roundingMode): \Money\Teller;
+        public static function MKD(int $roundingMode): \Money\Teller;
+        public static function MKR(int $roundingMode): \Money\Teller;
+        public static function MLN(int $roundingMode): \Money\Teller;
+        public static function MMK(int $roundingMode): \Money\Teller;
+        public static function MNT(int $roundingMode): \Money\Teller;
+        public static function MOP(int $roundingMode): \Money\Teller;
+        public static function MOVE(int $roundingMode): \Money\Teller;
+        public static function MOVR(int $roundingMode): \Money\Teller;
+        public static function MRU(int $roundingMode): \Money\Teller;
+        public static function MTL(int $roundingMode): \Money\Teller;
+        public static function MUBARAK(int $roundingMode): \Money\Teller;
+        public static function MUR(int $roundingMode): \Money\Teller;
+        public static function MVR(int $roundingMode): \Money\Teller;
+        public static function MWK(int $roundingMode): \Money\Teller;
+        public static function MXN(int $roundingMode): \Money\Teller;
+        public static function MXV(int $roundingMode): \Money\Teller;
+        public static function MYR(int $roundingMode): \Money\Teller;
+        public static function MZN(int $roundingMode): \Money\Teller;
+        public static function NAD(int $roundingMode): \Money\Teller;
+        public static function NEAR(int $roundingMode): \Money\Teller;
+        public static function NEIRO(int $roundingMode): \Money\Teller;
+        public static function NEO(int $roundingMode): \Money\Teller;
+        public static function NEXO(int $roundingMode): \Money\Teller;
+        public static function NFP(int $roundingMode): \Money\Teller;
+        public static function NGN(int $roundingMode): \Money\Teller;
+        public static function NIL(int $roundingMode): \Money\Teller;
+        public static function NIO(int $roundingMode): \Money\Teller;
+        public static function NKN(int $roundingMode): \Money\Teller;
+        public static function NMR(int $roundingMode): \Money\Teller;
+        public static function NOK(int $roundingMode): \Money\Teller;
+        public static function NOT(int $roundingMode): \Money\Teller;
+        public static function NPR(int $roundingMode): \Money\Teller;
+        public static function NTRN(int $roundingMode): \Money\Teller;
+        public static function NXPC(int $roundingMode): \Money\Teller;
+        public static function NZD(int $roundingMode): \Money\Teller;
+        public static function OG(int $roundingMode): \Money\Teller;
+        public static function OGN(int $roundingMode): \Money\Teller;
+        public static function OM(int $roundingMode): \Money\Teller;
+        public static function OMNI(int $roundingMode): \Money\Teller;
+        public static function OMR(int $roundingMode): \Money\Teller;
+        public static function ONDO(int $roundingMode): \Money\Teller;
+        public static function ONE(int $roundingMode): \Money\Teller;
+        public static function ONG(int $roundingMode): \Money\Teller;
+        public static function ONT(int $roundingMode): \Money\Teller;
+        public static function OP(int $roundingMode): \Money\Teller;
+        public static function ORCA(int $roundingMode): \Money\Teller;
+        public static function ORDI(int $roundingMode): \Money\Teller;
+        public static function OSMO(int $roundingMode): \Money\Teller;
+        public static function OXT(int $roundingMode): \Money\Teller;
+        public static function PAB(int $roundingMode): \Money\Teller;
+        public static function PARTI(int $roundingMode): \Money\Teller;
+        public static function PAXG(int $roundingMode): \Money\Teller;
+        public static function PEN(int $roundingMode): \Money\Teller;
+        public static function PENDLE(int $roundingMode): \Money\Teller;
+        public static function PENGU(int $roundingMode): \Money\Teller;
+        public static function PEOPLE(int $roundingMode): \Money\Teller;
+        public static function PEPE(int $roundingMode): \Money\Teller;
+        public static function PERP(int $roundingMode): \Money\Teller;
+        public static function PGK(int $roundingMode): \Money\Teller;
+        public static function PHA(int $roundingMode): \Money\Teller;
+        public static function PHB(int $roundingMode): \Money\Teller;
+        public static function PHP(int $roundingMode): \Money\Teller;
+        public static function PIVX(int $roundingMode): \Money\Teller;
+        public static function PIXEL(int $roundingMode): \Money\Teller;
+        public static function PKR(int $roundingMode): \Money\Teller;
+        public static function PLN(int $roundingMode): \Money\Teller;
+        public static function PNUT(int $roundingMode): \Money\Teller;
+        public static function POL(int $roundingMode): \Money\Teller;
+        public static function POLYX(int $roundingMode): \Money\Teller;
+        public static function POND(int $roundingMode): \Money\Teller;
+        public static function PORTAL(int $roundingMode): \Money\Teller;
+        public static function PORTO(int $roundingMode): \Money\Teller;
+        public static function POWR(int $roundingMode): \Money\Teller;
+        public static function PROM(int $roundingMode): \Money\Teller;
+        public static function PSG(int $roundingMode): \Money\Teller;
+        public static function PUNDIX(int $roundingMode): \Money\Teller;
+        public static function PYG(int $roundingMode): \Money\Teller;
+        public static function PYR(int $roundingMode): \Money\Teller;
+        public static function PYTH(int $roundingMode): \Money\Teller;
+        public static function QAR(int $roundingMode): \Money\Teller;
+        public static function QI(int $roundingMode): \Money\Teller;
+        public static function QKC(int $roundingMode): \Money\Teller;
+        public static function QNT(int $roundingMode): \Money\Teller;
+        public static function QTUM(int $roundingMode): \Money\Teller;
+        public static function QUICK(int $roundingMode): \Money\Teller;
+        public static function RAD(int $roundingMode): \Money\Teller;
+        public static function RARE(int $roundingMode): \Money\Teller;
+        public static function RAY(int $roundingMode): \Money\Teller;
+        public static function RDNT(int $roundingMode): \Money\Teller;
+        public static function RED(int $roundingMode): \Money\Teller;
+        public static function REI(int $roundingMode): \Money\Teller;
+        public static function RENDER(int $roundingMode): \Money\Teller;
+        public static function REQ(int $roundingMode): \Money\Teller;
+        public static function REZ(int $roundingMode): \Money\Teller;
+        public static function RIF(int $roundingMode): \Money\Teller;
+        public static function RLC(int $roundingMode): \Money\Teller;
+        public static function RON(int $roundingMode): \Money\Teller;
+        public static function RONIN(int $roundingMode): \Money\Teller;
+        public static function ROSE(int $roundingMode): \Money\Teller;
+        public static function RPL(int $roundingMode): \Money\Teller;
+        public static function RSD(int $roundingMode): \Money\Teller;
+        public static function RSR(int $roundingMode): \Money\Teller;
+        public static function RUB(int $roundingMode): \Money\Teller;
+        public static function RUNE(int $roundingMode): \Money\Teller;
+        public static function RVN(int $roundingMode): \Money\Teller;
+        public static function RWF(int $roundingMode): \Money\Teller;
+        public static function S(int $roundingMode): \Money\Teller;
+        public static function SAGA(int $roundingMode): \Money\Teller;
+        public static function SAND(int $roundingMode): \Money\Teller;
+        public static function SANTOS(int $roundingMode): \Money\Teller;
+        public static function SAR(int $roundingMode): \Money\Teller;
+        public static function SBD(int $roundingMode): \Money\Teller;
+        public static function SC(int $roundingMode): \Money\Teller;
+        public static function SCR(int $roundingMode): \Money\Teller;
+        public static function SCRT(int $roundingMode): \Money\Teller;
+        public static function SDG(int $roundingMode): \Money\Teller;
+        public static function SEI(int $roundingMode): \Money\Teller;
+        public static function SEK(int $roundingMode): \Money\Teller;
+        public static function SFP(int $roundingMode): \Money\Teller;
+        public static function SGD(int $roundingMode): \Money\Teller;
+        public static function SHELL(int $roundingMode): \Money\Teller;
+        public static function SHIB(int $roundingMode): \Money\Teller;
+        public static function SHP(int $roundingMode): \Money\Teller;
+        public static function SIGN(int $roundingMode): \Money\Teller;
+        public static function SKL(int $roundingMode): \Money\Teller;
+        public static function SLE(int $roundingMode): \Money\Teller;
+        public static function SLF(int $roundingMode): \Money\Teller;
+        public static function SLP(int $roundingMode): \Money\Teller;
+        public static function SNX(int $roundingMode): \Money\Teller;
+        public static function SOL(int $roundingMode): \Money\Teller;
+        public static function SOLV(int $roundingMode): \Money\Teller;
+        public static function SOPH(int $roundingMode): \Money\Teller;
+        public static function SOS(int $roundingMode): \Money\Teller;
+        public static function SPELL(int $roundingMode): \Money\Teller;
+        public static function SRD(int $roundingMode): \Money\Teller;
+        public static function SSP(int $roundingMode): \Money\Teller;
+        public static function SSV(int $roundingMode): \Money\Teller;
+        public static function STEEM(int $roundingMode): \Money\Teller;
+        public static function STG(int $roundingMode): \Money\Teller;
+        public static function STN(int $roundingMode): \Money\Teller;
+        public static function STO(int $roundingMode): \Money\Teller;
+        public static function STORJ(int $roundingMode): \Money\Teller;
+        public static function STRAX(int $roundingMode): \Money\Teller;
+        public static function STRK(int $roundingMode): \Money\Teller;
+        public static function STX(int $roundingMode): \Money\Teller;
+        public static function SUI(int $roundingMode): \Money\Teller;
+        public static function SUN(int $roundingMode): \Money\Teller;
+        public static function SUPER(int $roundingMode): \Money\Teller;
+        public static function SUSHI(int $roundingMode): \Money\Teller;
+        public static function SVC(int $roundingMode): \Money\Teller;
+        public static function SXP(int $roundingMode): \Money\Teller;
+        public static function SXT(int $roundingMode): \Money\Teller;
+        public static function SYN(int $roundingMode): \Money\Teller;
+        public static function SYP(int $roundingMode): \Money\Teller;
+        public static function SYRUP(int $roundingMode): \Money\Teller;
+        public static function SYS(int $roundingMode): \Money\Teller;
+        public static function SZL(int $roundingMode): \Money\Teller;
+        public static function T(int $roundingMode): \Money\Teller;
+        public static function TAO(int $roundingMode): \Money\Teller;
+        public static function TFUEL(int $roundingMode): \Money\Teller;
+        public static function THB(int $roundingMode): \Money\Teller;
+        public static function THE(int $roundingMode): \Money\Teller;
+        public static function THETA(int $roundingMode): \Money\Teller;
+        public static function TIA(int $roundingMode): \Money\Teller;
+        public static function TJS(int $roundingMode): \Money\Teller;
+        public static function TKO(int $roundingMode): \Money\Teller;
+        public static function TLM(int $roundingMode): \Money\Teller;
+        public static function TMT(int $roundingMode): \Money\Teller;
+        public static function TND(int $roundingMode): \Money\Teller;
+        public static function TNSR(int $roundingMode): \Money\Teller;
+        public static function TON(int $roundingMode): \Money\Teller;
+        public static function TOP(int $roundingMode): \Money\Teller;
+        public static function TRB(int $roundingMode): \Money\Teller;
+        public static function TRU(int $roundingMode): \Money\Teller;
+        public static function TRUMP(int $roundingMode): \Money\Teller;
+        public static function TRX(int $roundingMode): \Money\Teller;
+        public static function TRY(int $roundingMode): \Money\Teller;
+        public static function TST(int $roundingMode): \Money\Teller;
+        public static function TTD(int $roundingMode): \Money\Teller;
+        public static function TURBO(int $roundingMode): \Money\Teller;
+        public static function TUSD(int $roundingMode): \Money\Teller;
+        public static function TUT(int $roundingMode): \Money\Teller;
+        public static function TWD(int $roundingMode): \Money\Teller;
+        public static function TWT(int $roundingMode): \Money\Teller;
+        public static function TZS(int $roundingMode): \Money\Teller;
+        public static function UAH(int $roundingMode): \Money\Teller;
+        public static function UGX(int $roundingMode): \Money\Teller;
+        public static function UMA(int $roundingMode): \Money\Teller;
+        public static function UNI(int $roundingMode): \Money\Teller;
+        public static function USD(int $roundingMode): \Money\Teller;
+        public static function USD1(int $roundingMode): \Money\Teller;
+        public static function USDC(int $roundingMode): \Money\Teller;
+        public static function USDP(int $roundingMode): \Money\Teller;
+        public static function USDT(int $roundingMode): \Money\Teller;
+        public static function USN(int $roundingMode): \Money\Teller;
+        public static function USTC(int $roundingMode): \Money\Teller;
+        public static function USUAL(int $roundingMode): \Money\Teller;
+        public static function UTK(int $roundingMode): \Money\Teller;
+        public static function UYI(int $roundingMode): \Money\Teller;
+        public static function UYU(int $roundingMode): \Money\Teller;
+        public static function UYW(int $roundingMode): \Money\Teller;
+        public static function UZS(int $roundingMode): \Money\Teller;
+        public static function VANA(int $roundingMode): \Money\Teller;
+        public static function VANRY(int $roundingMode): \Money\Teller;
+        public static function VED(int $roundingMode): \Money\Teller;
+        public static function VELODROME(int $roundingMode): \Money\Teller;
+        public static function VES(int $roundingMode): \Money\Teller;
+        public static function VET(int $roundingMode): \Money\Teller;
+        public static function VIC(int $roundingMode): \Money\Teller;
+        public static function VIRTUAL(int $roundingMode): \Money\Teller;
+        public static function VND(int $roundingMode): \Money\Teller;
+        public static function VOXEL(int $roundingMode): \Money\Teller;
+        public static function VTHO(int $roundingMode): \Money\Teller;
+        public static function VUV(int $roundingMode): \Money\Teller;
+        public static function W(int $roundingMode): \Money\Teller;
+        public static function WAN(int $roundingMode): \Money\Teller;
+        public static function WAXP(int $roundingMode): \Money\Teller;
+        public static function WBETH(int $roundingMode): \Money\Teller;
+        public static function WBTC(int $roundingMode): \Money\Teller;
+        public static function WCT(int $roundingMode): \Money\Teller;
+        public static function WIF(int $roundingMode): \Money\Teller;
+        public static function WIN(int $roundingMode): \Money\Teller;
+        public static function WLD(int $roundingMode): \Money\Teller;
+        public static function WOO(int $roundingMode): \Money\Teller;
+        public static function WST(int $roundingMode): \Money\Teller;
+        public static function XAD(int $roundingMode): \Money\Teller;
+        public static function XAF(int $roundingMode): \Money\Teller;
+        public static function XAG(int $roundingMode): \Money\Teller;
+        public static function XAI(int $roundingMode): \Money\Teller;
+        public static function XAU(int $roundingMode): \Money\Teller;
+        public static function XBA(int $roundingMode): \Money\Teller;
+        public static function XBB(int $roundingMode): \Money\Teller;
+        public static function XBC(int $roundingMode): \Money\Teller;
+        public static function XBD(int $roundingMode): \Money\Teller;
+        public static function XBT(int $roundingMode): \Money\Teller;
+        public static function XCD(int $roundingMode): \Money\Teller;
+        public static function XCG(int $roundingMode): \Money\Teller;
+        public static function XDR(int $roundingMode): \Money\Teller;
+        public static function XEC(int $roundingMode): \Money\Teller;
+        public static function XLM(int $roundingMode): \Money\Teller;
+        public static function XNO(int $roundingMode): \Money\Teller;
+        public static function XOF(int $roundingMode): \Money\Teller;
+        public static function XPD(int $roundingMode): \Money\Teller;
+        public static function XPF(int $roundingMode): \Money\Teller;
+        public static function XPT(int $roundingMode): \Money\Teller;
+        public static function XRP(int $roundingMode): \Money\Teller;
+        public static function XSU(int $roundingMode): \Money\Teller;
+        public static function XTS(int $roundingMode): \Money\Teller;
+        public static function XTZ(int $roundingMode): \Money\Teller;
+        public static function XUA(int $roundingMode): \Money\Teller;
+        public static function XUSD(int $roundingMode): \Money\Teller;
+        public static function XVG(int $roundingMode): \Money\Teller;
+        public static function XVS(int $roundingMode): \Money\Teller;
+        public static function XXX(int $roundingMode): \Money\Teller;
+        public static function YER(int $roundingMode): \Money\Teller;
+        public static function YFI(int $roundingMode): \Money\Teller;
+        public static function YGG(int $roundingMode): \Money\Teller;
+        public static function ZAR(int $roundingMode): \Money\Teller;
+        public static function ZEC(int $roundingMode): \Money\Teller;
+        public static function ZEN(int $roundingMode): \Money\Teller;
+        public static function ZIL(int $roundingMode): \Money\Teller;
+        public static function ZK(int $roundingMode): \Money\Teller;
+        public static function ZMW(int $roundingMode): \Money\Teller;
+        public static function ZRO(int $roundingMode): \Money\Teller;
+        public static function ZRX(int $roundingMode): \Money\Teller;
+        public static function ZWG(int $roundingMode): \Money\Teller;
+    }
+}
+namespace Money\Calculator {
+    final class BcMathCalculator implements \Money\Calculator {
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function compare(string $a, string $b): int;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function add(string $amount, string $addend): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function subtract(string $amount, string $subtrahend): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function multiply(string $amount, string $multiplier): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function divide(string $amount, string $divisor): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function ceil(string $number): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function floor(string $number): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function absolute(string $number): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function round(string $number, int $roundingMode): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function share(string $amount, string $ratio, string $total): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function mod(string $amount, string $divisor): string;
+    }
+    /**
+    * @phpstan-immutable Important: the {@see GmpCalculator} is not optimized for decimal operations, as GMP
+    *            is designed to operate on large integers. Consider using this only if your
+    *            system does not have `ext-bcmath` installed.
+    * @generated
+    */
+    final class GmpCalculator implements \Money\Calculator {
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function compare(string $a, string $b): int;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function add(string $amount, string $addend): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function subtract(string $amount, string $subtrahend): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function multiply(string $amount, string $multiplier): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function divide(string $amount, string $divisor): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function ceil(string $number): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function floor(string $number): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function absolute(string $number): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function round(string $number, int $roundingMode): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function share(string $amount, string $ratio, string $total): string;
+        /**
+        * @phpstan-pure
+        * @generated
+        */
+        public static function mod(string $amount, string $divisor): string;
+    }
+}
+namespace Money\Currencies {
+    /**
+    * Aggregates several currency repositories.
+    *
+    * @generated
+    */
+    final class AggregateCurrencies implements \Money\Currencies {
+        /**
+        * @param array<int, \Money\Currencies> $currencies
+        * @generated
+        */
+        public function __construct(array<int, \Money\Currencies> $currencies): void;
+        public function contains(\Money\Currency $currency): bool;
+        public function subunitFor(\Money\Currency $currency): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+    }
+    final class BitcoinCurrencies implements \Money\Currencies {
+        public const string CODE ?? 'XBT';
+        public const string SYMBOL ?? "\xC9\x83";
+        public function contains(\Money\Currency $currency): bool;
+        public function subunitFor(\Money\Currency $currency): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+    }
+    /**
+    * Cache the result of currency checking.
+    *
+    * @generated
+    */
+    final class CachedCurrencies implements \Money\Currencies {
+        public function __construct(\Money\Currencies $currencies, \Psr\Cache\CacheItemPoolInterface $pool): void;
+        public function contains(\Money\Currency $currency): bool;
+        public function subunitFor(\Money\Currency $currency): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+    }
+    /**
+    * List of supported Crypto Currencies codes and names using Binance as resource.
+    *
+    * @generated
+    */
+    final class CryptoCurrencies implements \Money\Currencies {
+        public function contains(\Money\Currency $currency): bool;
+        public function subunitFor(\Money\Currency $currency): int;
+        /**
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+    }
+    /**
+    * A list of custom currencies.
+    *
+    * @generated
+    */
+    final class CurrencyList implements \Money\Currencies {
+        /**
+        * @generated
+        */
+        public function __construct(array<mixed, mixed> $currencies): void;
+        public function contains(\Money\Currency $currency): bool;
+        public function subunitFor(\Money\Currency $currency): int;
+        /**
+        * {@inheritDoc}
+        *
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+    }
+    /**
+    * List of supported ISO 4217 currency codes and names.
+    *
+    * @generated
+    */
+    final class ISOCurrencies implements \Money\Currencies {
+        public function contains(\Money\Currency $currency): bool;
+        public function subunitFor(\Money\Currency $currency): int;
+        /**
+        * Returns the numeric code for a currency.
+        *
+        * @throws UnknownCurrencyException If currency is not available in the current context.
+        * @generated
+        */
+        public function numericCodeFor(\Money\Currency $currency): int;
+        /**
+        * @generated
+        */
+        public function getIterator(): \Traversable;
+    }
+}
+namespace Money\Exception {
+    final class CurrencyMismatchException extends \Money\Exception\InvalidArgumentException {
+    }
+    final class DivisionByZeroException extends \Money\Exception\InvalidArgumentException {
+    }
+    /**
+    * Thrown when a Money object cannot be formatted into a string.
+    *
+    * @generated
+    */
+    final class FormatterException extends \RuntimeException implements \Money\Exception {
+    }
+    final class ModuloByZeroException extends \Money\Exception\InvalidArgumentException {
+    }
+    /**
+    * Thrown when a string cannot be parsed to a Money object.
+    *
+    * @generated
+    */
+    final class ParserException extends \RuntimeException implements \Money\Exception {
+    }
+    /**
+    * Thrown when trying to get ISO currency that does not exists.
+    *
+    * @generated
+    */
+    final class UnknownCurrencyException extends \DomainException implements \Money\Exception {
+    }
+    /**
+    * Thrown when there is no currency pair (rate) available for the given currencies.
+    *
+    * @generated
+    */
+    final class UnresolvableCurrencyPairException extends \InvalidArgumentException implements \Money\Exception {
+        /**
+        * Creates an exception from Currency objects.
+        *
+        * @generated
+        */
+        public static function createFromCurrencies(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency): \Money\Exception\UnresolvableCurrencyPairException;
+    }
+}
+namespace Money\Exchange {
+    /**
+    * Provides a way to get exchange rate from a third-party source and return a currency pair.
+    *
+    * @generated
+    */
+    final class ExchangerExchange implements \Money\Exchange {
+        public function __construct(\Exchanger\Contract\ExchangeRateProvider $exchanger): void;
+        public function quote(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency): \Money\CurrencyPair;
+    }
+    /**
+    * Provides a way to get exchange rate from a static list (array).
+    *
+    * @generated
+    */
+    final class FixedExchange implements \Money\Exchange {
+        /**
+        * @generated
+        */
+        public function __construct(array<mixed, array<mixed, mixed>> $list): void;
+        public function quote(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency): \Money\CurrencyPair;
+    }
+    /**
+    * Provides a way to get an exchange rate through a minimal set of intermediate conversions.
+    *
+    * @generated
+    */
+    final class IndirectExchange implements \Money\Exchange {
+        public function __construct(\Money\Exchange $exchange, \Money\Currencies $currencies): void;
+        public function quote(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency): \Money\CurrencyPair;
+    }
+    /**
+    * Tries the reverse of the currency pair if one is not available.
+    *
+    * Note: adding nested ReversedCurrenciesExchange could cause a huge performance hit.
+    *
+    * @generated
+    */
+    final class ReversedCurrenciesExchange implements \Money\Exchange {
+        public function __construct(\Money\Exchange $exchange): void;
+        public function quote(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency): \Money\CurrencyPair;
+    }
+    /**
+    * Provides a way to get exchange rate from a third-party source and return a currency pair.
+    *
+    * @generated
+    */
+    final class SwapExchange implements \Money\Exchange {
+        public function __construct(\Swap\Swap $swap): void;
+        public function quote(\Money\Currency $baseCurrency, \Money\Currency $counterCurrency): \Money\CurrencyPair;
+    }
+}
+namespace Money\Formatter {
+    /**
+    * Formats a Money object using other Money formatters.
+    *
+    * @generated
+    */
+    final class AggregateMoneyFormatter implements \Money\MoneyFormatter {
+        /**
+        * @param array $formatters indexed by currency code
+        * @generated
+        */
+        public function __construct(array $formatters): void;
+        public function format(\Money\Money $money): string;
+    }
+    /**
+    * Formats Money to Bitcoin currency.
+    *
+    * @generated
+    */
+    final class BitcoinMoneyFormatter implements \Money\MoneyFormatter {
+        public function __construct(int $fractionDigits, \Money\Currencies $currencies): void;
+        public function format(\Money\Money $money): string;
+    }
+    /**
+    * Formats a Money object as a decimal string.
+    *
+    * @generated
+    */
+    final class DecimalMoneyFormatter implements \Money\MoneyFormatter {
+        public function __construct(\Money\Currencies $currencies): void;
+        /**
+        * @generated
+        */
+        public function format(\Money\Money $money): string;
+    }
+    /**
+    * Formats a Money object using intl extension.
+    *
+    * @generated
+    */
+    final class IntlLocalizedDecimalFormatter implements \Money\MoneyFormatter {
+        public function __construct(\NumberFormatter $formatter, \Money\Currencies $currencies): void;
+        public function format(\Money\Money $money): string;
+    }
+    /**
+    * Formats a Money object using intl extension.
+    *
+    * @generated
+    */
+    final class IntlMoneyFormatter implements \Money\MoneyFormatter {
+        public function __construct(\NumberFormatter $formatter, \Money\Currencies $currencies): void;
+        public function format(\Money\Money $money): string;
+    }
+}
+namespace Money\Parser {
+    /**
+    * Parses a string into a Money object using other parsers.
+    *
+    * @generated
+    */
+    final class AggregateMoneyParser implements \Money\MoneyParser {
+        /**
+        * @param array $parsers
+        * @generated
+        */
+        public function __construct(array $parsers): void;
+        public function parse(string $money, \Money\Currency|null $fallbackCurrency = null): \Money\Money;
+    }
+    /**
+    * Parses Bitcoin currency to Money.
+    *
+    * @generated
+    */
+    final class BitcoinMoneyParser implements \Money\MoneyParser {
+        public function __construct(int $fractionDigits): void;
+        public function parse(string $money, \Money\Currency|null $fallbackCurrency = null): \Money\Money;
+    }
+    /**
+    * Parses a decimal string into a Money object.
+    *
+    * @generated
+    */
+    final class DecimalMoneyParser implements \Money\MoneyParser {
+        public const string DECIMAL_PATTERN ?? '/^(?P<sign>-)?(?P<digits>\d+)?\.?(?P<fraction>\d+)?$/';
+        public function __construct(\Money\Currencies $currencies): void;
+        public function parse(string $money, \Money\Currency|null $fallbackCurrency = null): \Money\Money;
+    }
+    /**
+    * Parses a string into a Money object using intl extension.
+    *
+    * @generated
+    */
+    final class IntlLocalizedDecimalParser implements \Money\MoneyParser {
+        public function __construct(\NumberFormatter $formatter, \Money\Currencies $currencies): void;
+        public function parse(string $money, \Money\Currency|null $fallbackCurrency = null): \Money\Money;
+    }
+    /**
+    * Parses a string into a Money object using intl extension.
+    *
+    * @generated
+    */
+    final class IntlMoneyParser implements \Money\MoneyParser {
+        public function __construct(\NumberFormatter $formatter, \Money\Currencies $currencies): void;
+        public function parse(string $money, \Money\Currency|null $fallbackCurrency = null): \Money\Money;
+    }
+}

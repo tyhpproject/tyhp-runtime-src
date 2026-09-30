@@ -1,0 +1,105 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * Random signature enrichments: `mt_rand` / `rand` zero-arg overloads,
+ * `Randomizer` array generics, engine/Randomizer serialize magics, and
+ * `IntervalBoundary::cases()`. Not Pure.
+ */
+
+namespace Random {
+    /**
+     * Overlay: `pickArrayKeys` returns a list of input keys; `shuffleArray`
+     * returns a reindexed list of values (keys are not preserved).
+     */
+    // @overlay-against: class Randomizer
+    partial class Randomizer {
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): array<int|string, mixed>;
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(array<int|string, mixed> $data): void;
+        // @overlay-against: function pickArrayKeys(array $array, int $num): array
+        public function pickArrayKeys<TKey, TValue>(array<TKey, TValue> $array, int $num): array<int, TKey>;
+        // @overlay-against: function shuffleArray(array $array): array
+        public function shuffleArray<TKey, TValue>(array<TKey, TValue> $array): array<int, TValue>;
+    }
+
+    /**
+     * Overlay: `cases()` as a list of this enum (Layer 1 is a bare `array`).
+     */
+    #[\Tyhp\Php(">=8.3")]
+    // @overlay-against: enum IntervalBoundary implements \UnitEnum
+    partial enum IntervalBoundary {
+        // @overlay-against: function cases(): array
+        static public function cases(): array<int, IntervalBoundary>;
+    }
+}
+
+namespace Random\Engine {
+    // Engine dump shapes are not a public contract — mixed-keyed arrays.
+    // @overlay-against: class Mt19937 implements \Random\Engine
+    partial class Mt19937 {
+        // @overlay-against: function __debugInfo(): array
+        public function __debugInfo(): array<string, mixed>;
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): array<int|string, mixed>;
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(array<int|string, mixed> $data): void;
+    }
+
+    // @overlay-against: class PcgOneseq128XslRr64 implements \Random\Engine
+    partial class PcgOneseq128XslRr64 {
+        // @overlay-against: function __debugInfo(): array
+        public function __debugInfo(): array<string, mixed>;
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): array<int|string, mixed>;
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(array<int|string, mixed> $data): void;
+    }
+
+    // @overlay-against: class Xoshiro256StarStar implements \Random\Engine
+    partial class Xoshiro256StarStar {
+        // @overlay-against: function __debugInfo(): array
+        public function __debugInfo(): array<string, mixed>;
+        // @overlay-against: function __serialize(): array
+        public function __serialize(): array<int|string, mixed>;
+        // @overlay-against: function __unserialize(array $data): void
+        public function __unserialize(array<int|string, mixed> $data): void;
+    }
+}
+
+/**
+ * Overlay: no arguments — integer in `[0, mt_getrandmax()]`.
+ *
+ * @return int Pseudo-random integer.
+ */
+// @overlay-against: function mt_rand(int $min, int $max): int
+function mt_rand(): int;
+
+/**
+ * Overlay: closed interval `[$min, $max]`.
+ *
+ * @param int $min Lowest value (inclusive).
+ * @param int $max Highest value (inclusive).
+ * @return int Pseudo-random integer.
+ */
+// @overlay-against: function mt_rand(int $min, int $max): int
+function mt_rand(int $min, int $max): int;
+
+/**
+ * Overlay: no arguments — integer in `[0, getrandmax()]`.
+ *
+ * @return int Pseudo-random integer.
+ */
+// @overlay-against: function rand(int $min, int $max): int
+function rand(): int;
+
+/**
+ * Overlay: closed interval `[$min, $max]`.
+ *
+ * @param int $min Lowest value (inclusive).
+ * @param int $max Highest value (inclusive).
+ * @return int Pseudo-random integer.
+ */
+// @overlay-against: function rand(int $min, int $max): int
+function rand(int $min, int $max): int;

@@ -1,0 +1,33 @@
+---
+description: Never git-restore emitted runtime PHP; base-build-all.sh owns src/
+alwaysApply: true
+---
+
+# Generated Runtime Package PHP — Do Not Git-Restore
+
+Package sources live in this repo under `packages/`. Fix Tyhp first (the sibling compiler).
+
+Emitted PHP under `packages/*/src/` is **generated** by compiling `tyhp_src` via:
+
+```bash
+packages/base-build-all.sh
+```
+
+(or a per-package `dotnet …/tyhp.dll build [--clean]`). It is often gitignored or not the source of truth.
+
+## Never “restore” generated `src/` with git
+
+- `git checkout -- packages/*/src`
+- `git restore packages/*/src`
+- `git checkout HEAD -- …/src/…` / `git show … > …` to rebuild wiped PHP
+- Any other non-readonly git write aimed at recovering emitted PHP after a failed or `--clean` build
+
+## Empty or missing `src/` is OK
+
+If a build fails (or `--clean` wiped output before emit), **`src/` may be empty or incomplete**. That is fine. Leave it. Do not scramble to recover PHP from git history. Re-run `packages/base-build-all.sh` (or fix Tyhp / `tyhp_src` first) before committing.
+
+## What to do instead
+
+1. Fix the **compile/check/emit** failure (Tyhp toolchain, tyhpdefs, or `tyhp_src`) — see `runtime-package-compile-failures.mdc`.
+2. Re-emit with `packages/base-build-all.sh` when generated PHP should be updated.
+3. If unsure whether files are generated, **ask** — do not invent a git recovery plan.

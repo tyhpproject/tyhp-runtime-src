@@ -1,0 +1,87 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under `overlays/stubs/`).
+ * Documented class-string, array shapes, and callable shapes from the package PHP.
+ */
+
+namespace Spatie\LaravelErrorShare\Actions {
+    /**
+     * Overlay: `MapLaravelExceptionAction::execute()` payload sent to the share service.
+     */
+    type MapLaravelExceptionReport = struct {
+        string $notifier;
+        string $exception_class;
+        int $seen_at;
+        string $application_path;
+        string $message;
+        string $language;
+        string $language_version;
+        string $framework_version;
+        ?string $application_version;
+        string $stage;
+        ?string $message_level;
+        int $open_frame_index;
+        array<int, mixed> $glows;
+        array<int, mixed> $solutions;
+        array<string, mixed> $context;
+        array<int, MapLaravelStackFrame> $stacktrace;
+        array<int, mixed> $documentation_links;
+        ?string $tracking_uuid;
+        ?bool $handled;
+    };
+
+    /**
+     * Overlay: one frame from `MapLaravelStackTraceAction::execute()`.
+     */
+    type MapLaravelStackFrame = struct {
+        int $line_number;
+        string $method;
+        string $class;
+        array<int, string> $code_snippet;
+        string $file;
+        bool $is_application_frame;
+    };
+
+    /**
+     * Overlay: successful share lookup.
+     */
+    type ResolveErrorSharePropertiesActionExecuteResult = struct {
+        MapLaravelExceptionReport $report;
+        string $url;
+    };
+
+    /**
+     * Overlay: share lookup failure.
+     */
+    type ResolveErrorSharePropertiesActionExecuteResult2 = struct {
+        string $error;
+    };
+
+    // @overlay-against: class MapLaravelExceptionAction
+    partial class MapLaravelExceptionAction {
+        /**
+         * Overlay: `MapLaravelExceptionAction::execute()` returns the share payload.
+         */
+        // @overlay-against: function execute(\Illuminate\Foundation\Exceptions\Renderer\Exception $exception): array
+        public function execute(\Illuminate\Foundation\Exceptions\Renderer\Exception $exception): MapLaravelExceptionReport;
+    }
+
+    // @overlay-against: class MapLaravelStackTraceAction
+    partial class MapLaravelStackTraceAction {
+        /**
+         * Overlay: `MapLaravelStackTraceAction::execute()` returns a list of frames.
+         */
+        // @overlay-against: function execute(\Illuminate\Foundation\Exceptions\Renderer\Exception $exception): array
+        public function execute(\Illuminate\Foundation\Exceptions\Renderer\Exception $exception): array<int, MapLaravelStackFrame>;
+    }
+
+    // @overlay-against: class ResolveErrorSharePropertiesAction
+    partial class ResolveErrorSharePropertiesAction {
+        /**
+         * Overlay: `ResolveErrorSharePropertiesAction::execute()` uses the documented types.
+         */
+        // @overlay-against: function execute(\Illuminate\Foundation\Exceptions\Renderer\Exception $exception): array
+        public function execute(\Illuminate\Foundation\Exceptions\Renderer\Exception $exception): ResolveErrorSharePropertiesActionExecuteResult|ResolveErrorSharePropertiesActionExecuteResult2;
+    }
+}

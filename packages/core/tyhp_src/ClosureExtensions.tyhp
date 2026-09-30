@@ -1,0 +1,52 @@
+<?tyhp
+
+namespace Tyhp;
+
+global use extension \Tyhp\ClosureExtensions;
+
+extension ClosureExtensions {
+    extends<TThisReturn, TNextCallable extends callable> \Closure<callable(__CallableReturnType<TNextCallable>): TThisReturn> {
+        function compose(
+            \Closure<TNextCallable> $next
+        ): \Closure<callable(__CallableParametersRest<TNextCallable> ...): TThisReturn> {
+            \Closure<callable(__CallableReturnType<TNextCallable>): TThisReturn> $current = $this;
+            return function (__CallableParametersRest<TNextCallable> ...$args) use ($current, $next): TThisReturn {
+                return $current($next(...$args));
+            };
+        }
+    }
+
+    extends<TThisCallable extends callable> \Closure<TThisCallable> {
+
+        function then<TNextReturn>(
+            \Closure<callable(__CallableReturnType<TThisCallable>): TNextReturn> $next
+        ): \Closure<callable(__CallableParametersRest<TThisCallable> ...): TNextReturn> {
+            \Closure<TThisCallable> $current = $this;
+            return function (__CallableParametersRest<TThisCallable> ...$args) use ($current, $next): TNextReturn {
+                return $next($current(...$args));
+            };
+        }
+
+        function memoize(): \Closure<TThisCallable> {
+            \Closure<TThisCallable> $fn = $this;
+            array<string, __CallableReturnType<TThisCallable>> $cache = [];
+            return function (__CallableParametersRest<TThisCallable> ...$args) use ($fn, &$cache): __CallableReturnType<TThisCallable> {
+                string $key = \serialize($args);
+                if (!\array_key_exists($key, $cache)) {
+                    $cache[$key] = $fn(...$args);
+                }
+                return $cache[$key];
+            };
+        }
+    }
+
+    extends \Closure {
+
+        function partial(mixed ...$partialArgs): \Closure {
+            \Closure $fn = $this;
+            return function (mixed ...$args) use ($fn, $partialArgs): mixed {
+                return $fn(...$partialArgs, ...$args);
+            };
+        }
+    }
+}

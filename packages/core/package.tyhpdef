@@ -1,17 +1,20 @@
 <?tyhpdef
-
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Compiler: 805.1.0.0
+ * Generated: 2026-09-29T21:51:22.3970640Z
+ */
+global use extension \Tyhp\ArrayExtensions;
+global use extension \Tyhp\ArrayExtensionsVersioned;
+global use extension \Tyhp\BoolExtensions;
+global use extension \Tyhp\ClosureExtensions;
+global use extension \Tyhp\FloatExtensions;
+global use extension \Tyhp\IntExtensions;
+global use extension \Tyhp\StringExtensions;
+global use extension \Tyhp\StringExtensionsVersioned;
 namespace Tyhp {
-
-    class Type implements \Stringable
-    {
-        protected function __construct(
-            string $kind,
-            ?string $name = null,
-            array<self|NamedType> $typeArgs = [],
-            bool $isReadOnly = false,
-            bool $isNullable = false,
-        ): void;
-
+    class \Tyhp\Type implements \Stringable {
+        protected function __construct(string $kind, ?string $name = null, array<self|\Tyhp\NamedType> $typeArgs = [], bool $isReadOnly = false, bool $isNullable = false, array<int|string, self> $structFields = [], array<int, int|string> $structRequiredKeys = [], array<int, string> $objectShapeMethods = [], array<int, string> $objectShapeProperties = []): void;
         public static function string(): self;
         public static function int(): self;
         public static function float(): self;
@@ -28,63 +31,338 @@ namespace Tyhp {
         public static function union(self ...$types): self;
         public static function intersection(self ...$types): self;
         public static function nullable(self $type): self;
-        public static function generic(string $className, NamedType ...$params): self;
+        public static function generic(string $className, \Tyhp\NamedType ...$params): self;
+        /**
+        * A Tyhp struct shape: an associative array with named (or aliased) keys.
+        * `$fields` is PHP-key → field type. `$requiredKeys` must all be present on a value.
+        * Extra keys on a value are ignored.
+        */
+        public static function struct(string $name, array<int|string, self> $fields, array<int, int|string> $requiredKeys = []): self;
+        /**
+        * A Tyhp object shape: an instance type matched by public member existence (v1).
+        * `$methods` / `$properties` are required public names. Extra members on a value
+        * are ignored. `__construct` is constructability-only and must not be listed.
+        * This descriptor is for guards / matching; it does not construct instances.
+        */
+        public static function objectShape(string $name, array<int, string> $methods = [], array<int, string> $properties = []): self;
+        /**
+        * A Tyhp callable shape: an invokable type matched by existence (v1).
+        * `$name` is the alias (or `callable` for an inline shape). Extra callable
+        * forms are ignored. Signatures are not compared — `\is_callable` is enough.
+        * This descriptor is for `is` guards / matching; it does not construct values.
+        */
+        public static function callableShape(string $name): self;
         public static function fromClassName(string $className): self;
+        /**
+        * Build a Type from a callable's reflected return type, or null when the callable has no
+        * return type (or cannot be reflected). Used by Mechanism D wrappers to infer a method
+        * generic from a `callable(...): T` / `\Closure<callable(...): T>` value argument when the call site
+        * omitted `<T>`.
+        */
+        public static function fromCallableReturn(callable $callable): ?self;
+        /**
+        * Convert a PHP reflection type into a Tyhp Type. `$relativeClassName` resolves
+        * `self` / `static` / `parent` relative to the callable's declaring class when known.
+        */
+        public static function fromReflectionType(\ReflectionType $type, ?string $relativeClassName = null): self;
         public static function of(mixed $value): self;
+        #[\Tyhp\GenericRuntime(erased: false, binder: "isType__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function isType<TTarget>(mixed $value): $value is TTarget;
         public static function is(mixed $value, self $type): bool;
         public static function check(mixed $value, self $type): void;
+        /**
+        * The zero value for this type — what `default(T)` evaluates to once `T` is known at runtime.
+        *
+        * A nullable type defaults to `null` rather than to its inner type's zero value, matching
+        * `default(?int)`. Types with no meaningful zero (`void`, `never`, `mixed`, `resource`,
+        * unions, intersections) and object types without a declared default also yield `null`.
+        * For `void`, that `null` is accepted by {@see is()} so `Type::is(null, Type::void())` is true.
+        */
+        public function defaultValue(): mixed;
         public static function compatible(self $broad, self $narrow): bool;
-
         public function asReadOnly(): self;
         public function asNullable(): self;
         public function asNonNullable(): self;
-        public function genericParameter(string $name): ?NamedType;
+        public function genericParameter(string $name): ?\Tyhp\NamedType;
         public function getKind(): string;
         public function getName(): ?string;
         public function isNullable(): bool;
         public function isReadOnly(): bool;
         public function __toString(): string;
     }
-
-    final class NamedType extends Type
-    {
-        public function __construct(
-            string $parameterName,
-            Type $underlyingType,
-            bool $readOnly = false,
-        ): void;
-
-        public function getParameterName(): string;
-        public function getUnderlyingType(): Type;
-        public function asReadOnly(): self;
-        public function __toString(): string;
+    final class StringHelper {
+        public static function hasMbStringExt(): bool;
+        public static function strlen(string $string): int;
+        public static function substr(string $string, int $start, ?int $length = null): string;
+        public static function strpos(string $haystack, string $needle, int $offset = 0): int|false;
+        public static function strrpos(string $haystack, string $needle, int $offset = 0): int|false;
+        public static function stripos(string $haystack, string $needle, int $offset = 0): int|false;
+        public static function strtolower(string $string): string;
+        public static function strtoupper(string $string): string;
+        public static function strSplit(string $string, int $length = 1): array<int, string>;
+        public static function ord(string $string): int|false;
+        public static function ucWords(string $string): string;
+        public static function convertEncoding(string $string, string $toEncoding, array|string|null $fromEncoding = null): string|false;
+        public static function detectEncoding(string $string): string|false;
+        #[\Tyhp\Php(">=8.3")]
+        public static function strPad(string $string, int $length, string $padString = ' ', int $padType = \STR_PAD_RIGHT): string;
+        #[\Tyhp\Php(">=8.4")]
+        public static function ucFirst(string $string): string;
+        #[\Tyhp\Php(">=8.4")]
+        public static function lcFirst(string $string): string;
     }
-
-    final class PropertyBackingCell
-    {
+    class StringExtensions as StringExtensions__tyhpExtensionBacker {
+        public static function match(string $this_, string $pattern, int $flags = 0, int $offset = 0): \PregMatchSetNullable|\PregMatchSetOffset|\PregMatchSetOffsetNullable|null;
+        public static function matchAll(string $this_, string $pattern, int $flags = 0, int $offset = 0): array<int|string, mixed>|false;
+        #[\Tyhp\Optimize\Pure]
+        public static function jsonDecode(string $this_, bool $associative = true, int $depth = 512, int $flags = 0): \JsonAssoc|\JsonObject|null;
+        #[\Tyhp\Optimize\Pure]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "jsonDecodeAs__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function jsonDecodeAs<T extends struct>(string $this_, int $depth = 512, int $flags = 0): T;
+        #[\Tyhp\GenericRuntime(erased: false, binder: "jsonTryDecodeAs__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function jsonTryDecodeAs<T extends struct>(string $this_, T &$out, int $depth = 512, int $flags = 0): bool;
+    }
+    extension StringExtensions extends string {
+        #[\Tyhp\Optimize\Pure]
+        fn reverse(): string => \implode('', \array_reverse(\Tyhp\StringHelper::strSplit($this)));
+        fn match(string $pattern, int $flags = 0, int $offset = 0): \PregMatchSetNullable|\PregMatchSetOffset|\PregMatchSetOffsetNullable|null => StringExtensions__tyhpExtensionBacker::match($this, $pattern, $flags, $offset);
+        fn matchAll(string $pattern, int $flags = 0, int $offset = 0): array<int|string, mixed>|false => StringExtensions__tyhpExtensionBacker::matchAll($this, $pattern, $flags, $offset);
+        #[\Tyhp\Optimize\Pure]
+        fn length(): int => \Tyhp\StringHelper::strlen($this);
+        #[\Tyhp\Optimize\Pure]
+        fn byteLength(): int => \strlen($this);
+        #[\Tyhp\Optimize\Pure]
+        fn isEmpty(): bool => $this === '';
+        #[\Tyhp\Optimize\Pure]
+        fn isNotEmpty(): bool => $this !== '';
+        #[\Tyhp\Optimize\Pure]
+        fn contains(string $needle): bool => \str_contains($this, $needle);
+        #[\Tyhp\Optimize\Pure]
+        fn containsIgnoreCase(string $needle): bool => \Tyhp\StringHelper::stripos($this, $needle) !== false;
+        #[\Tyhp\Optimize\Pure]
+        fn startsWith(string $prefix): bool => \str_starts_with($this, $prefix);
+        #[\Tyhp\Optimize\Pure]
+        fn endsWith(string $suffix): bool => \str_ends_with($this, $suffix);
+        #[\Tyhp\Optimize\Pure]
+        fn indexOf(string $needle, int $offset = 0): int|false => \Tyhp\StringHelper::strpos($this, $needle, $offset);
+        #[\Tyhp\Optimize\Pure]
+        fn lastIndexOf(string $needle, int $offset = 0): int|false => \Tyhp\StringHelper::strrpos($this, $needle, $offset);
+        #[\Tyhp\Optimize\Pure]
+        fn indexOfIgnoreCase(string $needle, int $offset = 0): int|false => \Tyhp\StringHelper::stripos($this, $needle, $offset);
+        #[\Tyhp\Optimize\Pure]
+        fn substring(int $start, ?int $length = null): string => \Tyhp\StringHelper::substr($this, $start, $length);
+        #[\Tyhp\Optimize\Pure]
+        fn charAt(int $index): string => \Tyhp\StringHelper::substr($this, $index, 1);
+        #[\Tyhp\Optimize\Pure]
+        fn first(int $length = 1): string => \Tyhp\StringHelper::substr($this, 0, $length);
+        #[\Tyhp\Optimize\Pure]
+        fn last(int $length = 1): string => \Tyhp\StringHelper::substr($this, -$length);
+        #[\Tyhp\Optimize\Pure]
+        fn chunk(int $length = 1): array<int, string> => \Tyhp\StringHelper::strSplit($this, $length);
+        #[\Tyhp\Optimize\Pure]
+        fn toLower(): string => \Tyhp\StringHelper::strtolower($this);
+        #[\Tyhp\Optimize\Pure]
+        fn toUpper(): string => \Tyhp\StringHelper::strtoupper($this);
+        #[\Tyhp\Optimize\Pure]
+        fn ucWords(): string => \Tyhp\StringHelper::ucWords($this);
+        #[\Tyhp\Optimize\Pure]
+        fn trim(string $characters = " \t\n\r\0\x0B"): string => \trim($this, $characters);
+        #[\Tyhp\Optimize\Pure]
+        fn trimLeft(string $characters = " \t\n\r\0\x0B"): string => \ltrim($this, $characters);
+        #[\Tyhp\Optimize\Pure]
+        fn trimRight(string $characters = " \t\n\r\0\x0B"): string => \rtrim($this, $characters);
+        #[\Tyhp\Optimize\Pure]
+        fn replace(string|array<int|string, string> $search, string|array<int|string, string> $replace): string => \str_replace($search, $replace, $this);
+        #[\Tyhp\Optimize\Pure]
+        fn replaceIgnoreCase(string|array<int|string, string> $search, string|array<int|string, string> $replace): string => \str_ireplace($search, $replace, $this);
+        #[\Tyhp\Optimize\Pure]
+        fn regexReplace(string $pattern, string $replacement): string|null => \preg_replace($pattern, $replacement, $this);
+        #[\Tyhp\Optimize\Pure]
+        fn split(string $delimiter, int $limit = \PHP_INT_MAX): array<int, string> => \explode($delimiter, $this, $limit);
+        fn regexSplit(string $pattern, int $limit = -1, int $flags = 0): array<int, string>|array<int, \PregOffsetCapture>|false => \preg_split($pattern, $this, $limit, $flags);
+        #[\Tyhp\Optimize\Pure]
+        fn repeat(int $times): string => \str_repeat($this, $times);
+        #[\Tyhp\Optimize\Pure]
+        fn byteReverse(): string => \strrev($this);
+        #[\Tyhp\Optimize\Pure]
+        fn wordWrap(int $width = 75, string $break = "\n", bool $cutLongWords = false): string => \wordwrap($this, $width, $break, $cutLongWords);
+        fn wordCount(int $format = 0, ?string $characters = null): array<int, string>|int => \str_word_count($this, $format, $characters);
+        #[\Tyhp\Optimize\Pure]
+        fn format(mixed ...$args): string => \sprintf($this, ...$args);
+        #[\Tyhp\Optimize\Pure]
+        fn base64Encode(): string => \base64_encode($this);
+        #[\Tyhp\Optimize\Pure]
+        fn base64Decode(bool $strict = false): string|false => \base64_decode($this, $strict);
+        #[\Tyhp\Optimize\Pure]
+        fn urlEncode(): string => \urlencode($this);
+        #[\Tyhp\Optimize\Pure]
+        fn urlDecode(): string => \urldecode($this);
+        #[\Tyhp\Optimize\Pure]
+        fn rawUrlEncode(): string => \rawurlencode($this);
+        #[\Tyhp\Optimize\Pure]
+        fn rawUrlDecode(): string => \rawurldecode($this);
+        #[\Tyhp\Optimize\Pure]
+        fn htmlEncode(int $flags = null, bool $doubleEncode = true): string => \htmlspecialchars($this, $flags, null, $doubleEncode);
+        #[\Tyhp\Optimize\Pure]
+        fn htmlDecode(int $flags = null): string => \htmlspecialchars_decode($this, $flags);
+        #[\Tyhp\Optimize\Pure]
+        fn htmlEntities(int $flags = null, bool $doubleEncode = true): string => \htmlentities($this, $flags, null, $doubleEncode);
+        #[\Tyhp\Optimize\Pure]
+        fn nl2Br(bool $useXhtml = true): string => \nl2br($this, $useXhtml);
+        #[\Tyhp\Optimize\Pure]
+        fn stripTags(array<int|string, string>|string|null $allowedTags = null): string => \strip_tags($this, $allowedTags);
+        #[\Tyhp\Optimize\Pure]
+        fn md5(bool $binary = false): string => \md5($this, $binary);
+        #[\Tyhp\Optimize\Pure]
+        fn sha1(bool $binary = false): string => \sha1($this, $binary);
+        #[\Tyhp\Optimize\Pure]
+        fn hash(string $algorithm, bool $binary = false): string => \hash($algorithm, $this, $binary);
+        #[\Tyhp\Optimize\Pure]
+        fn crc32(): int => \crc32($this);
+        #[\Tyhp\Optimize\Pure]
+        fn __toInt(): int => \intval($this);
+        #[\Tyhp\Optimize\Pure]
+        fn __toFloat(): float => \floatval($this);
+        #[\Tyhp\Optimize\Pure]
+        fn __toBool(): bool => (bool) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn isNumeric(): bool => \is_numeric($this);
+        #[\Tyhp\Optimize\Pure]
+        fn matches(string $pattern): bool => \preg_match($pattern, $this) === 1;
+        #[\Tyhp\Optimize\Pure]
+        fn regexQuote(string $delimiter = '/'): string => \preg_quote($this, $delimiter);
+        #[\Tyhp\Optimize\Pure]
+        fn convertEncoding(string $toEncoding, array|string|null $fromEncoding = null): string|false => \Tyhp\StringHelper::convertEncoding($this, $toEncoding, $fromEncoding);
+        #[\Tyhp\Optimize\Pure]
+        fn detectEncoding(): string|false => \Tyhp\StringHelper::detectEncoding($this);
+        #[\Tyhp\Optimize\Pure]
+        fn ord(): int|false => \Tyhp\StringHelper::ord($this);
+        #[\Tyhp\Optimize\Pure]
+        fn jsonDecode(bool $associative = true, int $depth = 512, int $flags = 0): \JsonAssoc|\JsonObject|null => \json_decode($this, $associative, $depth, $flags);
+        #[\Tyhp\Optimize\Pure]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "StringExtensions__tyhpExtensionBacker::jsonDecodeAs__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        fn jsonDecodeAs<T extends struct>(int $depth = 512, int $flags = 0): T => \Tyhp\Json::decode($this, $depth, $flags);
+        #[\Tyhp\GenericRuntime(erased: false, binder: "StringExtensions__tyhpExtensionBacker::jsonTryDecodeAs__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        fn jsonTryDecodeAs<T extends struct>(T &$out, int $depth = 512, int $flags = 0): bool => \Tyhp\Json::tryDecode($this, $out, $depth, $flags);
+    }
+    extension StringExtensionsVersioned extends string {
+        #[\Tyhp\Optimize\Pure]
+        fn pad(int $length, string $padString = ' ', int $padType = \STR_PAD_RIGHT): string => \Tyhp\StringHelper::strPad($this, $length, $padString, $padType);
+        #[\Tyhp\Optimize\Pure]
+        fn padLeft(int $length, string $padString = ' '): string => \Tyhp\StringHelper::strPad($this, $length, $padString, \STR_PAD_LEFT);
+        #[\Tyhp\Optimize\Pure]
+        fn padRight(int $length, string $padString = ' '): string => \Tyhp\StringHelper::strPad($this, $length, $padString, \STR_PAD_RIGHT);
+        #[\Tyhp\Optimize\Pure]
+        fn ucFirst(): string => \Tyhp\StringHelper::ucFirst($this);
+        #[\Tyhp\Optimize\Pure]
+        fn lcFirst(): string => \Tyhp\StringHelper::lcFirst($this);
+    }
+    /**
+    * Single physical storage cell for one hooked property on one object.
+    *
+    * PHP 8.4 keeps exactly one backing slot per property name per object across the whole
+    * get/set override chain. {@see PropertyAccessorObject} shares one cell among every
+    * declaring-level {@see PropertyAccessor} for that property (except private same-named
+    * properties, which are unrelated slots).
+    */
+    final class PropertyBackingCell {
         public function isInitialized(): bool;
         public function get(): mixed;
         public function set(mixed $value): void;
     }
-
-    final class PropertyAccessor<TValue>
-    {
-        public function __construct(
-            ?\Closure<TValue> $get = null,
-            ?\Closure<mixed, void> $set = null,
-            bool $backed = false,
-            string $declaringClass = '',
-            string $propertyName = '',
-            mixed $defaultValue = null,
-            bool $defaultValueIsNull = false,
-            string $visibility = 'public',
-            string $setVisibility = 'public',
-            ?Type $setAcceptType = null,
-            bool $finalGet = false,
-            bool $finalSet = false,
-            ?PropertyBackingCell $sharedBacking = null,
-        ): void;
-
+    /**
+    * Runtime bag of {@see PropertyAccessor} instances for one object (PHP &lt; 8.4 hook polyfill).
+    *
+    * Hosted by {@see \Tyhp\Concerns\HasPropertyAccessors} as `$__tyhpPropertyHook`. Emitter call sites:
+    * `$this->__tyhpPropertyHook->register&lt;string&gt;('name', $this, get: …)` (Mechanism D at emit time).
+    *
+    * Accessors are keyed by **declaring class** then property name so a parent→child init chain can
+    * keep both levels' hooks for the same property (Mechanism C–style, matching {@see GenericObject}).
+    * Live `__get`/`__set` resolve get and set **independently** along the override chain (most-derived
+    * hook for that operation wins; omitted hooks fall through to an ancestor or default backed
+    * read/write) — matching PHP 8.4 partial overrides. {@see parentGet}/{@see parentSet} look up the
+    * parent level's accessor and invoke its get/set hooks when present.
+    *
+    * Backing storage is **one {@see PropertyBackingCell} per property name** shared by every
+    * non-private declaring level (PHP: one physical slot per property per object). `declaringClass`
+    * on getBacking/setBacking still selects which accessor type-checks / labels the access; it does
+    * not select a separate storage cell.
+    *
+    * `finalGet` / `finalSet` on {@see register} mirror PHP 8.4 `final` hooks: a descendant that
+    * supplies the same hook is rejected with PHP's
+    * `Cannot override final property hook Class::$prop::get()` wording (init runs child-first, so
+    * the check covers both already-registered ancestors and a live descendant when a final parent
+    * registers later).
+    *
+    * {@see register} builds the {@see PropertyAccessor} with a real type argument so `typeof(TType)` /
+    * runtime checks stay precise. Pass `declaringClass: self::class` from the declaring type's
+    * init hook — do not rely on `$host::class`, which is the runtime instance class (wrong under
+    * inheritance).
+    */
+    final class PropertyAccessorObject {
+        public function needsInit(): bool;
+        public function markBound(): void;
+        public function isInitialized(string $declaringClass): bool;
+        #[\Tyhp\GenericRuntime(erased: false, binder: "register__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public function register<TType>(string $property, object $host, ?\Closure<callable(): TType> $get = null, ?\Closure<callable(mixed): void> $set = null, bool $backed = false, mixed $defaultValue = null, bool $defaultValueIsNull = false, string $visibility = 'public', string $setVisibility = 'public', bool $shadowInherited = true, ?__ClassName $declaringClass = null, ?\Tyhp\Type $setAcceptType = null, bool $finalGet = false, bool $finalSet = false): void;
+        public function has(string $property): bool;
+        public function get(string $property): mixed;
+        public function set(string $property, mixed $value): void;
+        public function isset(string $property): bool;
+        public function unset(string $property): void;
+        /**
+        * Read backing storage. Pass `$declaringClass` from hook bodies (`self::class`) so type
+        * checks / uninitialized messages use that level's accessor. Storage itself is the shared
+        * per-property cell. When omitted, uses the live (most-derived) accessor.
+        */
+        public function getBacking(string $property, ?string $declaringClass = null): mixed;
+        public function setBacking(string $property, mixed $value, ?string $declaringClass = null): void;
+        public function issetBacking(string $property, ?string $declaringClass = null): bool;
+        public function unsetBacking(string $property, ?string $declaringClass = null): void;
+        /**
+        * Read parent property storage (polyfill for `parent::$prop::get()`).
+        * When an ancestor registered an accessor for `$property`, invoke that level's get hook.
+        * Otherwise prefer the live accessor's backing (child override of a plain parent) or
+        * Reflection on the parent-declared property of `$host`.
+        *
+        * `$declaringClass` (pass `self::class` from the hook body that contains the
+        * `parent::$prop::get()` call) anchors the ancestor search to *that* level's parent. Without
+        * it the search falls back to `$host`'s own runtime parent, which is wrong whenever a
+        * non-hooked pass-through subclass sits between the calling level and `$host`'s concrete
+        * class — the search would land back on the calling level's own accessor and recurse into
+        * the very hook currently executing.
+        */
+        public function parentGet(object $host, string $property, ?__ClassName $declaringClass = null): mixed;
+        /**
+        * Write parent property storage (polyfill for `parent::$prop::set()`). See {@see parentGet}
+        * for why `$declaringClass` (`self::class` at the call site) matters.
+        */
+        public function parentSet(object $host, string $property, mixed $value, ?__ClassName $declaringClass = null): void;
+    }
+    /**
+    * Runtime property-hook polyfill for PHP &lt; 8.4 targets.
+    *
+    * Matches PHP 8.4 get/set hook semantics: optional backing value, default read/write when a
+    * hook is omitted on a backed property, isset via get (or backing), and unset always throws
+    * `\Error`. Property visibility (`public`/`protected`/`private`) is enforced in `get()` /
+    * `isset()` / `set()` via `debug_backtrace`; asymmetric set visibility (`*(set)`) is enforced
+    * in `set()` the same way (defaults to property visibility when no `*(set)` was authored).
+    *
+    * Set hooks may declare a contravariant (wider) parameter type than the property. Pass that
+    * type as `$setAcceptType` so `set()` accepts it; property `TValue` is still enforced when the
+    * hook writes via {@see setBacking}. When `$setAcceptType` is omitted, `set()` checks `TValue`
+    * (PHP's default when the set parameter is untyped).
+    *
+    * `$finalGet` / `$finalSet` mirror PHP 8.4 `final get` / `final set`. {@see PropertyAccessorObject}
+    * rejects a descendant re-registration that supplies the same hook.
+    *
+    * Backing storage lives in a {@see PropertyBackingCell} that
+    * {@see PropertyAccessorObject} may share across every declaring level of the same property
+    * so a partial get-only / set-only override observes the inherited hook's writes/reads.
+    */
+    #[\Tyhp\GenericRuntime(erased: false, factory: "new_Tyhp_PropertyAccessor__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+    final class PropertyAccessor<TValue> {
+        public function __construct(?\Closure<callable(): TValue> $get = null, ?\Closure<callable(mixed): void> $set = null, bool $backed = false, string $declaringClass = '', string $propertyName = '', mixed $defaultValue = null, bool $defaultValueIsNull = false, string $visibility = 'public', string $setVisibility = 'public', ?\Tyhp\Type $setAcceptType = null, bool $finalGet = false, bool $finalSet = false, ?\Tyhp\PropertyBackingCell $sharedBacking = null): void;
         public function isBacked(): bool;
         public function isBackingInitialized(): bool;
         public function getDeclaringClass(): string;
@@ -92,221 +370,748 @@ namespace Tyhp {
         public function hasSet(): bool;
         public function isFinalGet(): bool;
         public function isFinalSet(): bool;
+        /**
+        * True when this level's property visibility is private — a same-named descendant
+        * declaration is an unrelated slot in PHP, not an override of this one.
+        */
         public function isPrivateProperty(): bool;
         public function getBacking(): TValue;
         public function setBacking(TValue $value): void;
-
         public function get(): TValue;
         public function set(mixed $value): void;
+        /**
+        * PHP: isset on hooked property with get → get() !== null; without get but backed →
+        * backing initialized and non-null. Inaccessible visibility → false (matches PHP
+        * isset on private/protected properties), without throwing.
+        */
         public function isset(): bool;
         public function unset(): void;
-        public function getType(): Type;
+        public function getType(): \Tyhp\Type;
     }
-
-    class ObjectHelper
-    {
+    /**
+    * Compile-time PHP signature hint. The constructor argument is a PHP type-hint spelling
+    * (for example `"mixed"`, `"int"`, `"string|int"`). Checker types are unchanged.
+    *
+    * Replaces the emitted PHP type of the declaration it sits on:
+    * parameter, function/method **return**, property, or typed constant.
+    *
+    * Usages of this attribute and this class declaration are omitted from emitted PHP
+    * (`#[\Tyhp\NoEmit]`).
+    */
+    #[\Attribute(\Attribute::TARGET_ALL & ~\Attribute::TARGET_CLASS)]
+    #[\Tyhp\NoEmit]
+    final class PhpType {
+        public string $type;
+        public function __construct(string $type): void;
+    }
+    /**
+    * Compile-time PHP version gate. The constructor argument is a Composer version-constraint
+    * string evaluated against the project's `output.phpVersion` (for example `">=8.4"` or
+    * `">=8.2 <8.4"`). Inactive declarations are omitted at bind time; the attribute and this
+    * class declaration are omitted from emitted PHP (`#[\Tyhp\NoEmit]`).
+    *
+    * Positional `#[\Tyhp\Php(">=8.4")]` and named `#[\Tyhp\Php(version: ">=8.4")]` are equivalent.
+    *
+    * Illegal on `struct` and `extension` (Tyhp or tyhpdef) — wrap those in `declare(php=…) { }`.
+    */
+    #[\Attribute(\Attribute::TARGET_ALL)]
+    #[\Tyhp\NoEmit]
+    final class Php {
+        public string $version;
+        public function __construct(string $version): void;
+    }
+    class ObjectHelper {
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
         public static function with<TProperties extends struct, T extends object&TProperties>(T $object, TProperties $properties): T;
     }
-
-    final class GenericObject
-    {
+    /**
+    * Compile-time constraint to not emit the declaration to PHP.  Used for built-in Tyhp attributes that are for compile time only attributes.
+    * During emit time, the usage of the target attribute will be removed (after it is processed) and the declaration will not be emitted to PHP.
+    *
+    * Used to remove `\Tyhp\NoEmit`, `\Tyhp\Php`, and `\Tyhp\PhpType` declarations and usages at compile time (will not appear in the emitted PHP).
+    */
+    #[\Attribute(\Attribute::TARGET_CLASS)]
+    #[\Tyhp\NoEmit]
+    final class NoEmit {
+        public function __construct(): void;
+    }
+    /**
+    * Compile-time marker on a free function or concrete static method with a
+    * type-guard return (`$param is T`). `$x is T` / `$x instanceof T` emit a call
+    * to that callable (`\is_string($x)` or `\Foo::isString($x)`) instead of
+    * `\Tyhp\Type::is`. `T` is the guard type, not an attribute argument.
+    *
+    * Usages of this attribute and this class declaration are omitted from emitted PHP
+    * (`#[\Tyhp\NoEmit]`).
+    */
+    #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::TARGET_FUNCTION)]
+    #[\Tyhp\NoEmit]
+    final class NativeTypeTest {
+        public function __construct(): void;
+    }
+    final class NamedType extends \Tyhp\Type {
+        public function __construct(string $parameterName, \Tyhp\Type $underlyingType, bool $readOnly = false): void;
+        public function getParameterName(): string;
+        public function getUnderlyingType(): \Tyhp\Type;
+        public function asReadOnly(): self;
+        public function __toString(): string;
+    }
+    /**
+    * Typed JSON helpers. `\json_decode` stays a PHP builtin (objects vs arrays, `mixed` only
+    * when `$associative` is not a literal). {@see decode} always decodes objects as arrays
+    * and checks the result against `T` — the C# `JsonSerializer.Deserialize<T>` analogue for
+    * Tyhp structs, arrays of structs, and scalars.
+    */
+    final class Json {
+        /**
+        * Decode JSON into `T`. Objects become associative arrays (struct-native).
+        * Invalid JSON throws `\JsonException`. A well-formed value that does not match `T`
+        * throws {@see IncompatibleTypeException}.
+        *
+        * @param $json JSON text.
+        * @param $depth Maximum nesting depth passed to `\json_decode`.
+        * @param $flags Extra `JSON_*` flags; `JSON_THROW_ON_ERROR` is always set.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "decode__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function decode<T extends struct>(string $json, int $depth = 512, int $flags = 0): T;
+        /**
+        * Decode JSON into `$out` as `T`. Same decode rules as {@see decode} (objects as arrays).
+        * Returns `true` and writes `$out` on success. Returns `false` and leaves `$out` unchanged
+        * when the text is not valid JSON or the value does not match `T`.
+        *
+        * @param $json JSON text.
+        * @param $out Set to the decoded value on success.
+        * @param $depth Maximum nesting depth passed to `\json_decode`.
+        * @param $flags Extra `JSON_*` flags; `JSON_THROW_ON_ERROR` is always set internally.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "tryDecode__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function tryDecode<T extends struct>(string $json, T &$out, int $depth = 512, int $flags = 0): bool;
+    }
+    extension IntExtensions extends int {
+        #[\Tyhp\Optimize\Pure]
+        fn abs(): int => \abs($this);
+        #[\Tyhp\Optimize\Pure]
+        fn clamp(int $min, int $max): int => \max($min, \min($max, $this));
+        #[\Tyhp\Optimize\Pure]
+        fn isEven(): bool => ($this % 2) === 0;
+        #[\Tyhp\Optimize\Pure]
+        fn isOdd(): bool => ($this % 2) !== 0;
+        #[\Tyhp\Optimize\Pure]
+        fn isPositive(): bool => $this > 0;
+        #[\Tyhp\Optimize\Pure]
+        fn isNegative(): bool => $this < 0;
+        #[\Tyhp\Optimize\Pure]
+        fn isZero(): bool => $this === 0;
+        #[\Tyhp\Optimize\Pure]
+        fn between(int $min, int $max): bool => ($this >= $min) && ($this <= $max);
+        #[\Tyhp\Optimize\Pure]
+        fn sign(): int => $this <=> 0;
+        #[\Tyhp\Optimize\Pure]
+        fn max(int ...$values): int => \max($this, ...$values);
+        #[\Tyhp\Optimize\Pure]
+        fn min(int ...$values): int => \min($this, ...$values);
+        #[\Tyhp\Optimize\Pure]
+        fn pow(int $exponent): int|float => $this ** $exponent;
+        #[\Tyhp\Optimize\Pure]
+        fn __toString(): string => (string) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn __toFloat(): float => (float) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn __toBool(): bool => (bool) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn toBase(int $base): string => \base_convert((string) $this, 10, $base);
+        #[\Tyhp\Optimize\Pure]
+        fn toHex(): string => \dechex($this);
+        #[\Tyhp\Optimize\Pure]
+        fn toOctal(): string => \decoct($this);
+        #[\Tyhp\Optimize\Pure]
+        fn toBinary(): string => \decbin($this);
+        #[\Tyhp\Optimize\Pure]
+        fn format(int $decimals = 0, string $decimalSeparator = '.', string $thousandsSeparator = ','): string => \number_format($this, $decimals, $decimalSeparator, $thousandsSeparator);
+    }
+    /**
+    * Runtime-visible stamp on a compiled-library generic class, method, or function.
+    *
+    * Present on every emitted generic declaration (erased or tracked). `factory` /
+    * `binder` are set only when helpers were emitted (`erased: false`). PHP builtin
+    * and overlay tyhpdefs that omit this attribute keep erase / inline emit.
+    *
+    * Named arguments:
+    * - `erased:` no factory / binder was emitted
+    * - `binder:` Mechanism D companion (`decode__tyhpGeneric` or `Backer::jsonDecodeAs__tyhpGeneric`)
+    * - `factory:` Mechanism C class factory (`new_Ns_Box__tyhpGeneric`)
+    * - `aliasFactory:` source type-alias `\Tyhp\Type` factory (`DecimalCoercible` or `UserService::NameType`)
+    * - `layouts:` dispatch keys this declaration supports (currently `[1]`)
+    * - `compiler:` optional compiler version for diagnostics only (not dispatch)
+    *
+    * Sit this attribute on the declaration, not on `<T>`. Authors do not write this
+    * attribute; the compiler restamps it. `\Tyhp\Generic::bind` reads it at runtime.
+    */
+    #[\Attribute(\Attribute::TARGET_ALL)]
+    final class GenericRuntime {
+        public bool $erased ?? false;
+        public ?string $binder ?? null;
+        public ?string $factory ?? null;
+        public ?string $aliasFactory ?? null;
+        public array<int> $layouts ?? [1];
+        public ?string $compiler ?? null;
+        public function __construct(bool $erased = false, ?string $binder = null, ?string $factory = null, ?string $aliasFactory = null, array<int> $layouts = null, ?string $compiler = null): void;
+    }
+    /**
+    * Runtime bag of bound generic type arguments for one object instance.
+    *
+    * Hosted by {@see \Tyhp\Concerns\HasGenerics} as `$__tyhpGeneric`. Created in that trait's
+    * `__bootTrait_*` via `tyhpBootTraits()`. Emitter call sites look like
+    * `$this->__tyhpGeneric->resolvedType(static::class, 'T')`.
+    */
+    final class GenericObject {
         public function needsInit(): bool;
         public function markBound(): void;
         public function isInitialized(string $declaringClass): bool;
-        public function init(string $hostClass, string $declaringClass, NamedType ...$genericArguments): void;
-        public function initInterface(string $interface, NamedType ...$args): void;
-        public function setPropertyType(string $property, Type $type): void;
+        public function init(string $hostClass, string $declaringClass, \Tyhp\NamedType ...$genericArguments): void;
+        public function initInterface(string $interface, \Tyhp\NamedType ...$args): void;
+        public function setPropertyType(string $property, \Tyhp\Type $type): void;
         public function enablePropertyChecks(): void;
         public function checkProperty(string $property, mixed $value): void;
-        public function objectType(): ?Type;
-        public function genericType(string $declaringClass, string $parameterName): ?NamedType;
-        public function resolvedType(string $declaringClass, string $parameterName): Type;
+        public function objectType(): ?\Tyhp\Type;
+        public function genericType(string $declaringClass, string $parameterName): ?\Tyhp\NamedType;
+        public function resolvedType(string $declaringClass, string $parameterName): \Tyhp\Type;
         public function defaultValue(string $declaringClass, string $parameterName): mixed;
     }
-
-    final class PropertyAccessorObject
-    {
-        public function register<TType>(
-            string $property,
-            object $host,
-            ?\Closure<TType> $get = null,
-            ?\Closure<mixed, void> $set = null,
-            bool $backed = false,
-            mixed $defaultValue = null,
-            bool $defaultValueIsNull = false,
-            string $visibility = 'public',
-            string $setVisibility = 'public',
-            bool $shadowInherited = true,
-            ?string $declaringClass = null,
-            ?Type $setAcceptType = null,
-            bool $finalGet = false,
-            bool $finalSet = false,
-        ): void;
-        public function has(string $property): bool;
-        public function get(string $property): mixed;
-        public function set(string $property, mixed $value): void;
-        public function isset(string $property): bool;
-        public function unset(string $property): void;
-        public function getBacking(string $property, ?string $declaringClass = null): mixed;
-        public function setBacking(string $property, mixed $value, ?string $declaringClass = null): void;
-        public function issetBacking(string $property, ?string $declaringClass = null): bool;
-        public function unsetBacking(string $property, ?string $declaringClass = null): void;
-        public function parentGet(object $host, string $property, ?string $declaringClass = null): mixed;
-        public function parentSet(object $host, string $property, mixed $value, ?string $declaringClass = null): void;
+    /**
+    * Binds type arguments to a Tyhp generic class or callable from hand-written PHP
+    * and from Tyhp sites that construct or call a **foreign** compiled-library generic
+    * (`#[\Tyhp\GenericRuntime]` on the vendor tyhpdef). Same-compilation Tyhp sites
+    * still emit the per-class factory / `__tyhpGeneric` binder directly.
+    *
+    *     // Class (Mechanism C, tracked or erased — same spelling)
+    *     $box = \Tyhp\Generic::bind(Box::class, \Tyhp\Type::int())(42);
+    *     $box = \Tyhp\Generic::bind(Box::class, \Tyhp\Type::int())->new(42); // new() ≡ __invoke
+    *
+    *     // Callable (Mechanism D) — prefer a first-class callable to the *clean* name
+    *     $awaitInt = \Tyhp\Generic::bind(\Tyhp\Promise::_await(...), \Tyhp\Type::int());
+    *     $awaitInt($promise);
+    *
+    * `bind()` does not construct. `__invoke` / `new()` runs the named factory (types then
+    * constructor arguments) or `new $class(...)` when `erased: true`. For callables,
+    * a tracked binder is invoked with type arguments only; an erased callable becomes
+    * `\Closure::fromCallable` (by-ref preserved).
+    *
+    * `TTarget` exists only in PHPDoc. Tyhp's own generics are runtime bindings carried on the
+    * constructed instance; making this class generic in Tyhp would bind a parameter nothing here
+    * reads. The template costs nothing at runtime and is what lets PHPStan / Psalm / Phan / IDEs
+    * infer the constructed type from `bind(Foo::class, …)`.
+    *
+    * @template TTarget of object
+    *
+    * @phpstan-template TTarget of object
+    * @psalm-template TTarget of object
+    */
+    final class Generic {
+        /**
+        * Bind type arguments to a generic class or callable.
+        *
+        * When `$target` is a `class-string`, returns a {@see Generic} binder whose `new(...)` /
+        * `__invoke(...)` runs that class's constructor and yields an instance of `TClass`.
+        * When `$target` is any other callable, returns the emitted value-signature `\Closure`
+        * from that callable's `__tyhpGeneric` binder, or `\Closure::fromCallable` when erased.
+        *
+        * Pass one `\Tyhp\Type` (or `null`) per generic parameter of the target, in declaration
+        * order. A null argument leaves that parameter unbound, which resolves the same way a
+        * missing argument does at a Tyhp call site: declared default, else constraint, else mixed.
+        *
+        * @template TCallable of callable
+        * @template TClass of object
+        *
+        * @param class-string<TClass>|TCallable $target
+        * @param ?\Tyhp\Type                    ...$typeArguments
+        *
+        * @return ($target is class-string<TClass> ? self<TClass> : TCallable)
+        *
+        * @phpstan-template TCallable of callable
+        * @phpstan-template TClass of object
+        * @phpstan-param class-string<TClass>|TCallable $target
+        * @phpstan-param ?\Tyhp\Type                    ...$typeArguments
+        * @phpstan-return ($target is class-string<TClass> ? self<TClass> : TCallable)
+        *
+        * @psalm-template TCallable of callable
+        * @psalm-template TClass of object
+        * @psalm-param class-string<TClass>|TCallable $target
+        * @psalm-param ?\Tyhp\Type                    ...$typeArguments
+        * @psalm-return ($target is class-string<TClass> ? self<TClass> : TCallable)
+        *
+        * @throws InvalidTypeException     When the target has no `GenericRuntime` stamp, or when
+        *                                  an instance method is bound without a receiver.
+        * @throws \ReflectionException     When a class-string does not name a loadable class.
+        * @throws \InvalidArgumentException When `$target` is neither a class-string nor a
+        *                                  resolvable named callable, or is an anonymous Closure.
+        */
+        public static function bind(mixed $target, ?\Tyhp\Type ...$typeArguments): mixed;
+        /**
+        * Run the constructor and hand back the instance.
+        *
+        * Prefer {@see new()} where the inferred type matters: IDEs and analyzers track a templated
+        * return through a named method more reliably than through `__invoke`.
+        *
+        * @param mixed ...$constructorArguments Arguments forwarded to `TTarget::__construct`.
+        *
+        * @return TTarget
+        *
+        * @throws InvalidTypeException
+        * @throws \LogicException
+        */
+        public function __invoke(mixed ...$constructorArguments): object;
+        /**
+        * Run the constructor and hand back the instance. Equivalent to {@see __invoke()}.
+        *
+        * @param mixed ...$constructorArguments Arguments forwarded to `TTarget::__construct`.
+        *
+        * @return TTarget
+        *
+        * @throws InvalidTypeException
+        * @throws \LogicException
+        */
+        public function new(mixed ...$constructorArguments): object;
+    }
+    extension FloatExtensions extends float {
+        #[\Tyhp\Optimize\Pure]
+        fn abs(): float => \abs($this);
+        #[\Tyhp\Optimize\Pure]
+        fn ceil(): int => (int) \ceil($this);
+        #[\Tyhp\Optimize\Pure]
+        fn floor(): int => (int) \floor($this);
+        #[\Tyhp\Optimize\Pure]
+        fn round(int $precision = 0, int $mode = \PHP_ROUND_HALF_UP): float => \round($this, $precision, $mode);
+        #[\Tyhp\Optimize\Pure]
+        fn clamp(float $min, float $max): float => \max($min, \min($max, $this));
+        #[\Tyhp\Optimize\Pure]
+        fn isNan(): bool => \is_nan($this);
+        #[\Tyhp\Optimize\Pure]
+        fn isInfinite(): bool => \is_infinite($this);
+        #[\Tyhp\Optimize\Pure]
+        fn isFinite(): bool => \is_finite($this);
+        #[\Tyhp\Optimize\Pure]
+        fn isPositive(): bool => $this > 0.0;
+        #[\Tyhp\Optimize\Pure]
+        fn isNegative(): bool => $this < 0.0;
+        #[\Tyhp\Optimize\Pure]
+        fn isZero(): bool => $this == 0.0;
+        #[\Tyhp\Optimize\Pure]
+        fn between(float $min, float $max): bool => ($this >= $min) && ($this <= $max);
+        #[\Tyhp\Optimize\Pure]
+        fn sign(): int => $this <=> 0.0;
+        #[\Tyhp\Optimize\Pure]
+        fn max(float $value, float ...$values): float => \max($this, $value, ...$values);
+        #[\Tyhp\Optimize\Pure]
+        fn min(float $value, float ...$values): float => \min($this, $value, ...$values);
+        #[\Tyhp\Optimize\Pure]
+        fn pow(float $exponent): float => $this ** $exponent;
+        #[\Tyhp\Optimize\Pure]
+        fn sqrt(): float => \sqrt($this);
+        #[\Tyhp\Optimize\Pure]
+        fn log(float $base = \M_E): float => \log($this, $base);
+        #[\Tyhp\Optimize\Pure]
+        fn sin(): float => \sin($this);
+        #[\Tyhp\Optimize\Pure]
+        fn cos(): float => \cos($this);
+        #[\Tyhp\Optimize\Pure]
+        fn tan(): float => \tan($this);
+        #[\Tyhp\Optimize\Pure]
+        fn fmod(float $divisor): float => \fmod($this, $divisor);
+        #[\Tyhp\Optimize\Pure]
+        fn __toString(): string => (string) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn __toInt(): int => (int) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn __toBool(): bool => (bool) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn format(int $decimals = 0, string $decimalSeparator = '.', string $thousandsSeparator = ','): string => \number_format($this, $decimals, $decimalSeparator, $thousandsSeparator);
+    }
+    /**
+    * Compile-time opt-out from Mechanism C property tracking.
+    *
+    * On a property or promoted constructor parameter, that slot does not trigger or
+    * receive set checks / `setPropertyType`. On a class, the same applies to every
+    * generic-typed instance property on that class after trait flatten (including
+    * promoted properties). Runtime-use constructs (`typeof`, `default`, `is`,
+    * `new T`, forwarded type arguments) still force class tracking.
+    *
+    * Usages of this attribute and this class declaration are omitted from emitted PHP
+    * (`#[\Tyhp\NoEmit]`).
+    */
+    #[\Attribute((\Attribute::TARGET_CLASS | \Attribute::TARGET_PROPERTY) | \Attribute::TARGET_PARAMETER)]
+    #[\Tyhp\NoEmit]
+    final class EraseGeneric {
+        public function __construct(): void;
+    }
+    class ClosureExtensions as ClosureExtensions__tyhpExtensionBacker {
+        public static function compose<TThisReturn, TNextCallable extends callable>(\Closure<callable(__CallableReturnType<TNextCallable>): TThisReturn> $this_, \Closure<TNextCallable> $next): \Closure<callable(__CallableParametersRest<TNextCallable> ...): TThisReturn>;
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        public static function then<TThisCallable extends callable, TNextReturn>(\Closure<TThisCallable> $this_, \Closure<callable(__CallableReturnType<TThisCallable>): TNextReturn> $next): \Closure<callable(__CallableParametersRest<TThisCallable> ...): TNextReturn>;
+        public static function memoize<TThisCallable extends callable>(\Closure<TThisCallable> $this_): \Closure<TThisCallable>;
+        public static function partial(\Closure $this_, mixed ...$partialArgs): \Closure;
+    }
+    extension ClosureExtensions {
+        extends<TThisReturn, TNextCallable extends callable> \Closure<callable(__CallableReturnType<TNextCallable>): TThisReturn> {
+            fn compose(\Closure<TNextCallable> $next): \Closure<callable(__CallableParametersRest<TNextCallable> ...): TThisReturn> => ClosureExtensions__tyhpExtensionBacker::compose($this, $next);
+        }
+        extends<TThisCallable extends callable> \Closure<TThisCallable> {
+            #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+            fn then<TNextReturn>(\Closure<callable(__CallableReturnType<TThisCallable>): TNextReturn> $next): \Closure<callable(__CallableParametersRest<TThisCallable> ...): TNextReturn> => ClosureExtensions__tyhpExtensionBacker::then($this, $next);
+            fn memoize(): \Closure<TThisCallable> => ClosureExtensions__tyhpExtensionBacker::memoize($this);
+        }
+        extends \Closure {
+            fn partial(mixed ...$partialArgs): \Closure => ClosureExtensions__tyhpExtensionBacker::partial($this, $partialArgs);
+        }
+    }
+    extension BoolExtensions extends bool {
+        #[\Tyhp\Optimize\Pure]
+        fn __toString(): string => $this ? 'true' : 'false';
+        #[\Tyhp\Optimize\Pure]
+        fn __toInt(): int => (int) $this;
+        #[\Tyhp\Optimize\Pure]
+        fn not(): bool => !$this;
+        #[\Tyhp\Optimize\Pure]
+        fn and(bool $other): bool => $this && $other;
+        #[\Tyhp\Optimize\Pure]
+        fn or(bool $other): bool => $this || $other;
+    }
+    class ArrayExtensions as ArrayExtensions__tyhpExtensionBacker {
+        #[\Tyhp\Optimize\Pure]
+        public static function sorted<TKey extends int|string, TValue>(array<TKey, TValue> $this_, int $flags = \SORT_REGULAR): array<int, TValue>;
+        #[\Tyhp\Optimize\Pure]
+        public static function reverseSorted<TKey extends int|string, TValue>(array<TKey, TValue> $this_, int $flags = \SORT_REGULAR): array<int, TValue>;
+        #[\Tyhp\Optimize\Pure]
+        public static function sortedByKey<TKey extends int|string, TValue>(array<TKey, TValue> $this_, int $flags = \SORT_REGULAR): array<TKey, TValue>;
+        #[\Tyhp\Optimize\Pure]
+        public static function reverseSortedByKey<TKey extends int|string, TValue>(array<TKey, TValue> $this_, int $flags = \SORT_REGULAR): array<TKey, TValue>;
+        #[\Tyhp\Optimize\Pure]
+        public static function sortedBy<TKey extends int|string, TValue>(array<TKey, TValue> $this_, callable(TValue, TValue): int $callback): array<int, TValue>;
+        #[\Tyhp\Optimize\Pure]
+        public static function sortedByKeyWith<TKey extends int|string, TValue>(array<TKey, TValue> $this_, callable(TKey, TKey): int $callback): array<TKey, TValue>;
+        #[\Tyhp\Optimize\Pure]
+        public static function flatten<TKey extends int|string, TValue>(array<TKey, TValue> $this_): array;
+    }
+    extension ArrayExtensions {
+        extends<TKey extends int|string, TValue> array<TKey, TValue> {
+            #[\Tyhp\Optimize\Pure]
+            fn sorted(int $flags = \SORT_REGULAR): array<int, TValue> => ArrayExtensions__tyhpExtensionBacker::sorted($this, $flags);
+            #[\Tyhp\Optimize\Pure]
+            fn reverseSorted(int $flags = \SORT_REGULAR): array<int, TValue> => ArrayExtensions__tyhpExtensionBacker::reverseSorted($this, $flags);
+            #[\Tyhp\Optimize\Pure]
+            fn sortedByKey(int $flags = \SORT_REGULAR): array<TKey, TValue> => ArrayExtensions__tyhpExtensionBacker::sortedByKey($this, $flags);
+            #[\Tyhp\Optimize\Pure]
+            fn reverseSortedByKey(int $flags = \SORT_REGULAR): array<TKey, TValue> => ArrayExtensions__tyhpExtensionBacker::reverseSortedByKey($this, $flags);
+            #[\Tyhp\Optimize\Pure]
+            fn sortedBy(callable(TValue, TValue): int $callback): array<int, TValue> => ArrayExtensions__tyhpExtensionBacker::sortedBy($this, $callback);
+            #[\Tyhp\Optimize\Pure]
+            fn sortedByKeyWith(callable(TKey, TKey): int $callback): array<TKey, TValue> => ArrayExtensions__tyhpExtensionBacker::sortedByKeyWith($this, $callback);
+            #[\Tyhp\Optimize\Pure]
+            fn flatten(): array => ArrayExtensions__tyhpExtensionBacker::flatten($this);
+            #[\Tyhp\Optimize\Pure]
+            fn count(): int => \count($this);
+            #[\Tyhp\Optimize\Pure]
+            fn isEmpty(): bool => \count($this) === 0;
+            #[\Tyhp\Optimize\Pure]
+            fn isNotEmpty(): bool => \count($this) > 0;
+            #[\Tyhp\Optimize\Pure]
+            fn keys(): array<int, TKey> => \array_keys($this);
+            #[\Tyhp\Optimize\Pure]
+            fn values(): array<int, TValue> => \array_values($this);
+            #[\Tyhp\Optimize\Pure]
+            fn keyExists(TKey $key): bool => \array_key_exists($key, $this);
+            #[\Tyhp\Optimize\Pure]
+            fn contains(TValue $value, bool $strict = false): bool => \in_array($value, $this, $strict);
+            #[\Tyhp\Optimize\Pure]
+            fn search(TValue $value, bool $strict = false): TKey|false => \array_search($value, $this, $strict);
+            #[\Tyhp\Optimize\Pure]
+            fn reversed(bool $preserveKeys = false): array<TKey, TValue> => \array_reverse($this, $preserveKeys);
+            #[\Tyhp\Optimize\Pure]
+            fn unique(int $flags = \SORT_STRING): array<TKey, TValue> => \array_unique($this, $flags);
+            #[\Tyhp\Optimize\Pure]
+            fn filtered(?callable $callback = null, int $mode = 0): array<TKey, TValue> => \array_filter($this, $callback, $mode);
+            #[\Tyhp\Optimize\Pure]
+            #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+            fn mapped<TResult>(callable(TValue): TResult $callback): array<TKey, TResult> => \array_map($callback, $this);
+            #[\Tyhp\Optimize\Pure]
+            fn merged(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_merge($this, ...$arrays);
+            #[\Tyhp\Optimize\Pure]
+            fn sliced(int $offset, ?int $length = null, bool $preserveKeys = false): array<TKey, TValue> => \array_slice($this, $offset, $length, $preserveKeys);
+            #[\Tyhp\Optimize\Pure]
+            fn chunked(int $length, bool $preserveKeys = false): array<int, array<TKey, TValue>> => \array_chunk($this, $length, $preserveKeys);
+            #[\Tyhp\Optimize\Pure]
+            fn padded(int $length, TValue $value): array<TKey, TValue> => \array_pad($this, $length, $value);
+            #[\Tyhp\Optimize\Pure]
+            fn diffed(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_diff($this, ...$arrays);
+            #[\Tyhp\Optimize\Pure]
+            fn diffedByKey(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_diff_key($this, ...$arrays);
+            #[\Tyhp\Optimize\Pure]
+            fn intersected(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_intersect($this, ...$arrays);
+            #[\Tyhp\Optimize\Pure]
+            fn intersectedByKey(array<TKey, TValue> ...$arrays): array<TKey, TValue> => \array_intersect_key($this, ...$arrays);
+            fn sort(&$this, int $flags = \SORT_REGULAR): bool => \sort($this, $flags);
+            fn reverseSort(&$this, int $flags = \SORT_REGULAR): bool => \rsort($this, $flags);
+            fn sortByKey(&$this, int $flags = \SORT_REGULAR): bool => \ksort($this, $flags);
+            fn reverseSortByKey(&$this, int $flags = \SORT_REGULAR): bool => \krsort($this, $flags);
+            fn sortBy(&$this, callable(TValue, TValue): int $callback): bool => \usort($this, $callback);
+            fn sortByKeyWith(&$this, callable(TKey, TKey): int $callback): bool => \uksort($this, $callback);
+            fn shuffle(&$this): bool => \shuffle($this);
+            fn push(&$this, TValue ...$values): int => \array_push($this, ...$values);
+            fn pop(&$this): ?TValue => \array_pop($this);
+            fn shift(&$this): ?TValue => \array_shift($this);
+            fn unshift(&$this, TValue ...$values): int => \array_unshift($this, ...$values);
+            fn splice(&$this, int $offset, ?int $length = null, array $replacement = []): array<TKey, TValue> => \array_splice($this, $offset, $length, $replacement);
+            #[\Tyhp\Optimize\Pure]
+            #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+            fn reduce<TResult>(callable(TResult, TValue): TResult $callback, TResult $initial): TResult => \array_reduce($this, $callback, $initial);
+            #[\Tyhp\Optimize\Pure]
+            fn join(string $separator = ''): string => \implode($separator, $this);
+            fn walk(&$this, callable(TValue, TKey): void $callback): bool => \array_walk($this, $callback);
+        }
+        extends array {
+            #[\Tyhp\Optimize\Pure]
+            fn column(string|int|null $columnKey, string|int|null $indexKey = null): array => \array_column($this, $columnKey, $indexKey);
+            #[\Tyhp\Optimize\Pure]
+            fn combined(array $values): array => \array_combine($this, $values);
+            #[\Tyhp\Optimize\Pure]
+            fn zipped(array ...$arrays): array => \array_map(null, $this, ...$arrays);
+            #[\Tyhp\Optimize\Pure]
+            fn toJson(int $flags = 0, int $depth = 512): string|false => \json_encode($this, $flags, $depth);
+        }
+        extends<TKey, TValue extends int|string> array<TKey, TValue> {
+            #[\Tyhp\Optimize\Pure]
+            fn flipped(): array<TValue, TKey> => \array_flip($this);
+        }
+        extends<TValue extends int|float> array<TValue> {
+            #[\Tyhp\Optimize\Pure]
+            fn sum(): int|float => \array_sum($this);
+            #[\Tyhp\Optimize\Pure]
+            fn product(): int|float => \array_product($this);
+        }
+        extends<TKey extends int|string, TValue extends int|string> array<TKey, TValue> {
+            #[\Tyhp\Optimize\Pure]
+            fn countValues(): array<TValue, int> => \array_count_values($this);
+        }
+    }
+    extension ArrayExtensionsVersioned<TKey extends int|string, TValue> extends array<TKey, TValue> {
+        #[\Tyhp\Optimize\Pure]
+        fn first(): ?TValue => \array_first($this);
+        #[\Tyhp\Optimize\Pure]
+        fn last(): ?TValue => \array_last($this);
+        #[\Tyhp\Optimize\Pure]
+        fn find(callable(TValue, TKey): bool $callback): ?TValue => \array_find($this, $callback);
+        #[\Tyhp\Optimize\Pure]
+        fn findKey(callable(TValue, TKey): bool $callback): ?TKey => \array_find_key($this, $callback);
+        #[\Tyhp\Optimize\Pure]
+        fn any(callable(TValue, TKey): bool $callback): bool => \array_any($this, $callback);
+        #[\Tyhp\Optimize\Pure]
+        fn all(callable(TValue, TKey): bool $callback): bool => \array_all($this, $callback);
+    }
+    /**
+    * Opt-in: allow `unset($this->prop)` on a typed instance property (Prop-init #8).
+    *
+    * Without this attribute, unsetting a typed property is an error — PHP returns the slot to the
+    * uninitialized state and would invalidate property-initialization guarantees. Prefer
+    * `?T $prop = null` when "no value" and null are the same. With the attribute, `unset` clears
+    * definite-initialization within the method, and instance methods treat the property as
+    * possibly uninitialized at entry (guard reads with `??` / `isset`, or reassign first).
+    */
+    #[\Attribute(\Attribute::TARGET_PROPERTY | \Attribute::TARGET_PARAMETER)]
+    final class AllowUnset {
     }
 }
-
 namespace Tyhp\Concerns {
-
-    use Tyhp\GenericObject;
-    use Tyhp\NamedType;
-    use Tyhp\PropertyAccessor;
-    use Tyhp\PropertyAccessorObject;
-    use Tyhp\Type;
-
-    trait HasGenerics
-    {
-        public ?GenericObject $__tyhpGeneric;
-        public function __bootTrait_Tyhp_Concerns_HasGenerics(): void;
+    /**
+    * Convenience aggregate for the common case: no class-owned magic methods.
+    *
+    * Equivalent to using BootsTraits + HandlesGet/Set/Isset/Unset + HasPropertyAccessors.
+    * Prefer composing the pieces separately when the class already defines `__get` / `__set` / etc.
+    */
+    trait UsesPropertyAccessors {
     }
-
-    trait BootsTraits
-    {
-        public function tyhpBootTraits(): void;
-    }
-
-    trait HandlesGet
-    {
-        protected function tyhpRegisterGetHandler(\Closure $handler): void;
-        public function tyhpTryGet(string $name, mixed &$out): bool;
-        final public function __get(string $name): mixed;
-    }
-
-    trait HandlesSet
-    {
-        protected function tyhpRegisterSetHandler(\Closure $handler): void;
-        public function tyhpTrySet(string $name, mixed $value): bool;
-        final public function __set(string $name, mixed $value): void;
-    }
-
-    trait HandlesIsset
-    {
-        protected function tyhpRegisterIssetHandler(\Closure $handler): void;
-        public function tyhpTryIsset(string $name, bool &$out): bool;
-        final public function __isset(string $name): bool;
-    }
-
-    trait HandlesUnset
-    {
-        protected function tyhpRegisterUnsetHandler(\Closure $handler): void;
-        public function tyhpTryUnset(string $name): bool;
-        final public function __unset(string $name): void;
-    }
-
-    trait HasPropertyAccessors
-    {
-        protected ?PropertyAccessorObject $__tyhpPropertyHook;
+    /**
+    * Feature trait: hosts a {@see PropertyAccessorObject} bag and registers handlers into
+    * HandlesGet/Set/Isset/Unset.
+    *
+    * Does not define magic methods. Requires BootsTraits + the Handles* dispatcher traits on the
+    * class (or use UsesPropertyAccessors). Boot registers handlers via `__bootTrait_*`.
+    *
+    * The bag starts null: PHP forbids `new` in trait property defaults. `__bootTrait_*` creates
+    * it (and registers handlers). The emitter injects `$this->tyhpBootTraits()` in constructors
+    * before registrations — it does not emit a separate `??=` for the bag. Call sites use
+    * `$this->__tyhpPropertyHook->getBacking(...)`, etc.
+    *
+    * Emitter contract: inject `$this->tyhpBootTraits()` in constructors; if the class
+    * already defines `__get`/`__set`/…, keep Handles* for `tyhpTry*`/`tyhpRegister*` (class method
+    * overrides the trait magic) and inject `tyhpTry*` at the top of the author's magic method;
+    * if an ancestor already provides a Handles* magic, skip re-using that trait. Rewrite
+    * `$this->prop` inside hook bodies to `$this->__tyhpPropertyHook->getBacking` /
+    * `setBacking` (see TyhpEmitter.PropertyAccessors).
+    */
+    trait HasPropertyAccessors {
+        protected ?\Tyhp\PropertyAccessorObject $__tyhpPropertyHook ?? null;
+        protected abstract function tyhpRegisterGetHandler(callable(string, mixed): bool $handler): void;
+        protected abstract function tyhpRegisterSetHandler(callable(string, mixed): bool $handler): void;
+        protected abstract function tyhpRegisterIssetHandler(callable(string, bool): bool $handler): void;
+        protected abstract function tyhpRegisterUnsetHandler(callable(string): bool $handler): void;
         public function __bootTrait_Tyhp_Concerns_HasPropertyAccessors(): void;
     }
-
-    trait UsesPropertyAccessors
-    {
-        use BootsTraits;
-        use HandlesGet;
-        use HandlesSet;
-        use HandlesIsset;
-        use HandlesUnset;
-        use HasPropertyAccessors;
+    /**
+    * Hosts a {@see GenericObject} bag for runtime generic type tracking.
+    *
+    * Applied by the emitter (or authored) on classes that need Mechanism C tracking. Call sites use
+    * `$this->__tyhpGeneric->resolvedType(...)`, `$this->__tyhpGeneric->init(...)`, etc.
+    *
+    * The bag starts null: PHP forbids `new` in trait property defaults. `__bootTrait_*` (via
+    * {@see BootsTraits::tyhpBootTraits}) creates it before first use. The emitter injects
+    * `$this->tyhpBootTraits()` in constructors and `__initGenerics` (including under
+    * `newInstanceWithoutConstructor()` factories) — it does not emit a separate `??=` for the bag.
+    *
+    * Requires {@see BootsTraits} (composed via <c>use BootsTraits;</c> in this trait).
+    */
+    trait HasGenerics {
+        public ?\Tyhp\GenericObject $__tyhpGeneric ?? null;
+        public function __bootTrait_Tyhp_Concerns_HasGenerics(): void;
+    }
+    /**
+    * Default `__unset` dispatcher. Feature traits register handlers via `tyhpRegisterUnsetHandler`
+    * from their `__bootTrait_*` methods.
+    *
+    * `__unset` is final (polyfill integrity). Extend via `tyhpRegisterUnsetHandler`. If the class
+    * already defines `__unset`, call `tyhpTryUnset` at the top of that implementation.
+    */
+    trait HandlesUnset {
+        /**
+        * Subclass extension point: register an additional unset handler (safe after boot).
+        */
+        protected function tyhpRegisterUnsetHandler(callable(string): bool $handler): void;
+        /**
+        * Returns true when a handler claimed `$name` (handler may throw, e.g. hooked properties).
+        */
+        public function tyhpTryUnset(string $name): bool;
+        public final function __unset(string $name): void;
+    }
+    /**
+    * Default `__set` dispatcher. Feature traits register handlers via `tyhpRegisterSetHandler`
+    * from their `__bootTrait_*` methods.
+    *
+    * `__set` is final (polyfill integrity). Extend via `tyhpRegisterSetHandler`. If the class
+    * already defines `__set`, call `tyhpTrySet` at the top of that implementation.
+    */
+    trait HandlesSet {
+        /**
+        * Subclass extension point: register an additional set handler (safe after boot).
+        */
+        protected function tyhpRegisterSetHandler(callable(string, mixed): bool $handler): void;
+        public function tyhpTrySet(string $name, mixed $value): bool;
+        public final function __set(string $name, mixed $value): void;
+    }
+    /**
+    * Default `__isset` dispatcher. Feature traits register handlers via `tyhpRegisterIssetHandler`
+    * from their `__bootTrait_*` methods.
+    *
+    * `__isset` is final (polyfill integrity). Extend via `tyhpRegisterIssetHandler`. If the class
+    * already defines `__isset`, call `tyhpTryIsset` at the top of that implementation.
+    */
+    trait HandlesIsset {
+        /**
+        * Subclass extension point: register an additional isset handler (safe after boot).
+        */
+        protected function tyhpRegisterIssetHandler(callable(string, bool): bool $handler): void;
+        public function tyhpTryIsset(string $name, bool &$out): bool;
+        public final function __isset(string $name): bool;
+    }
+    /**
+    * Default `__get` dispatcher. Feature traits register handlers via `tyhpRegisterGetHandler`
+    * from their `__bootTrait_*` methods.
+    *
+    * `__get` is final so subclasses cannot bypass the dispatcher; extend via
+    * `tyhpRegisterGetHandler` instead. If the class already defines `__get`, this trait's
+    * `__get` is unused (class wins) — the emitter injects `tyhpTryGet` at the top of the
+    * author's method. Native PHP 8.4 hooks do not freeze `__get`; final is polyfill integrity.
+    */
+    trait HandlesGet {
+        /**
+        * Subclass extension point: register an additional get handler (safe after boot).
+        */
+        protected function tyhpRegisterGetHandler(callable(string, mixed): bool $handler): void;
+        /**
+        * Try registered get handlers. Returns true and writes `$out` when a handler claims `$name`.
+        */
+        public function tyhpTryGet(string $name, mixed &$out): bool;
+        public final function __get(string $name): mixed;
+    }
+    /**
+    * Discovers and runs `__bootTrait_*` methods once per instance.
+    *
+    * Call `tyhpBootTraits()` explicitly from constructors when possible (emitter should inject this).
+    * Magic-method dispatcher traits also call it lazily before handling so boot still runs if the
+    * constructor path was skipped.
+    *
+    * Discovery is by method-name prefix only — no `class_uses` walk and no FQN validation.
+    */
+    trait BootsTraits {
+        public function tyhpBootTraits(): void;
     }
 }
-
 namespace Tyhp\Contracts {
-
-    // Marker for any value that defines a conversion to a scalar/decimal via one of the
-    // specific *Convertible contracts (mirrors tyhp_src/Contracts/Convertible.tyhp).
-    interface Convertible
-    {
+    interface StringConvertible extends \Stringable, \Tyhp\Contracts\Convertible {
     }
-
-    interface BoolConvertible extends Convertible
-    {
-        public function __toBool(): bool;
-    }
-
-    interface FloatConvertible extends Convertible
-    {
-        public function __toFloat(): float;
-    }
-
-    interface IntConvertible extends Convertible
-    {
-        public function __toInt(): int;
-    }
-
-    interface StringConvertible extends \Stringable, Convertible
-    {
-    }
-
-    interface IsDisposable
-    {
+    interface IsDisposable {
         public function dispose(): void;
     }
+    interface IntConvertible extends \Tyhp\Contracts\Convertible {
+        public function __toInt(): int;
+    }
+    interface FloatConvertible extends \Tyhp\Contracts\Convertible {
+        public function __toFloat(): float;
+    }
+    interface Convertible {
+    }
+    interface BoolConvertible extends \Tyhp\Contracts\Convertible {
+        public function __toBool(): bool;
+    }
+    interface ArrayAccessShape<TStruct extends struct> extends \ArrayAccess<__IndexKeys<TStruct>, __IndexValueTypes<TStruct>> {
+        public function offsetExists(#[\Tyhp\PhpType('mixed')] __IndexKeys<TStruct> $offset): bool;
+        #[\Tyhp\PhpType('mixed')]
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        public function offsetGet<TKey extends __IndexKeys<TStruct>>(#[\Tyhp\PhpType('mixed')] TKey $offset): __IndexValueType<TStruct, TKey>;
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        public function offsetSet<TKey extends __IndexKeys<TStruct>>(#[\Tyhp\PhpType('mixed')] TKey $offset, #[\Tyhp\PhpType('mixed')] __IndexValueType<TStruct, TKey> $value): void;
+        public function offsetUnset(#[\Tyhp\PhpType('mixed')] __IndexKeys<TStruct> $offset): void;
+    }
 }
-
 namespace Tyhp\Exceptions {
-
-    use Tyhp\Type;
-
-    final class AggregateException extends \RuntimeException
-    {
-        public function __construct(
-            array<\Throwable> $innerExceptions,
-            string $message = 'One or more errors occurred',
-            ?\Throwable $previous = null,
-        ): void;
-
-        public function getInnerExceptions(): array<\Throwable>;
+    final class PropertyNotFoundException extends \RuntimeException {
+        public function __construct(string $propertyName, string $className, ?\Throwable $previous = null): void;
+        public function getPropertyName(): string;
+        public function getClassName(): string;
     }
-
-    final class IncompatibleTypeException extends \RuntimeException
-    {
-        public function __construct(
-            Type $expected,
-            Type $actual,
-            ?string $variableOrParameterName = null,
-            ?\Throwable $previous = null,
-        ): void;
-
-        public function getExpectedType(): Type;
-        public function getActualType(): Type;
-        public function getVariableOrParameterName(): ?string;
+    final class InvalidTypeException extends \LogicException {
     }
-
-    final class InvalidTypeException extends \LogicException
-    {
-    }
-
-    final class InvalidParametersForOperatorOverloadException extends \RuntimeException
-    {
-        public function __construct(
-            string $className,
-            string $methodName,
-            mixed ...$operands,
-        ): void;
-
+    final class InvalidParametersForOperatorOverloadException extends \RuntimeException {
+        public function __construct(string $className, string $methodName, mixed ...$operands): void;
         public function getClassName(): string;
         public function getMethodName(): string;
     }
-
-    final class PropertyNotFoundException extends \RuntimeException
-    {
-        public function __construct(
-            string $propertyName,
-            string $className,
-            ?\Throwable $previous = null,
-        ): void;
-
-        public function getPropertyName(): string;
-        public function getClassName(): string;
+    final class IncompatibleTypeException extends \RuntimeException {
+        public function __construct(\Tyhp\Type $expected, \Tyhp\Type $actual, ?string $variableOrParameterName = null, ?\Throwable $previous = null): void;
+        public function getExpectedType(): \Tyhp\Type;
+        public function getActualType(): \Tyhp\Type;
+        public function getVariableOrParameterName(): ?string;
+    }
+    final class AggregateException extends \RuntimeException {
+        public function __construct(array<\Throwable> $innerExceptions, string $message = 'One or more errors occurred', ?\Throwable $previous = null): void;
+        public function getInnerExceptions(): array<\Throwable>;
+    }
+}
+namespace Tyhp\Optimize {
+    #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::TARGET_FUNCTION)]
+    #[\Tyhp\NoEmit]
+    final class Pure {
+    }
+    #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::TARGET_FUNCTION)]
+    #[\Tyhp\NoEmit]
+    final class Inline {
     }
 }

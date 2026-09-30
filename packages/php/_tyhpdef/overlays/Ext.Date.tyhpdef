@@ -1,0 +1,442 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Date signature enrichments: stub array-shapes as structs, DatePeriod
+ * constructors, DateInterval properties, DateTime operators, and serialize
+ * magics. Not Pure.
+ */
+
+/**
+ * Overlay: `DateInterval::__serialize()` / `__unserialize()` / `__set_state()`
+ * property bag. Duration intervals omit `$date_string`; `from_string`
+ * intervals omit the y/m/d/h/i/s/f/invert/days keys.
+ */
+type DateIntervalSerializeState = struct {
+    ?int $y;
+    ?int $m;
+    ?int $d;
+    ?int $h;
+    ?int $i;
+    ?int $s;
+    ?float $f;
+    ?int $invert;
+    int|false|null $days;
+    bool $from_string;
+    ?string $date_string;
+};
+
+/**
+ * Overlay: `date_get_last_errors()` / `DateTime::getLastErrors()` array-shape.
+ * Warning and error messages are keyed by string offset.
+ */
+type DateLastErrors = struct {
+    int $warning_count;
+    array<int, string> $warnings;
+    int $error_count;
+    array<int, string> $errors;
+};
+
+/**
+ * Overlay: relative time block nested under `date_parse()` / `date_parse_from_format()`.
+ * Present only when the input contains a relative clause (`+1 day`, `next weekday`, …).
+ */
+type DateParseRelative = struct {
+    int $year;
+    int $month;
+    int $day;
+    int $hour;
+    int $minute;
+    int $second;
+    ?int $weekday;
+    ?int $weekdays;
+    ?bool $first_day_of_month;
+    ?bool $last_day_of_month;
+};
+
+/**
+ * Overlay: `date_parse()` / `date_parse_from_format()` array-shape return.
+ * Omitted keys (`zone_type`, `relative`, …) are null. Parse failures stay in
+ * `$errors` — PHP 8 always returns the array.
+ */
+type DateParseResult = struct {
+    int|false $year;
+    int|false $month;
+    int|false $day;
+    int|false $hour;
+    int|false $minute;
+    int|false $second;
+    float|false $fraction;
+    int $warning_count;
+    int $error_count;
+    array<int, string> $warnings;
+    array<int, string> $errors;
+    bool $is_localtime;
+    ?int $zone_type;
+    ?int $zone;
+    ?bool $is_dst;
+    ?string $tz_abbr;
+    ?string $tz_id;
+    ?DateParseRelative $relative;
+};
+
+/**
+ * Overlay: `date_sun_info()` array-shape return. Each event is a Unix timestamp
+ * or false when that event does not occur (polar day/night).
+ */
+type DateSunInfo = struct {
+    int|false $sunrise;
+    int|false $sunset;
+    int|false $transit;
+    int|false $civil_twilight_begin;
+    int|false $civil_twilight_end;
+    int|false $nautical_twilight_begin;
+    int|false $nautical_twilight_end;
+    int|false $astronomical_twilight_begin;
+    int|false $astronomical_twilight_end;
+};
+
+/**
+ * Overlay: `DateTime` / `DateTimeImmutable` / `DateTimeInterface` serialize
+ * shape (`date`, `timezone_type`, `timezone`). Also `DateTime::__set_state()`.
+ */
+type DateTimeSerializeState = struct {
+    string $date;
+    int $timezone_type;
+    string $timezone;
+};
+
+/**
+ * Overlay: `DateTimeZone::__serialize()` / `__set_state()` shape.
+ */
+type DateTimeZoneSerializeState = struct {
+    int $timezone_type;
+    string $timezone;
+};
+
+/**
+ * Overlay: `getdate()` array-shape return. Numeric key `0` is the Unix timestamp.
+ */
+type GetDateParts = struct {
+    int $seconds;
+    int $minutes;
+    int $hours;
+    int $mday;
+    int $wday;
+    int $mon;
+    int $year;
+    int $yday;
+    string $weekday;
+    string $month;
+    int 0 as $timestamp;
+};
+
+/**
+ * Overlay: `localtime($ts, true)` array-shape return (C `tm` fields).
+ */
+type LocalTimeParts = struct {
+    int $tm_sec;
+    int $tm_min;
+    int $tm_hour;
+    int $tm_mday;
+    int $tm_mon;
+    int $tm_year;
+    int $tm_wday;
+    int $tm_yday;
+    int $tm_isdst;
+};
+
+/**
+ * Overlay: inner element of `timezone_abbreviations_list()` / `listAbbreviations()`.
+ */
+type TimezoneAbbreviation = struct {
+    bool $dst;
+    int $offset;
+    ?string $timezone_id;
+};
+
+/**
+ * Overlay: `DateTimeZone::getLocation()` array-shape return.
+ * `$comments` is false when the zone has no location comment.
+ */
+type TimezoneLocation = struct {
+    string $country_code;
+    float $latitude;
+    float $longitude;
+    string|false $comments;
+};
+
+/**
+ * Overlay: one timezone transition from `DateTimeZone::getTransitions()`.
+ */
+type TimezoneTransition = struct {
+    int $ts;
+    string $time;
+    int $offset;
+    bool $isdst;
+    string $abbr;
+};
+
+/**
+ * Overlay: `date_get_last_errors()` array-shape as `DateLastErrors`.
+ *
+ * @return DateLastErrors|false Last parse warnings/errors, or false when none.
+ */
+// @overlay-against: function date_get_last_errors(): array|false
+function date_get_last_errors(): DateLastErrors|false;
+
+/**
+ * Overlay: `date_parse()` always returns the parsed struct (errors live in `$errors`).
+ *
+ * @param string $datetime Date/time string accepted by `DateTimeImmutable::__construct()`.
+ * @return DateParseResult Parsed fields.
+ */
+// @overlay-against: function date_parse(string $datetime): array
+function date_parse(string $datetime): DateParseResult;
+
+/**
+ * Overlay: `date_parse_from_format()` returns the same struct as `date_parse()`.
+ *
+ * @param string $format Format string as for `DateTimeImmutable::createFromFormat()`.
+ * @param string $datetime Date/time string to parse.
+ * @return DateParseResult Parsed fields.
+ */
+// @overlay-against: function date_parse_from_format(string $format, string $datetime): array
+function date_parse_from_format(string $format, string $datetime): DateParseResult;
+
+/**
+ * Overlay: `date_sun_info()` array-shape as `DateSunInfo`.
+ *
+ * @param int $timestamp Unix timestamp.
+ * @param float $latitude Latitude in degrees.
+ * @param float $longitude Longitude in degrees.
+ * @return DateSunInfo|false Sun/twilight timestamps, or false on failure.
+ */
+// @overlay-against: function date_sun_info(int $timestamp, float $latitude, float $longitude): array
+function date_sun_info(int $timestamp, float $latitude, float $longitude): DateSunInfo|false;
+
+/**
+ * Overlay: `getdate()` returns `GetDateParts` instead of `array`.
+ *
+ * @param ?int $timestamp Unix timestamp, or null for now.
+ * @return GetDateParts Date components.
+ */
+// @overlay-against: function getdate(?int $timestamp): array
+function getdate(?int $timestamp = null): GetDateParts;
+
+/**
+ * Overlay: associative `localtime()` returns `LocalTimeParts`.
+ *
+ * @param ?int $timestamp Unix timestamp, or null for now.
+ * @param true $associative Request the associative form.
+ * @return LocalTimeParts C `tm` fields.
+ */
+// @overlay-against: function localtime(?int $timestamp, bool $associative): array
+function localtime(?int $timestamp = null, true $associative): LocalTimeParts;
+
+/**
+ * Overlay: non-associative `localtime()` returns a list of ints.
+ *
+ * @param ?int $timestamp Unix timestamp, or null for now.
+ * @param false $associative Request the indexed form.
+ * @return array<int, int> Indexed `tm` fields.
+ */
+// @overlay-against: function localtime(?int $timestamp, bool $associative): array
+function localtime(?int $timestamp = null, false $associative = false): array<int, int>;
+
+/**
+ * Overlay: encompassing signature when `$associative` is a runtime bool.
+ *
+ * @param ?int $timestamp Unix timestamp, or null for now.
+ * @param bool $associative Whether to return named fields.
+ * @return LocalTimeParts|array<int, int> Struct or indexed list.
+ */
+// @overlay-against: function localtime(?int $timestamp, bool $associative): array
+function localtime(?int $timestamp = null, bool $associative = false): LocalTimeParts|array<int, int>;
+
+/**
+ * Overlay: timezone abbreviations keyed by abbreviation, then a list of DST/offset/id rows.
+ *
+ * @return array<string, array<int, TimezoneAbbreviation>> Abbreviation table.
+ */
+// @overlay-against: function timezone_abbreviations_list(): array
+function timezone_abbreviations_list(): array<string, array<int, TimezoneAbbreviation>>;
+
+/**
+ * Overlay: timezone identifiers as a list of strings (PHP 8 does not return false).
+ *
+ * @param int $timezoneGroup One of the `DateTimeZone` group constants.
+ * @param ?string $countryCode ISO 3166-1 country code when `$timezoneGroup` is `PER_COUNTRY`.
+ * @return array<int, string> Timezone identifiers.
+ */
+// @overlay-against: function timezone_identifiers_list(int $timezoneGroup, ?string $countryCode): array
+function timezone_identifiers_list(int $timezoneGroup = \DateTimeZone::ALL, ?string $countryCode = null): array<int, string>;
+
+/**
+ * Overlay: `timezone_location_get()` array-shape as `TimezoneLocation`.
+ *
+ * @param \DateTimeZone $object Timezone to inspect.
+ * @return TimezoneLocation|false Location fields, or false for offset/abbreviation zones.
+ */
+// @overlay-against: function timezone_location_get(\DateTimeZone $object): array|false
+function timezone_location_get(\DateTimeZone $object): TimezoneLocation|false;
+
+/**
+ * Overlay: `timezone_transitions_get()` as a list of `TimezoneTransition`.
+ *
+ * @param \DateTimeZone $object Timezone to inspect.
+ * @param int $timestampBegin Begin timestamp.
+ * @param int $timestampEnd End timestamp.
+ * @return array<int, TimezoneTransition>|false Transitions, or false for offset/abbreviation zones.
+ */
+// @overlay-against: function timezone_transitions_get(\DateTimeZone $object, int $timestampBegin, int $timestampEnd): array|false
+function timezone_transitions_get(\DateTimeZone $object, int $timestampBegin = \PHP_INT_MIN, int $timestampEnd = 2147483647): array<int, TimezoneTransition>|false;
+
+// Documented public properties (also present on Layer 1 after harvest).
+// @overlay-against: class DateInterval
+partial class DateInterval {
+    // @overlay-against: int $d
+    public int $d;
+    // @overlay-against: string $date_string
+    public string $date_string;
+    // @overlay-against: int|false $days
+    public int|false $days;
+    // @overlay-against: float $f
+    public float $f;
+    // @overlay-against: bool $from_string
+    public bool $from_string;
+    // @overlay-against: int $h
+    public int $h;
+    // @overlay-against: int $i
+    public int $i;
+    // @overlay-against: int $invert
+    public int $invert;
+    // @overlay-against: int $m
+    public int $m;
+    // @overlay-against: int $s
+    public int $s;
+    // @overlay-against: int $y
+    public int $y;
+
+    // @overlay-against: function __set_state(array $array): \DateInterval
+    public static function __set_state(DateIntervalSerializeState $array): \DateInterval;
+
+    // @overlay-against: function __serialize(): array
+    public function __serialize(): DateIntervalSerializeState;
+    // @overlay-against: function __unserialize(array $data): void
+    public function __unserialize(DateIntervalSerializeState $data): void;
+}
+
+// Layer 2 already supplies TDate / TEnd / TRecurrences. Last-win the
+// IteratorAggregate/Traversable type arguments so foreach binds `int` / `TDate`.
+// @overlay-against: class DatePeriod implements \IteratorAggregate, \Traversable
+partial class DatePeriod implements \IteratorAggregate<int, TDate>, \Traversable<int, TDate>;
+// @overlay-against: class DatePeriod implements \IteratorAggregate, \Traversable
+partial class DatePeriod {
+    // @overlay-against: ?\DateTimeInterface $current
+    public ?TDate $current;
+    // @overlay-against: ?\DateTimeInterface $end
+    public TEnd $end;
+    // @overlay-against: ?\DateTimeInterface $start
+    public ?TDate $start;
+
+    // @overlay-against: function __set_state(array $array): \DatePeriod
+    public static function __set_state(array<string, mixed> $array): \DatePeriod;
+    #[\Tyhp\Php(">=8.3")]
+    // @overlay-against: function createFromISO8601String(string $specification, int $options): \DatePeriod
+    public static function createFromISO8601String(string $specification, int $options = 0): \DatePeriod<\DateTimeImmutable>;
+
+    // @overlay-against: function __construct(\DateTimeInterface $start, \DateInterval $interval, \DateTimeInterface $end, int $options): void
+    public function __construct(TDate $start, \DateInterval $interval, TEnd $end, int $options = 0): void;
+    // @overlay-against: function __construct(\DateTimeInterface $start, \DateInterval $interval, int $recurrences, int $options): void
+    public function __construct(TDate $start, \DateInterval $interval, int $recurrences, int $options = 0): void;
+    // @overlay-against: function __construct(string $isostr, int $options): void
+    #[\Deprecated(since: '8.4')]
+    public function __construct(string $isostr, int $options = 0): void;
+
+    // @overlay-against: function __serialize(): array
+    public function __serialize(): array<string, mixed>;
+    // @overlay-against: function __unserialize(array $data): void
+    public function __unserialize(array<string, mixed> $data): void;
+
+    // @overlay-against: function getEndDate(): ?\DateTimeInterface
+    public function getEndDate(): TEnd;
+    // @overlay-against: function getIterator(): \Iterator
+    public function getIterator(): \Iterator<int, TDate>;
+    // @overlay-against: function getStartDate(): \DateTimeInterface
+    public function getStartDate(): TDate;
+}
+
+// PHP TypeErrors on `DateTime + DateInterval`. Map `+`/`-` onto add/sub/diff.
+// Mutable `add`/`sub` mutate `$left` and return it — do not clone.
+// @overlay-against: class DateTime implements \DateTimeInterface
+partial class DateTime {
+    // @overlay-against: function __set_state(array $array): \DateTime
+    public static function __set_state(DateTimeSerializeState $array): \DateTime;
+    // @overlay-against: function getLastErrors(): array|false
+    public static function getLastErrors(): DateLastErrors|false;
+
+    // @overlay-against: function __serialize(): array
+    public function __serialize(): DateTimeSerializeState;
+    // @overlay-against: function __unserialize(array $data): void
+    public function __unserialize(DateTimeSerializeState $data): void;
+
+    extension operator +(self $left, \DateInterval $right): \DateTime => $left->add($right);
+    extension operator -(self $left, \DateInterval $right): \DateTime => $left->sub($right);
+    extension operator -(self $left, \DateTimeInterface $right): \DateInterval => $left->diff($right);
+}
+
+// @overlay-against: class DateTimeImmutable implements \DateTimeInterface
+partial class DateTimeImmutable {
+    // @overlay-against: function __set_state(array $array): \DateTimeImmutable
+    public static function __set_state(DateTimeSerializeState $array): \DateTimeImmutable;
+    // @overlay-against: function getLastErrors(): array|false
+    public static function getLastErrors(): DateLastErrors|false;
+
+    // @overlay-against: function __serialize(): array
+    public function __serialize(): DateTimeSerializeState;
+    // @overlay-against: function __unserialize(array $data): void
+    public function __unserialize(DateTimeSerializeState $data): void;
+
+    extension operator +(self $left, \DateInterval $right): \DateTimeImmutable => $left->add($right);
+    extension operator -(self $left, \DateInterval $right): \DateTimeImmutable => $left->sub($right);
+    extension operator -(self $left, \DateTimeInterface $right): \DateInterval => $left->diff($right);
+}
+
+// PHP compares DateTimeInterface values by timeline, not identity. Bodyless
+// `operator` is native passthrough — the emitter leaves `$a < $b` in PHP.
+// @overlay-against: interface DateTimeInterface
+partial interface DateTimeInterface {
+    // @overlay-against: function __serialize(): array
+    abstract public function __serialize(): DateTimeSerializeState;
+    // @overlay-against: function __unserialize(array $data): void
+    abstract public function __unserialize(DateTimeSerializeState $data): void;
+
+    operator <=>(self $left, \DateTimeInterface $right): int;
+    operator <(self $left, \DateTimeInterface $right): bool;
+    operator <=(self $left, \DateTimeInterface $right): bool;
+    operator >(self $left, \DateTimeInterface $right): bool;
+    operator >=(self $left, \DateTimeInterface $right): bool;
+    operator ==(self $left, \DateTimeInterface $right): bool;
+    operator !=(self $left, \DateTimeInterface $right): bool;
+}
+
+// @overlay-against: class DateTimeZone
+partial class DateTimeZone {
+    // @overlay-against: function __set_state(array $array): \DateTimeZone
+    public static function __set_state(DateTimeZoneSerializeState $array): \DateTimeZone;
+    // @overlay-against: function listAbbreviations(): array
+    public static function listAbbreviations(): array<string, array<int, TimezoneAbbreviation>>;
+    // @overlay-against: function listIdentifiers(int $timezoneGroup, ?string $countryCode): array
+    public static function listIdentifiers(int $timezoneGroup = \DateTimeZone::ALL, ?string $countryCode = null): array<int, string>;
+
+    // @overlay-against: function __serialize(): array
+    public function __serialize(): DateTimeZoneSerializeState;
+    // @overlay-against: function __unserialize(array $data): void
+    public function __unserialize(DateTimeZoneSerializeState $data): void;
+
+    // @overlay-against: function getLocation(): array|false
+    public function getLocation(): TimezoneLocation|false;
+    // @overlay-against: function getTransitions(int $timestampBegin, int $timestampEnd): array|false
+    public function getTransitions(int $timestampBegin = \PHP_INT_MIN, int $timestampEnd = 2147483647): array<int, TimezoneTransition>|false;
+}

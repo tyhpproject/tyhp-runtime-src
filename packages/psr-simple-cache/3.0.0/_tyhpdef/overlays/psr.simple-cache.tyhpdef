@@ -1,0 +1,59 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Generic get/default, keyed multi-get/set maps, and TTL union.
+ */
+
+namespace Psr\SimpleCache {
+    /**
+     * PSR-16 TTL: seconds, a `DateInterval`, or null (driver default / forever).
+     */
+    type CacheTtl = int|\DateInterval|null;
+
+    /**
+     * Overlay: `get`/`getMultiple` share the default's type; multi-set is a string-keyed map.
+     */
+    // @overlay-against: interface CacheInterface
+    partial interface CacheInterface {
+        /**
+         * @param string $key The unique key of this item in the cache.
+         * @param T $default Default value to return if the key does not exist.
+         * @return T The value of the item from the cache, or `$default` on miss.
+         * @throws \Psr\SimpleCache\InvalidArgumentException
+         */
+        // @overlay-against: function get(string $key, mixed $default): mixed
+        public function get<T = mixed>(string $key, T $default = null): T;
+
+        /**
+         * @param \Psr\SimpleCache\CacheTtl $ttl Optional TTL.
+         * @throws \Psr\SimpleCache\InvalidArgumentException
+         */
+        // @overlay-against: function set(string $key, mixed $value, null|int|\DateInterval $ttl): bool
+        public function set(string $key, mixed $value, \Psr\SimpleCache\CacheTtl $ttl = null): bool;
+
+        /**
+         * @param iterable<string> $keys A list of keys that can be obtained in a single operation.
+         * @param T $default Default value to return for keys that do not exist.
+         * @return iterable<string, T> Key => value pairs; missing keys use `$default`.
+         * @throws \Psr\SimpleCache\InvalidArgumentException
+         */
+        // @overlay-against: function getMultiple(iterable $keys, mixed $default): iterable
+        public function getMultiple<T = mixed>(iterable<string> $keys, T $default = null): iterable<string, T>;
+
+        /**
+         * @param iterable<string, mixed> $values Key => value pairs for a multiple-set operation.
+         * @param \Psr\SimpleCache\CacheTtl $ttl Optional TTL.
+         * @throws \Psr\SimpleCache\InvalidArgumentException
+         */
+        // @overlay-against: function setMultiple(iterable $values, null|int|\DateInterval $ttl): bool
+        public function setMultiple(iterable<string, mixed> $values, \Psr\SimpleCache\CacheTtl $ttl = null): bool;
+
+        /**
+         * @param iterable<string> $keys A list of string-based keys to be deleted.
+         * @throws \Psr\SimpleCache\InvalidArgumentException
+         */
+        // @overlay-against: function deleteMultiple(iterable $keys): bool
+        public function deleteMultiple(iterable<string> $keys): bool;
+    }
+}

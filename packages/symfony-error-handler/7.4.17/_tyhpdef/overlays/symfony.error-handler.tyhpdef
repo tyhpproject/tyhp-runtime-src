@@ -1,0 +1,148 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * ErrorLevelMap, FlattenException header maps, omit console / serializer peers.
+ */
+
+namespace Symfony\Component\ErrorHandler {
+    /**
+     * Tyhp encoding of vendor `@param array|int|null $levels` (E_* bitfield or E_* => PSR-3 level).
+     */
+    type ErrorLevelMap = array<int, string>|int|null;
+
+    /**
+     * Tyhp encoding: `setDefaultLogger` accepts a PSR-3 logger and an E_* map or bitfield.
+     * Default `\E_ALL` matches vendor PHP (L1 dropped the default).
+     */
+    // @overlay-against: class ErrorHandler
+    partial class ErrorHandler {
+        /**
+         * @param \Symfony\Component\ErrorHandler\ErrorLevelMap $levels
+         */
+        // @overlay-against: function setDefaultLogger(\Psr\Log\LoggerInterface $logger, array|int|null $levels, bool $replace): void
+        public function setDefaultLogger(\Psr\Log\LoggerInterface $logger, \Symfony\Component\ErrorHandler\ErrorLevelMap $levels = \E_ALL, bool $replace = false): void;
+    
+
+        /**
+         * @return array<\Symfony\Component\ErrorHandler\ErrorEnhancer\ErrorEnhancerInterface>
+         */
+        // @overlay-against: function getErrorEnhancers(): array
+        protected function getErrorEnhancers(): array<\Symfony\Component\ErrorHandler\ErrorEnhancer\ErrorEnhancerInterface>;
+
+        // @overlay-against: function setExceptionHandler(?callable $handler): ?callable
+        public function setExceptionHandler(null|(callable(\Throwable): void) $handler): null|(callable(\Throwable): void);
+    }
+}
+
+namespace Symfony\Component\ErrorHandler\Command {
+    /**
+     * Omit: optional `symfony/console` peer.
+     */
+    // @overlay-against: class ErrorDumpCommand extends \Symfony\Component\Console\Command\Command
+    omit final class ErrorDumpCommand {
+    }
+}
+
+namespace Symfony\Component\ErrorHandler\ErrorRenderer {
+    /**
+     * Omit: optional `symfony/serializer` peer.
+     */
+    // @overlay-against: class SerializerErrorRenderer implements \Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface
+    omit class SerializerErrorRenderer {
+    }
+}
+
+namespace Symfony\Component\ErrorHandler\Exception {
+    /**
+     * Frame stored by FlattenException::setTrace.
+     */
+    type FlattenExceptionFrame = struct {
+        string $namespace;
+        string $short_class;
+        string $class;
+        string $type;
+        string|null $function;
+        string|null $file;
+        int|null $line;
+        array<int|string, mixed> $args;
+    };
+
+    /**
+     * Tyhp encoding: FlattenException headers match Foundation header maps (L1 is bare `array`).
+     */
+    // @overlay-against: class FlattenException
+    partial class FlattenException {
+        /**
+         * @param array<string, string|array<int, string>> $headers
+         */
+        // @overlay-against: function create(\Exception $exception, ?int $statusCode, array $headers): static
+        public static function create(\Exception $exception, ?int $statusCode = null, array<string, string|array<int, string>> $headers = []): static;
+
+        /**
+         * @param array<string, string|array<int, string>> $headers
+         */
+        // @overlay-against: function createFromThrowable(\Throwable $exception, ?int $statusCode, array $headers): static
+        public static function createFromThrowable(\Throwable $exception, ?int $statusCode = null, array<string, string|array<int, string>> $headers = []): static;
+
+        /**
+         * @return array<string, string|array<int, string>>
+         */
+        // @overlay-against: function getHeaders(): array
+        public function getHeaders(): array<string, string|array<int, string>>;
+
+        /**
+         * @param array<string, string|array<int, string>> $headers
+         */
+        // @overlay-against: function setHeaders(array $headers): static
+        public function setHeaders(array<string, string|array<int, string>> $headers): static;
+    
+
+        /**
+         * @return array<self>
+         */
+        // @overlay-against: function getAllPrevious(): array
+        public function getAllPrevious(): array<self>;
+
+        // @overlay-against: function getTrace(): array
+        public function getTrace(): array<int, \Symfony\Component\ErrorHandler\Exception\FlattenExceptionFrame>;
+
+        // @overlay-against: function setTrace(array $trace, ?string $file, ?int $line): static
+        public function setTrace(array<int, array<string, mixed>> $trace, ?string $file, ?int $line): static;
+    }
+
+    /**
+     * PHP debug_backtrace frames are string-keyed maps. Argument values stay open.
+     */
+    // @overlay-against: class SilencedErrorContext implements \JsonSerializable
+    partial class SilencedErrorContext {
+        // @overlay-against: function __construct(int $severity, string $file, int $line, array $trace, int $count): void
+        public function __construct(int $severity, string $file, int $line, array<int, array<string, mixed>> $trace = [], int $count = 1): void;
+
+        // @overlay-against: function getTrace(): array
+        public function getTrace(): array<int, array<string, mixed>>;
+    }
+}
+
+namespace Symfony\Component\ErrorHandler {
+    /**
+     * One buffered PSR-3 record: level, message, and context.
+     */
+    type BufferedLog = struct {
+        mixed 0 as $level;
+        mixed 1 as $message;
+        array<string, mixed> 2 as $context;
+    };
+
+    /**
+     * Overlay: options, context, and config maps are `array<string, mixed>`. Harvest left bare `array`.
+     */
+    // @overlay-against: class BufferingLogger extends \Psr\Log\AbstractLogger
+    partial class BufferingLogger {
+        // @overlay-against: function log(mixed $level, mixed $message, array $context): void
+        public function log(mixed $level, mixed $message, array<string, mixed> $context = []): void;
+
+        // @overlay-against: function cleanLogs(): array
+        public function cleanLogs(): array<int, \Symfony\Component\ErrorHandler\BufferedLog>;
+    }
+}

@@ -1,0 +1,1789 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace PHPStan\PhpDocParser {
+    class ParserConfig {
+        public bool $useLinesAttributes;
+        public bool $useIndexAttributes;
+        public bool $useCommentsAttributes;
+        /**
+        * @param array $usedAttributes
+        * @generated
+        */
+        public function __construct(array $usedAttributes): void;
+    }
+}
+namespace PHPStan\PhpDocParser\Ast {
+    /**
+    * Inspired by https://github.com/nikic/PHP-Parser/tree/36a6dcd04e7b0285e8f0868f44bd4927802f7df1
+    *
+    * Copyright (c) 2011, Nikita Popov
+    * All rights reserved.
+    *
+    * @generated
+    */
+    abstract class AbstractNodeVisitor implements \PHPStan\PhpDocParser\Ast\NodeVisitor {
+        public function beforeTraverse(array $nodes): ?array;
+        public function enterNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed;
+        public function leaveNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed;
+        public function afterTraverse(array $nodes): ?array;
+    }
+    final class Attribute {
+        public const string START_LINE ?? 'startLine';
+        public const string END_LINE ?? 'endLine';
+        public const string START_INDEX ?? 'startIndex';
+        public const string END_INDEX ?? 'endIndex';
+        public const string ORIGINAL_NODE ?? 'originalNode';
+        public const string COMMENTS ?? 'comments';
+    }
+    class Comment {
+        public string $text;
+        public int $startLine;
+        public int $startIndex;
+        public function __construct(string $text, int $startLine = -1, int $startIndex = -1): void;
+        public function getReformattedText(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    interface Node {
+        public function __toString(): string;
+        /**
+        * @param mixed $value
+        * @generated
+        */
+        public function setAttribute(string $key, mixed $value): void;
+        public function hasAttribute(string $key): bool;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getAttribute(string $key): mixed;
+    }
+    trait NodeAttributes {
+        /**
+        * @param mixed $value
+        * @generated
+        */
+        public function setAttribute(string $key, mixed $value): void;
+        public function hasAttribute(string $key): bool;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getAttribute(string $key): mixed;
+    }
+    /**
+    * Inspired by https://github.com/nikic/PHP-Parser/tree/36a6dcd04e7b0285e8f0868f44bd4927802f7df1
+    *
+    * Copyright (c) 2011, Nikita Popov
+    * All rights reserved.
+    *
+    * @generated
+    */
+    final class NodeTraverser {
+        /**
+        * If NodeVisitor::enterNode() returns DONT_TRAVERSE_CHILDREN, child nodes
+        *
+        * of the current node will not be traversed for any visitors.
+        * 
+        * For subsequent visitors enterNode() will still be called on the current
+        * node and leaveNode() will also be invoked for the current node.
+        *
+        * @generated
+        */
+        public const int DONT_TRAVERSE_CHILDREN ?? 1;
+        /**
+        * If NodeVisitor::enterNode() or NodeVisitor::leaveNode() returns
+        *
+        * STOP_TRAVERSAL, traversal is aborted.
+        * 
+        * The afterTraverse() method will still be invoked.
+        *
+        * @generated
+        */
+        public const int STOP_TRAVERSAL ?? 2;
+        /**
+        * If NodeVisitor::leaveNode() returns REMOVE_NODE for a node that occurs
+        *
+        * in an array, it will be removed from the array.
+        * 
+        * For subsequent visitors leaveNode() will still be invoked for the
+        * removed node.
+        *
+        * @generated
+        */
+        public const int REMOVE_NODE ?? 3;
+        /**
+        * If NodeVisitor::enterNode() returns DONT_TRAVERSE_CURRENT_AND_CHILDREN, child nodes
+        *
+        * of the current node will not be traversed for any visitors.
+        * 
+        * For subsequent visitors enterNode() will not be called as well.
+        * leaveNode() will be invoked for visitors that has enterNode() method invoked.
+        *
+        * @generated
+        */
+        public const int DONT_TRAVERSE_CURRENT_AND_CHILDREN ?? 4;
+        /**
+        * @param array<int, NodeVisitor> $visitors
+        * @generated
+        */
+        public function __construct(array<int, \PHPStan\PhpDocParser\Ast\NodeVisitor> $visitors): void;
+        /**
+        * Traverses an array of nodes using the registered visitors.
+        *
+        * @param array<int, Node> $nodes Array of nodes
+        * @return array<int, Node> Traversed array of nodes
+        * @generated
+        */
+        public function traverse(array<int, \PHPStan\PhpDocParser\Ast\Node> $nodes): array<int, \PHPStan\PhpDocParser\Ast\Node>;
+    }
+    /**
+    * Inspired by https://github.com/nikic/PHP-Parser/tree/36a6dcd04e7b0285e8f0868f44bd4927802f7df1
+    *
+    * Copyright (c) 2011, Nikita Popov
+    * All rights reserved.
+    *
+    * @generated
+    */
+    interface NodeVisitor {
+        /**
+        * Called once before traversal.
+        *
+        * Return value semantics:
+        *  * null:      $nodes stays as-is
+        *  * otherwise: $nodes is set to the return value
+        *
+        * @param array<int, Node> $nodes Array of nodes
+        * @return array<int, Node>|null Array of nodes
+        * @generated
+        */
+        public function beforeTraverse(array<int, \PHPStan\PhpDocParser\Ast\Node> $nodes): array<int, \PHPStan\PhpDocParser\Ast\Node>|null;
+        /**
+        * Called when entering a node.
+        *
+        * Return value semantics:
+        *  * null
+        *        => $node stays as-is
+        *  * array (of Nodes)
+        *        => The return value is merged into the parent array (at the position of the $node)
+        *  * NodeTraverser::REMOVE_NODE
+        *        => $node is removed from the parent array
+        *  * NodeTraverser::DONT_TRAVERSE_CHILDREN
+        *        => Children of $node are not traversed. $node stays as-is
+        *  * NodeTraverser::DONT_TRAVERSE_CURRENT_AND_CHILDREN
+        *        => Further visitors for the current node are skipped, and its children are not
+        *           traversed. $node stays as-is.
+        *  * NodeTraverser::STOP_TRAVERSAL
+        *        => Traversal is aborted. $node stays as-is
+        *  * otherwise
+        *        => $node is set to the return value
+        *
+        * @param \PHPStan\PhpDocParser\Ast\Node $node Node
+        * @return mixed *|null Replacement node (or special return value)
+        * @generated
+        */
+        public function enterNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed;
+        /**
+        * Called when leaving a node.
+        *
+        * Return value semantics:
+        *  * null
+        *        => $node stays as-is
+        *  * NodeTraverser::REMOVE_NODE
+        *        => $node is removed from the parent array
+        *  * NodeTraverser::STOP_TRAVERSAL
+        *        => Traversal is aborted. $node stays as-is
+        *  * array (of Nodes)
+        *        => The return value is merged into the parent array (at the position of the $node)
+        *  * otherwise
+        *        => $node is set to the return value
+        *
+        * @param \PHPStan\PhpDocParser\Ast\Node $node Node
+        * @return mixed Replacement node (or special return value)
+        * @generated
+        */
+        public function leaveNode(\PHPStan\PhpDocParser\Ast\Node $node): mixed;
+        /**
+        * Called once after traversal.
+        *
+        * Return value semantics:
+        *  * null:      $nodes stays as-is
+        *  * otherwise: $nodes is set to the return value
+        *
+        * @param array<int, Node> $nodes Array of nodes
+        * @return array<int, Node>|null Array of nodes
+        * @generated
+        */
+        public function afterTraverse(array<int, \PHPStan\PhpDocParser\Ast\Node> $nodes): array<int, \PHPStan\PhpDocParser\Ast\Node>|null;
+    }
+}
+namespace PHPStan\PhpDocParser\Ast\ConstExpr {
+    class ConstExprArrayItemNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public ?\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $key ?? null;
+        public \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $value;
+        public function __construct(?\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $key, \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $value): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstExprArrayNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var array<int, ConstExprArrayItemNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprArrayItemNode> $items;
+        /**
+        * @param array<int, ConstExprArrayItemNode> $items
+        * @generated
+        */
+        public function __construct(array<int, \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprArrayItemNode> $items): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstExprFalseNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstExprFloatNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $value;
+        public function __construct(string $value): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstExprIntegerNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $value;
+        public function __construct(string $value): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    interface ConstExprNode extends \PHPStan\PhpDocParser\Ast\Node {
+    }
+    class ConstExprNullNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstExprStringNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public const int SINGLE_QUOTED ?? 1;
+        public const int DOUBLE_QUOTED ?? 2;
+        public string $value;
+        /**
+        * @var mixed
+        * @generated
+        */
+        public mixed $quoteType;
+        /**
+        * @param int $quoteType
+        * @generated
+        */
+        public function __construct(string $value, int $quoteType): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstExprTrueNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstFetchNode implements \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var string class name for class constants or empty string for non-class constants
+        * @generated
+        */
+        public string $className;
+        public string $name;
+        public function __construct(string $className, string $name): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class DoctrineConstExprStringNode extends \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $value;
+        public function __construct(string $value): void;
+        public function __toString(): string;
+        public static function unescape(string $value): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+}
+namespace PHPStan\PhpDocParser\Ast\NodeVisitor {
+    final class CloningVisitor extends \PHPStan\PhpDocParser\Ast\AbstractNodeVisitor {
+        public function enterNode(\PHPStan\PhpDocParser\Ast\Node $originalNode): \PHPStan\PhpDocParser\Ast\Node;
+    }
+}
+namespace PHPStan\PhpDocParser\Ast\PhpDoc {
+    class AssertTagMethodValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public string $parameter;
+        public string $method;
+        public bool $isNegated;
+        public bool $isEquality;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $parameter, string $method, bool $isNegated, string $description, bool $isEquality): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class AssertTagPropertyValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public string $parameter;
+        public string $property;
+        public bool $isNegated;
+        public bool $isEquality;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $parameter, string $property, bool $isNegated, string $description, bool $isEquality): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class AssertTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public string $parameter;
+        public bool $isNegated;
+        public bool $isEquality;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $parameter, bool $isNegated, string $description, bool $isEquality): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class DeprecatedTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ExtendsTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\GenericTypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\GenericTypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class GenericTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $value;
+        public function __construct(string $value): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ImplementsTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\GenericTypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\GenericTypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    /**
+    * @property ParserException $exception
+    * @generated
+    */
+    class InvalidTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $value;
+        public \PHPStan\PhpDocParser\Parser\ParserException $exception;
+        public function __construct(string $value, \PHPStan\PhpDocParser\Parser\ParserException $exception): void;
+        public function __get(string $name): ?\PHPStan\PhpDocParser\Parser\ParserException;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class MethodTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public bool $isStatic;
+        public ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $returnType ?? null;
+        public string $methodName;
+        /**
+        * @var array<int, TemplateTagValueNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode> $templateTypes;
+        /**
+        * @var array<int, MethodTagValueParameterNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\MethodTagValueParameterNode> $parameters;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        /**
+        * @param array<int, MethodTagValueParameterNode> $parameters
+        * @param array<int, TemplateTagValueNode> $templateTypes
+        * @generated
+        */
+        public function __construct(bool $isStatic, ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $returnType, string $methodName, array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\MethodTagValueParameterNode> $parameters, string $description, array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode> $templateTypes): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class MethodTagValueParameterNode implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $type ?? null;
+        public bool $isReference;
+        public bool $isVariadic;
+        public string $parameterName;
+        public ?\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $defaultValue ?? null;
+        public function __construct(?\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, bool $isReference, bool $isVariadic, string $parameterName, ?\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $defaultValue): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class MixinTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ParamClosureThisTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $parameterName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ParamImmediatelyInvokedCallableTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(string $parameterName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ParamLaterInvokedCallableTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(string $parameterName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ParamOutTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $parameterName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ParamTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public bool $isReference;
+        public bool $isVariadic;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, bool $isVariadic, string $parameterName, string $description, bool $isReference): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    interface PhpDocChildNode extends \PHPStan\PhpDocParser\Ast\Node {
+    }
+    class PhpDocNode implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var array<int, PhpDocChildNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocChildNode> $children;
+        /**
+        * @param array<int, PhpDocChildNode> $children
+        * @generated
+        */
+        public function __construct(array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocChildNode> $children): void;
+        /**
+        * @return array<int, PhpDocTagNode>
+        * @generated
+        */
+        public function getTags(): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode>;
+        /**
+        * @return array<int, PhpDocTagNode>
+        * @generated
+        */
+        public function getTagsByName(string $tagName): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode>;
+        /**
+        * @return array<int, VarTagValueNode>
+        * @generated
+        */
+        public function getVarTagValues(string $tagName = '@var'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\VarTagValueNode>;
+        /**
+        * @return array<int, ParamTagValueNode>
+        * @generated
+        */
+        public function getParamTagValues(string $tagName = '@param'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ParamTagValueNode>;
+        /**
+        * @return array<int, TypelessParamTagValueNode>
+        * @generated
+        */
+        public function getTypelessParamTagValues(string $tagName = '@param'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TypelessParamTagValueNode>;
+        /**
+        * @return array<int, ParamImmediatelyInvokedCallableTagValueNode>
+        * @generated
+        */
+        public function getParamImmediatelyInvokedCallableTagValues(string $tagName = '@param-immediately-invoked-callable'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ParamImmediatelyInvokedCallableTagValueNode>;
+        /**
+        * @return array<int, ParamLaterInvokedCallableTagValueNode>
+        * @generated
+        */
+        public function getParamLaterInvokedCallableTagValues(string $tagName = '@param-later-invoked-callable'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ParamLaterInvokedCallableTagValueNode>;
+        /**
+        * @return array<int, ParamClosureThisTagValueNode>
+        * @generated
+        */
+        public function getParamClosureThisTagValues(string $tagName = '@param-closure-this'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ParamClosureThisTagValueNode>;
+        /**
+        * @return array<int, PureUnlessCallableIsImpureTagValueNode>
+        * @generated
+        */
+        public function getPureUnlessCallableIsImpureTagValues(string $tagName = '@pure-unless-callable-is-impure'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PureUnlessCallableIsImpureTagValueNode>;
+        /**
+        * @return array<int, PureUnlessParameterIsPassedTagValueNode>
+        * @generated
+        */
+        public function getPureUnlessParameterIsPassedTagValues(string $tagName = '@pure-unless-parameter-passed'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PureUnlessParameterIsPassedTagValueNode>;
+        /**
+        * @return array<int, TemplateTagValueNode>
+        * @generated
+        */
+        public function getTemplateTagValues(string $tagName = '@template'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode>;
+        /**
+        * @return array<int, ExtendsTagValueNode>
+        * @generated
+        */
+        public function getExtendsTagValues(string $tagName = '@extends'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ExtendsTagValueNode>;
+        /**
+        * @return array<int, ImplementsTagValueNode>
+        * @generated
+        */
+        public function getImplementsTagValues(string $tagName = '@implements'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ImplementsTagValueNode>;
+        /**
+        * @return array<int, UsesTagValueNode>
+        * @generated
+        */
+        public function getUsesTagValues(string $tagName = '@use'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\UsesTagValueNode>;
+        /**
+        * @return array<int, ReturnTagValueNode>
+        * @generated
+        */
+        public function getReturnTagValues(string $tagName = '@return'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ReturnTagValueNode>;
+        /**
+        * @return array<int, ThrowsTagValueNode>
+        * @generated
+        */
+        public function getThrowsTagValues(string $tagName = '@throws'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ThrowsTagValueNode>;
+        /**
+        * @return array<int, MixinTagValueNode>
+        * @generated
+        */
+        public function getMixinTagValues(string $tagName = '@mixin'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\MixinTagValueNode>;
+        /**
+        * @return array<int, RequireExtendsTagValueNode>
+        * @generated
+        */
+        public function getRequireExtendsTagValues(string $tagName = '@phpstan-require-extends'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\RequireExtendsTagValueNode>;
+        /**
+        * @return array<int, RequireImplementsTagValueNode>
+        * @generated
+        */
+        public function getRequireImplementsTagValues(string $tagName = '@phpstan-require-implements'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\RequireImplementsTagValueNode>;
+        /**
+        * @return array<int, SealedTagValueNode>
+        * @generated
+        */
+        public function getSealedTagValues(string $tagName = '@phpstan-sealed'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\SealedTagValueNode>;
+        /**
+        * @return array<int, DeprecatedTagValueNode>
+        * @generated
+        */
+        public function getDeprecatedTagValues(): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\DeprecatedTagValueNode>;
+        /**
+        * @return array<int, PropertyTagValueNode>
+        * @generated
+        */
+        public function getPropertyTagValues(string $tagName = '@property'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PropertyTagValueNode>;
+        /**
+        * @return array<int, PropertyTagValueNode>
+        * @generated
+        */
+        public function getPropertyReadTagValues(string $tagName = '@property-read'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PropertyTagValueNode>;
+        /**
+        * @return array<int, PropertyTagValueNode>
+        * @generated
+        */
+        public function getPropertyWriteTagValues(string $tagName = '@property-write'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\PropertyTagValueNode>;
+        /**
+        * @return array<int, MethodTagValueNode>
+        * @generated
+        */
+        public function getMethodTagValues(string $tagName = '@method'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\MethodTagValueNode>;
+        /**
+        * @return array<int, TypeAliasTagValueNode>
+        * @generated
+        */
+        public function getTypeAliasTagValues(string $tagName = '@phpstan-type'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TypeAliasTagValueNode>;
+        /**
+        * @return array<int, TypeAliasImportTagValueNode>
+        * @generated
+        */
+        public function getTypeAliasImportTagValues(string $tagName = '@phpstan-import-type'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TypeAliasImportTagValueNode>;
+        /**
+        * @return array<int, AssertTagValueNode>
+        * @generated
+        */
+        public function getAssertTagValues(string $tagName = '@phpstan-assert'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\AssertTagValueNode>;
+        /**
+        * @return array<int, AssertTagPropertyValueNode>
+        * @generated
+        */
+        public function getAssertPropertyTagValues(string $tagName = '@phpstan-assert'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\AssertTagPropertyValueNode>;
+        /**
+        * @return array<int, AssertTagMethodValueNode>
+        * @generated
+        */
+        public function getAssertMethodTagValues(string $tagName = '@phpstan-assert'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\AssertTagMethodValueNode>;
+        /**
+        * @return array<int, SelfOutTagValueNode>
+        * @generated
+        */
+        public function getSelfOutTypeTagValues(string $tagName = '@phpstan-this-out'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\SelfOutTagValueNode>;
+        /**
+        * @return array<int, ParamOutTagValueNode>
+        * @generated
+        */
+        public function getParamOutTypeTagValues(string $tagName = '@param-out'): array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\ParamOutTagValueNode>;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class PhpDocTagNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocChildNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $name;
+        public \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode $value;
+        public function __construct(string $name, \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode $value): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    interface PhpDocTagValueNode extends \PHPStan\PhpDocParser\Ast\Node {
+    }
+    class PhpDocTextNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocChildNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $text;
+        public function __construct(string $text): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class PropertyTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public string $propertyName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $propertyName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class PureUnlessCallableIsImpureTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(string $parameterName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class PureUnlessParameterIsPassedTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(string $parameterName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class RequireExtendsTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class RequireImplementsTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ReturnTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class SealedTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class SelfOutTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class TemplateTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var string
+        * @generated
+        */
+        public string $name;
+        public ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $bound;
+        public ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $default;
+        public ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $lowerBound;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        /**
+        * @param string $name
+        * @generated
+        */
+        public function __construct(string $name, ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $bound, string $description, ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $default = null, ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $lowerBound = null): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ThrowsTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class TypeAliasImportTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $importedAlias;
+        public \PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $importedFrom;
+        public ?string $importedAs ?? null;
+        public function __construct(string $importedAlias, \PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $importedFrom, ?string $importedAs): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class TypeAliasTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $alias;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public function __construct(string $alias, \PHPStan\PhpDocParser\Ast\Type\TypeNode $type): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class TypelessParamTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public bool $isReference;
+        public bool $isVariadic;
+        public string $parameterName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(bool $isVariadic, string $parameterName, string $description, bool $isReference): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class UsesTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\GenericTypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\GenericTypeNode $type, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class VarTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $variableName;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, string $variableName, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+}
+namespace PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine {
+    type DoctrineArgumentValueType = \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineAnnotation|\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode|\PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArray|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode;
+    type DoctrineArrayItemKeyType = \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprIntegerNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode|null;
+    class DoctrineAnnotation implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $name;
+        /**
+        * @var array<int, DoctrineArgument>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArgument> $arguments;
+        /**
+        * @param array<int, DoctrineArgument> $arguments
+        * @generated
+        */
+        public function __construct(string $name, array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArgument> $arguments): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    /**
+    * @generated
+    */
+    class DoctrineArgument implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public ?\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $key ?? null;
+        /**
+        * @var DoctrineArgumentValueType
+        * @generated
+        */
+        public \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArgumentValueType $value;
+        /**
+        * @param DoctrineArgumentValueType $value
+        * @generated
+        */
+        public function __construct(?\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $key, \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArgumentValueType $value): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class DoctrineArray implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var array<int, DoctrineArrayItem>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArrayItem> $items;
+        /**
+        * @param array<int, DoctrineArrayItem> $items
+        * @generated
+        */
+        public function __construct(array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArrayItem> $items): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    /**
+    * @generated
+    */
+    class DoctrineArrayItem implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var DoctrineArrayItemKeyType
+        * @generated
+        */
+        public \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArrayItemKeyType $key;
+        /**
+        * @var DoctrineArgumentValueType
+        * @generated
+        */
+        public \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArgumentValueType $value;
+        /**
+        * @param DoctrineArrayItemKeyType $key
+        * @param DoctrineArgumentValueType $value
+        * @generated
+        */
+        public function __construct(\PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArrayItemKeyType $key, \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineArgumentValueType $value): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class DoctrineTagValueNode implements \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineAnnotation $annotation;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $description;
+        public function __construct(\PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineAnnotation $annotation, string $description): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+}
+namespace PHPStan\PhpDocParser\Ast\Type {
+    class ArrayShapeItemNode implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprIntegerNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode|IdentifierTypeNode|null
+        * @generated
+        */
+        public \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprIntegerNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode|\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode|null $keyName;
+        public bool $optional;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $valueType;
+        /**
+        * @param \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprIntegerNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode|IdentifierTypeNode|null $keyName
+        * @generated
+        */
+        public function __construct(\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprIntegerNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|\PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode|\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode|null $keyName, bool $optional, \PHPStan\PhpDocParser\Ast\Type\TypeNode $valueType): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ArrayShapeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public const string KIND_ARRAY ?? 'array';
+        public const string KIND_LIST ?? 'list';
+        public const string KIND_NON_EMPTY_ARRAY ?? 'non-empty-array';
+        public const string KIND_NON_EMPTY_LIST ?? 'non-empty-list';
+        /**
+        * @var array<int, ArrayShapeItemNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\Type\ArrayShapeItemNode> $items;
+        public bool $sealed;
+        /**
+        * @var mixed *
+        * @generated
+        */
+        public mixed $kind;
+        public ?\PHPStan\PhpDocParser\Ast\Type\ArrayShapeUnsealedTypeNode $unsealedType ?? null;
+        /**
+        * @param array<int, ArrayShapeItemNode> $items
+        * @param self::KIND_ $ * $kind
+        * @generated
+        */
+        public static function createSealed(array<int, \PHPStan\PhpDocParser\Ast\Type\ArrayShapeItemNode> $items, string $kind = self::KIND_ARRAY): self;
+        /**
+        * @param array<int, ArrayShapeItemNode> $items
+        * @param self::KIND_ $ * $kind
+        * @generated
+        */
+        public static function createUnsealed(array<int, \PHPStan\PhpDocParser\Ast\Type\ArrayShapeItemNode> $items, ?\PHPStan\PhpDocParser\Ast\Type\ArrayShapeUnsealedTypeNode $unsealedType, string $kind = self::KIND_ARRAY): self;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ArrayShapeUnsealedTypeNode implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $valueType;
+        public ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $keyType ?? null;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $valueType, ?\PHPStan\PhpDocParser\Ast\Type\TypeNode $keyType): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ArrayTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class CallableTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $identifier;
+        /**
+        * @var array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode> $templateTypes;
+        /**
+        * @var array<int, CallableTypeParameterNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\Type\CallableTypeParameterNode> $parameters;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $returnType;
+        /**
+        * @param array<int, CallableTypeParameterNode> $parameters
+        * @param array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode> $templateTypes
+        * @generated
+        */
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $identifier, array<int, \PHPStan\PhpDocParser\Ast\Type\CallableTypeParameterNode> $parameters, \PHPStan\PhpDocParser\Ast\Type\TypeNode $returnType, array<int, \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode> $templateTypes): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class CallableTypeParameterNode implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public bool $isReference;
+        public bool $isVariadic;
+        /**
+        * @var string (may be empty)
+        * @generated
+        */
+        public string $parameterName;
+        public bool $isOptional;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, bool $isReference, bool $isVariadic, string $parameterName, bool $isOptional): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConditionalTypeForParameterNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $parameterName;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $targetType;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $if;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $else;
+        public bool $negated;
+        public function __construct(string $parameterName, \PHPStan\PhpDocParser\Ast\Type\TypeNode $targetType, \PHPStan\PhpDocParser\Ast\Type\TypeNode $if, \PHPStan\PhpDocParser\Ast\Type\TypeNode $else, bool $negated): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConditionalTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $subjectType;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $targetType;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $if;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $else;
+        public bool $negated;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $subjectType, \PHPStan\PhpDocParser\Ast\Type\TypeNode $targetType, \PHPStan\PhpDocParser\Ast\Type\TypeNode $if, \PHPStan\PhpDocParser\Ast\Type\TypeNode $else, bool $negated): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ConstTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $constExpr;
+        public function __construct(\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode $constExpr): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class GenericTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public const string VARIANCE_INVARIANT ?? 'invariant';
+        public const string VARIANCE_COVARIANT ?? 'covariant';
+        public const string VARIANCE_CONTRAVARIANT ?? 'contravariant';
+        public const string VARIANCE_BIVARIANT ?? 'bivariant';
+        public \PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $type;
+        /**
+        * @var array<int, TypeNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $genericTypes;
+        /**
+        * @var array (self::VARIANCE_*)[]
+        * @generated
+        */
+        public array $variances;
+        /**
+        * @param array<int, TypeNode> $genericTypes
+        * @param array $variances
+        * @generated
+        */
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $type, array<int, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $genericTypes, array $variances = []): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class IdentifierTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public string $name;
+        public function __construct(string $name): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class IntersectionTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var array<int, TypeNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $types;
+        /**
+        * @param array<int, TypeNode> $types
+        * @generated
+        */
+        public function __construct(array<int, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $types): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class InvalidTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public function __construct(\PHPStan\PhpDocParser\Parser\ParserException $exception): void;
+        public function getException(): \PHPStan\PhpDocParser\Parser\ParserException;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class NullableTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ObjectShapeItemNode implements \PHPStan\PhpDocParser\Ast\Node {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|IdentifierTypeNode
+        * @generated
+        */
+        public \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $keyName;
+        public bool $optional;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $valueType;
+        /**
+        * @param \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|IdentifierTypeNode $keyName
+        * @generated
+        */
+        public function __construct(\PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprStringNode|\PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $keyName, bool $optional, \PHPStan\PhpDocParser\Ast\Type\TypeNode $valueType): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ObjectShapeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var array<int, ObjectShapeItemNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\Type\ObjectShapeItemNode> $items;
+        /**
+        * @param array<int, ObjectShapeItemNode> $items
+        * @generated
+        */
+        public function __construct(array<int, \PHPStan\PhpDocParser\Ast\Type\ObjectShapeItemNode> $items): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class OffsetAccessTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $type;
+        public \PHPStan\PhpDocParser\Ast\Type\TypeNode $offset;
+        public function __construct(\PHPStan\PhpDocParser\Ast\Type\TypeNode $type, \PHPStan\PhpDocParser\Ast\Type\TypeNode $offset): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    class ThisTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+    interface TypeNode extends \PHPStan\PhpDocParser\Ast\Node {
+    }
+    class UnionTypeNode implements \PHPStan\PhpDocParser\Ast\Type\TypeNode {
+        use \PHPStan\PhpDocParser\Ast\NodeAttributes;
+        /**
+        * @var array<int, TypeNode>
+        * @generated
+        */
+        public array<int, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $types;
+        /**
+        * @param array<int, TypeNode> $types
+        * @generated
+        */
+        public function __construct(array<int, \PHPStan\PhpDocParser\Ast\Type\TypeNode> $types): void;
+        public function __toString(): string;
+        /**
+        * @param array<string, mixed> $properties
+        * @generated
+        */
+        public static function __set_state(array<string, mixed> $properties): self;
+    }
+}
+namespace PHPStan\PhpDocParser\Lexer {
+    /**
+    * Implementation based on Nette Tokenizer (New BSD License; https://github.com/nette/tokenizer)
+    *
+    * @generated
+    */
+    class Lexer {
+        public const int TOKEN_REFERENCE ?? 0;
+        public const int TOKEN_UNION ?? 1;
+        public const int TOKEN_INTERSECTION ?? 2;
+        public const int TOKEN_NULLABLE ?? 3;
+        public const int TOKEN_OPEN_PARENTHESES ?? 4;
+        public const int TOKEN_CLOSE_PARENTHESES ?? 5;
+        public const int TOKEN_OPEN_ANGLE_BRACKET ?? 6;
+        public const int TOKEN_CLOSE_ANGLE_BRACKET ?? 7;
+        public const int TOKEN_OPEN_SQUARE_BRACKET ?? 8;
+        public const int TOKEN_CLOSE_SQUARE_BRACKET ?? 9;
+        public const int TOKEN_COMMA ?? 10;
+        public const int TOKEN_VARIADIC ?? 11;
+        public const int TOKEN_DOUBLE_COLON ?? 12;
+        public const int TOKEN_DOUBLE_ARROW ?? 13;
+        public const int TOKEN_EQUAL ?? 14;
+        public const int TOKEN_OPEN_PHPDOC ?? 15;
+        public const int TOKEN_CLOSE_PHPDOC ?? 16;
+        public const int TOKEN_PHPDOC_TAG ?? 17;
+        public const int TOKEN_DOCTRINE_TAG ?? 18;
+        public const int TOKEN_FLOAT ?? 19;
+        public const int TOKEN_INTEGER ?? 20;
+        public const int TOKEN_SINGLE_QUOTED_STRING ?? 21;
+        public const int TOKEN_DOUBLE_QUOTED_STRING ?? 22;
+        public const int TOKEN_DOCTRINE_ANNOTATION_STRING ?? 23;
+        public const int TOKEN_IDENTIFIER ?? 24;
+        public const int TOKEN_THIS_VARIABLE ?? 25;
+        public const int TOKEN_VARIABLE ?? 26;
+        public const int TOKEN_HORIZONTAL_WS ?? 27;
+        public const int TOKEN_PHPDOC_EOL ?? 28;
+        public const int TOKEN_OTHER ?? 29;
+        public const int TOKEN_END ?? 30;
+        public const int TOKEN_COLON ?? 31;
+        public const int TOKEN_WILDCARD ?? 32;
+        public const int TOKEN_OPEN_CURLY_BRACKET ?? 33;
+        public const int TOKEN_CLOSE_CURLY_BRACKET ?? 34;
+        public const int TOKEN_NEGATED ?? 35;
+        public const int TOKEN_ARROW ?? 36;
+        public const int TOKEN_COMMENT ?? 37;
+        public const array TOKEN_LABELS ?? [];
+        public const int VALUE_OFFSET ?? 0;
+        public const int TYPE_OFFSET ?? 1;
+        public const int LINE_OFFSET ?? 2;
+        public function __construct(\PHPStan\PhpDocParser\ParserConfig $config): void;
+        /**
+        * @return array<int, array>
+        * @generated
+        */
+        public function tokenize(string $s): array<int, array>;
+    }
+}
+namespace PHPStan\PhpDocParser\Parser {
+    class ConstExprParser {
+        public function __construct(\PHPStan\PhpDocParser\ParserConfig $config): void;
+        public function parse(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): \PHPStan\PhpDocParser\Ast\ConstExpr\ConstExprNode;
+        /**
+        * This method is supposed to be called with TokenIterator after reading TOKEN_DOUBLE_QUOTED_STRING and shifting
+        *
+        * to the next token.
+        *
+        * @generated
+        */
+        public function parseDoctrineString(string $text, \PHPStan\PhpDocParser\Parser\TokenIterator $tokens): \PHPStan\PhpDocParser\Ast\ConstExpr\DoctrineConstExprStringNode;
+    }
+    class ParserException extends \Exception {
+        public function __construct(string $currentTokenValue, int $currentTokenType, int $currentOffset, int $expectedTokenType, ?string $expectedTokenValue, ?int $currentTokenLine): void;
+        public function getCurrentTokenValue(): string;
+        public function getCurrentTokenType(): int;
+        public function getCurrentOffset(): int;
+        public function getExpectedTokenType(): int;
+        public function getExpectedTokenValue(): ?string;
+        public function getCurrentTokenLine(): ?int;
+    }
+    /**
+    * @generated
+    */
+    class PhpDocParser {
+        public function __construct(\PHPStan\PhpDocParser\ParserConfig $config, \PHPStan\PhpDocParser\Parser\TypeParser $typeParser, \PHPStan\PhpDocParser\Parser\ConstExprParser $constantExprParser): void;
+        public function parse(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode;
+        public function parseTag(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
+        public function parseTagValue(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens, string $tag): \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagValueNode;
+    }
+    class StringUnescaper {
+        public static function unescapeString(string $string): string;
+    }
+    class TokenIterator {
+        /**
+        * @param array<int, array> $tokens
+        * @generated
+        */
+        public function __construct(array<int, array> $tokens, int $index = 0): void;
+        /**
+        * @return array<int, array>
+        * @generated
+        */
+        public function getTokens(): array<int, array>;
+        public function getContentBetween(int $startPos, int $endPos): string;
+        public function getTokenCount(): int;
+        public function currentTokenValue(): string;
+        public function currentTokenType(): int;
+        public function currentTokenOffset(): int;
+        public function currentTokenLine(): int;
+        public function currentTokenIndex(): int;
+        public function endIndexOfLastRelevantToken(): int;
+        public function isCurrentTokenValue(string $tokenValue): bool;
+        public function isCurrentTokenType(int ...$tokenType): bool;
+        public function isPrecededByHorizontalWhitespace(): bool;
+        /**
+        * @throws ParserException
+        * @generated
+        */
+        public function consumeTokenType(int $tokenType): void;
+        /**
+        * @throws ParserException
+        * @generated
+        */
+        public function consumeTokenValue(int $tokenType, string $tokenValue): void;
+        /**
+        * @phpstan-impure
+        * @generated
+        */
+        public function tryConsumeTokenValue(string $tokenValue): bool;
+        /**
+        * @return array<int, \PHPStan\PhpDocParser\Ast\Comment>
+        * @generated
+        */
+        public function flushComments(): array<int, \PHPStan\PhpDocParser\Ast\Comment>;
+        /**
+        * @phpstan-impure
+        * @generated
+        */
+        public function tryConsumeTokenType(int $tokenType): bool;
+        /**
+        * @deprecated Use skipNewLineTokensAndConsumeComments instead (when parsing a type)
+        * @generated
+        */
+        deprecated public function skipNewLineTokens(): void;
+        public function skipNewLineTokensAndConsumeComments(): void;
+        public function getSkippedHorizontalWhiteSpaceIfAny(): string;
+        /**
+        * @phpstan-impure
+        * @generated
+        */
+        public function joinUntil(int ...$tokenType): string;
+        public function next(): void;
+        public function addEndOfLineToSkippedTokens(): void;
+        public function removeEndOfLineFromSkippedTokens(): void;
+        /**
+        * @phpstan-impure
+        * @generated
+        */
+        public function forwardToTheEnd(): void;
+        public function pushSavePoint(): void;
+        public function dropSavePoint(): void;
+        public function rollback(): void;
+        /**
+        * Check whether the position is directly preceded by a certain token type.
+        *
+        * During this check TOKEN_HORIZONTAL_WS and TOKEN_PHPDOC_EOL are skipped
+        *
+        * @generated
+        */
+        public function hasTokenImmediatelyBefore(int $pos, int $expectedTokenType): bool;
+        /**
+        * Check whether the position is directly followed by a certain token type.
+        *
+        * During this check TOKEN_HORIZONTAL_WS and TOKEN_PHPDOC_EOL are skipped
+        *
+        * @generated
+        */
+        public function hasTokenImmediatelyAfter(int $pos, int $expectedTokenType): bool;
+        public function getDetectedNewline(): ?string;
+        /**
+        * Whether the given position is immediately surrounded by parenthesis.
+        *
+        * @generated
+        */
+        public function hasParentheses(int $startPos, int $endPos): bool;
+    }
+    class TypeParser {
+        public function __construct(\PHPStan\PhpDocParser\ParserConfig $config, \PHPStan\PhpDocParser\Parser\ConstExprParser $constExprParser): void;
+        /**
+        * @phpstan-impure
+        * @generated
+        */
+        public function parse(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): \PHPStan\PhpDocParser\Ast\Type\TypeNode;
+        /**
+        * @phpstan-impure
+        * @generated
+        */
+        public function isHtml(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): bool;
+        /**
+        * @phpstan-impure
+        * @generated
+        */
+        public function parseGeneric(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens, \PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode $baseType): \PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
+        /**
+        * @phpstan-impure
+        * @return array
+        * @generated
+        */
+        public function parseGenericTypeArgument(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens): array;
+        /**
+        * @throws ParserException
+        * @param ?callable $parseDescription
+        * @generated
+        */
+        public function parseTemplateTagValue(\PHPStan\PhpDocParser\Parser\TokenIterator $tokens, ?callable $parseDescription = null): \PHPStan\PhpDocParser\Ast\PhpDoc\TemplateTagValueNode;
+    }
+}
+namespace PHPStan\PhpDocParser\Printer {
+    /**
+    * Inspired by https://github.com/nikic/PHP-Parser/tree/36a6dcd04e7b0285e8f0868f44bd4927802f7df1
+    *
+    * Copyright (c) 2011, Nikita Popov
+    * All rights reserved.
+    *
+    * @generated
+    */
+    final class Printer {
+        public function printFormatPreserving(\PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode $node, \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode $originalNode, \PHPStan\PhpDocParser\Parser\TokenIterator $originalTokens): string;
+        public function print(\PHPStan\PhpDocParser\Ast\Node $node): string;
+    }
+}

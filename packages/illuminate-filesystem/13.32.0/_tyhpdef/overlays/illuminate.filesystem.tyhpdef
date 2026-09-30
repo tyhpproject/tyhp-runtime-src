@@ -1,0 +1,75 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Filesystem has no PHP constructor; Macroable `__call` must not be treated as one.
+ * ReadThroughFilesystemAdapter implements League Flysystem (not required here).
+ */
+
+namespace Illuminate\Filesystem {
+    /**
+     * Presigned upload target: URL plus the request headers.
+     */
+    type TemporaryUpload = struct {
+        string $url;
+        array<string, array<int, string>> $headers;
+    };
+
+    /**
+     * Overlay: `join_paths()` is a `fallback function` because the PHP declaration
+     * is gated by `function_exists`.
+     */
+    fallback function join_paths(string|null $basePath, string ...$paths): string;
+
+    /**
+     * Overlay: S3 temporary uploads are a URL plus headers.
+     */
+    // @overlay-against: class AwsS3V3Adapter extends \Illuminate\Filesystem\FilesystemAdapter implements \Illuminate\Support\Traits\Conditionable
+    partial class AwsS3V3Adapter {
+        // @overlay-against: function temporaryUploadUrl(string $path, \DateTimeInterface $expiration, array $options): array
+        public function temporaryUploadUrl(string $path, \DateTimeInterface $expiration, array<string, mixed> $options = []): TemporaryUpload;
+    }
+
+    // @overlay-against: class Filesystem implements \Illuminate\Support\Traits\Conditionable, \Illuminate\Support\Traits\Macroable
+    partial class Filesystem {
+        public function __construct(): void;
+        // @overlay-against: function allDirectories(string $directory): array
+        public function allDirectories(string $directory): array<int, string>;
+        // @overlay-against: function chmod(string $path, int|null $mode): mixed
+        public function chmod(string $path, null $mode = null): string;
+        // @overlay-against: function chmod(string $path, int|null $mode): mixed
+        public function chmod(string $path, int $mode): bool|string;
+        // @overlay-against: function delete(string|array $paths): bool
+        public function delete(string|array<int, string> $paths): bool;
+        // @overlay-against: function directories(string $directory, array|string|int $depth): array
+        public function directories(string $directory, array<int, string|int>|string|int $depth = 0): array<int, string>;
+        // @overlay-against: function files(string $directory, bool $hidden, array|string|int $depth): array
+        public function files(string $directory, bool $hidden = false, array<int, string|int>|string|int $depth = 0): array<int, \Symfony\Component\Finder\SplFileInfo>;
+        // @overlay-against: function getRequire(string $path, array $data): mixed
+        public function getRequire(string $path, array<string, mixed> $data = []): mixed;
+        // @overlay-against: function glob(string $pattern, int $flags): array
+        public function glob(string $pattern, int $flags = 0): array<int, string>|false;
+        // @overlay-against: function json(string $path, int $flags, bool $lock): array
+        public function json(string $path, int $flags = 0, bool $lock = false): array<int|string, mixed>;
+        // @overlay-against: function replaceInFile(array|string $search, array|string $replace, string $path): void
+        public function replaceInFile(array<int, string>|string $search, array<int, string>|string $replace, string $path): void;
+        // @overlay-against: function requireOnce(string $path, array $data): mixed
+        public function requireOnce(string $path, array<string, mixed> $data = []): mixed;
+    }
+
+    /**
+     * Overlay: cloud disk path lists, JSON documents, and temporary uploads.
+     */
+    // @overlay-against: class FilesystemAdapter implements \Illuminate\Contracts\Filesystem\Cloud, \Illuminate\Support\Traits\Conditionable, \Illuminate\Support\Traits\Macroable
+    partial class FilesystemAdapter {
+        // @overlay-against: function delete(string|array $paths): bool
+        public function delete(string|array<int, string> $paths): bool;
+        // @overlay-against: function json(string $path, int $flags): array|null
+        public function json(string $path, int $flags = 0): array<int|string, mixed>|null;
+        // @overlay-against: function temporaryUploadUrl(string $path, \DateTimeInterface $expiration, array $options): array
+        public function temporaryUploadUrl(string $path, \DateTimeInterface $expiration, array<string, mixed> $options = []): TemporaryUpload;
+    }
+
+    // @overlay-against: class ReadThroughFilesystemAdapter implements \League\Flysystem\FilesystemAdapter
+    omit class ReadThroughFilesystemAdapter {};
+}

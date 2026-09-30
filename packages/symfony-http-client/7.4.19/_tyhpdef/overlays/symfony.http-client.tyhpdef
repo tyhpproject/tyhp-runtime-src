@@ -1,0 +1,399 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * HttpClient option maps; @internal harvest misses.
+ */
+
+namespace Symfony\Component\HttpClient {
+    /**
+     * `HttpOptions::setOnProgress()` callback. The fourth closure argument is optional.
+     */
+    type HttpProgressCallback = (callable(int, int, array<string, mixed>): void)&(callable(int, int, array<string, mixed>, ?\Closure): void);
+
+    /**
+     * Value produced by a `MockHttpClient` response factory callable.
+     */
+    type MockResponseCallable = callable(string, string, \Symfony\Contracts\HttpClient\HttpClientOptions): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+    /**
+     * Overlay: `request()` options and `stream()` response iterables.
+     */
+    // @overlay-against: trait AsyncDecoratorTrait implements \Symfony\Component\HttpClient\DecoratorTrait
+    partial trait AsyncDecoratorTrait {
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public abstract function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+    }
+
+    /**
+     * Overlay: default options and streamed responses.
+     */
+    // @overlay-against: class CachingHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\AsyncDecoratorTrait, \Symfony\Component\HttpClient\HttpClientTrait
+    partial class CachingHttpClient {
+        // @overlay-against: function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, \Symfony\Contracts\Cache\TagAwareCacheInterface|\Symfony\Component\HttpKernel\HttpCache\StoreInterface $cache, array $defaultOptions, bool $sharedCache, ?int $maxTtl): void
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, \Symfony\Contracts\Cache\TagAwareCacheInterface|\Symfony\Component\HttpKernel\HttpCache\StoreInterface $cache, \Symfony\Contracts\HttpClient\HttpClientOptions $defaultOptions = [], bool $sharedCache = true, ?int $maxTtl = null): void;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+    }
+
+    /**
+     * Overlay: default options and streamed responses.
+     */
+    // @overlay-against: class CurlHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\HttpClientTrait
+    partial class CurlHttpClient {
+        // @overlay-against: function __construct(array $defaultOptions, int $maxHostConnections, int $maxPendingPushes): void
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientOptions $defaultOptions = [], int $maxHostConnections = 6, int $maxPendingPushes = 0): void;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+    }
+
+    /**
+     * Overlay: request options, streamed responses, and `withOptions()`.
+     */
+    // @overlay-against: trait DecoratorTrait
+    partial trait DecoratorTrait {
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: connect/request options.
+     */
+    // @overlay-against: class EventSourceHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\AsyncDecoratorTrait, \Symfony\Component\HttpClient\HttpClientTrait
+    partial class EventSourceHttpClient {
+        // @overlay-against: function connect(string $url, array $options, string $method): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function connect(string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = [], string $method = 'GET'): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+    }
+
+    /**
+     * Overlay: factory default options are `HttpClientOptions`.
+     */
+    // @overlay-against: class HttpClient
+    partial class HttpClient {
+        // @overlay-against: function create(array $defaultOptions, int $maxHostConnections, int $maxPendingPushes): \Symfony\Contracts\HttpClient\HttpClientInterface
+        public static function create(\Symfony\Contracts\HttpClient\HttpClientOptions $defaultOptions = [], int $maxHostConnections = 6, int $maxPendingPushes = 50): \Symfony\Contracts\HttpClient\HttpClientInterface;
+
+        // @overlay-against: function createForBaseUri(string $baseUri, array $defaultOptions, int $maxHostConnections, int $maxPendingPushes): \Symfony\Contracts\HttpClient\HttpClientInterface
+        public static function createForBaseUri(string $baseUri, \Symfony\Contracts\HttpClient\HttpClientOptions $defaultOptions = [], int $maxHostConnections = 6, int $maxPendingPushes = 50): \Symfony\Contracts\HttpClient\HttpClientInterface;
+    }
+
+    /**
+     * Overlay: `withOptions()` takes the contracts option map.
+     */
+    // @overlay-against: trait HttpClientTrait
+    partial trait HttpClientTrait {
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: query, header, body, progress, resolve, and fingerprint shapes from `HttpClientInterface` option comments.
+     */
+    // @overlay-against: class HttpOptions
+    partial class HttpOptions {
+        // @overlay-against: function toArray(): array
+        public function toArray(): \Symfony\Contracts\HttpClient\HttpClientOptions;
+
+        // @overlay-against: function setQuery(array $query): static
+        public function setQuery(array<string, mixed> $query): static;
+
+        // @overlay-against: function setHeaders(iterable $headers): static
+        public function setHeaders(iterable<int|string, string|array<int|string, string>> $headers): static;
+
+        // @overlay-against: function setBody(array|string|resource|\Traversable|\Closure $body): static
+        public function setBody(array<string, mixed>|string|resource|\Traversable<int|string, string>|\Closure<callable(int): string> $body): static;
+
+        // @overlay-against: function setVars(array $vars): static
+        public function setVars(array<string, mixed> $vars): static;
+
+        // @overlay-against: function setOnProgress(callable $callback): static
+        public function setOnProgress(\Symfony\Component\HttpClient\HttpProgressCallback $callback): static;
+
+        // @overlay-against: function resolve(array $hostIps): static
+        public function resolve(array<string, string> $hostIps): static;
+
+        // @overlay-against: function setPeerFingerprint(string|array $fingerprint): static
+        public function setPeerFingerprint(string|array<string, string> $fingerprint): static;
+    }
+
+    /**
+     * Overlay: response factory callables receive method, URL, and options.
+     */
+    // @overlay-against: class MockHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\HttpClientTrait
+    partial class MockHttpClient {
+        // @overlay-against: function __construct(callable|iterable|\Symfony\Contracts\HttpClient\ResponseInterface|null $responseFactory, ?string $baseUri): void
+        public function __construct(\Symfony\Component\HttpClient\MockResponseCallable|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface|\Symfony\Component\HttpClient\MockResponseCallable>|\Symfony\Contracts\HttpClient\ResponseInterface|null $responseFactory = null, ?string $baseUri = 'https://example.com'): void;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function setResponseFactory(callable|array|\Symfony\Contracts\HttpClient\ResponseInterface|array|iterable|null $responseFactory): void
+        public function setResponseFactory(\Symfony\Component\HttpClient\MockResponseCallable|array<int, \Symfony\Component\HttpClient\MockResponseCallable>|\Symfony\Contracts\HttpClient\ResponseInterface|array<int, \Symfony\Contracts\HttpClient\ResponseInterface>|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface|\Symfony\Component\HttpClient\MockResponseCallable>|null $responseFactory): void;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: constructor and request options.
+     */
+    // @overlay-against: class NativeHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\HttpClientTrait, \Psr\Log\LoggerAwareTrait
+    partial class NativeHttpClient {
+        // @overlay-against: function __construct(array $defaultOptions, int $maxHostConnections): void
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientOptions $defaultOptions = [], int $maxHostConnections = 6): void;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+    }
+
+    /**
+     * Overlay: private-subnet list and request options.
+     */
+    // @overlay-against: class NoPrivateNetworkHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\AsyncDecoratorTrait, \Symfony\Component\HttpClient\HttpClientTrait
+    partial class NoPrivateNetworkHttpClient {
+        // @overlay-against: function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string|array|null $subnets): void
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string|array<int|string, string>|null $subnets = null): void;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: request options and `withOptions()`.
+     */
+    // @overlay-against: class RetryableHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\AsyncDecoratorTrait
+    partial class RetryableHttpClient {
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: regexp => options map.
+     */
+    // @overlay-against: class ScopingHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Psr\Log\LoggerAwareInterface, \Symfony\Component\HttpClient\HttpClientTrait
+    partial class ScopingHttpClient {
+        // @overlay-against: function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, array $defaultOptionsByRegexp, ?string $defaultRegexp): void
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, array<string, \Symfony\Contracts\HttpClient\HttpClientOptions> $defaultOptionsByRegexp, ?string $defaultRegexp = null): void;
+
+        // @overlay-against: function forBaseUri(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string $baseUri, array $defaultOptions, ?string $regexp): self
+        public static function forBaseUri(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string $baseUri, \Symfony\Contracts\HttpClient\HttpClientOptions $defaultOptions = [], ?string $regexp = null): self;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: request options.
+     */
+    // @overlay-against: class ThrottlingHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\DecoratorTrait
+    partial class ThrottlingHttpClient {
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+    }
+
+    /**
+     * Overlay: traced request list and request options.
+     */
+    // @overlay-against: class TraceableHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Psr\Log\LoggerAwareInterface
+    partial class TraceableHttpClient {
+        // @overlay-against: function getTracedRequests(): array
+        public function getTracedRequests(): array<int|string, array<string, mixed>>;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable $responses, ?float $timeout): \Symfony\Contracts\HttpClient\ResponseStreamInterface
+        public function stream(\Symfony\Contracts\HttpClient\ResponseInterface|iterable<int|string, \Symfony\Contracts\HttpClient\ResponseInterface> $responses, ?float $timeout = null): \Symfony\Contracts\HttpClient\ResponseStreamInterface;
+
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+
+    /**
+     * Overlay: URI-template variables and request options.
+     */
+    // @overlay-against: class UriTemplateHttpClient implements \Symfony\Contracts\HttpClient\HttpClientInterface, \Symfony\Contracts\Service\ResetInterface, \Symfony\Component\HttpClient\DecoratorTrait
+    partial class UriTemplateHttpClient {
+        // @overlay-against: function __construct(?\Symfony\Contracts\HttpClient\HttpClientInterface $client, ?\Closure $expander, array $defaultVars): void
+        public function __construct(?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null, ?\Closure $expander = null, array<string, mixed> $defaultVars = []): void;
+
+        // @overlay-against: function request(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function request(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function withOptions(array $options): static
+        public function withOptions(\Symfony\Contracts\HttpClient\HttpClientOptions $options): static;
+    }
+}
+
+namespace Symfony\Component\HttpClient\Chunk {
+    /**
+     * Harvest miss: `@internal` chunk omitted from Layer 1 (`ServerSentEvent` extends it).
+     */
+    class DataChunk {
+    }
+
+    /**
+     * Overlay: SSE JSON payload.
+     */
+    // @overlay-against: class ServerSentEvent extends \Symfony\Component\HttpClient\Chunk\DataChunk implements \Symfony\Contracts\HttpClient\ChunkInterface
+    partial class ServerSentEvent {
+        // @overlay-against: function getArrayData(): array
+        public function getArrayData(): array<int|string, mixed>;
+    }
+}
+
+namespace Symfony\Component\HttpClient\Exception {
+    /**
+     * Harvest miss: `@internal` exception trait omitted from Layer 1.
+     */
+    trait HttpExceptionTrait {
+    }
+}
+
+namespace Symfony\Component\HttpClient\Internal {
+    /**
+     * Harvest miss: `@internal` client state omitted from Layer 1.
+     */
+    class ClientState {
+    }
+}
+
+namespace Symfony\Component\HttpClient\Messenger {
+    /**
+     * Overlay: webhook ping options.
+     */
+    // @overlay-against: class PingWebhookMessage implements \Stringable
+    partial class PingWebhookMessage {
+        // @overlay-against: array $options
+        public readonly \Symfony\Contracts\HttpClient\HttpClientOptions $options;
+
+        // @overlay-against: function __construct(string $method, string $url, array $options, bool $throw): void
+        public function __construct(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = [], bool $throw = true): void;
+    }
+}
+
+namespace Symfony\Component\HttpClient\Response {
+    /**
+     * Harvest miss: `@internal` response traits omitted from Layer 1.
+     */
+    trait CommonResponseTrait {
+    }
+
+    /**
+     * Harvest miss: `@internal` response traits omitted from Layer 1.
+     */
+    trait TransportResponseTrait {
+    }
+
+    /**
+     * Overlay: passthru callable and request options.
+     */
+    // @overlay-against: class AsyncContext
+    partial class AsyncContext {
+        // @overlay-against: function getHeaders(): array
+        public function getHeaders(): \Symfony\Contracts\HttpClient\HeaderMap;
+
+        // @overlay-against: function replaceRequest(string $method, string $url, array $options): \Symfony\Contracts\HttpClient\ResponseInterface
+        public function replaceRequest(string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options = []): \Symfony\Contracts\HttpClient\ResponseInterface;
+
+        // @overlay-against: function passthru(?callable $passthru): void
+        public function passthru(null|(callable(\Symfony\Contracts\HttpClient\ChunkInterface, \Symfony\Component\HttpClient\Response\AsyncContext): ?\Iterator) $passthru = null): void;
+    }
+
+    /**
+     * Overlay: request options and header map.
+     */
+    // @overlay-against: class AsyncResponse implements \Symfony\Contracts\HttpClient\ResponseInterface, \Symfony\Component\HttpClient\Response\StreamableInterface, \Symfony\Component\HttpClient\Response\CommonResponseTrait
+    partial class AsyncResponse {
+        // @overlay-against: function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string $method, string $url, array $options, ?callable $passthru): void
+        public function __construct(\Symfony\Contracts\HttpClient\HttpClientInterface $client, string $method, string $url, \Symfony\Contracts\HttpClient\HttpClientOptions $options, null|(callable(\Symfony\Contracts\HttpClient\ChunkInterface, \Symfony\Component\HttpClient\Response\AsyncContext): ?\Iterator) $passthru = null): void;
+
+        // @overlay-against: function getHeaders(bool $throw): array
+        public function getHeaders(bool $throw = true): \Symfony\Contracts\HttpClient\HeaderMap;
+    }
+
+    /**
+     * Overlay: mock info map.
+     */
+    // @overlay-against: class JsonMockResponse extends \Symfony\Component\HttpClient\Response\MockResponse
+    partial class JsonMockResponse {
+        // @overlay-against: function __construct(mixed $body, array $info): void
+        public function __construct(mixed $body = [], array<string, mixed> $info = []): void;
+
+        // @overlay-against: function fromFile(string $path, array $info): static
+        public static function fromFile(string $path, array<string, mixed> $info = []): static;
+    }
+
+    /**
+     * Overlay: body iterable, info map, and request options.
+     */
+    // @overlay-against: class MockResponse implements \Symfony\Contracts\HttpClient\ResponseInterface, \Symfony\Component\HttpClient\Response\StreamableInterface, \Symfony\Component\HttpClient\Response\CommonResponseTrait, \Symfony\Component\HttpClient\Response\TransportResponseTrait
+    partial class MockResponse {
+        // @overlay-against: function __construct(string|iterable $body, array $info): void
+        public function __construct(string|iterable<int|string, string> $body = '', array<string, mixed> $info = []): void;
+
+        // @overlay-against: function fromFile(string $path, array $info): static
+        public static function fromFile(string $path, array<string, mixed> $info = []): static;
+
+        // @overlay-against: function getRequestOptions(): array
+        public function getRequestOptions(): \Symfony\Contracts\HttpClient\HttpClientOptions;
+    }
+
+    /**
+     * Overlay: stream generator yields response => chunk.
+     */
+    // @overlay-against: class ResponseStream implements \Symfony\Contracts\HttpClient\ResponseStreamInterface
+    partial class ResponseStream {
+        // @overlay-against: function __construct(\Generator $generator): void
+        public function __construct(\Generator<\Symfony\Contracts\HttpClient\ResponseInterface, \Symfony\Contracts\HttpClient\ChunkInterface> $generator): void;
+    }
+}
+
+namespace Symfony\Component\HttpClient\Retry {
+    /**
+     * Overlay: status code => retry methods (or a boolean).
+     */
+    // @overlay-against: class GenericRetryStrategy implements \Symfony\Component\HttpClient\Retry\RetryStrategyInterface
+    partial class GenericRetryStrategy {
+        // @overlay-against: function __construct(array $statusCodes, int $delayMs, float $multiplier, int $maxDelayMs, float $jitter): void
+        public function __construct(array<int, array<int|string, string>|bool> $statusCodes = self::DEFAULT_RETRY_STATUS_CODES, int $delayMs = 1000, float $multiplier = 2.0, int $maxDelayMs = 0, float $jitter = 0.1): void;
+    }
+}

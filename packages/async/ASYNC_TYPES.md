@@ -1,6 +1,6 @@
 # Tyhp Async Type Definitions — Verification (Story 06 Phase 5)
 
-Authoritative type surface: `package.tyhpdef` (loaded via `package.tyhp.json`).
+Authoritative type surface: `package.tyhpdef` (loaded via `extra.tyhp.package` on `composer.json`).
 
 Runtime implementation: `src/*.php` (compiled from `tyhp_src/*.tyhp`).
 
@@ -8,8 +8,8 @@ Runtime implementation: `src/*.php` (compiled from `tyhp_src/*.tyhp`).
 
 The binder loads this package through Phase 4 package discovery:
 
-- Production: `vendor/tyhp/async/package.tyhp.json`
-- Development: `runtime/packages/async/package.tyhp.json`
+- Production: `vendor/tyhp/async/composer.json` (`extra.tyhp.package`)
+- Development: `runtime/packages/async/composer.json` (`extra.tyhp.package`)
 
 Verify loading:
 
@@ -25,11 +25,11 @@ Expected: 0 parse/bind errors (TyhpSpec missing warning is acceptable in dev).
 |-------------|------------------|---------|
 | Generic class with `TReturn extends void\|mixed` | `Promise<TReturn extends void\|mixed>` | `Promise.php` (untyped PHP) |
 | Generic default `= void` | Deferred to Story 28 | `Promise.tyhp` has default |
-| `__construct(callable<TReturn>)` | ✓ | ✓ |
-| `_async<T>(callable<T>): Promise<T>` | ✓ (tyhpdef uses `Promise<T>`; parameterized `static<…>` banned — TYHP4168) | ✓ (`tyhp_src` author-migrated to `: self<T>` / `new self<T>`) |
+| `__construct(callable(): TReturn)` | ✓ | ✓ |
+| `_async<T>(callable(): T): Promise<T>` | ✓ (tyhpdef uses `Promise<T>`; parameterized `static<…>` banned — TYHP4168) | ✓ (`tyhp_src` author-migrated to `: self<T>` / `new self<T>`) |
 | `_await<T>(Promise<T>): T` | ✓ | ✓ |
 
-### Static combinators (async methods, return-last callable generics)
+### Static combinators (async methods, callable-shape handlers)
 
 | Method | Tyhpdef | Notes |
 |--------|---------|-------|
@@ -45,17 +45,17 @@ Expected: 0 parse/bind errors (TyhpSpec missing warning is acceptable in dev).
 | `rejected<T>` | `reject<T>` | ✓ `Promise<T>` |
 | `delay` | `delay` | ✓ async → `void` |
 | `timeout<T>` | `timeout` | ✓ async → `T` |
-| `batch<TItem, TResult>` | `batch` | ✓ callable return-last on processor |
+| `batch<TItem, TResult>` | `batch` | ✓ callable shape on processor |
 | `run<T>` | `run` | ✓ blocking sync entry (returns `T`) |
 | `fromGenerator` | `fromGenerator` | ✓ async → `mixed` |
 
-### Instance methods (callable return-last on handlers)
+### Instance methods (callable-shape handlers)
 
 | Method | Tyhpdef |
 |--------|---------|
-| `then<TResult>(?callable<TReturn, TResult>, ?callable<Throwable, TResult>)` | ✓ |
-| `catch<TResult>(callable<Throwable, TResult>)` | ✓ |
-| `finally(callable<void>)` | ✓ |
+| `then<TResult>(?callable(TReturn): TResult, ?callable(Throwable): TResult)` | ✓ |
+| `catch<TResult>(callable(Throwable): TResult)` | ✓ |
+| `finally(callable(): void)` | ✓ |
 
 ## EventLoop
 
@@ -104,16 +104,16 @@ non-parameterized returns. The author migrated `tyhp_src/Promise.tyhp` to `: sel
 | `package.tyhpdef` contains full `Promise<TReturn extends void\|mixed>` surface | ✓ |
 | `_async` / `_await` desugar targets | ✓ |
 | Static combinators and factories | ✓ |
-| Instance methods (`then`, `catch`, `finally`) with return-last callables | ✓ |
+| Instance methods (`then`, `catch`, `finally`) with callable-shape handlers | ✓ |
 | `EventLoop` public API | ✓ (`run` entry point, not plan's `start`) |
 | `AsyncIterator` / `AsyncIterable` / `AsyncKeyValueIterator` | ✓ |
 | Async generator constraint documented | ✓ (class docblock + this doc) |
 | Parses via `tyhp lint` | ✓ (0 errors) |
-| Loaded via `package.tyhp.json` + Phase 4 binder | ✓ (21 tyhpdef files bound when linting) |
+| Loaded via `extra.tyhp.package` + Phase 4 binder | ✓ (21 tyhpdef files bound when linting) |
 | Consistent with runtime | ✓ |
 
 `AggregateException` lives in `tyhp/core` (`Tyhp\Exceptions`); async runtime imports it from there — not duplicated in this package's tyhpdef.
 
-## Callable return-last convention
+## Callable shapes
 
-All `callable<...>` generic parameters in this package follow the Phase 3 convention documented in `Tyhp/TyhpLang/Binder/BuiltIn/README.md`: parameters first, return type last; `void` and `never` require explicit constraint opt-in on the return parameter.
+All `callable(…): R` parameters in this package are callable shapes: parameter list, then return type. `void` and `never` require an explicit constraint opt-in on the return type parameter.

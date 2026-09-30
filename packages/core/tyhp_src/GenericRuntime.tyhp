@@ -1,0 +1,34 @@
+<?tyhp
+
+namespace Tyhp;
+
+/**
+ * Runtime-visible stamp on a compiled-library generic class, method, or function.
+ *
+ * Present on every emitted generic declaration (erased or tracked). `factory` /
+ * `binder` are set only when helpers were emitted (`erased: false`). PHP builtin
+ * and overlay tyhpdefs that omit this attribute keep erase / inline emit.
+ *
+ * Named arguments:
+ * - `erased:` no factory / binder was emitted
+ * - `binder:` Mechanism D companion (`decode__tyhpGeneric` or `Backer::jsonDecodeAs__tyhpGeneric`)
+ * - `factory:` Mechanism C class factory (`new_Ns_Box__tyhpGeneric`)
+ * - `aliasFactory:` source type-alias `\Tyhp\Type` factory (`DecimalCoercible` or `UserService::NameType`)
+ * - `layouts:` dispatch keys this declaration supports (currently `[1]`)
+ * - `compiler:` optional compiler version for diagnostics only (not dispatch)
+ *
+ * Sit this attribute on the declaration, not on `<T>`. Authors do not write this
+ * attribute; the compiler restamps it. `\Tyhp\Generic::bind` reads it at runtime.
+ */
+#[\Attribute(\Attribute::TARGET_ALL)]
+final class GenericRuntime
+{
+    public function __construct(
+        public readonly bool $erased = false,
+        public readonly ?string $binder = null,
+        public readonly ?string $factory = null,
+        public readonly ?string $aliasFactory = null,
+        public readonly array<int> $layouts = [1],
+        public readonly ?string $compiler = null,
+    ): void {}
+}

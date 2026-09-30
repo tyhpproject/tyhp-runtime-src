@@ -1,0 +1,44 @@
+---
+description: Fix Tyhp first when runtime packages fail to compile; never paper over with package workarounds
+alwaysApply: true
+---
+
+# Runtime Package Compile Failures
+
+Package sources live in this repo (`packages/`). The compiler is the sibling checkout `../tyhp` (or `TYHP_DLL`). Fix Tyhp first.
+
+When `packages/*` fail to compile (`tyhp_src` → PHP) or have type-check errors:
+
+## Fix Tyhp first
+
+Prefer fixing the **language/toolchain truth** — not the package. That includes:
+- Tyhp **compiler, checker, binder, emitter, or type system**
+- Incorrect or incomplete **tyhpdefs / PHP stub signatures** for builtins and extensions
+
+Example: `Argument of type 'array|string' is not assignable to parameter of type 'string'` on `\ltrim(\str_replace(...), ...)` is often a **tyhpdef** issue — make `str_replace` generic so return type depends on arguments (string subject → string return; array subject → array return), rather than casting or reshaping package `tyhp_src`.
+
+## Do not paper over failures
+
+- Workarounds in `packages/*/tyhp_src/` or hand-edited `src/` just to make a package compile
+- Casts, suppressions, or reshaping package logic to silence the checker when the real issue is a wrong/missing tyhpdef or Tyhp bug
+- Hand-editing emitted PHP under `src/` — PHP is emitted from Tyhp; fix emit/check and re-emit instead
+
+## When the package is actually wrong
+
+If the failure is not a Tyhp or tyhpdef bug but invalid package code, fix the package only when the package itself is wrong. Still prefer confirming that Tyhp behavior is intentional.
+
+## Severity and triage
+
+- Log runtime package compile failures in the compiler repo's `FOUND_BUGS.md` as **Critical** severity.
+- PHPUnit on failing packages is optional — focus on Tyhp compile errors.
+- Apply trivial Tyhp fixes immediately; otherwise log Critical and fix Tyhp properly.
+
+## Decision flow
+
+```
+Package compile/type error
+  → Tyhp should support this? → Fix Tyhp toolchain (checker/emitter/tyhpdefs/etc.), re-emit
+  → Wrong/incomplete tyhpdef or PHP stub? → Fix tyhpdef signature; do not workaround in package
+  → Invalid package code only? → Fix tyhp_src; confirm Tyhp behavior is intentional
+  → Never → hand-edit src/*.php or add package hacks to bypass Tyhp
+```

@@ -1,0 +1,128 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * Runtime option maps and ResolverInterface::resolve() tuple.
+ */
+
+namespace Symfony\Component\Runtime {
+    /**
+     * Tyhp encoding of GenericRuntime `@param array{...} $options`.
+     * Every key is optional. `runtimes` values are a class name, `false`, or a runtime instance.
+     */
+    type GenericRuntimeOptions = struct {
+        ?bool $debug;
+        ?array<string, string|false|\Symfony\Component\Runtime\GenericRuntime> $runtimes;
+        string|false|null $error_handler;
+        ?string $env_var_name;
+        ?string $debug_var_name;
+    };
+
+    /**
+     * Tyhp encoding of `@return array{0: callable, 1: mixed[]}`.
+     */
+    type ResolverResult = struct {
+        callable '0' as $callable;
+        array<int, mixed> '1' as $arguments;
+    };
+
+    /**
+     * Tyhp encoding of SymfonyRuntime `@param array{...} $options`, including GenericRuntime keys.
+     */
+    type SymfonyRuntimeOptions = struct extends \Symfony\Component\Runtime\GenericRuntimeOptions {
+        ?string $env;
+        ?bool $disable_dotenv;
+        ?string $project_dir;
+        ?array<int|string, string> $prod_envs;
+        ?string $dotenv_path;
+        ?array<int|string, string> $test_envs;
+        ?bool $use_putenv;
+        string|false|null $project_dir_var;
+        ?bool $dotenv_overload;
+        ?array<int|string, string> $dotenv_extra_paths;
+        ?int $worker_loop_max;
+    };
+
+    /**
+     * Overlay: constructor options match the GenericRuntime array shape.
+     */
+    // @overlay-against: class GenericRuntime implements \Symfony\Component\Runtime\RuntimeInterface
+    partial class GenericRuntime {
+        /**
+         * @param \Symfony\Component\Runtime\GenericRuntimeOptions $options
+         */
+        // @overlay-against: function __construct(array $options): void
+        public function __construct(\Symfony\Component\Runtime\GenericRuntimeOptions $options = []): void;
+
+        /**
+         * @param callable(mixed...): object $callable Application factory. The resolver computes its arguments.
+         */
+        // @overlay-against: function getResolver(callable $callable, ?\ReflectionFunction $reflector): \Symfony\Component\Runtime\ResolverInterface
+        public function getResolver(callable(mixed...): object $callable, ?\ReflectionFunction $reflector = null): \Symfony\Component\Runtime\ResolverInterface;
+    }
+
+    /**
+     * Overlay: `resolve()` returns the callable and its argument list.
+     */
+    // @overlay-against: interface ResolverInterface
+    partial interface ResolverInterface {
+        /**
+         * @return \Symfony\Component\Runtime\ResolverResult
+         */
+        // @overlay-against: function resolve(): array
+        public function resolve(): \Symfony\Component\Runtime\ResolverResult;
+    }
+
+    /**
+     * Overlay: the callable is the application factory.
+     */
+    // @overlay-against: interface RuntimeInterface
+    partial interface RuntimeInterface {
+        /**
+         * @param callable(mixed...): object $callable
+         */
+        // @overlay-against: function getResolver(callable $callable, ?\ReflectionFunction $reflector): \Symfony\Component\Runtime\ResolverInterface
+        public function getResolver(callable(mixed...): object $callable, ?\ReflectionFunction $reflector = null): \Symfony\Component\Runtime\ResolverInterface;
+    }
+
+    /**
+     * Overlay: constructor options match the SymfonyRuntime array shape.
+     */
+    // @overlay-against: class SymfonyRuntime extends \Symfony\Component\Runtime\GenericRuntime
+    partial class SymfonyRuntime {
+        /**
+         * @param \Symfony\Component\Runtime\SymfonyRuntimeOptions $options
+         */
+        // @overlay-against: function __construct(array $options): void
+        public function __construct(\Symfony\Component\Runtime\SymfonyRuntimeOptions $options = []): void;
+    }
+}
+
+namespace Symfony\Component\Runtime\Resolver {
+    /**
+     * Overlay: `$arguments` is invoked with no parameters and returns the argument list. `resolve()` is the documented tuple.
+     */
+    // @overlay-against: class ClosureResolver implements \Symfony\Component\Runtime\ResolverInterface
+    partial class ClosureResolver {
+        // @overlay-against: function __construct(\Closure $closure, \Closure $arguments): void
+        public function __construct(\Closure $closure, \Closure<callable(): array<int, mixed>> $arguments): void;
+
+        /**
+         * @return \Symfony\Component\Runtime\ResolverResult
+         */
+        // @overlay-against: function resolve(): array
+        public function resolve(): \Symfony\Component\Runtime\ResolverResult;
+    }
+
+    /**
+     * Overlay: same `resolve()` tuple as ClosureResolver.
+     */
+    // @overlay-against: class DebugClosureResolver extends \Symfony\Component\Runtime\Resolver\ClosureResolver
+    partial class DebugClosureResolver {
+        /**
+         * @return \Symfony\Component\Runtime\ResolverResult
+         */
+        // @overlay-against: function resolve(): array
+        public function resolve(): \Symfony\Component\Runtime\ResolverResult;
+    }
+}

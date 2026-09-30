@@ -1,0 +1,25 @@
+<?tyhp
+
+class OverlayRateLimitedHost {
+    use \DanHarrin\LivewireRateLimiting\WithRateLimiting;
+
+    public function attempt(): void
+    {
+        $this->rateLimit(5, 60, 'save');
+    }
+}
+
+function test_danharrin_livewire_rate_limiting_package_loads(): bool
+{
+    return true;
+}
+
+function test_too_many_requests(): \DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException
+{
+    return new \DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException(new \stdClass(), 'save', '127.0.0.1', 10);
+}
+
+function test_rate_limit(OverlayRateLimitedHost $host): void
+{
+    $host->attempt();
+}

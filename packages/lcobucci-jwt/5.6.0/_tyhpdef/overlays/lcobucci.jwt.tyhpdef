@@ -1,0 +1,110 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Layer 1 omitted `@internal` ECDSA SignatureConverter.
+ * Configuration defaults match vendor PHP (`new JoseEncoder()`, nullable builder formatter).
+ */
+
+namespace Lcobucci\JWT\Signer\Ecdsa {
+    /**
+     * Converts OpenSSL ASN.1 ECDSA signatures to JWA concatenated R||S.
+     */
+    interface SignatureConverter {
+        public function fromAsn1(string $signature, int $length): string;
+        public function toAsn1(string $points, int $length): string;
+    }
+}
+
+namespace Lcobucci\JWT {
+    /**
+     * Overlay: forSymmetricSigner() encoder/decoder default to JoseEncoder in PHP;
+     * builder() formatter is optional.
+     */
+    // @overlay-against: class Configuration
+    partial class Configuration {
+        // @overlay-against: function forSymmetricSigner(\Lcobucci\JWT\Signer $signer, \Lcobucci\JWT\Signer\Key $key, \Lcobucci\JWT\Encoder $encoder, \Lcobucci\JWT\Decoder $decoder): self
+        public static function forSymmetricSigner(\Lcobucci\JWT\Signer $signer, \Lcobucci\JWT\Signer\Key $key, \Lcobucci\JWT\Encoder $encoder = new \Lcobucci\JWT\Encoding\JoseEncoder(), \Lcobucci\JWT\Decoder $decoder = new \Lcobucci\JWT\Encoding\JoseEncoder()): self;
+
+        // @overlay-against: function builder(?\Lcobucci\JWT\ClaimsFormatter $claimFormatter): \Lcobucci\JWT\Builder
+        public function builder(?\Lcobucci\JWT\ClaimsFormatter $claimFormatter = null): \Lcobucci\JWT\Builder;
+
+        /**
+         * @param callable(\Lcobucci\JWT\ClaimsFormatter): \Lcobucci\JWT\Builder $builderFactory
+         */
+        // @overlay-against: function setBuilderFactory(callable $builderFactory): void
+        deprecated public function setBuilderFactory(callable(\Lcobucci\JWT\ClaimsFormatter): \Lcobucci\JWT\Builder $builderFactory): void;
+
+        /**
+         * @param callable(\Lcobucci\JWT\ClaimsFormatter): \Lcobucci\JWT\Builder $builderFactory
+         */
+        // @overlay-against: function withBuilderFactory(callable $builderFactory): self
+        public function withBuilderFactory(callable(\Lcobucci\JWT\ClaimsFormatter): \Lcobucci\JWT\Builder $builderFactory): self;
+    }
+
+    /**
+     * Overlay: `issue()` passes the builder and the current time into the customiser.
+     */
+    // @overlay-against: class JwtFacade
+    partial class JwtFacade {
+        /**
+         * @param \Closure<callable(\Lcobucci\JWT\Builder, \DateTimeImmutable): \Lcobucci\JWT\Builder> $customiseBuilder
+         */
+        // @overlay-against: function issue(\Lcobucci\JWT\Signer $signer, \Lcobucci\JWT\Signer\Key $signingKey, \Closure $customiseBuilder): \Lcobucci\JWT\UnencryptedToken
+        public function issue(\Lcobucci\JWT\Signer $signer, \Lcobucci\JWT\Signer\Key $signingKey, \Closure<callable(\Lcobucci\JWT\Builder, \DateTimeImmutable): \Lcobucci\JWT\Builder> $customiseBuilder): \Lcobucci\JWT\UnencryptedToken;
+    }
+}
+
+namespace Lcobucci\JWT\Encoding {
+    /**
+     * Overlay: `formatClaims()` matches `ClaimsFormatter` (`array<mixed, mixed>`).
+     */
+    // @overlay-against: class ChainedFormatter implements \Lcobucci\JWT\ClaimsFormatter
+    partial class ChainedFormatter {
+        /**
+         * @param array<mixed, mixed> $claims
+         * @return array<mixed, mixed>
+         */
+        // @overlay-against: function formatClaims(array $claims): array
+        public function formatClaims(array<mixed, mixed> $claims): array<mixed, mixed>;
+    }
+
+    /**
+     * Overlay: `formatClaims()` matches `ClaimsFormatter` (`array<mixed, mixed>`).
+     */
+    // @overlay-against: class MicrosecondBasedDateConversion implements \Lcobucci\JWT\ClaimsFormatter
+    partial class MicrosecondBasedDateConversion {
+        /**
+         * @param array<mixed, mixed> $claims
+         * @return array<mixed, mixed>
+         */
+        // @overlay-against: function formatClaims(array $claims): array
+        public function formatClaims(array<mixed, mixed> $claims): array<mixed, mixed>;
+    }
+
+    /**
+     * Overlay: `formatClaims()` matches `ClaimsFormatter` (`array<mixed, mixed>`).
+     */
+    // @overlay-against: class UnifyAudience implements \Lcobucci\JWT\ClaimsFormatter
+    partial class UnifyAudience {
+        /**
+         * @param array<mixed, mixed> $claims
+         * @return array<mixed, mixed>
+         */
+        // @overlay-against: function formatClaims(array $claims): array
+        public function formatClaims(array<mixed, mixed> $claims): array<mixed, mixed>;
+    }
+
+    /**
+     * Overlay: `formatClaims()` matches `ClaimsFormatter` (`array<mixed, mixed>`).
+     */
+    // @overlay-against: class UnixTimestampDates implements \Lcobucci\JWT\ClaimsFormatter
+    partial class UnixTimestampDates {
+        /**
+         * @param array<mixed, mixed> $claims
+         * @return array<mixed, mixed>
+         */
+        // @overlay-against: function formatClaims(array $claims): array
+        public function formatClaims(array<mixed, mixed> $claims): array<mixed, mixed>;
+    }
+}

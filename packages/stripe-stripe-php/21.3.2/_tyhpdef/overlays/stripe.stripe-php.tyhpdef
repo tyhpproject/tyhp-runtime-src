@@ -1,0 +1,1241 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * Types the client, service base, collections, HTTP client, webhooks, and util surfaces.
+ * Generated resource classes and per-endpoint service methods stay on Layer 1.
+ */
+
+namespace HttpClient {
+    /**
+     * Layer 1 emitted Stripe HTTP clients without the `Stripe\` prefix.
+     */
+    interface ClientInterface {
+    }
+
+    interface StreamingClientInterface {
+    }
+}
+
+namespace Stripe {
+    type ApiRequestResult = struct {
+        \Stripe\ApiResponse 0 as $response;
+        string 1 as $apiKey;
+    };
+
+    type AppInfo = struct {
+        string $name;
+        ?string $version;
+        ?string $url;
+        ?string $partner_id;
+    };
+
+    type ClientConfig = struct {
+        ?string $api_key;
+        AppInfo|null $app_info;
+        ?string $client_id;
+        ?string $stripe_account;
+        string|\Stripe\StripeContext|null $stripe_context;
+        ?string $stripe_version;
+        ?int $max_network_retries;
+        ?string $api_base;
+        ?string $connect_base;
+        ?string $files_base;
+        ?string $meter_events_base;
+    };
+
+    type NotificationFallback = callable(\Stripe\V2\Core\EventNotification, \Stripe\StripeClient, \Stripe\UnhandledNotificationDetails): void;
+
+    type PreHandleCallback = callable(\Stripe\V2\Core\EventNotification, \Stripe\StripeClient): bool;
+
+    /**
+     * Event-notification base omitted by Layer 1.
+     */
+    class AbstractEventNotificationHandler {
+        protected \Stripe\StripeClient $client;
+        protected ClientConfig $clientConfig;
+        protected NotificationFallback $fallbackCallback;
+        protected bool $hasHandledEvents;
+        protected PreHandleCallback|null $preHandleCallback;
+        protected array<string, callable> $registeredHandlers;
+
+        public function __construct(\Stripe\StripeClient $client, NotificationFallback $fallbackCallback): void;
+
+        protected function createClientWithContext(string|null $context): \Stripe\StripeClient;
+
+        protected function dispatch(\Stripe\V2\Core\EventNotification $notif): void;
+
+        public function getRegisteredHandlers(): array<int, string>;
+
+        public function onV1BillingMeterErrorReportTriggered(callable(\Stripe\Events\V1BillingMeterErrorReportTriggeredEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV1BillingMeterNoMeterFound(callable(\Stripe\Events\V1BillingMeterNoMeterFoundEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CommerceProductCatalogImportsFailed(callable(\Stripe\Events\V2CommerceProductCatalogImportsFailedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CommerceProductCatalogImportsProcessing(callable(\Stripe\Events\V2CommerceProductCatalogImportsProcessingEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CommerceProductCatalogImportsSucceeded(callable(\Stripe\Events\V2CommerceProductCatalogImportsSucceededEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CommerceProductCatalogImportsSucceededWithErrors(callable(\Stripe\Events\V2CommerceProductCatalogImportsSucceededWithErrorsEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountClosed(callable(\Stripe\Events\V2CoreAccountClosedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountCreated(callable(\Stripe\Events\V2CoreAccountCreatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingConfigurationCustomerCapabilityStatusUpdated(callable(\Stripe\Events\V2CoreAccountIncludingConfigurationCustomerCapabilityStatusUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingConfigurationCustomerUpdated(callable(\Stripe\Events\V2CoreAccountIncludingConfigurationCustomerUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingConfigurationMerchantCapabilityStatusUpdated(callable(\Stripe\Events\V2CoreAccountIncludingConfigurationMerchantCapabilityStatusUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingConfigurationMerchantUpdated(callable(\Stripe\Events\V2CoreAccountIncludingConfigurationMerchantUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingConfigurationRecipientCapabilityStatusUpdated(callable(\Stripe\Events\V2CoreAccountIncludingConfigurationRecipientCapabilityStatusUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingConfigurationRecipientUpdated(callable(\Stripe\Events\V2CoreAccountIncludingConfigurationRecipientUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingDefaultsUpdated(callable(\Stripe\Events\V2CoreAccountIncludingDefaultsUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingFutureRequirementsUpdated(callable(\Stripe\Events\V2CoreAccountIncludingFutureRequirementsUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingIdentityUpdated(callable(\Stripe\Events\V2CoreAccountIncludingIdentityUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountIncludingRequirementsUpdated(callable(\Stripe\Events\V2CoreAccountIncludingRequirementsUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountLinkReturned(callable(\Stripe\Events\V2CoreAccountLinkReturnedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountPersonCreated(callable(\Stripe\Events\V2CoreAccountPersonCreatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountPersonDeleted(callable(\Stripe\Events\V2CoreAccountPersonDeletedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountPersonUpdated(callable(\Stripe\Events\V2CoreAccountPersonUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreAccountUpdated(callable(\Stripe\Events\V2CoreAccountUpdatedEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function onV2CoreEventDestinationPing(callable(\Stripe\Events\V2CoreEventDestinationPingEventNotification, \Stripe\StripeClient): void $handler): void;
+
+        public function preHandle(PreHandleCallback $handler): void;
+
+        protected function register(string $eventType, callable $handler): void;
+    }
+
+    // @overlay-against: class ApiRequestor
+    partial class ApiRequestor {
+        // @overlay-against: function httpClient(): \HttpClient\ClientInterface
+        public static function httpClient(): \Stripe\HttpClient\ClientInterface;
+
+        // @overlay-against: function resetTelemetry(): mixed
+        public static function resetTelemetry(): void;
+
+        // @overlay-against: function setHttpClient(\HttpClient\ClientInterface $client): mixed
+        public static function setHttpClient(\Stripe\HttpClient\ClientInterface $client): void;
+
+        // @overlay-against: function setStreamingHttpClient(\HttpClient\StreamingClientInterface $client): mixed
+        public static function setStreamingHttpClient(\Stripe\HttpClient\StreamingClientInterface $client): void;
+
+        // @overlay-against: function streamingHttpClient(): \HttpClient\StreamingClientInterface
+        public static function streamingHttpClient(): \Stripe\HttpClient\StreamingClientInterface;
+
+        // @overlay-against: function __construct(null|string $apiKey, null|string $apiBase, null|array $appInfo): void
+        public function __construct(string|null $apiKey = null, string|null $apiBase = null, AppInfo|null $appInfo = null): void;
+
+        // @overlay-against: function handleErrorResponse(string $rbody, int $rcode, array $rheaders, array $resp, string $apiMode): mixed
+        public function handleErrorResponse(string $rbody, int $rcode, array<string, string>|\Stripe\Util\CaseInsensitiveArray $rheaders, array<string, mixed> $resp, 'v1'|'v2' $apiMode): void;
+
+        // @overlay-against: function request(string $method, string $url, null|array $params, null|array $headers, string $apiMode, array $usage, null|int $maxNetworkRetries): array
+        public function request(string $method, string $url, array<string, mixed>|null $params = null, array<string, string>|null $headers = null, 'v1'|'v2' $apiMode = 'v1', array<int, string> $usage = [], int|null $maxNetworkRetries = null): ApiRequestResult;
+
+        // @overlay-against: function requestStream(string $method, string $url, callable $readBodyChunkCallable, null|array $params, null|array $headers, string $apiMode, array $usage, null|int $maxNetworkRetries): mixed
+        public function requestStream(string $method, string $url, callable(string): void $readBodyChunkCallable, array<string, mixed>|null $params = null, array<string, string>|null $headers = null, 'v1'|'v2' $apiMode = 'v1', array<int, string> $usage = [], int|null $maxNetworkRetries = null): void;
+    }
+
+    // @overlay-against: class ApiResource extends \Stripe\StripeObject implements \Stripe\ApiOperations\Request
+    partial class ApiResource {
+        // @overlay-against: function getSavedNestedResources(): \Util\Set
+        public static function getSavedNestedResources(): \Stripe\Util\Set;
+
+        // @overlay-against: function __set(mixed $k, mixed $v): mixed
+        public function __set(string $k, mixed $v): void;
+    }
+
+    // @overlay-against: class ApiResponse
+    partial class ApiResponse {
+        // @overlay-against: null|array|\Stripe\Util\CaseInsensitiveArray $headers
+        public array<string, string>|\Stripe\Util\CaseInsensitiveArray|null $headers;
+
+        // @overlay-against: null|array $json
+        public array<string, mixed>|null $json;
+
+        // @overlay-against: function __construct(string $body, int $code, null|array|\Stripe\Util\CaseInsensitiveArray $headers, null|array $json): void
+        public function __construct(string $body, int $code, array<string, string>|\Stripe\Util\CaseInsensitiveArray|null $headers, array<string, mixed>|null $json): void;
+    }
+
+    // @overlay-against: class BaseStripeClient implements \Stripe\StripeClientInterface, \Stripe\StripeStreamingClientInterface
+    partial class BaseStripeClient {
+        // @overlay-against: function __construct(array|string $config): void
+        public function __construct(ClientConfig|string $config = []): void;
+
+        // @overlay-against: function getAppInfo(): null|array
+        public function getAppInfo(): AppInfo|null;
+
+        // @overlay-against: function getStripeContext(): null|string|\Stripe\StripeContext
+        public function getStripeContext(): string|\Stripe\StripeContext|null;
+
+        // @overlay-against: function notificationHandler(string $webhookSecret, callable $fallbackCallback): \Stripe\StripeEventNotificationHandler
+        public function notificationHandler(string $webhookSecret, NotificationFallback $fallbackCallback): \Stripe\StripeEventNotificationHandler;
+
+        // @overlay-against: function notificationHandlerWithoutVerification(callable $fallbackCallback): \Stripe\StripeEventNotificationHandlerWithoutVerification
+        public function notificationHandlerWithoutVerification(NotificationFallback $fallbackCallback): \Stripe\StripeEventNotificationHandlerWithoutVerification;
+
+        // @overlay-against: function rawRequest(string $method, string $path, null|array $params, array $opts, null|int $maxNetworkRetries, mixed $usage): \Stripe\ApiResponse
+        public function rawRequest(string $method, string $path, array<string, mixed>|null $params = null, array<string, mixed> $opts = [], int|null $maxNetworkRetries = null, array<int, string>|null $usage = null): \Stripe\ApiResponse;
+
+        // @overlay-against: function request(string $method, string $path, array $params, array|\Stripe\Util\RequestOptions $opts): \Stripe\StripeObject
+        public function request('delete'|'get'|'post' $method, string $path, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts): \Stripe\StripeObject;
+
+        // @overlay-against: function requestCollection(string $method, string $path, array $params, array|\Stripe\Util\RequestOptions $opts): \Stripe\Collection|\V2\Collection
+        public function requestCollection('delete'|'get'|'post' $method, string $path, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts): \Stripe\Collection|\Stripe\V2\Collection;
+
+        // @overlay-against: function requestSearchResult(string $method, string $path, array $params, array|\Stripe\Util\RequestOptions $opts): \Stripe\SearchResult
+        public function requestSearchResult('delete'|'get'|'post' $method, string $path, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts): \Stripe\SearchResult;
+
+        // @overlay-against: function requestStream(string $method, string $path, callable $readBodyChunkCallable, array $params, array|\Stripe\Util\RequestOptions $opts): mixed
+        public function requestStream('delete'|'get'|'post' $method, string $path, callable(string): void $readBodyChunkCallable, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts): void;
+    }
+
+    // @overlay-against: interface BaseStripeClientInterface
+    partial interface BaseStripeClientInterface {
+        // @overlay-against: function getStripeContext(): null|string
+        public function getStripeContext(): string|\Stripe\StripeContext|null;
+    }
+
+    // @overlay-against: class Collection extends \Stripe\StripeObject implements \Countable, \IteratorAggregate, \Stripe\ApiOperations\Request
+    partial class Collection {
+        // @overlay-against: array $filters
+        protected array<string, mixed> $filters;
+
+        // @overlay-against: function emptyCollection(null|array|string $opts): \Stripe\Collection
+        public static function emptyCollection(array<string, mixed>|string|null $opts = null): \Stripe\Collection<TStripeObject>;
+
+        // @overlay-against: function all(null|array $params, null|array|string $opts): \Stripe\Collection
+        public function all(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): \Stripe\Collection<TStripeObject>;
+
+        // @overlay-against: function autoPagingIterator(): \Generator|array
+        public function autoPagingIterator(): \Generator<int, TStripeObject>;
+
+        // @overlay-against: function create(null|array $params, null|array|string $opts): TStripeObject
+        public function create(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): TStripeObject;
+
+        // @overlay-against: function getFilters(): array
+        public function getFilters(): array<string, mixed>;
+
+        // @overlay-against: function nextPage(null|array $params, null|array|string $opts): \Stripe\Collection
+        public function nextPage(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): \Stripe\Collection<TStripeObject>;
+
+        // @overlay-against: function previousPage(null|array $params, null|array|string $opts): \Stripe\Collection
+        public function previousPage(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): \Stripe\Collection<TStripeObject>;
+
+        // @overlay-against: function retrieve(string $id, null|array $params, null|array|string $opts): TStripeObject
+        public function retrieve(string $id, array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): TStripeObject;
+
+        // @overlay-against: function setFilters(array $filters): mixed
+        public function setFilters(array<string, mixed> $filters): void;
+    }
+
+    // @overlay-against: class OAuth
+    partial class OAuth {
+        // @overlay-against: function authorizeUrl(null|array $params, null|array $opts): string
+        public static function authorizeUrl(array<string, mixed>|null $params = null, array<string, mixed>|null $opts = null): string;
+
+        // @overlay-against: function deauthorize(null|array $params, null|array $opts): \Stripe\StripeObject
+        public static function deauthorize(array<string, mixed>|null $params = null, array<string, mixed>|null $opts = null): \Stripe\StripeObject;
+
+        // @overlay-against: function token(null|array $params, null|array $opts): \Stripe\StripeObject
+        public static function token(array<string, mixed>|null $params = null, array<string, mixed>|null $opts = null): \Stripe\StripeObject;
+    }
+
+    // @overlay-against: class ProductFeature extends \Stripe\ApiResource
+    partial class ProductFeature {
+        // @overlay-against: \Entitlements\Feature $entitlement_feature
+        public \Stripe\Entitlements\Feature $entitlement_feature;
+    }
+
+    // @overlay-against: class SearchResult extends \Stripe\StripeObject implements \Countable, \IteratorAggregate, \Stripe\ApiOperations\Request
+    partial class SearchResult {
+        // @overlay-against: array $filters
+        protected array<string, mixed> $filters;
+
+        // @overlay-against: function emptySearchResult(null|array|string $opts): \Stripe\SearchResult
+        public static function emptySearchResult(array<string, mixed>|string|null $opts = null): \Stripe\SearchResult<TStripeObject>;
+
+        // @overlay-against: function all(null|array $params, null|array|string $opts): \Stripe\SearchResult
+        public function all(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): \Stripe\SearchResult<TStripeObject>;
+
+        // @overlay-against: function autoPagingIterator(): \Generator|array
+        public function autoPagingIterator(): \Generator<int, TStripeObject>;
+
+        // @overlay-against: function getFilters(): array
+        public function getFilters(): array<string, mixed>;
+
+        // @overlay-against: function getIterator(): \ArrayIterator
+        public function getIterator(): \ArrayIterator<int, TStripeObject>;
+
+        // @overlay-against: function nextPage(null|array $params, null|array|string $opts): \Stripe\SearchResult
+        public function nextPage(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): \Stripe\SearchResult<TStripeObject>;
+
+        // @overlay-against: function setFilters(array $filters): mixed
+        public function setFilters(array<string, mixed> $filters): void;
+    }
+
+    // @overlay-against: class Stripe
+    partial class Stripe {
+        // @overlay-against: array $appInfo
+        public static AppInfo|null $appInfo;
+
+        // @overlay-against: string $caBundlePath
+        public static string|null $caBundlePath;
+
+        // @overlay-against: null|\Util\LoggerInterface $logger
+        public static \Psr\Log\LoggerInterface|\Stripe\Util\LoggerInterface|null $logger;
+
+        // @overlay-against: function getAppInfo(): null|array
+        public static function getAppInfo(): AppInfo|null;
+
+        // @overlay-against: function getLogger(): \Util\LoggerInterface
+        public static function getLogger(): \Psr\Log\LoggerInterface|\Stripe\Util\LoggerInterface;
+
+        // @overlay-against: function setAccountId(null|string $accountId): mixed
+        public static function setAccountId(string|null $accountId): void;
+
+        /**
+         * Overlay: setApiKey is void at the type surface apps call.
+         */
+        // @overlay-against: function setApiKey(string $apiKey): mixed
+        public static function setApiKey(string $apiKey): void;
+
+        // @overlay-against: function setApiVersion(string $apiVersion): mixed
+        public static function setApiVersion(string $apiVersion): void;
+
+        // @overlay-against: function setAppInfo(string $appName, null|string $appVersion, null|string $appUrl, null|string $appPartnerId): mixed
+        public static function setAppInfo(string $appName, string|null $appVersion = null, string|null $appUrl = null, string|null $appPartnerId = null): void;
+
+        // @overlay-against: function setCABundlePath(string $caBundlePath): mixed
+        public static function setCABundlePath(string $caBundlePath): void;
+
+        // @overlay-against: function setClientId(string $clientId): mixed
+        public static function setClientId(string $clientId): void;
+
+        // @overlay-against: function setEnableTelemetry(bool $enableTelemetry): mixed
+        public static function setEnableTelemetry(bool $enableTelemetry): void;
+
+        // @overlay-against: function setLogger(\Psr\Log\LoggerInterface|\Util\LoggerInterface $logger): mixed
+        public static function setLogger(\Psr\Log\LoggerInterface|\Stripe\Util\LoggerInterface $logger): void;
+
+        // @overlay-against: function setMaxNetworkRetries(int $maxNetworkRetries): mixed
+        public static function setMaxNetworkRetries(int $maxNetworkRetries): void;
+
+        // @overlay-against: function setVerifySslCerts(bool $verify): mixed
+        public static function setVerifySslCerts(bool $verify): void;
+    }
+
+    // @overlay-against: class StripeClient extends \Stripe\BaseStripeClient
+    partial class StripeClient {
+        // @overlay-against: \Service\AccountLinkService $accountLinks
+        public \Stripe\Service\AccountLinkService $accountLinks;
+        // @overlay-against: \Service\AccountService $accounts
+        public \Stripe\Service\AccountService $accounts;
+        // @overlay-against: \Service\AccountSessionService $accountSessions
+        public \Stripe\Service\AccountSessionService $accountSessions;
+        // @overlay-against: \Service\ApplePayDomainService $applePayDomains
+        public \Stripe\Service\ApplePayDomainService $applePayDomains;
+        // @overlay-against: \Service\ApplicationFeeService $applicationFees
+        public \Stripe\Service\ApplicationFeeService $applicationFees;
+        // @overlay-against: \Service\Apps\AppsServiceFactory $apps
+        public \Stripe\Service\Apps\AppsServiceFactory $apps;
+        // @overlay-against: \Service\BalanceService $balance
+        public \Stripe\Service\BalanceService $balance;
+        // @overlay-against: \Service\BalanceSettingsService $balanceSettings
+        public \Stripe\Service\BalanceSettingsService $balanceSettings;
+        // @overlay-against: \Service\BalanceTransactionService $balanceTransactions
+        public \Stripe\Service\BalanceTransactionService $balanceTransactions;
+        // @overlay-against: \Service\Billing\BillingServiceFactory $billing
+        public \Stripe\Service\Billing\BillingServiceFactory $billing;
+        // @overlay-against: \Service\BillingPortal\BillingPortalServiceFactory $billingPortal
+        public \Stripe\Service\BillingPortal\BillingPortalServiceFactory $billingPortal;
+        // @overlay-against: \Service\ChargeService $charges
+        public \Stripe\Service\ChargeService $charges;
+        // @overlay-against: \Service\Checkout\CheckoutServiceFactory $checkout
+        public \Stripe\Service\Checkout\CheckoutServiceFactory $checkout;
+        // @overlay-against: \Service\Climate\ClimateServiceFactory $climate
+        public \Stripe\Service\Climate\ClimateServiceFactory $climate;
+        // @overlay-against: \Service\ConfirmationTokenService $confirmationTokens
+        public \Stripe\Service\ConfirmationTokenService $confirmationTokens;
+        // @overlay-against: \Service\CountrySpecService $countrySpecs
+        public \Stripe\Service\CountrySpecService $countrySpecs;
+        // @overlay-against: \Service\CouponService $coupons
+        public \Stripe\Service\CouponService $coupons;
+        // @overlay-against: \Service\CreditNoteService $creditNotes
+        public \Stripe\Service\CreditNoteService $creditNotes;
+        // @overlay-against: \Service\CustomerService $customers
+        public \Stripe\Service\CustomerService $customers;
+        // @overlay-against: \Service\CustomerSessionService $customerSessions
+        public \Stripe\Service\CustomerSessionService $customerSessions;
+        // @overlay-against: \Service\DisputeService $disputes
+        public \Stripe\Service\DisputeService $disputes;
+        // @overlay-against: \Service\Entitlements\EntitlementsServiceFactory $entitlements
+        public \Stripe\Service\Entitlements\EntitlementsServiceFactory $entitlements;
+        // @overlay-against: \Service\EphemeralKeyService $ephemeralKeys
+        public \Stripe\Service\EphemeralKeyService $ephemeralKeys;
+        // @overlay-against: \Service\EventService $events
+        public \Stripe\Service\EventService $events;
+        // @overlay-against: \Service\ExchangeRateService $exchangeRates
+        public \Stripe\Service\ExchangeRateService $exchangeRates;
+        // @overlay-against: \Service\FileLinkService $fileLinks
+        public \Stripe\Service\FileLinkService $fileLinks;
+        // @overlay-against: \Service\FileService $files
+        public \Stripe\Service\FileService $files;
+        // @overlay-against: \Service\FinancialConnections\FinancialConnectionsServiceFactory $financialConnections
+        public \Stripe\Service\FinancialConnections\FinancialConnectionsServiceFactory $financialConnections;
+        // @overlay-against: \Service\Forwarding\ForwardingServiceFactory $forwarding
+        public \Stripe\Service\Forwarding\ForwardingServiceFactory $forwarding;
+        // @overlay-against: \Service\Identity\IdentityServiceFactory $identity
+        public \Stripe\Service\Identity\IdentityServiceFactory $identity;
+        // @overlay-against: \Service\InvoiceItemService $invoiceItems
+        public \Stripe\Service\InvoiceItemService $invoiceItems;
+        // @overlay-against: \Service\InvoicePaymentService $invoicePayments
+        public \Stripe\Service\InvoicePaymentService $invoicePayments;
+        // @overlay-against: \Service\InvoiceRenderingTemplateService $invoiceRenderingTemplates
+        public \Stripe\Service\InvoiceRenderingTemplateService $invoiceRenderingTemplates;
+        // @overlay-against: \Service\InvoiceService $invoices
+        public \Stripe\Service\InvoiceService $invoices;
+        // @overlay-against: \Service\Issuing\IssuingServiceFactory $issuing
+        public \Stripe\Service\Issuing\IssuingServiceFactory $issuing;
+        // @overlay-against: \Service\MandateService $mandates
+        public \Stripe\Service\MandateService $mandates;
+        // @overlay-against: \Service\OAuthService $oauth
+        public \Stripe\Service\OAuthService $oauth;
+        // @overlay-against: \Service\PaymentAttemptRecordService $paymentAttemptRecords
+        public \Stripe\Service\PaymentAttemptRecordService $paymentAttemptRecords;
+        // @overlay-against: \Service\PaymentIntentService $paymentIntents
+        public \Stripe\Service\PaymentIntentService $paymentIntents;
+        // @overlay-against: \Service\PaymentLinkService $paymentLinks
+        public \Stripe\Service\PaymentLinkService $paymentLinks;
+        // @overlay-against: \Service\PaymentMethodConfigurationService $paymentMethodConfigurations
+        public \Stripe\Service\PaymentMethodConfigurationService $paymentMethodConfigurations;
+        // @overlay-against: \Service\PaymentMethodDomainService $paymentMethodDomains
+        public \Stripe\Service\PaymentMethodDomainService $paymentMethodDomains;
+        // @overlay-against: \Service\PaymentMethodService $paymentMethods
+        public \Stripe\Service\PaymentMethodService $paymentMethods;
+        // @overlay-against: \Service\PaymentRecordService $paymentRecords
+        public \Stripe\Service\PaymentRecordService $paymentRecords;
+        // @overlay-against: \Service\PayoutService $payouts
+        public \Stripe\Service\PayoutService $payouts;
+        // @overlay-against: \Service\PlanService $plans
+        public \Stripe\Service\PlanService $plans;
+        // @overlay-against: \Service\PriceService $prices
+        public \Stripe\Service\PriceService $prices;
+        // @overlay-against: \Service\ProductService $products
+        public \Stripe\Service\ProductService $products;
+        // @overlay-against: \Service\PromotionCodeService $promotionCodes
+        public \Stripe\Service\PromotionCodeService $promotionCodes;
+        // @overlay-against: \Service\QuoteService $quotes
+        public \Stripe\Service\QuoteService $quotes;
+        // @overlay-against: \Service\Radar\RadarServiceFactory $radar
+        public \Stripe\Service\Radar\RadarServiceFactory $radar;
+        // @overlay-against: \Service\RefundService $refunds
+        public \Stripe\Service\RefundService $refunds;
+        // @overlay-against: \Service\Reporting\ReportingServiceFactory $reporting
+        public \Stripe\Service\Reporting\ReportingServiceFactory $reporting;
+        // @overlay-against: \Service\ReviewService $reviews
+        public \Stripe\Service\ReviewService $reviews;
+        // @overlay-against: \Service\SetupAttemptService $setupAttempts
+        public \Stripe\Service\SetupAttemptService $setupAttempts;
+        // @overlay-against: \Service\SetupIntentService $setupIntents
+        public \Stripe\Service\SetupIntentService $setupIntents;
+        // @overlay-against: \Service\ShippingRateService $shippingRates
+        public \Stripe\Service\ShippingRateService $shippingRates;
+        // @overlay-against: \Service\Sigma\SigmaServiceFactory $sigma
+        public \Stripe\Service\Sigma\SigmaServiceFactory $sigma;
+        // @overlay-against: \Service\SourceService $sources
+        public \Stripe\Service\SourceService $sources;
+        // @overlay-against: \Service\SubscriptionItemService $subscriptionItems
+        public \Stripe\Service\SubscriptionItemService $subscriptionItems;
+        // @overlay-against: \Service\SubscriptionService $subscriptions
+        public \Stripe\Service\SubscriptionService $subscriptions;
+        // @overlay-against: \Service\SubscriptionScheduleService $subscriptionSchedules
+        public \Stripe\Service\SubscriptionScheduleService $subscriptionSchedules;
+        // @overlay-against: \Service\Tax\TaxServiceFactory $tax
+        public \Stripe\Service\Tax\TaxServiceFactory $tax;
+        // @overlay-against: \Service\TaxCodeService $taxCodes
+        public \Stripe\Service\TaxCodeService $taxCodes;
+        // @overlay-against: \Service\TaxIdService $taxIds
+        public \Stripe\Service\TaxIdService $taxIds;
+        // @overlay-against: \Service\TaxRateService $taxRates
+        public \Stripe\Service\TaxRateService $taxRates;
+        // @overlay-against: \Service\Terminal\TerminalServiceFactory $terminal
+        public \Stripe\Service\Terminal\TerminalServiceFactory $terminal;
+        // @overlay-against: \Service\TestHelpers\TestHelpersServiceFactory $testHelpers
+        public \Stripe\Service\TestHelpers\TestHelpersServiceFactory $testHelpers;
+        // @overlay-against: \Service\TokenService $tokens
+        public \Stripe\Service\TokenService $tokens;
+        // @overlay-against: \Service\TopupService $topups
+        public \Stripe\Service\TopupService $topups;
+        // @overlay-against: \Service\TransferService $transfers
+        public \Stripe\Service\TransferService $transfers;
+        // @overlay-against: \Service\Treasury\TreasuryServiceFactory $treasury
+        public \Stripe\Service\Treasury\TreasuryServiceFactory $treasury;
+        // @overlay-against: \Service\V2\V2ServiceFactory $v2
+        public \Stripe\Service\V2\V2ServiceFactory $v2;
+        // @overlay-against: \Service\WebhookEndpointService $webhookEndpoints
+        public \Stripe\Service\WebhookEndpointService $webhookEndpoints;
+
+        // @overlay-against: function __get(mixed $name): mixed
+        public function __get(string $name): \Stripe\Service\AbstractService|\Stripe\Service\AbstractServiceFactory|null;
+
+        // @overlay-against: function getService(mixed $name): mixed
+        public function getService(string $name): \Stripe\Service\AbstractService|\Stripe\Service\AbstractServiceFactory|null;
+    }
+
+    // @overlay-against: interface StripeClientInterface
+    partial interface StripeClientInterface {
+        // @overlay-against: function request(string $method, string $path, array $params, array|\Util\RequestOptions $opts): \Stripe\StripeObject
+        public function request('delete'|'get'|'post' $method, string $path, array<string, mixed> $params, array<string, mixed>|\Stripe\Util\RequestOptions $opts): \Stripe\StripeObject;
+
+        // @overlay-against: function requestCollection(string $method, string $path, array $params, array|\Util\RequestOptions $opts): \Stripe\Collection|\V2\Collection
+        public function requestCollection('get' $method, string $path, array<string, mixed> $params, array<string, mixed>|\Stripe\Util\RequestOptions $opts): \Stripe\Collection|\Stripe\V2\Collection;
+
+        // @overlay-against: function requestSearchResult(string $method, string $path, array $params, array|\Util\RequestOptions $opts): \Stripe\SearchResult
+        public function requestSearchResult('get' $method, string $path, array<string, mixed> $params, array<string, mixed>|\Stripe\Util\RequestOptions $opts): \Stripe\SearchResult;
+    }
+
+    // @overlay-against: class StripeEventNotificationHandler extends \Stripe\AbstractEventNotificationHandler
+    partial class StripeEventNotificationHandler {
+        // @overlay-against: function withoutVerification(\Stripe\StripeClient $client, callable $fallbackCallback): \Stripe\StripeEventNotificationHandlerWithoutVerification
+        public static function withoutVerification(\Stripe\StripeClient $client, NotificationFallback $fallbackCallback): \Stripe\StripeEventNotificationHandlerWithoutVerification;
+
+        // @overlay-against: function __construct(\Stripe\StripeClient $client, string $webhookSecret, callable $fallbackCallback): void
+        public function __construct(\Stripe\StripeClient $client, string $webhookSecret, NotificationFallback $fallbackCallback): void;
+    }
+
+    // @overlay-against: class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
+    partial class StripeObject {
+        // @overlay-against: \Util\RequestOptions $_opts
+        protected \Stripe\Util\RequestOptions $_opts;
+
+        // @overlay-against: array $_originalValues
+        protected array<string, mixed> $_originalValues;
+
+        // @overlay-against: null|array $_retrieveOptions
+        protected array<string, mixed>|null $_retrieveOptions;
+
+        // @overlay-against: \Util\Set $_transientValues
+        protected \Stripe\Util\Set $_transientValues;
+
+        // @overlay-against: \Util\Set $_unsavedValues
+        protected \Stripe\Util\Set $_unsavedValues;
+
+        // @overlay-against: array $_values
+        protected array<string, mixed> $_values;
+
+        // @overlay-against: function constructFrom(array $values, null|array|string|\Util\RequestOptions $opts, string $apiMode): static
+        public static function constructFrom(array<string, mixed> $values, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts = null, 'v1'|'v2' $apiMode = 'v1'): static;
+
+        // @overlay-against: function emptyValues(mixed $obj): mixed
+        public static function emptyValues(array<int|string, mixed>|\Stripe\StripeObject $obj): array<int|string, string>;
+
+        // @overlay-against: function getAdditiveParams(): \Util\Set
+        public static function getAdditiveParams(): \Stripe\Util\Set;
+
+        // @overlay-against: function getPermanentAttributes(): \Util\Set
+        public static function getPermanentAttributes(): \Stripe\Util\Set;
+
+        // @overlay-against: function __construct(mixed $id, mixed $opts): void
+        public function __construct(mixed $id = null, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts = null): void;
+
+        // @overlay-against: function __debugInfo(): array
+        public function __debugInfo(): array<string, mixed>;
+
+        // @overlay-against: function __get(mixed $k): mixed
+        public function &__get(string $k): mixed;
+
+        // @overlay-against: function __isset(mixed $k): bool
+        public function __isset(string $k): bool;
+
+        // @overlay-against: function __set(mixed $k, mixed $v): mixed
+        public function __set(string $k, mixed $v): void;
+
+        // @overlay-against: function __toString(): mixed
+        public function __toString(): string;
+
+        // @overlay-against: function __unset(mixed $k): mixed
+        public function __unset(string $k): void;
+
+        // @overlay-against: function dirty(): mixed
+        public function dirty(): void;
+
+        // @overlay-against: function jsonSerialize(): mixed
+        public function jsonSerialize(): array<string, mixed>;
+
+        // @overlay-against: function keys(): mixed
+        public function keys(): array<int, string>;
+
+        // @overlay-against: function refreshFrom(array $values, null|array|string|\Util\RequestOptions $opts, bool $partial, string $apiMode): mixed
+        public function refreshFrom(array<string, mixed> $values, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts, bool $partial = false, 'v1'|'v2' $apiMode = 'v1'): void;
+
+        // @overlay-against: function serializeParameters(bool $force): array
+        public function serializeParameters(bool $force = false): array<string, mixed>;
+
+        // @overlay-against: function setLastResponse(\Stripe\ApiResponse $resp): mixed
+        public function setLastResponse(\Stripe\ApiResponse $resp): void;
+
+        // @overlay-against: function toArray(): array
+        public function toArray(): array<string, mixed>;
+
+        // @overlay-against: function updateAttributes(array $values, null|array|string|\Util\RequestOptions $opts, bool $dirty, string $apiMode): mixed
+        public function updateAttributes(array<string, mixed> $values, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts = null, bool $dirty = true, 'v1'|'v2' $apiMode = 'v1'): void;
+
+        // @overlay-against: function values(): mixed
+        public function values(): array<int, mixed>;
+    }
+
+    // @overlay-against: interface StripeStreamingClientInterface
+    partial interface StripeStreamingClientInterface {
+        // @overlay-against: function requestStream(mixed $method, mixed $path, mixed $readBodyChunkCallable, mixed $params, mixed $opts): mixed
+        public function requestStream('delete'|'get'|'post' $method, string $path, callable(string): void $readBodyChunkCallable, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts): void;
+    }
+
+    // @overlay-against: class UnhandledNotificationDetails
+    partial class UnhandledNotificationDetails {
+        // @overlay-against: function __construct(mixed $isKnownEventType): void
+        public function __construct(bool $isKnownEventType): void;
+    }
+
+    // @overlay-against: class Webhook
+    partial class Webhook {
+        // @overlay-against: function maybeExtractFromCloudProviderEnvelope(string $payload): array
+        public static function maybeExtractFromCloudProviderEnvelope(string $payload): array<string, mixed>;
+    }
+
+    // @overlay-against: class WebhookSignature
+    partial class WebhookSignature {
+        // @overlay-against: function verifyHeader(string $payload, string $header, string $secret, int $tolerance): bool
+        public static function verifyHeader(string $payload, string $header, string $secret, int|null $tolerance = null): bool;
+    }
+}
+
+namespace Stripe\ApiOperations {
+    type JsonRequestResult = struct {
+        array<string, mixed>|null 0 as $json;
+        \Stripe\Util\RequestOptions 1 as $options;
+    };
+
+    type StaticRequestResult = struct {
+        \Stripe\ApiResponse 0 as $response;
+        \Stripe\Util\RequestOptions 1 as $options;
+    };
+
+    // @overlay-against: trait All
+    partial trait All {
+        // @overlay-against: function all(null|array $params, null|array|string $opts): \Stripe\Collection
+        public static function all(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): \Stripe\Collection;
+    }
+
+    // @overlay-against: trait Create
+    partial trait Create {
+        // @overlay-against: function create(null|array $params, null|array|string $options): static
+        public static function create(array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null): static;
+    }
+
+    // @overlay-against: trait Delete
+    partial trait Delete {
+        // @overlay-against: function delete(null|array $params, null|array|string $opts): static
+        public function delete(array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): static;
+    }
+
+    // @overlay-against: trait NestedResource
+    partial trait NestedResource {
+        // @overlay-against: function _allNestedResources(string $id, string $nestedPath, null|array $params, null|array|string $options): \Stripe\StripeObject
+        protected static function _allNestedResources(string $id, string $nestedPath, array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null): \Stripe\StripeObject;
+
+        // @overlay-against: function _createNestedResource(string $id, string $nestedPath, null|array $params, null|array|string $options): \Stripe\StripeObject
+        protected static function _createNestedResource(string $id, string $nestedPath, array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null): \Stripe\StripeObject;
+
+        // @overlay-against: function _deleteNestedResource(string $id, string $nestedPath, null|string $nestedId, null|array $params, null|array|string $options): \Stripe\StripeObject
+        protected static function _deleteNestedResource(string $id, string $nestedPath, string|null $nestedId, array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null): \Stripe\StripeObject;
+
+        // @overlay-against: function _nestedResourceOperation(string $method, string $url, null|array $params, null|array|string $options): \Stripe\StripeObject
+        protected static function _nestedResourceOperation(string $method, string $url, array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null): \Stripe\StripeObject;
+
+        // @overlay-against: function _retrieveNestedResource(string $id, string $nestedPath, null|string $nestedId, null|array $params, null|array|string $options): \Stripe\StripeObject
+        protected static function _retrieveNestedResource(string $id, string $nestedPath, string|null $nestedId, array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null): \Stripe\StripeObject;
+
+        // @overlay-against: function _updateNestedResource(string $id, string $nestedPath, null|string $nestedId, null|array $params, null|array|string $options): \Stripe\StripeObject
+        protected static function _updateNestedResource(string $id, string $nestedPath, string|null $nestedId, array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null): \Stripe\StripeObject;
+    }
+
+    // @overlay-against: trait Request
+    partial trait Request {
+        // @overlay-against: function _requestPage(string $url, string $resultClass, null|array $params, null|array|string $options, array $usage): \Stripe\Collection|\Stripe\SearchResult
+        protected static function _requestPage(string $url, \__ClassName $resultClass, array<string, mixed>|null $params = null, array<string, mixed>|string|null $options = null, array<int, string> $usage = []): \Stripe\Collection|\Stripe\SearchResult;
+
+        // @overlay-against: function _staticRequest(string $method, string $url, array $params, null|array|string $options, array $usage, string $apiMode): array
+        protected static function _staticRequest('delete'|'get'|'post' $method, string $url, array<string, mixed> $params, array<string, mixed>|string|null $options, array<int, string> $usage = [], 'v1'|'v2' $apiMode = 'v1'): StaticRequestResult;
+
+        // @overlay-against: function _staticStreamingRequest(string $method, string $url, callable $readBodyChunk, array $params, null|array|string $options, array $usage): mixed
+        protected static function _staticStreamingRequest('delete'|'get'|'post' $method, string $url, callable(string): void $readBodyChunk, array<string, mixed> $params, array<string, mixed>|string|null $options, array<int, string> $usage = []): void;
+
+        // @overlay-against: function _validateParams(mixed $params): mixed
+        protected static function _validateParams(mixed $params = null): void;
+
+        // @overlay-against: function _request(string $method, string $url, array $params, null|array|string $options, array $usage, string $apiMode): array
+        protected function _request('delete'|'get'|'post' $method, string $url, array<string, mixed> $params = [], array<string, mixed>|string|null $options = null, array<int, string> $usage = [], 'v1'|'v2' $apiMode = 'v1'): JsonRequestResult;
+
+        // @overlay-against: function _requestStream(string $method, string $url, callable $readBodyChunk, array $params, null|array|string $options, array $usage): mixed
+        protected function _requestStream('delete'|'get'|'post' $method, string $url, callable(string): void $readBodyChunk, array<string, mixed> $params = [], array<string, mixed>|string|null $options = null, array<int, string> $usage = []): void;
+    }
+
+    // @overlay-against: trait Retrieve
+    partial trait Retrieve {
+        // @overlay-against: function retrieve(array|string $id, null|array|string $opts): static
+        public static function retrieve(array<string, mixed>|string $id, array<string, mixed>|string|null $opts = null): static;
+    }
+
+    // @overlay-against: trait SingletonRetrieve
+    partial trait SingletonRetrieve {
+        // @overlay-against: function retrieve(null|array|string $opts): static
+        public static function retrieve(array<string, mixed>|string|null $opts = null): static;
+    }
+
+    // @overlay-against: trait Update
+    partial trait Update {
+        // @overlay-against: function update(string $id, null|array $params, null|array|string $opts): static
+        public static function update(string $id, array<string, mixed>|null $params = null, array<string, mixed>|string|null $opts = null): static;
+
+        // @overlay-against: function save(null|array|string $opts): static
+        public function save(array<string, mixed>|string|null $opts = null): static;
+    }
+}
+
+namespace Stripe\Exception {
+    /**
+     * Common Stripe exception marker omitted by Layer 1.
+     */
+    interface ExceptionInterface extends \Throwable {
+    }
+
+    // @overlay-against: class ApiErrorException extends \Exception implements \Stripe\Exception\ExceptionInterface
+    partial class ApiErrorException {
+        // @overlay-against: mixed $error
+        protected \Stripe\ErrorObject|null $error;
+
+        // @overlay-against: mixed $httpBody
+        protected string|null $httpBody;
+
+        // @overlay-against: mixed $httpHeaders
+        protected array<string, string>|\Stripe\Util\CaseInsensitiveArray|null $httpHeaders;
+
+        // @overlay-against: mixed $httpStatus
+        protected int|null $httpStatus;
+
+        // @overlay-against: mixed $jsonBody
+        protected array<string, mixed>|null $jsonBody;
+
+        // @overlay-against: mixed $requestId
+        protected string|null $requestId;
+
+        // @overlay-against: mixed $stripeCode
+        protected string|null $stripeCode;
+
+        // @overlay-against: function factory(string $message, null|int $httpStatus, null|string $httpBody, null|array $jsonBody, null|array|\Stripe\Util\CaseInsensitiveArray $httpHeaders, null|string $stripeCode): static
+        public static function factory(string $message, int|null $httpStatus = null, string|null $httpBody = null, array<string, mixed>|null $jsonBody = null, array<string, string>|\Stripe\Util\CaseInsensitiveArray|null $httpHeaders = null, string|null $stripeCode = null): static;
+
+        // @overlay-against: function constructErrorObject(): mixed
+        protected function constructErrorObject(): \Stripe\ErrorObject|null;
+
+        // @overlay-against: function getHttpHeaders(): null|array|\Stripe\Util\CaseInsensitiveArray
+        public function getHttpHeaders(): array<string, string>|\Stripe\Util\CaseInsensitiveArray|null;
+
+        // @overlay-against: function setError(null|\Stripe\ErrorObject $error): mixed
+        public function setError(\Stripe\ErrorObject|null $error): void;
+
+        // @overlay-against: function setHttpBody(null|string $httpBody): mixed
+        public function setHttpBody(string|null $httpBody): void;
+
+        // @overlay-against: function setHttpHeaders(null|array|\Stripe\Util\CaseInsensitiveArray $httpHeaders): mixed
+        public function setHttpHeaders(array<string, string>|\Stripe\Util\CaseInsensitiveArray|null $httpHeaders): void;
+
+        // @overlay-against: function setHttpStatus(null|int $httpStatus): mixed
+        public function setHttpStatus(int|null $httpStatus): void;
+
+        // @overlay-against: function setJsonBody(null|array $jsonBody): mixed
+        public function setJsonBody(array<string, mixed>|null $jsonBody): void;
+
+        // @overlay-against: function setRequestId(null|string $requestId): mixed
+        public function setRequestId(string|null $requestId): void;
+
+        // @overlay-against: function setStripeCode(null|string $stripeCode): mixed
+        public function setStripeCode(string|null $stripeCode): void;
+    }
+
+    // @overlay-against: class CardException extends \Stripe\Exception\ApiErrorException
+    partial class CardException {
+        // @overlay-against: mixed $declineCode
+        protected string|null $declineCode;
+
+        // @overlay-against: mixed $stripeParam
+        protected string|null $stripeParam;
+
+        // @overlay-against: function factory(string $message, null|int $httpStatus, null|string $httpBody, null|array $jsonBody, null|array|\Stripe\Util\CaseInsensitiveArray $httpHeaders, null|string $stripeCode, null|string $declineCode, null|string $stripeParam): \Stripe\Exception\CardException
+        public static function factory(string $message, int|null $httpStatus = null, string|null $httpBody = null, array<string, mixed>|null $jsonBody = null, array<string, string>|\Stripe\Util\CaseInsensitiveArray|null $httpHeaders = null, string|null $stripeCode = null, string|null $declineCode = null, string|null $stripeParam = null): \Stripe\Exception\CardException;
+
+        // @overlay-against: function setDeclineCode(null|string $declineCode): mixed
+        public function setDeclineCode(string|null $declineCode): void;
+
+        // @overlay-against: function setStripeParam(null|string $stripeParam): mixed
+        public function setStripeParam(string|null $stripeParam): void;
+    }
+
+    // @overlay-against: class InvalidRequestException extends \Stripe\Exception\ApiErrorException
+    partial class InvalidRequestException {
+        // @overlay-against: mixed $stripeParam
+        protected string|null $stripeParam;
+
+        // @overlay-against: function factory(string $message, null|int $httpStatus, null|string $httpBody, null|array $jsonBody, null|array|\Stripe\Util\CaseInsensitiveArray $httpHeaders, null|string $stripeCode, null|string $stripeParam): \Stripe\Exception\InvalidRequestException
+        public static function factory(string $message, int|null $httpStatus = null, string|null $httpBody = null, array<string, mixed>|null $jsonBody = null, array<string, string>|\Stripe\Util\CaseInsensitiveArray|null $httpHeaders = null, string|null $stripeCode = null, string|null $stripeParam = null): \Stripe\Exception\InvalidRequestException;
+
+        // @overlay-against: function setStripeParam(null|string $stripeParam): mixed
+        public function setStripeParam(string|null $stripeParam): void;
+    }
+
+    // @overlay-against: class SignatureVerificationException extends \Exception implements \Stripe\Exception\ExceptionInterface
+    partial class SignatureVerificationException {
+        // @overlay-against: mixed $httpBody
+        protected string|null $httpBody;
+
+        // @overlay-against: mixed $sigHeader
+        protected string|null $sigHeader;
+
+        // @overlay-against: function setHttpBody(null|string $httpBody): mixed
+        public function setHttpBody(string|null $httpBody): void;
+
+        // @overlay-against: function setSigHeader(null|string $sigHeader): mixed
+        public function setSigHeader(string|null $sigHeader): void;
+    }
+}
+
+namespace Stripe\HttpClient {
+    type CurlOptionsSource = array<int, mixed>|(callable(): array<int, mixed>)|null;
+
+    type CurlStatusCallback = callable(string|false|null, int, \Stripe\Util\CaseInsensitiveArray, int, string|null, bool, int): void;
+
+    type CurlUserAgentInfo = struct {
+        string $httplib;
+        string $ssllib;
+    };
+
+    type HttpResponseParts = struct {
+        string|false|null 0 as $body;
+        int 1 as $code;
+        \Stripe\Util\CaseInsensitiveArray 2 as $headers;
+    };
+
+    // @overlay-against: interface ClientInterface
+    partial interface ClientInterface {
+        // @overlay-against: function request(string $method, string $absUrl, array $headers, array $params, bool $hasFile, string $apiMode, null|int $maxNetworkRetries): array
+        public function request('delete'|'get'|'post' $method, string $absUrl, array<int, string> $headers, array<string, mixed> $params, bool $hasFile, 'v1'|'v2' $apiMode = 'v1', int|null $maxNetworkRetries = null): HttpResponseParts;
+    }
+
+    // @overlay-against: class CurlClient implements \Stripe\HttpClient\ClientInterface, \Stripe\HttpClient\StreamingClientInterface
+    partial class CurlClient {
+        // @overlay-against: mixed $instance
+        protected static \Stripe\HttpClient\CurlClient|null $instance;
+
+        // @overlay-against: mixed $curlHandle
+        protected \CurlHandle|null $curlHandle;
+
+        // @overlay-against: mixed $defaultOptions
+        protected CurlOptionsSource $defaultOptions;
+
+        // @overlay-against: mixed $enableHttp2
+        protected bool $enableHttp2;
+
+        // @overlay-against: mixed $requestStatusCallback
+        protected CurlStatusCallback|null $requestStatusCallback;
+
+        // @overlay-against: mixed $userAgentInfo
+        protected CurlUserAgentInfo $userAgentInfo;
+
+        // @overlay-against: function instance(): mixed
+        public static function instance(): static;
+
+        // @overlay-against: function __construct(null|array|callable $defaultOptions, null|\Util\RandomGenerator $randomGenerator): void
+        public function __construct(CurlOptionsSource $defaultOptions = null, \Stripe\Util\RandomGenerator|null $randomGenerator = null): void;
+
+        // @overlay-against: function executeRequestWithRetries(array $opts, string $absUrl, null|int $maxNetworkRetries): mixed
+        public function executeRequestWithRetries(array<int, mixed> $opts, string $absUrl, int|null $maxNetworkRetries = null): HttpResponseParts;
+
+        // @overlay-against: function executeStreamingRequestWithRetries(array $opts, string $absUrl, callable $readBodyChunk, null|int $maxNetworkRetries): array
+        public function executeStreamingRequestWithRetries(array<int, mixed> $opts, string $absUrl, callable(string): void $readBodyChunk, int|null $maxNetworkRetries = null): HttpResponseParts;
+
+        // @overlay-against: function getConnectTimeout(): mixed
+        public function getConnectTimeout(): int;
+
+        // @overlay-against: function getDefaultOptions(): mixed
+        public function getDefaultOptions(): CurlOptionsSource;
+
+        // @overlay-against: function getRequestStatusCallback(): null|callable
+        public function getRequestStatusCallback(): CurlStatusCallback|null;
+
+        // @overlay-against: function getTimeout(): mixed
+        public function getTimeout(): int;
+
+        // @overlay-against: function getUserAgentInfo(): mixed
+        public function getUserAgentInfo(): CurlUserAgentInfo;
+
+        // @overlay-against: function initUserAgentInfo(): mixed
+        public function initUserAgentInfo(): void;
+
+        // @overlay-against: function request(string $method, string $absUrl, array $headers, array $params, bool $hasFile, string $apiMode, null|int $maxNetworkRetries): mixed
+        public function request('delete'|'get'|'post' $method, string $absUrl, array<int, string> $headers, array<string, mixed> $params, bool $hasFile, 'v1'|'v2' $apiMode = 'v1', int|null $maxNetworkRetries = null): HttpResponseParts;
+
+        // @overlay-against: function requestStream(string $method, string $absUrl, array $headers, array $params, bool $hasFile, callable $readBodyChunk, string $apiMode, null|int $maxNetworkRetries): mixed
+        public function requestStream('delete'|'get'|'post' $method, string $absUrl, array<int, string> $headers, array<string, mixed> $params, bool $hasFile, callable(string): void $readBodyChunk, 'v1'|'v2' $apiMode = 'v1', int|null $maxNetworkRetries = null): HttpResponseParts;
+
+        // @overlay-against: function setConnectTimeout(mixed $seconds): mixed
+        public function setConnectTimeout(int|float $seconds): static;
+
+        // @overlay-against: function setEnableHttp2(bool $enable): mixed
+        public function setEnableHttp2(bool $enable): void;
+
+        // @overlay-against: function setEnablePersistentConnections(bool $enable): mixed
+        public function setEnablePersistentConnections(bool $enable): void;
+
+        // @overlay-against: function setRequestStatusCallback(null|callable $requestStatusCallback): mixed
+        public function setRequestStatusCallback(CurlStatusCallback|null $requestStatusCallback): void;
+
+        // @overlay-against: function setTimeout(mixed $seconds): mixed
+        public function setTimeout(int|float $seconds): static;
+    }
+
+    // @overlay-against: interface StreamingClientInterface
+    partial interface StreamingClientInterface {
+        // @overlay-against: function requestStream(string $method, string $absUrl, array $headers, array $params, bool $hasFile, callable $readBodyChunkCallable, null|int $maxNetworkRetries): array
+        public function requestStream('delete'|'get'|'post' $method, string $absUrl, array<int, string> $headers, array<string, mixed> $params, bool $hasFile, callable(string): void $readBodyChunkCallable, int|null $maxNetworkRetries = null): HttpResponseParts;
+    }
+}
+
+namespace Stripe\Service {
+    // @overlay-against: class AbstractService
+    partial class AbstractService {
+        // @overlay-against: function buildPath(mixed $basePath, mixed $ids): mixed
+        protected function buildPath(string $basePath, string ...$ids): string;
+
+        // @overlay-against: function request(mixed $method, mixed $path, mixed $params, mixed $opts, mixed $schemas): mixed
+        protected function request('delete'|'get'|'post' $method, string $path, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts, array<string, mixed>|null $schemas = null): \Stripe\StripeObject;
+
+        // @overlay-against: function requestCollection(mixed $method, mixed $path, mixed $params, mixed $opts, mixed $schemas): mixed
+        protected function requestCollection('delete'|'get'|'post' $method, string $path, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts, array<string, mixed>|null $schemas = null): \Stripe\Collection|\Stripe\V2\Collection;
+
+        // @overlay-against: function requestSearchResult(mixed $method, mixed $path, mixed $params, mixed $opts, mixed $schemas): mixed
+        protected function requestSearchResult('delete'|'get'|'post' $method, string $path, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts, array<string, mixed>|null $schemas = null): \Stripe\SearchResult;
+
+        // @overlay-against: function requestStream(mixed $method, mixed $path, mixed $readBodyChunkCallable, mixed $params, mixed $opts): mixed
+        protected function requestStream('delete'|'get'|'post' $method, string $path, callable(string): void $readBodyChunkCallable, array<string, mixed>|null $params, array<string, mixed>|\Stripe\Util\RequestOptions|string|null $opts): void;
+    }
+
+    // @overlay-against: class CoreServiceFactory extends \Stripe\Service\AbstractServiceFactory
+    partial class CoreServiceFactory {
+        // @overlay-against: \Apps\AppsServiceFactory $apps
+        public \Stripe\Service\Apps\AppsServiceFactory $apps;
+
+        // @overlay-against: \Billing\BillingServiceFactory $billing
+        public \Stripe\Service\Billing\BillingServiceFactory $billing;
+
+        // @overlay-against: \BillingPortal\BillingPortalServiceFactory $billingPortal
+        public \Stripe\Service\BillingPortal\BillingPortalServiceFactory $billingPortal;
+
+        // @overlay-against: \Checkout\CheckoutServiceFactory $checkout
+        public \Stripe\Service\Checkout\CheckoutServiceFactory $checkout;
+
+        // @overlay-against: \Climate\ClimateServiceFactory $climate
+        public \Stripe\Service\Climate\ClimateServiceFactory $climate;
+
+        // @overlay-against: \Entitlements\EntitlementsServiceFactory $entitlements
+        public \Stripe\Service\Entitlements\EntitlementsServiceFactory $entitlements;
+
+        // @overlay-against: \FinancialConnections\FinancialConnectionsServiceFactory $financialConnections
+        public \Stripe\Service\FinancialConnections\FinancialConnectionsServiceFactory $financialConnections;
+
+        // @overlay-against: \Forwarding\ForwardingServiceFactory $forwarding
+        public \Stripe\Service\Forwarding\ForwardingServiceFactory $forwarding;
+
+        // @overlay-against: \Identity\IdentityServiceFactory $identity
+        public \Stripe\Service\Identity\IdentityServiceFactory $identity;
+
+        // @overlay-against: \Issuing\IssuingServiceFactory $issuing
+        public \Stripe\Service\Issuing\IssuingServiceFactory $issuing;
+
+        // @overlay-against: \Radar\RadarServiceFactory $radar
+        public \Stripe\Service\Radar\RadarServiceFactory $radar;
+
+        // @overlay-against: \Reporting\ReportingServiceFactory $reporting
+        public \Stripe\Service\Reporting\ReportingServiceFactory $reporting;
+
+        // @overlay-against: \Sigma\SigmaServiceFactory $sigma
+        public \Stripe\Service\Sigma\SigmaServiceFactory $sigma;
+
+        // @overlay-against: \Tax\TaxServiceFactory $tax
+        public \Stripe\Service\Tax\TaxServiceFactory $tax;
+
+        // @overlay-against: \Terminal\TerminalServiceFactory $terminal
+        public \Stripe\Service\Terminal\TerminalServiceFactory $terminal;
+
+        // @overlay-against: \TestHelpers\TestHelpersServiceFactory $testHelpers
+        public \Stripe\Service\TestHelpers\TestHelpersServiceFactory $testHelpers;
+
+        // @overlay-against: \Treasury\TreasuryServiceFactory $treasury
+        public \Stripe\Service\Treasury\TreasuryServiceFactory $treasury;
+
+        // @overlay-against: \V2\V2ServiceFactory $v2
+        public \Stripe\Service\V2\V2ServiceFactory $v2;
+
+        // @overlay-against: function getServiceClass(mixed $name): mixed
+        protected function getServiceClass(string $name): \__ClassName|null;
+    }
+
+    // @overlay-against: trait ServiceNavigatorTrait
+    partial trait ServiceNavigatorTrait {
+        // @overlay-against: function __get(mixed $name): mixed
+        public function __get(string $name): \Stripe\Service\AbstractService|\Stripe\Service\AbstractServiceFactory|null;
+
+        // @overlay-against: function getServiceClass(mixed $name): mixed
+        protected function getServiceClass(string $name): \__ClassName|null;
+    }
+}
+
+namespace Stripe\Service\TestHelpers {
+    // @overlay-against: class TestHelpersServiceFactory extends \Stripe\Service\AbstractServiceFactory
+    partial class TestHelpersServiceFactory {
+        // @overlay-against: \Issuing\IssuingServiceFactory $issuing
+        public \Stripe\Service\TestHelpers\Issuing\IssuingServiceFactory $issuing;
+
+        // @overlay-against: \Terminal\TerminalServiceFactory $terminal
+        public \Stripe\Service\TestHelpers\Terminal\TerminalServiceFactory $terminal;
+
+        // @overlay-against: \Treasury\TreasuryServiceFactory $treasury
+        public \Stripe\Service\TestHelpers\Treasury\TreasuryServiceFactory $treasury;
+
+        // @overlay-against: function getServiceClass(mixed $name): mixed
+        protected function getServiceClass(string $name): \__ClassName|null;
+    }
+}
+
+namespace Stripe\Service\V2 {
+    // @overlay-against: class V2ServiceFactory extends \Stripe\Service\AbstractServiceFactory
+    partial class V2ServiceFactory {
+        // @overlay-against: \Billing\BillingServiceFactory $billing
+        public \Stripe\Service\V2\Billing\BillingServiceFactory $billing;
+
+        // @overlay-against: \Commerce\CommerceServiceFactory $commerce
+        public \Stripe\Service\V2\Commerce\CommerceServiceFactory $commerce;
+
+        // @overlay-against: \Core\CoreServiceFactory $core
+        public \Stripe\Service\V2\Core\CoreServiceFactory $core;
+
+        // @overlay-against: function getServiceClass(mixed $name): mixed
+        protected function getServiceClass(string $name): \__ClassName|null;
+    }
+}
+
+namespace Stripe\Util {
+    type FlattenedParam = struct {
+        string 0 as $key;
+        mixed 1 as $value;
+    };
+
+    type NormalizedId = struct {
+        mixed 0 as $id;
+        array<string, mixed> 1 as $params;
+    };
+
+    // @overlay-against: class AgentPluginHint
+    partial class AgentPluginHint {
+        // @overlay-against: function maybeEmit(): mixed
+        public static function maybeEmit(): void;
+    }
+
+    // @overlay-against: class CaseInsensitiveArray implements \ArrayAccess, \Countable, \IteratorAggregate
+    partial class CaseInsensitiveArray {
+        // @overlay-against: function __construct(mixed $initial_array): void
+        public function __construct(array<string, mixed> $initial_array = []): void;
+
+        // @overlay-against: function getIterator(): \ArrayIterator
+        public function getIterator(): \ArrayIterator<string, mixed>;
+
+        // @overlay-against: function offsetExists(mixed $offset): bool
+        public function offsetExists(string|int $offset): bool;
+
+        // @overlay-against: function offsetGet(mixed $offset): mixed
+        public function offsetGet(string|int $offset): mixed;
+
+        // @overlay-against: function offsetSet(mixed $offset, mixed $value): void
+        public function offsetSet(string|int|null $offset, mixed $value): void;
+
+        // @overlay-against: function offsetUnset(mixed $offset): void
+        public function offsetUnset(string|int $offset): void;
+    }
+
+    // @overlay-against: class DefaultLogger implements \Stripe\Util\LoggerInterface
+    partial class DefaultLogger {
+        // @overlay-against: function error(mixed $message, array $context): mixed
+        public function error(string $message, array<string, mixed> $context = []): void;
+    }
+
+    // @overlay-against: class EventNotificationTypes
+    partial class EventNotificationTypes {
+        // @overlay-against: const array v2EventMapping
+        public const array<string, \__ClassName> v2EventMapping ?? [];
+    }
+
+    // @overlay-against: class EventTypes
+    partial class EventTypes {
+        // @overlay-against: const array v2EventMapping
+        public const array<string, \__ClassName> v2EventMapping ?? [];
+    }
+
+    // @overlay-against: class Int64
+    partial class Int64 {
+        // @overlay-against: function coerceRequestParams(mixed $params, array $schema): mixed
+        public static function coerceRequestParams(mixed $params, array<string, mixed> $schema): mixed;
+
+        // @overlay-against: function coerceResponseValues(mixed $values, array $encodings): mixed
+        public static function coerceResponseValues(mixed $values, array<string, mixed> $encodings): mixed;
+    }
+
+    // @overlay-against: interface LoggerInterface
+    partial interface LoggerInterface {
+        // @overlay-against: function error(string $message, array $context): mixed
+        public function error(string $message, array<string, mixed> $context = []): void;
+    }
+
+    // @overlay-against: class ObjectTypes
+    partial class ObjectTypes {
+        // @overlay-against: const array mapping
+        public const array<string, \__ClassName> mapping ?? [];
+
+        // @overlay-against: const array v2Mapping
+        public const array<string, \__ClassName> v2Mapping ?? [];
+    }
+
+    // @overlay-against: class RequestOptions
+    partial class RequestOptions {
+        // @overlay-against: function discardNonPersistentHeaders(): mixed
+        public function discardNonPersistentHeaders(): void;
+
+        // @overlay-against: function merge(null|array|\Stripe\Util\RequestOptions|string $options, bool $strict): \Stripe\Util\RequestOptions
+        public function merge(array<string, mixed>|\Stripe\Util\RequestOptions|string|null $options, bool $strict = false): \Stripe\Util\RequestOptions;
+
+        // @overlay-against: function parse(null|array|\Stripe\Util\RequestOptions|string $options, bool $strict): \Stripe\Util\RequestOptions
+        public static function parse(array<string, mixed>|\Stripe\Util\RequestOptions|string|null $options, bool $strict = false): \Stripe\Util\RequestOptions;
+    }
+
+    // @overlay-against: class Set implements \IteratorAggregate
+    partial class Set {
+        // @overlay-against: function __construct(mixed $members): void
+        public function __construct(array<int, string> $members = []): void;
+
+        // @overlay-against: function add(mixed $elt): mixed
+        public function add(string $elt): void;
+
+        // @overlay-against: function discard(mixed $elt): mixed
+        public function discard(string $elt): void;
+
+        // @overlay-against: function getIterator(): \ArrayIterator
+        public function getIterator(): \ArrayIterator<int, string>;
+
+        // @overlay-against: function includes(mixed $elt): mixed
+        public function includes(string $elt): bool;
+
+        // @overlay-against: function toArray(): mixed
+        public function toArray(): array<int, string>;
+    }
+
+    // @overlay-against: class Util
+    partial class Util {
+        // @overlay-against: function convertToStripeObject(array $resp, array|\Stripe\Util\RequestOptions $opts, string $apiMode, bool $isV2DeletedObject): array|\Stripe\StripeObject
+        public static function convertToStripeObject(array<int|string, mixed> $resp, array<string, mixed>|\Stripe\Util\RequestOptions $opts, 'v1'|'v2' $apiMode = 'v1', bool $isV2DeletedObject = false): array<int|string, mixed>|\Stripe\StripeObject;
+
+        // @overlay-against: function encodeParameters(array $params, mixed $apiMode): string
+        public static function encodeParameters(array<string, mixed> $params, 'v1'|'v2' $apiMode = 'v1'): string;
+
+        // @overlay-against: function flattenParams(array $params, null|string $parentKey, mixed $apiMode): array
+        public static function flattenParams(array<int|string, mixed> $params, string|null $parentKey = null, 'v1'|'v2' $apiMode = 'v1'): array<int, FlattenedParam>;
+
+        // @overlay-against: function flattenParamsList(array $value, string $calculatedKey, mixed $apiMode): array
+        public static function flattenParamsList(array<int, mixed> $value, string $calculatedKey, 'v1'|'v2' $apiMode = 'v1'): array<int, FlattenedParam>;
+
+        // @overlay-against: function getApiMode(mixed $path): mixed
+        public static function getApiMode(string $path): 'v1'|'v2';
+
+        // @overlay-against: function isV2DeleteRequest(string $method, string $apiMode): bool
+        public static function isV2DeleteRequest('delete'|'get'|'post' $method, 'v1'|'v2' $apiMode): bool;
+
+        // @overlay-against: function normalizeId(mixed $id): mixed
+        public static function normalizeId(mixed $id): NormalizedId;
+    }
+}
+
+namespace Stripe\V2 {
+    // @overlay-against: class Collection extends \Stripe\StripeObject implements \Countable, \IteratorAggregate, \Stripe\ApiOperations\Request
+    partial class Collection {
+        // @overlay-against: function autoPagingIterator(): \Generator|array
+        public function autoPagingIterator(): \Generator<int, TStripeObject>;
+
+        // @overlay-against: function getIterator(): \ArrayIterator
+        public function getIterator(): \ArrayIterator<int, TStripeObject>;
+
+        // @overlay-against: function getReverseIterator(): \ArrayIterator
+        public function getReverseIterator(): \ArrayIterator<int, TStripeObject>;
+    }
+}
+
+namespace Stripe\V2\Core {
+    // @overlay-against: class EventNotification
+    partial class EventNotification {
+        // @overlay-against: mixed $context
+        public \Stripe\StripeContext|null $context;
+
+        // @overlay-against: mixed $created
+        public string $created;
+
+        // @overlay-against: mixed $id
+        public string $id;
+
+        // @overlay-against: mixed $livemode
+        public bool $livemode;
+
+        // @overlay-against: mixed $object
+        public string $object;
+
+        // @overlay-against: mixed $reason
+        public \Stripe\Reason|null $reason;
+
+        // @overlay-against: mixed $type
+        public string $type;
+
+        // @overlay-against: mixed $client
+        protected \Stripe\StripeClient $client;
+    }
+}
+
+namespace Util {
+    /**
+     * Layer 1 emitted Stripe util types without the `Stripe\` prefix.
+     */
+    class Set {
+    }
+
+    interface LoggerInterface {
+    }
+}

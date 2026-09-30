@@ -1,0 +1,488 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef`  (not under `overlays/stubs/`)
+ * Reflection signature enrichments: magic `__ClassName` / `__MethodName` /
+ * `__PropertyName` / `__ObjectConstName` / `__EnumCaseName` returns, `has*` /
+ * `isInstance` / `implementsInterface` / `isSubclassOf` type guards, and
+ * `newInstance*` returning `T`. Not Pure.
+ *
+ * Type-guard returns use `$param is Type` (erases to `bool`). `$this is Type`
+ * is not a valid guard — the guarded name must be a parameter.
+ *
+ * PHP `\Reflection*` inspects emitted PHP names. `__ClassName` / `__EnumName` /
+ * `__FunctionName` values normally come from PHP (`class_exists`, `Foo::class`,
+ * `get_class`) so the runtime string is already the PHP name. Constructors still
+ * accept plain `string` (PHP throws `ReflectionException` if it is missing).
+ */
+
+/**
+ * Overlay: `ReflectionAttribute<TClass>` name and `newInstance()` as `TClass`.
+ */
+// @overlay-against: class ReflectionAttribute implements \Stringable, \Reflector
+partial class ReflectionAttribute<TClass extends object = object>;
+// @overlay-against: class ReflectionAttribute implements \Stringable, \Reflector
+partial class ReflectionAttribute {
+    // @overlay-against: string $name
+    #[\Tyhp\Php(">=8.4")]
+    public __ClassName<TClass> $name;
+
+    // @overlay-against: function getArguments(): array
+    public function getArguments(): array<int|string, mixed>;
+    // @overlay-against: function getName(): string
+    public function getName(): __ClassName<TClass>;
+    // @overlay-against: function newInstance(): object
+    public function newInstance(): TClass;
+}
+
+/**
+ * Overlay: `ReflectionClass<T>` names, member lookups, instantiation, and
+ * type guards (`hasMethod` / `hasProperty` / `hasConstant` / `isInstance`).
+ */
+// @overlay-against: class ReflectionClass implements \Stringable, \Reflector
+partial class ReflectionClass<T extends object = object>;
+// @overlay-against: class ReflectionClass implements \Stringable, \Reflector
+partial class ReflectionClass {
+    // @overlay-against: string $name
+    public __ClassName<T> $name;
+
+    // @overlay-against: function __construct(object|string $objectOrClass): void
+    public function __construct(T|__ClassName<T>|__InterfaceName|__TraitName $objectOrClass): void;
+    // @overlay-against: function __construct(object|string $objectOrClass): void
+    public function __construct(string $objectOrClass): void;
+
+    // Specific `$name` first so `FooAttr::class` infers `ReflectionAttribute<FooAttr>`.
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes<TAttr extends object>(__ClassName<TAttr> $name, int $flags = 0): array<int, \ReflectionAttribute<TAttr>>;
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes(?string $name = null, int $flags = 0): array<int, \ReflectionAttribute>;
+    // @overlay-against: function getConstant(string $name): mixed
+    public function getConstant(string $name): mixed;
+    // @overlay-against: function getConstants(?int $filter): array
+    public function getConstants(?int $filter = null): array<__ObjectConstName<T>, mixed>;
+    // @overlay-against: function getConstructor(): ?\ReflectionMethod
+    public function getConstructor(): ?\ReflectionMethod<T>;
+    // @overlay-against: function getDefaultProperties(): array
+    public function getDefaultProperties(): array<__PropertyName<T>, mixed>;
+    // @overlay-against: function getInterfaceNames(): array
+    public function getInterfaceNames(): array<int, __InterfaceName>;
+    // @overlay-against: function getInterfaces(): array
+    public function getInterfaces(): array<__InterfaceName, \ReflectionClass>;
+    // @overlay-against: function getLazyInitializer(object $object): ?callable
+    #[\Tyhp\Php(">=8.4")]
+    public function getLazyInitializer(T $object): ?callable;
+    // @overlay-against: function getMethod(string $name): \ReflectionMethod
+    public function getMethod(string $name): \ReflectionMethod<T>;
+    // @overlay-against: function getMethods(?int $filter): array
+    public function getMethods(?int $filter = null): array<int, \ReflectionMethod<T>>;
+    // @overlay-against: function getName(): string
+    public function getName(): __ClassName<T>;
+    // @overlay-against: function getParentClass(): \ReflectionClass|false
+    public function getParentClass(): \ReflectionClass<__SuperType<T>>|false;
+    // @overlay-against: function getProperties(?int $filter): array
+    public function getProperties(?int $filter = null): array<int, \ReflectionProperty<T>>;
+    // @overlay-against: function getProperty(string $name): \ReflectionProperty
+    public function getProperty(string $name): \ReflectionProperty<T>;
+    // @overlay-against: function getReflectionConstant(string $name): \ReflectionClassConstant|false
+    public function getReflectionConstant(string $name): \ReflectionClassConstant<T>|false;
+    // @overlay-against: function getReflectionConstants(?int $filter): array
+    public function getReflectionConstants(?int $filter = null): array<int, \ReflectionClassConstant<T>>;
+    // @overlay-against: function getStaticProperties(): ?array
+    #[\Tyhp\Php("<8.3")]
+    public function getStaticProperties(): ?array<__PropertyName<T>, mixed>;
+    // @overlay-against: function getStaticProperties(): array
+    #[\Tyhp\Php(">=8.3")]
+    public function getStaticProperties(): array<__PropertyName<T>, mixed>;
+    // @overlay-against: function getStaticPropertyValue(string $name, mixed $default): mixed
+    public function getStaticPropertyValue(string $name, mixed $default): mixed;
+    // @overlay-against: function getTraitAliases(): array
+    public function getTraitAliases(): array<__MethodName<T>, string>;
+    // @overlay-against: function getTraitNames(): array
+    public function getTraitNames(): array<int, __UsedTraitName<T>>;
+    // @overlay-against: function getTraits(): array
+    public function getTraits(): array<__UsedTraitName<T>, \ReflectionClass>;
+    // Guard types like `__MethodName<T>` do not see the class generic `T` unless
+    // it is also a method generic (default `= T` keeps it bound to this class).
+    // @overlay-against: function hasConstant(string $name): bool
+    public function hasConstant<TClass extends object = T>(string $name): $name is __ObjectConstName<TClass>;
+    // @overlay-against: function hasMethod(string $name): bool
+    public function hasMethod<TClass extends object = T>(string $name): $name is __MethodName<TClass>;
+    // @overlay-against: function hasProperty(string $name): bool
+    public function hasProperty<TClass extends object = T>(string $name): $name is __PropertyName<TClass>;
+    // @overlay-against: function implementsInterface(\ReflectionClass|string $interface): bool
+    public function implementsInterface(string $interface): $interface is __InterfaceName;
+    // @overlay-against: function implementsInterface(\ReflectionClass|string $interface): bool
+    public function implementsInterface(\ReflectionClass $interface): bool;
+    // @overlay-against: function initializeLazyObject(object $object): object
+    #[\Tyhp\Php(">=8.4")]
+    public function initializeLazyObject(T $object): T;
+    // @overlay-against: function isInstance(object $object): bool
+    public function isInstance(object $object): $object is T;
+    // @overlay-against: function isSubclassOf(\ReflectionClass|string $class): bool
+    public function isSubclassOf<TClass extends object = T>(string $class): $class is __SuperTypeName<TClass>;
+    // @overlay-against: function isSubclassOf(\ReflectionClass|string $class): bool
+    public function isSubclassOf(\ReflectionClass $class): bool;
+    // @overlay-against: function isUninitializedLazyObject(object $object): bool
+    #[\Tyhp\Php(">=8.4")]
+    public function isUninitializedLazyObject(T $object): bool;
+    // @overlay-against: function markLazyObjectAsInitialized(object $object): object
+    #[\Tyhp\Php(">=8.4")]
+    public function markLazyObjectAsInitialized(T $object): T;
+    // @overlay-against: function newInstance(mixed $args): object
+    public function newInstance(mixed ...$args): T;
+    // @overlay-against: function newInstanceArgs(array $args): ?object
+    public function newInstanceArgs(array<int|string, mixed> $args = []): T;
+    // @overlay-against: function newInstanceWithoutConstructor(): object
+    public function newInstanceWithoutConstructor(): T;
+    // @overlay-against: function newLazyGhost(callable $initializer, int $options): object
+    #[\Tyhp\Php(">=8.4")]
+    public function newLazyGhost(callable $initializer, int $options = 0): T;
+    // @overlay-against: function newLazyProxy(callable $factory, int $options): object
+    #[\Tyhp\Php(">=8.4")]
+    public function newLazyProxy(callable $factory, int $options = 0): T;
+    // @overlay-against: function resetAsLazyGhost(object $object, callable $initializer, int $options): void
+    #[\Tyhp\Php(">=8.4")]
+    public function resetAsLazyGhost(T $object, callable $initializer, int $options = 0): void;
+    // @overlay-against: function resetAsLazyProxy(object $object, callable $factory, int $options): void
+    #[\Tyhp\Php(">=8.4")]
+    public function resetAsLazyProxy(T $object, callable $factory, int $options = 0): void;
+    // @overlay-against: function setStaticPropertyValue(string $name, mixed $value): void
+    public function setStaticPropertyValue(string $name, mixed $value): void;
+}
+
+/**
+ * Overlay: class-constant name as `__ObjectConstName<TClass>`.
+ */
+// @overlay-against: class ReflectionClassConstant implements \Stringable, \Reflector
+partial class ReflectionClassConstant<TClass extends object = object>;
+// @overlay-against: class ReflectionClassConstant implements \Stringable, \Reflector
+partial class ReflectionClassConstant {
+    // @overlay-against: string $class
+    public __ClassName<TClass> $class;
+    // @overlay-against: string $name
+    public __ObjectConstName<TClass> $name;
+
+    // @overlay-against: function __construct(object|string $class, string $constant): void
+    public function __construct(TClass|__ClassName<TClass> $class, string $constant): void;
+    // @overlay-against: function __construct(object|string $class, string $constant): void
+    public function __construct(string $class, string $constant): void;
+
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes<TAttr extends object>(__ClassName<TAttr> $name, int $flags = 0): array<int, \ReflectionAttribute<TAttr>>;
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes(?string $name = null, int $flags = 0): array<int, \ReflectionAttribute>;
+    // @overlay-against: function getDeclaringClass(): \ReflectionClass
+    public function getDeclaringClass(): \ReflectionClass<TClass>;
+    // @overlay-against: function getName(): string
+    public function getName(): __ObjectConstName<TClass>;
+}
+
+/**
+ * Overlay: `ReflectionEnum<T>` case names as `__EnumCaseName<T>`.
+ */
+// @overlay-against: class ReflectionEnum extends \ReflectionClass implements \Reflector, \Stringable
+partial class ReflectionEnum<T extends \UnitEnum = \UnitEnum> extends \ReflectionClass<T> implements \Reflector, \Stringable;
+// @overlay-against: class ReflectionEnum extends \ReflectionClass implements \Reflector, \Stringable
+partial class ReflectionEnum {
+    // @overlay-against: function __construct(object|string $objectOrClass): void
+    public function __construct(T|__EnumName<T> $objectOrClass): void;
+    // @overlay-against: function __construct(object|string $objectOrClass): void
+    public function __construct(string $objectOrClass): void;
+
+    // @overlay-against: function getCase(string $name): \ReflectionEnumUnitCase
+    public function getCase(string $name): \ReflectionEnumUnitCase<T>;
+    // @overlay-against: function getCases(): array
+    public function getCases(): array<int, \ReflectionEnumUnitCase<T>>;
+    // @overlay-against: function hasCase(string $name): bool
+    public function hasCase<TEnum extends \UnitEnum = T>(string $name): $name is __EnumCaseName<TEnum>;
+}
+
+/**
+ * Overlay: backed-case `getValue()` as the enum type `T`.
+ */
+// @overlay-against: class ReflectionEnumBackedCase extends \ReflectionEnumUnitCase implements \Stringable, \Reflector
+partial class ReflectionEnumBackedCase<T extends \BackedEnum = \BackedEnum> extends \ReflectionEnumUnitCase<T> implements \Stringable, \Reflector;
+// @overlay-against: class ReflectionEnumBackedCase extends \ReflectionEnumUnitCase implements \Stringable, \Reflector
+partial class ReflectionEnumBackedCase {
+    // @overlay-against: function __construct(object|string $class, string $constant): void
+    public function __construct(T|__EnumName<T> $class, string $constant): void;
+    // @overlay-against: function __construct(object|string $class, string $constant): void
+    public function __construct(string $class, string $constant): void;
+}
+
+/**
+ * Overlay: unit-case name / `getValue()` as `T`.
+ */
+// @overlay-against: class ReflectionEnumUnitCase extends \ReflectionClassConstant implements \Reflector, \Stringable
+partial class ReflectionEnumUnitCase<T extends \UnitEnum = \UnitEnum> extends \ReflectionClassConstant<T> implements \Reflector, \Stringable;
+// @overlay-against: class ReflectionEnumUnitCase extends \ReflectionClassConstant implements \Reflector, \Stringable
+partial class ReflectionEnumUnitCase {
+    // @overlay-against: function __construct(object|string $class, string $constant): void
+    public function __construct(T|__EnumName<T> $class, string $constant): void;
+    // @overlay-against: function __construct(object|string $class, string $constant): void
+    public function __construct(string $class, string $constant): void;
+
+    // @overlay-against: function getEnum(): \ReflectionEnum
+    public function getEnum(): \ReflectionEnum<T>;
+    // Inherited from ReflectionClassConstant; no Layer 1 member on this class.
+    public function getName(): __EnumCaseName<T>;
+    // @overlay-against: function getValue(): \UnitEnum
+    public function getValue(): T;
+}
+
+/**
+ * Overlay: extension class/function inventories keyed by magic names.
+ */
+// @overlay-against: class ReflectionExtension implements \Stringable, \Reflector
+partial class ReflectionExtension {
+    // @overlay-against: function getClasses(): array
+    public function getClasses(): array<__ClassName, \ReflectionClass>;
+    // @overlay-against: function getClassNames(): array
+    public function getClassNames(): array<int, __ClassName>;
+    // @overlay-against: function getConstants(): array
+    public function getConstants(): array<__ConstName, mixed>;
+    // @overlay-against: function getDependencies(): array
+    public function getDependencies(): array<string, 'Required'|'Optional'|'Conflicts'>;
+    // @overlay-against: function getFunctions(): array
+    public function getFunctions(): array<__FunctionName, \ReflectionFunction>;
+    // @overlay-against: function getINIEntries(): array
+    public function getINIEntries(): array<string, string>;
+}
+
+/**
+ * Overlay: fiber backtrace frames as `DebugStackFrame` (same shape as
+ * `debug_backtrace()`).
+ */
+// @overlay-against: class ReflectionFiber
+partial class ReflectionFiber {
+    // @overlay-against: function getTrace(int $options): array
+    public function getTrace(int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT): array<int, DebugStackFrame>;
+}
+
+/**
+ * Overlay: named-function `getName()` as `__FunctionName`. Closures still
+ * report `{closure}` at runtime; treat that string as unbranded.
+ */
+// @overlay-against: class ReflectionFunction extends \ReflectionFunctionAbstract implements \Stringable, \Reflector
+partial class ReflectionFunction {
+    // @overlay-against: function __construct(\Closure|string $function): void
+    public function __construct(\Closure|__FunctionName $function): void;
+    // @overlay-against: function __construct(\Closure|string $function): void
+    public function __construct(string $function): void;
+
+    // Inherited from ReflectionFunctionAbstract; no Layer 1 member on this class.
+    public function getName(): __FunctionName;
+    // @overlay-against: function invokeArgs(array $args): mixed
+    public function invokeArgs(array<int|string, mixed> $args): mixed;
+}
+
+/**
+ * Overlay: `getParameters` list typing and `getAttributes` like other reflectors.
+ */
+// @overlay-against: class ReflectionFunctionAbstract implements \Reflector, \Stringable
+partial class ReflectionFunctionAbstract {
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes<TAttr extends object>(__ClassName<TAttr> $name, int $flags = 0): array<int, \ReflectionAttribute<TAttr>>;
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes(?string $name = null, int $flags = 0): array<int, \ReflectionAttribute>;
+    // @overlay-against: function getClosureUsedVariables(): array
+    public function getClosureUsedVariables(): array<string, mixed>;
+    // @overlay-against: function getParameters(): array
+    public function getParameters(): array<int, \ReflectionParameter>;
+    // @overlay-against: function getStaticVariables(): array
+    public function getStaticVariables(): array<string, mixed>;
+}
+
+/**
+ * Overlay: generator backtrace frames as `DebugStackFrame` (same shape as
+ * `debug_backtrace()`).
+ */
+// @overlay-against: class ReflectionGenerator
+partial class ReflectionGenerator {
+    // @overlay-against: function getTrace(int $options): array
+    public function getTrace(int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT): array<int, DebugStackFrame>;
+}
+
+/**
+ * Overlay: intersection members as a list of `ReflectionType`.
+ */
+// @overlay-against: class ReflectionIntersectionType extends \ReflectionType implements \Stringable
+partial class ReflectionIntersectionType {
+    // @overlay-against: function getTypes(): array
+    public function getTypes(): array<int, \ReflectionType>;
+}
+
+/**
+ * Overlay: `ReflectionMethod<T>` name as `__MethodName<T>`; `invoke` object as `?T`.
+ */
+// @overlay-against: class ReflectionMethod extends \ReflectionFunctionAbstract implements \Stringable, \Reflector
+partial class ReflectionMethod<T extends object = object> extends \ReflectionFunctionAbstract implements \Stringable, \Reflector;
+// @overlay-against: class ReflectionMethod extends \ReflectionFunctionAbstract implements \Stringable, \Reflector
+partial class ReflectionMethod {
+    // @overlay-against: string $class
+    public __ClassName<T> $class;
+
+    // @overlay-against: function createFromMethodName(string $method): \ReflectionMethod
+    #[\Tyhp\Php(">=8.3")]
+    static public function createFromMethodName(string $method): \ReflectionMethod;
+
+    // @overlay-against: function __construct(object|string $objectOrMethod, ?string $method): void
+    public function __construct(T|__ClassName<T>|string $objectOrMethod, ?string $method = null): void;
+
+    // @overlay-against: function getClosure(?object $object): \Closure
+    public function getClosure(?T $object = null): \Closure;
+    // @overlay-against: function getDeclaringClass(): \ReflectionClass
+    public function getDeclaringClass(): \ReflectionClass<__SuperType<T>>;
+    // Inherited from ReflectionFunctionAbstract; no Layer 1 member on this class.
+    public function getName(): __MethodName<T>;
+    // @overlay-against: function invoke(?object $object, mixed $args): mixed
+    public function invoke(?T $object, mixed ...$args): mixed;
+    // @overlay-against: function invokeArgs(?object $object, array $args): mixed
+    public function invokeArgs(?T $object, array<int|string, mixed> $args): mixed;
+}
+
+/**
+ * Overlay: named-type spelling as `__TypeName` (builtins and class/interface names).
+ */
+// @overlay-against: class ReflectionNamedType extends \ReflectionType implements \Stringable
+partial class ReflectionNamedType {
+    // @overlay-against: function getName(): string
+    public function getName(): __TypeName;
+}
+
+/**
+ * Overlay: `ReflectionObject<T>` constructed from a `T` instance.
+ */
+// @overlay-against: class ReflectionObject extends \ReflectionClass implements \Reflector, \Stringable
+partial class ReflectionObject<T extends object = object> extends \ReflectionClass<T> implements \Reflector, \Stringable;
+// @overlay-against: class ReflectionObject extends \ReflectionClass implements \Reflector, \Stringable
+partial class ReflectionObject {
+    // @overlay-against: function __construct(object $object): void
+    public function __construct(T $object): void;
+}
+
+/**
+ * Overlay: `getAttributes` like other reflectors.
+ */
+// @overlay-against: class ReflectionParameter implements \Stringable, \Reflector
+partial class ReflectionParameter {
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes<TAttr extends object>(__ClassName<TAttr> $name, int $flags = 0): array<int, \ReflectionAttribute<TAttr>>;
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes(?string $name = null, int $flags = 0): array<int, \ReflectionAttribute>;
+    // @overlay-against: function getDeclaringClass(): ?\ReflectionClass
+    public function getDeclaringClass(): ?\ReflectionClass;
+}
+
+/**
+ * Overlay: `ReflectionProperty<T>` name as `__PropertyName<T>`.
+ */
+// @overlay-against: class ReflectionProperty implements \Stringable, \Reflector
+partial class ReflectionProperty<T extends object = object>;
+// @overlay-against: class ReflectionProperty implements \Stringable, \Reflector
+partial class ReflectionProperty {
+    // @overlay-against: string $class
+    public __ClassName<T> $class;
+    // @overlay-against: string $name
+    public __PropertyName<T> $name;
+
+    // @overlay-against: function __construct(object|string $class, string $property): void
+    public function __construct(T|__ClassName<T> $class, string $property): void;
+    // @overlay-against: function __construct(object|string $class, string $property): void
+    public function __construct(string $class, string $property): void;
+
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes<TAttr extends object>(__ClassName<TAttr> $name, int $flags = 0): array<int, \ReflectionAttribute<TAttr>>;
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes(?string $name = null, int $flags = 0): array<int, \ReflectionAttribute>;
+    // @overlay-against: function getDeclaringClass(): \ReflectionClass
+    public function getDeclaringClass(): \ReflectionClass<__SuperType<T>>;
+    // @overlay-against: function getHooks(): array
+    #[\Tyhp\Php(">=8.4")]
+    public function getHooks(): array<'get'|'set', \ReflectionMethod>;
+    // @overlay-against: function getMangledName(): string
+    #[\Tyhp\Php(">=8.5")]
+    public function getMangledName(): __PropertyName<T>|__ProtectedPropertyName<T>|__PrivatePropertyName<T>;
+    // @overlay-against: function getName(): string
+    public function getName(): __PropertyName<T>;
+    // @overlay-against: function getRawValue(object $object): mixed
+    #[\Tyhp\Php(">=8.4")]
+    public function getRawValue(T $object): mixed;
+    // @overlay-against: function getValue(?object $object): mixed
+    public function getValue(?T $object = null): mixed;
+    // @overlay-against: function isInitialized(?object $object): bool
+    public function isInitialized(?T $object = null): bool;
+    // @overlay-against: function isLazy(object $object): bool
+    #[\Tyhp\Php(">=8.4")]
+    public function isLazy(T $object): bool;
+    // @overlay-against: function setRawValue(object $object, mixed $value): void
+    #[\Tyhp\Php(">=8.4")]
+    public function setRawValue(T $object, mixed $value): void;
+    // @overlay-against: function setRawValueWithoutLazyInitialization(object $object, mixed $value): void
+    #[\Tyhp\Php(">=8.4")]
+    public function setRawValueWithoutLazyInitialization(T $object, mixed $value): void;
+}
+
+/**
+ * Overlay: `fromArrayElement` keys/values follow the subject array.
+ */
+// @overlay-against: class ReflectionReference
+partial class ReflectionReference {
+    // @overlay-against: function fromArrayElement(array $array, string|int $key): ?\ReflectionReference
+    static public function fromArrayElement<TKey extends int|string, TValue>(array<TKey, TValue> $array, TKey $key): ?\ReflectionReference;
+}
+
+/**
+ * Overlay: union members as a list of `ReflectionType`.
+ */
+// @overlay-against: class ReflectionUnionType extends \ReflectionType implements \Stringable
+partial class ReflectionUnionType {
+    // @overlay-against: function getTypes(): array
+    public function getTypes(): array<int, \ReflectionType>;
+}
+
+#[\Tyhp\Php(">=8.4")]
+/**
+ * Overlay: `cases()` as a list of this enum.
+ */
+// @overlay-against: enum PropertyHookType implements \BackedEnum, \UnitEnum
+partial enum PropertyHookType {
+    // @overlay-against: function cases(): array
+    static public function cases(): array<int, PropertyHookType>;
+}
+
+#[\Tyhp\Php(">=8.4 <8.5")]
+/**
+ * Overlay: global-constant name as `__ConstName` (PHP 8.4).
+ */
+// @overlay-against: class ReflectionConstant implements \Stringable, \Reflector
+final partial class ReflectionConstant {
+    // @overlay-against: string $name
+    public __ConstName $name;
+
+    // @overlay-against: function __construct(string $name): void
+    public function __construct(string $name): void;
+
+    // @overlay-against: function getName(): string
+    public function getName(): __ConstName;
+}
+
+#[\Tyhp\Php(">=8.5")]
+/**
+ * Overlay: global-constant name as `__ConstName` (PHP 8.5).
+ */
+// @overlay-against: class ReflectionConstant implements \Stringable, \Reflector
+partial class ReflectionConstant {
+    // @overlay-against: string $name
+    public __ConstName $name;
+
+    // @overlay-against: function __construct(string $name): void
+    public function __construct(string $name): void;
+
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes<TAttr extends object>(__ClassName<TAttr> $name, int $flags = 0): array<int, \ReflectionAttribute<TAttr>>;
+    // @overlay-against: function getAttributes(?string $name, int $flags): array
+    public function getAttributes(?string $name = null, int $flags = 0): array<int, \ReflectionAttribute>;
+    // @overlay-against: function getName(): string
+    public function getName(): __ConstName;
+}

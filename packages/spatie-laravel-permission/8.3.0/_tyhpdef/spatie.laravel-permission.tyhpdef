@@ -1,0 +1,933 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Spatie\Permission {
+    class DefaultTeamResolver implements \Spatie\Permission\Contracts\PermissionsTeamResolver {
+        protected int|string|null $teamId ?? null;
+        public function setPermissionsTeamId(int|string|\Illuminate\Database\Eloquent\Model|null $id): void;
+        public function getPermissionsTeamId(): int|string|null;
+    }
+    class Guard {
+        /**
+        * Return a collection of guard names suitable for the $model,
+        *
+        * as indicated by the presence of a $guard_name property or a guardName() method on the model.
+        *
+        * @param string|\Illuminate\Database\Eloquent\Model $model model class object or name
+        * @generated
+        */
+        public static function getNames(string|\Illuminate\Database\Eloquent\Model $model): \Illuminate\Support\Collection;
+        /**
+        * Get the model class associated with a given provider.
+        *
+        * @generated
+        */
+        protected static function getProviderModel(string $provider): ?string;
+        /**
+        * Get list of relevant guards for the $class model based on config(auth) settings.
+        *
+        * Lookup flow:
+        * - get names of models for guards defined in auth.guards where a provider is set
+        * - filter for provider models matching the model $class being checked
+        * - keys() gives just the names of the matched guards
+        * - return collection of guard names
+        *
+        * @generated
+        */
+        protected static function getConfigAuthGuards(string $class): \Illuminate\Support\Collection;
+        /**
+        * Get the model associated with a given guard name.
+        *
+        * @generated
+        */
+        public static function getModelForGuard(string $guard): ?string;
+        /**
+        * Lookup a guard name relevant for the $class model and the current user.
+        *
+        * @param string|\Illuminate\Database\Eloquent\Model $class model class object or name
+        * @generated
+        */
+        public static function getDefaultName(string|\Illuminate\Database\Eloquent\Model $class): string;
+        /**
+        * Lookup a passport guard
+        *
+        * @generated
+        */
+        public static function getPassportClient(?string $guard): ?\Illuminate\Contracts\Auth\Access\Authorizable;
+    }
+    class PermissionRegistrar {
+        protected \Illuminate\Contracts\Cache\Repository $cache;
+        protected \Illuminate\Cache\CacheManager $cacheManager;
+        protected string $permissionClass;
+        protected string $roleClass;
+        protected ?string $teamClass ?? null;
+        protected \Illuminate\Database\Eloquent\Collection|array|null $permissions ?? null;
+        public string $pivotRole;
+        public string $pivotPermission;
+        public \DateInterval|int $cacheExpirationTime;
+        public bool $teams;
+        protected \Spatie\Permission\Contracts\PermissionsTeamResolver $teamResolver;
+        public string $teamsKey;
+        public string $cacheKey;
+        public function __construct(\Illuminate\Cache\CacheManager $cacheManager): void;
+        public function initializeCache(): void;
+        protected function getCacheStoreFromConfig(): \Illuminate\Contracts\Cache\Repository;
+        public function setPermissionsTeamId(int|string|\Illuminate\Database\Eloquent\Model|null $id): void;
+        public function getPermissionsTeamId(): int|string|null;
+        /**
+        * Register the permission check method on the gate.
+        *
+        * We resolve the Gate fresh here, for benefit of long-running instances.
+        *
+        * @generated
+        */
+        public function registerPermissions(\Illuminate\Contracts\Auth\Access\Gate $gate): bool;
+        /**
+        * Flush the cache.
+        *
+        * @generated
+        */
+        public function forgetCachedPermissions(): bool;
+        public function forgetWildcardPermissionIndex(?\Illuminate\Database\Eloquent\Model $record = null): void;
+        public function getWildcardPermissionIndex(\Illuminate\Database\Eloquent\Model $record): array;
+        /**
+        * Clear already-loaded permissions collection.
+        *
+        * This is only intended to be called by the PermissionServiceProvider on boot,
+        * so that long-running instances like Octane or Swoole don't keep old data in memory.
+        *
+        * @generated
+        */
+        public function clearPermissionsCollection(): void;
+        /**
+        * Get the permissions based on the passed params.
+        *
+        * @generated
+        */
+        public function getPermissions(array $params = [], bool $onlyOne = false): \Illuminate\Database\Eloquent\Collection;
+        public function getPermissionClass(): string;
+        public function setPermissionClass(string $permissionClass): static;
+        public function getRoleClass(): string;
+        public function setRoleClass(string $roleClass): static;
+        public function getTeamClass(): ?string;
+        public function setTeamClass(?string $teamClass): static;
+        public function getCacheRepository(): \Illuminate\Contracts\Cache\Repository;
+        public function getCacheStore(): \Illuminate\Contracts\Cache\Store;
+        protected function getPermissionsWithRoles(): \Illuminate\Database\Eloquent\Collection;
+        public static function isUid(mixed $value): bool;
+    }
+    class PermissionServiceProvider extends \Spatie\LaravelPackageTools\PackageServiceProvider {
+        public function configurePackage(\Spatie\LaravelPackageTools\Package $package): void;
+        public function registeringPackage(): void;
+        public function packageBooted(): void;
+        public static function bladeMethodWrapper(string $method, mixed $role, ?string $guard = null): bool;
+        protected function registerBladeExtensions(\Illuminate\View\Compilers\BladeCompiler $bladeCompiler): void;
+        protected function registerModelBindings(): void;
+        protected function registerMacroHelpers(): void;
+        /**
+        * @var Route $this
+        * @generated
+        */
+        protected function registerOctaneListener(): void;
+        protected function registerAbout(): void;
+    }
+    class WildcardPermission implements \Spatie\Permission\Contracts\Wildcard {
+        /**
+        * @var string
+        * @generated
+        */
+        public const string WILDCARD_TOKEN ?? '*';
+        /**
+        * @var string
+        * @generated
+        */
+        public const string PART_DELIMITER ?? '.';
+        /**
+        * @var string
+        * @generated
+        */
+        public const string SUBPART_DELIMITER ?? ',';
+        protected \Illuminate\Database\Eloquent\Model $record;
+        public function __construct(\Illuminate\Database\Eloquent\Model $record): void;
+        public function getIndex(): array;
+        protected function buildIndex(array $index, array $parts, string $permission): array;
+        public function implies(string $permission, string $guardName, array $index): bool;
+        protected function checkIndex(array $permission, array $index): bool;
+    }
+}
+namespace Spatie\Permission\Commands {
+    class AssignRoleCommand extends \Illuminate\Console\Command {
+        protected mixed $signature;
+        protected mixed $description ?? 'Assign a role to a user';
+        public function handle(\Spatie\Permission\PermissionRegistrar $permissionRegistrar): int;
+    }
+    class CacheResetCommand extends \Illuminate\Console\Command {
+        protected mixed $signature ?? 'permission:cache-reset';
+        protected mixed $description ?? 'Reset the permission cache';
+        public function handle(): int;
+    }
+    class CreatePermissionCommand extends \Illuminate\Console\Command {
+        protected mixed $signature;
+        protected mixed $description ?? 'Create a permission';
+        public function handle(): int;
+    }
+    class CreateRoleCommand extends \Illuminate\Console\Command {
+        protected mixed $signature;
+        protected mixed $description ?? 'Create a role';
+        public function handle(\Spatie\Permission\PermissionRegistrar $permissionRegistrar): int;
+        protected function makePermissions(?string $string = null): ?\Illuminate\Support\Collection;
+    }
+    class ShowCommand extends \Illuminate\Console\Command {
+        protected mixed $signature;
+        protected mixed $description ?? 'Show a table of roles and permissions per guard';
+        public function handle(): int;
+    }
+    class UpgradeForTeamsCommand extends \Illuminate\Console\Command {
+        protected mixed $signature ?? 'permission:setup-teams';
+        protected mixed $description ?? 'Setup the teams feature by generating the associated migration.';
+        protected string $migrationSuffix ?? 'add_teams_fields.php';
+        public function handle(): int;
+        protected function createMigration(): bool;
+        protected function getExistingMigrationsWarning(array $existingMigrations): string;
+        protected function alreadyExistingMigrations(): array;
+        protected function getMigrationPath(?string $date = null): string;
+    }
+}
+namespace Spatie\Permission\Contracts {
+    /**
+    * @property int|string $id
+    * @property string $name
+    * @property string|null $guard_name
+    * @mixin \Spatie\Permission\Models\Permission
+    * @phpstan-require-extends \Spatie\Permission\Models\Permission
+    * @generated
+    */
+    interface Permission {
+        public int|string $id;
+        public string $name;
+        public string|null $guard_name;
+        /**
+        * A permission can be applied to roles.
+        *
+        * @generated
+        */
+        public function roles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * Find a permission by its name.
+        *
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        public static function findByName(\BackedEnum|string $name, ?string $guardName): self;
+        /**
+        * Find a permission by its id.
+        *
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        public static function findById(int|string $id, ?string $guardName): self;
+        /**
+        * Find or Create a permission by its name and guard name.
+        *
+        * @generated
+        */
+        public static function findOrCreate(\BackedEnum|string $name, ?string $guardName): self;
+    }
+    interface PermissionsTeamResolver {
+        public function getPermissionsTeamId(): int|string|null;
+        public function setPermissionsTeamId(int|string|\Illuminate\Database\Eloquent\Model|null $id): void;
+    }
+    /**
+    * @property int|string $id
+    * @property string $name
+    * @property string|null $guard_name
+    * @mixin \Spatie\Permission\Models\Role
+    * @phpstan-require-extends \Spatie\Permission\Models\Role
+    * @generated
+    */
+    interface Role {
+        public int|string $id;
+        public string $name;
+        public string|null $guard_name;
+        /**
+        * A role may be given various permissions.
+        *
+        * @generated
+        */
+        public function permissions(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * Find a role by its name and guard name.
+        *
+        * @throws RoleDoesNotExist
+        * @generated
+        */
+        public static function findByName(\BackedEnum|string $name, ?string $guardName): self;
+        /**
+        * Find a role by its id and guard name.
+        *
+        * @throws RoleDoesNotExist
+        * @generated
+        */
+        public static function findById(int|string $id, ?string $guardName): self;
+        /**
+        * Find or create a role by its name and guard name.
+        *
+        * @generated
+        */
+        public static function findOrCreate(\BackedEnum|string $name, ?string $guardName): self;
+        /**
+        * Determine if the user may perform the given permission.
+        *
+        * @generated
+        */
+        public function hasPermissionTo(string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission, ?string $guardName = null): bool;
+    }
+    interface Wildcard {
+        public function getIndex(): array;
+        public function implies(string $permission, string $guardName, array $index): bool;
+    }
+}
+namespace Spatie\Permission\Events {
+    class PermissionAttachedEvent {
+        use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Broadcasting\InteractsWithSockets, \Illuminate\Queue\SerializesModels;
+        public \Illuminate\Database\Eloquent\Model $model;
+        public array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection $permissionsOrIds;
+        /**
+        * Internally the HasPermissions trait passes an array of permission ids (eg: int's or uuid's)
+        *
+        * Theoretically one could register the event to other places and pass an Eloquent record.
+        * So a Listener should inspect the type of $permissionsOrIds received before using.
+        *
+        * @param array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection $permissionsOrIds
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model $model, array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection $permissionsOrIds): void;
+    }
+    class PermissionDetachedEvent {
+        use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Broadcasting\InteractsWithSockets, \Illuminate\Queue\SerializesModels;
+        public \Illuminate\Database\Eloquent\Model $model;
+        public array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection $permissionsOrIds;
+        /**
+        * Internally the HasPermissions trait passes $permissionsOrIds as an Eloquent record.
+        *
+        * Theoretically one could register the event to other places and pass an array etc.
+        * So a Listener should inspect the type of $permissionsOrIds received before using.
+        *
+        * @param array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection $permissionsOrIds
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model $model, array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection $permissionsOrIds): void;
+    }
+    class RoleAttachedEvent {
+        use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Broadcasting\InteractsWithSockets, \Illuminate\Queue\SerializesModels;
+        public \Illuminate\Database\Eloquent\Model $model;
+        public array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Role|array<int, \Spatie\Permission\Contracts\Role>|\Illuminate\Support\Collection $rolesOrIds;
+        /**
+        * Internally the HasRoles trait passes an array of role ids (eg: int's or uuid's)
+        *
+        * Theoretically one could register the event to other places passing other types
+        * So a Listener should inspect the type of $rolesOrIds received before using.
+        *
+        * @param array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Role|array<int, \Spatie\Permission\Contracts\Role>|\Illuminate\Support\Collection $rolesOrIds
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model $model, array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Role|array<int, \Spatie\Permission\Contracts\Role>|\Illuminate\Support\Collection $rolesOrIds): void;
+    }
+    class RoleDetachedEvent {
+        use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Broadcasting\InteractsWithSockets, \Illuminate\Queue\SerializesModels;
+        public \Illuminate\Database\Eloquent\Model $model;
+        public array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Role|array<int, \Spatie\Permission\Contracts\Role>|\Illuminate\Support\Collection $rolesOrIds;
+        /**
+        * Internally the HasRoles trait passes an array of role ids (eg: int's or uuid's)
+        *
+        * Theoretically one could register the event to other places passing other types
+        * So a Listener should inspect the type of $rolesOrIds received before using.
+        *
+        * @param array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Role|array<int, \Spatie\Permission\Contracts\Role>|\Illuminate\Support\Collection $rolesOrIds
+        * @generated
+        */
+        public function __construct(\Illuminate\Database\Eloquent\Model $model, array|array<int, int>|array<int, string>|\Spatie\Permission\Contracts\Role|array<int, \Spatie\Permission\Contracts\Role>|\Illuminate\Support\Collection $rolesOrIds): void;
+    }
+}
+namespace Spatie\Permission\Exceptions {
+    class GuardDoesNotMatch extends \InvalidArgumentException {
+        public static function create(string $givenGuard, \Illuminate\Support\Collection $expectedGuards): static;
+    }
+    class PermissionAlreadyExists extends \InvalidArgumentException {
+        public static function create(string $permissionName, string $guardName): static;
+    }
+    class PermissionDoesNotExist extends \InvalidArgumentException {
+        public static function create(string $permissionName, ?string $guardName): static;
+        public static function withId(int|string $permissionId, ?string $guardName): static;
+    }
+    class RoleAlreadyExists extends \InvalidArgumentException {
+        public static function create(string $roleName, string $guardName): static;
+    }
+    class RoleDoesNotExist extends \InvalidArgumentException {
+        public static function named(string $roleName, ?string $guardName): static;
+        public static function withId(int|string $roleId, ?string $guardName): static;
+    }
+    class TeamModelNotConfigured extends \RuntimeException {
+        public static function create(): static;
+    }
+    class TeamsNotEnabled extends \BadMethodCallException {
+        public static function create(): static;
+    }
+    class UnauthorizedException extends \Symfony\Component\HttpKernel\Exception\HttpException {
+        public static function forRoles(array $roles): static;
+        public static function forPermissions(array $permissions): static;
+        public static function forRolesOrPermissions(array $rolesOrPermissions): static;
+        public static function missingTraitHasRoles(\Illuminate\Contracts\Auth\Access\Authorizable $user): static;
+        public static function notLoggedIn(): static;
+        public function getRequiredRoles(): array;
+        public function getRequiredPermissions(): array;
+    }
+    class WildcardPermissionInvalidArgument extends \InvalidArgumentException {
+        public static function create(): static;
+    }
+    class WildcardPermissionNotImplementsContract extends \InvalidArgumentException {
+        public static function create(): static;
+    }
+    class WildcardPermissionNotProperlyFormatted extends \InvalidArgumentException {
+        public static function create(string $permission): static;
+    }
+}
+namespace Spatie\Permission\Middleware {
+    class PermissionMiddleware {
+        public function handle(\Illuminate\Http\Request $request, \Closure $next, mixed $permission, ?string $guard = null): mixed;
+        /**
+        * Specify the permission and guard for the middleware.
+        *
+        * @generated
+        */
+        public static function using(array|string|\BackedEnum $permission, ?string $guard = null): string;
+        protected static function parsePermissionsToString(array|string|\BackedEnum $permission): string;
+    }
+    class RoleMiddleware {
+        public function handle(\Illuminate\Http\Request $request, \Closure $next, mixed $role, ?string $guard = null): mixed;
+        /**
+        * Specify the role and guard for the middleware.
+        *
+        * @generated
+        */
+        public static function using(array|string|\BackedEnum $role, ?string $guard = null): string;
+        protected static function parseRolesToString(array|string|\BackedEnum $role): string;
+    }
+    class RoleOrPermissionMiddleware {
+        public function handle(\Illuminate\Http\Request $request, \Closure $next, mixed $roleOrPermission, ?string $guard = null): mixed;
+        /**
+        * Specify the role or permission and guard for the middleware.
+        *
+        * @generated
+        */
+        public static function using(array|string|\BackedEnum $roleOrPermission, ?string $guard = null): string;
+        protected static function parseRoleOrPermissionToString(array|string|\BackedEnum $roleOrPermission): string;
+    }
+}
+namespace Spatie\Permission\Models {
+    /**
+    * @property int|string $id
+    * @property string $name
+    * @property string $guard_name
+    * @property ?Carbon $created_at
+    * @property ?Carbon $updated_at
+    * @property-read Collection<int, Role> $roles
+    * @property-read Collection<int, Model> $users
+    * @generated
+    */
+    class Permission extends \Illuminate\Database\Eloquent\Model implements \Spatie\Permission\Contracts\Permission {
+        use \Spatie\Permission\Traits\HasRoles, \Spatie\Permission\Traits\RefreshesPermissionCache;
+        protected mixed $guarded ?? [];
+        public int|string $id;
+        public string $name;
+        public string $guard_name;
+        public ?Carbon $created_at;
+        public ?Carbon $updated_at;
+        public Collection<int, \Spatie\Permission\Models\Role> $roles;
+        public Collection<int, Model> $users;
+        public function __construct(array $attributes = []): void;
+        /**
+        * @return \Spatie\Permission\Contracts\Permission|Permission
+        * @throws PermissionAlreadyExists
+        * @generated
+        */
+        public static function create(array $attributes = []): \Spatie\Permission\Contracts\Permission|\Spatie\Permission\Models\Permission;
+        /**
+        * A permission can be applied to roles.
+        *
+        * @generated
+        */
+        public function roles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * A permission belongs to some users of the model associated with its guard.
+        *
+        * @generated
+        */
+        public function users(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * Find a permission by its name (and optionally guardName).
+        *
+        * @return \Spatie\Permission\Contracts\Permission
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        public static function findByName(\BackedEnum|string $name, ?string $guardName = null): \Spatie\Permission\Contracts\Permission;
+        /**
+        * Find a permission by its id (and optionally guardName).
+        *
+        * @return \Spatie\Permission\Contracts\Permission
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        public static function findById(int|string $id, ?string $guardName = null): \Spatie\Permission\Contracts\Permission;
+        /**
+        * Find or create permission by its name (and optionally guardName).
+        *
+        * @return \Spatie\Permission\Contracts\Permission
+        * @generated
+        */
+        public static function findOrCreate(\BackedEnum|string $name, ?string $guardName = null): \Spatie\Permission\Contracts\Permission;
+        /**
+        * Get the current cached permissions.
+        *
+        * @generated
+        */
+        protected static function getPermissions(array $params = [], bool $onlyOne = false): \Illuminate\Database\Eloquent\Collection;
+        /**
+        * Get the current cached first permission.
+        *
+        * @return ?\Spatie\Permission\Contracts\Permission
+        * @generated
+        */
+        protected static function getPermission(array $params = []): ?\Spatie\Permission\Contracts\Permission;
+    }
+    /**
+    * @property int|string $id
+    * @property string $name
+    * @property string $guard_name
+    * @property ?Carbon $created_at
+    * @property ?Carbon $updated_at
+    * @property-read Collection<int, Permission> $permissions
+    * @property-read Collection<int, Model> $users
+    * @generated
+    */
+    class Role extends \Illuminate\Database\Eloquent\Model implements \Spatie\Permission\Contracts\Role {
+        use \Spatie\Permission\Traits\HasAssignedModels, \Spatie\Permission\Traits\HasPermissions, \Spatie\Permission\Traits\RefreshesPermissionCache;
+        protected mixed $guarded ?? [];
+        public int|string $id;
+        public string $name;
+        public string $guard_name;
+        public ?Carbon $created_at;
+        public ?Carbon $updated_at;
+        public Collection<int, \Spatie\Permission\Models\Permission> $permissions;
+        public Collection<int, Model> $users;
+        public function __construct(array $attributes = []): void;
+        /**
+        * @return \Spatie\Permission\Contracts\Role|Role
+        * @throws RoleAlreadyExists
+        * @generated
+        */
+        public static function create(array $attributes = []): \Spatie\Permission\Contracts\Role|\Spatie\Permission\Models\Role;
+        /**
+        * A role may be given various permissions.
+        *
+        * @generated
+        */
+        public function permissions(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * A role belongs to some users of the model associated with its guard.
+        *
+        * @generated
+        */
+        public function users(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * Find a role by its name and guard name.
+        *
+        * @return \Spatie\Permission\Contracts\Role
+        * @throws RoleDoesNotExist
+        * @generated
+        */
+        public static function findByName(\BackedEnum|string $name, ?string $guardName = null): \Spatie\Permission\Contracts\Role;
+        /**
+        * Find a role by its id (and optionally guardName).
+        *
+        * @return \Spatie\Permission\Contracts\Role
+        * @generated
+        */
+        public static function findById(int|string $id, ?string $guardName = null): \Spatie\Permission\Contracts\Role;
+        /**
+        * Find or create role by its name (and optionally guardName).
+        *
+        * @return \Spatie\Permission\Contracts\Role
+        * @generated
+        */
+        public static function findOrCreate(\BackedEnum|string $name, ?string $guardName = null): \Spatie\Permission\Contracts\Role;
+        /**
+        * Finds a role based on an array of parameters.
+        *
+        * @return ?\Spatie\Permission\Contracts\Role
+        * @generated
+        */
+        protected static function findByParam(array $params = []): ?\Spatie\Permission\Contracts\Role;
+        /**
+        * Determine if the role may perform the given permission.
+        *
+        * @param string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission
+        * @throws PermissionDoesNotExist|GuardDoesNotMatch
+        * @generated
+        */
+        public function hasPermissionTo(string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission, ?string $guardName = null): bool;
+    }
+}
+namespace Spatie\Permission\Support {
+    class Config {
+        public static function teamsEnabled(): bool;
+        public static function ensureTeamsEnabled(): void;
+        /**
+        * @return string
+        * @generated
+        */
+        public static function teamModel(): string;
+        public static function modelHasRolesTable(): string;
+        public static function modelHasPermissionsTable(): string;
+        public static function roleHasPermissionsTable(): string;
+        public static function rolesTable(): string;
+        public static function permissionsTable(): string;
+        public static function morphKey(): string;
+        public static function teamForeignKey(): string;
+        /**
+        * @return string
+        * @generated
+        */
+        public static function roleModel(): string;
+        /**
+        * @return string
+        * @generated
+        */
+        public static function permissionModel(): string;
+        public static function eventsEnabled(): bool;
+        public static function usePassportClientCredentials(): bool;
+        public static function displayRoleInException(): bool;
+        public static function displayPermissionInException(): bool;
+        public static function wildcardPermissionsEnabled(): bool;
+        /**
+        * @return string
+        * @generated
+        */
+        public static function wildcardPermissionClass(): string;
+    }
+}
+namespace Spatie\Permission\Traits {
+    trait HasAssignedModels {
+        /**
+        * Assign this role to the given models without removing existing assignments.
+        *
+        * @param array|\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|int|string $models
+        * @return static
+        * @generated
+        */
+        public function assignToModels(array|\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|int|string $models, ?string $modelClass = null): static;
+        /**
+        * Remove this role from the given models.
+        *
+        * @param array|\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|int|string $models
+        * @return static
+        * @generated
+        */
+        public function removeFromModels(array|\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|int|string $models, ?string $modelClass = null): static;
+        /**
+        * Remove all current model associations and set the given ones.
+        *
+        * @param array|\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|int|string $models
+        * @return static
+        * @generated
+        */
+        public function syncModels(array|\Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Model|int|string $models, ?string $modelClass = null): static;
+        /**
+        * Build a morphedByMany relation pointing to a specific model class.
+        *
+        * @generated
+        */
+        protected function relationForModel(string $modelClass): \Illuminate\Database\Eloquent\Relations\MorphToMany;
+    }
+    trait HasPermissions {
+        public static function bootHasPermissions(): void;
+        public function getPermissionClass(): string;
+        public function getWildcardClass(): string;
+        /**
+        * A model may have multiple direct permissions.
+        *
+        * @generated
+        */
+        public function permissions(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * Scope the model query to certain permissions only.
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions
+        * @generated
+        */
+        public function scopePermission(\Illuminate\Database\Eloquent\Builder $query, string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions, bool $without = false): \Illuminate\Database\Eloquent\Builder;
+        /**
+        * Scope the model query to only those without certain permissions,
+        *
+        * whether indirectly by role or by direct permission.
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions
+        * @generated
+        */
+        public function scopeWithoutPermission(\Illuminate\Database\Eloquent\Builder $query, string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions): \Illuminate\Database\Eloquent\Builder;
+        /**
+        * @param string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        protected function convertToPermissionModels(string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions): array;
+        /**
+        * Find a permission.
+        *
+        * @param string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        public function filterPermission(string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission, ?string $guardName = null): \Spatie\Permission\Contracts\Permission;
+        /**
+        * Determine if the model may perform the given permission.
+        *
+        * @param string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        public function hasPermissionTo(string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission, ?string $guardName = null): bool;
+        /**
+        * Validates a wildcard permission against all permissions of a user.
+        *
+        * @param string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission
+        * @generated
+        */
+        protected function hasWildcardPermission(string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission, ?string $guardName = null): bool;
+        /**
+        * An alias to hasPermissionTo(), but avoids throwing an exception.
+        *
+        * @param string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission
+        * @generated
+        */
+        public function checkPermissionTo(string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission, ?string $guardName = null): bool;
+        /**
+        * Determine if the model has any of the given permissions.
+        *
+        * @param string|int|array|Permission|Collection|BackedEnum $ ...$permissions
+        * @generated
+        */
+        public function hasAnyPermission(mixed ...$permissions): bool;
+        /**
+        * Determine if the model has all of the given permissions.
+        *
+        * @param string|int|array|Permission|Collection|BackedEnum $ ...$permissions
+        * @generated
+        */
+        public function hasAllPermissions(mixed ...$permissions): bool;
+        /**
+        * Determine if the model has, via roles, the given permission.
+        *
+        * @generated
+        */
+        protected function hasPermissionViaRole(\Spatie\Permission\Contracts\Permission $permission): bool;
+        /**
+        * Determine if the model has the given permission.
+        *
+        * @param string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission
+        * @throws PermissionDoesNotExist
+        * @generated
+        */
+        public function hasDirectPermission(string|int|\Spatie\Permission\Contracts\Permission|\BackedEnum $permission): bool;
+        /**
+        * Return all the permissions the model has via roles.
+        *
+        * @generated
+        */
+        public function getPermissionsViaRoles(): \Illuminate\Support\Collection;
+        /**
+        * Return all the permissions the model has, both directly and via roles.
+        *
+        * @generated
+        */
+        public function getAllPermissions(): \Illuminate\Support\Collection;
+        /**
+        * Grant the given permission(s) to a role.
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions
+        * @return static
+        * @generated
+        */
+        public function givePermissionTo(string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum ...$permissions): static;
+        public function forgetWildcardPermissionIndex(): void;
+        /**
+        * Remove all current permissions and set the given ones.
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions
+        * @return static
+        * @generated
+        */
+        public function syncPermissions(string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum ...$permissions): static;
+        /**
+        * Revoke the given permission(s).
+        *
+        * @param \Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|string|array<int, string>|\BackedEnum $permission
+        * @return static
+        * @generated
+        */
+        public function revokePermissionTo(\Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|string|array<int, string>|\BackedEnum $permission): static;
+        public function getPermissionNames(): \Illuminate\Support\Collection;
+        /**
+        * @param string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions
+        * @return \Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection
+        * @generated
+        */
+        protected function getStoredPermission(string|int|array|\Spatie\Permission\Contracts\Permission|\Illuminate\Support\Collection|\BackedEnum $permissions): \Spatie\Permission\Contracts\Permission|array<int, \Spatie\Permission\Contracts\Permission>|\Illuminate\Support\Collection;
+        /**
+        * @param \Spatie\Permission\Contracts\Permission|\Spatie\Permission\Contracts\Role $roleOrPermission
+        * @throws GuardDoesNotMatch
+        * @generated
+        */
+        protected function ensureModelSharesGuard(\Spatie\Permission\Contracts\Permission|\Spatie\Permission\Contracts\Role $roleOrPermission): void;
+        protected function getGuardNames(): \Illuminate\Support\Collection;
+        protected function getDefaultGuardName(): string;
+        /**
+        * Forget the cached permissions.
+        *
+        * @generated
+        */
+        public function forgetCachedPermissions(): void;
+        /**
+        * Check if the model has All of the requested Direct permissions.
+        *
+        * @param string|int|array|Permission|Collection|BackedEnum $ ...$permissions
+        * @generated
+        */
+        public function hasAllDirectPermissions(mixed ...$permissions): bool;
+        /**
+        * Check if the model has Any of the requested Direct permissions.
+        *
+        * @param string|int|array|Permission|Collection|BackedEnum $ ...$permissions
+        * @generated
+        */
+        public function hasAnyDirectPermission(mixed ...$permissions): bool;
+    }
+    trait HasRoles {
+        use \Spatie\Permission\Traits\HasPermissions;
+        public static function bootHasRoles(): void;
+        public function getRoleClass(): string;
+        /**
+        * A model may have multiple roles.
+        *
+        * @generated
+        */
+        public function roles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * Scope the model query to certain roles only.
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles
+        * @generated
+        */
+        public function scopeRole(\Illuminate\Database\Eloquent\Builder $query, string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles, ?string $guard = null, bool $without = false): \Illuminate\Database\Eloquent\Builder;
+        /**
+        * Scope the model query to only those without certain roles.
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles
+        * @generated
+        */
+        public function scopeWithoutRole(\Illuminate\Database\Eloquent\Builder $query, string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles, ?string $guard = null): \Illuminate\Database\Eloquent\Builder;
+        /**
+        * A model may be part of multiple teams.
+        *
+        * When the teams feature is disabled this returns an empty BelongsToMany so
+        * tooling that introspects model relations (e.g. ide-helper:models) does not
+        * break. Querying it is a no-op and produces no rows.
+        *
+        * @generated
+        */
+        public function teams(): \Illuminate\Database\Eloquent\Relations\BelongsToMany;
+        /**
+        * Scope the model query to certain teams only.
+        *
+        * @param int|string|array|\Illuminate\Database\Eloquent\Model|\Illuminate\Support\Collection $teams
+        * @generated
+        */
+        public function scopeTeam(\Illuminate\Database\Eloquent\Builder $query, int|string|array|\Illuminate\Database\Eloquent\Model|\Illuminate\Support\Collection $teams, bool $without = false): \Illuminate\Database\Eloquent\Builder;
+        /**
+        * Scope the model query to those without certain teams.
+        *
+        * @param int|string|array|\Illuminate\Database\Eloquent\Model|\Illuminate\Support\Collection $teams
+        * @generated
+        */
+        public function scopeWithoutTeam(\Illuminate\Database\Eloquent\Builder $query, int|string|array|\Illuminate\Database\Eloquent\Model|\Illuminate\Support\Collection $teams): \Illuminate\Database\Eloquent\Builder;
+        /**
+        * Assign the given role to the model.
+        *
+        * @param string|int|array|Role|Collection|BackedEnum $ ...$roles
+        * @return static
+        * @generated
+        */
+        public function assignRole(mixed ...$roles): static;
+        /**
+        * Revoke the given role from the model.
+        *
+        * @param string|int|array|Role|Collection|BackedEnum $ ...$role
+        * @return static
+        * @generated
+        */
+        public function removeRole(mixed ...$role): static;
+        /**
+        * Remove all current roles and set the given ones.
+        *
+        * @param string|int|array|Role|Collection|BackedEnum $ ...$roles
+        * @return static
+        * @generated
+        */
+        public function syncRoles(mixed ...$roles): static;
+        /**
+        * Determine if the model has (one of) the given role(s).
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles
+        * @generated
+        */
+        public function hasRole(string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles, ?string $guard = null): bool;
+        /**
+        * Determine if the model has any of the given role(s).
+        *
+        * Alias to hasRole() but without Guard controls
+        *
+        * @param string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles
+        * @generated
+        */
+        public function hasAnyRole(string|int|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum ...$roles): bool;
+        /**
+        * Determine if the model has all of the given role(s).
+        *
+        * @param string|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles
+        * @generated
+        */
+        public function hasAllRoles(string|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles, ?string $guard = null): bool;
+        /**
+        * Determine if the model has exactly all of the given role(s).
+        *
+        * @param string|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles
+        * @generated
+        */
+        public function hasExactRoles(string|array|\Spatie\Permission\Contracts\Role|\Illuminate\Support\Collection|\BackedEnum $roles, ?string $guard = null): bool;
+        /**
+        * Return all permissions directly coupled to the model.
+        *
+        * @generated
+        */
+        public function getDirectPermissions(): \Illuminate\Support\Collection;
+        public function getRoleNames(): \Illuminate\Support\Collection;
+        protected function getStoredRole(mixed $role): \Spatie\Permission\Contracts\Role;
+        protected function convertPipeToArray(string $pipeString): array;
+    }
+    trait RefreshesPermissionCache {
+        public static function bootRefreshesPermissionCache(): mixed;
+    }
+}

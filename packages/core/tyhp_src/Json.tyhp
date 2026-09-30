@@ -1,0 +1,55 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Exceptions\IncompatibleTypeException;
+
+/**
+ * Typed JSON helpers. `\json_decode` stays a PHP builtin (objects vs arrays, `mixed` only
+ * when `$associative` is not a literal). {@see decode} always decodes objects as arrays
+ * and checks the result against `T` — the C# `JsonSerializer.Deserialize<T>` analogue for
+ * Tyhp structs, arrays of structs, and scalars.
+ */
+final class Json
+{
+    /**
+     * Decode JSON into `T`. Objects become associative arrays (struct-native).
+     * Invalid JSON throws `\JsonException`. A well-formed value that does not match `T`
+     * throws {@see IncompatibleTypeException}.
+     *
+     * @param $json JSON text.
+     * @param $depth Maximum nesting depth passed to `\json_decode`.
+     * @param $flags Extra `JSON_*` flags; `JSON_THROW_ON_ERROR` is always set.
+     */
+    public static function decode<T extends struct>(string $json, int $depth = 512, int $flags = 0): T
+    {
+        mixed $decoded = \json_decode($json, true, $depth, $flags | \JSON_THROW_ON_ERROR);
+        if (!Type::isType<T>($decoded)) {
+            throw new IncompatibleTypeException(typeof(T), Type::of($decoded));
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Decode JSON into `$out` as `T`. Same decode rules as {@see decode} (objects as arrays).
+     * Returns `true` and writes `$out` on success. Returns `false` and leaves `$out` unchanged
+     * when the text is not valid JSON or the value does not match `T`.
+     *
+     * @param $json JSON text.
+     * @param $out Set to the decoded value on success.
+     * @param $depth Maximum nesting depth passed to `\json_decode`.
+     * @param $flags Extra `JSON_*` flags; `JSON_THROW_ON_ERROR` is always set internally.
+     */
+    public static function tryDecode<T extends struct>(string $json, T &$out, int $depth = 512, int $flags = 0): bool
+    {
+        try {
+            $out = self::decode<T>($json, $depth, $flags);
+            return true;
+        } catch (\JsonException) {
+            return false;
+        } catch (IncompatibleTypeException) {
+            return false;
+        }
+    }
+}

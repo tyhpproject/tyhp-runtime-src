@@ -1,0 +1,1840 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace GuzzleHttp\Psr7 {
+    /**
+    * Reads from multiple streams, one after the other.
+    *
+    * This is a read-only stream decorator.
+    *
+    * @generated
+    */
+    final class AppendStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param array<int, \Psr\Http\Message\StreamInterface> $streams Streams to decorate. Each stream must
+        *  *                                       be readable.
+        * @generated
+        */
+        public function __construct(array<int, \Psr\Http\Message\StreamInterface> $streams = []): void;
+        public function __toString(): string;
+        /**
+        * Add a stream to the AppendStream
+        *
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to append. Must be readable.
+        * @throws \InvalidArgumentException if the stream is not readable
+        * @generated
+        */
+        public function addStream(\Psr\Http\Message\StreamInterface $stream): void;
+        public function getContents(): string;
+        /**
+        * Closes each attached stream.
+        *
+        * @generated
+        */
+        public function close(): void;
+        /**
+        * Detaches each attached stream.
+        *
+        * Returns null as it's not clear which underlying stream resource to return.
+        *
+        * @generated
+        */
+        public function detach(): mixed;
+        public function tell(): int;
+        /**
+        * Tries to calculate the size by adding the size of each stream.
+        *
+        * If any of the streams do not return a valid number, then the size of the
+        * append stream cannot be determined and null is returned.
+        *
+        * @generated
+        */
+        public function getSize(): ?int;
+        public function eof(): bool;
+        public function rewind(): void;
+        /**
+        * Attempts to seek to the given position. Only supports SEEK_SET.
+        *
+        * @generated
+        */
+        public function seek(int $offset, int $whence): void;
+        /**
+        * Reads from all of the appended streams until the length is met or EOF.
+        *
+        * @generated
+        */
+        public function read(int $length): string;
+        public function isReadable(): bool;
+        public function isWritable(): bool;
+        public function isSeekable(): bool;
+        public function write(string $string): int;
+        public function getMetadata(?string $key = null): ?array;
+    }
+    /**
+    * Provides a buffer stream that can be written to to fill a buffer, and read
+    *
+    * from to remove bytes from the buffer.
+    * 
+    * This stream returns a "hwm" metadata value that tells upstream consumers
+    * what the configured high water mark of the stream is, or the maximum
+    * preferred size of the buffer.
+    *
+    * @generated
+    */
+    final class BufferStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param int $hwm High water mark, representing the preferred maximum
+        *  *                     buffer size. If the size of the buffer reaches or exceeds
+        *  *                     the high water mark, then calls to write will continue to
+        *  *                     succeed but will return 0 to inform writers to slow down
+        *  *                     until the buffer has been drained by reading from it.
+        * @generated
+        */
+        public function __construct(int $hwm = 16384): void;
+        public function __toString(): string;
+        public function getContents(): string;
+        public function close(): void;
+        public function detach(): mixed;
+        public function getSize(): ?int;
+        public function isReadable(): bool;
+        public function isWritable(): bool;
+        public function isSeekable(): bool;
+        public function rewind(): void;
+        public function seek(int $offset, int $whence): void;
+        public function eof(): bool;
+        public function tell(): int;
+        /**
+        * Reads data from the buffer.
+        *
+        * @generated
+        */
+        public function read(int $length): string;
+        /**
+        * Writes data to the buffer.
+        *
+        * @generated
+        */
+        public function write(string $string): int;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getMetadata(?string $key = null): mixed;
+    }
+    /**
+    * Stream decorator that can cache previously read bytes from a sequentially
+    *
+    * read stream.
+    *
+    * @generated
+    */
+    final class CachingStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\StreamDecoratorTrait, \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * We will treat the buffer object as the body of the stream
+        *
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to cache. The cursor is assumed to be at the beginning of the stream.
+        * @param ?\Psr\Http\Message\StreamInterface $target Optionally specify where data is cached. Defaults to a "php://temp"
+        *  *                                    stream. A custom target is used as a random-access byte buffer to
+        *  *                                    replay the remote stream, so it must be readable, writable, and
+        *  *                                    seekable, report an accurate position and size, and store writes
+        *  *                                    losslessly. Lossy or non-seekable streams such as BufferStream and
+        *  *                                    DroppingStream are not valid targets.
+        * @generated
+        */
+        public function __construct(\Psr\Http\Message\StreamInterface $stream, ?\Psr\Http\Message\StreamInterface $target = null): void;
+        public function getSize(): ?int;
+        public function rewind(): void;
+        public function seek(int $offset, int $whence): void;
+        public function read(int $length): string;
+        public function write(string $string): int;
+        public function eof(): bool;
+        public function detach(): mixed;
+        /**
+        * Close the remote stream and any attached cache stream.
+        *
+        * @generated
+        */
+        public function close(): void;
+    }
+    /**
+    * Escapes control characters and malformed UTF-8 for use in diagnostics.
+    *
+    * @generated
+    */
+    final class DiagnosticValue {
+        /**
+        * Escapes C0, DEL, and C1 controls as uppercase `\xNN` sequences.
+        *
+        * ASCII bytes from 0x20 through 0x7E and valid UTF-8 characters outside
+        * those control ranges remain unchanged. If the input is malformed UTF-8 or
+        * PCRE cannot process it, every byte outside printable ASCII is escaped.
+        * Valid C1 characters are rendered as `\xNN` using their Unicode code
+        * points. During bytewise fallback, each original byte outside printable
+        * ASCII is rendered in the same form. The result is diagnostic text, not a
+        * reversible encoding.
+        * 
+        * This does not encode values for HTML, JSON, shells, terminals, URLs, or
+        * protocol fields.
+        *
+        * @generated
+        */
+        public static function escape(string $value): string;
+    }
+    /**
+    * Stream decorator that begins dropping data once the size of the underlying
+    *
+    * stream becomes too full.
+    *
+    * @generated
+    */
+    final class DroppingStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\StreamDecoratorTrait, \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param \Psr\Http\Message\StreamInterface $stream Underlying stream to decorate.
+        * @param int $maxLength Maximum size before dropping data.
+        * @generated
+        */
+        public function __construct(\Psr\Http\Message\StreamInterface $stream, int $maxLength): void;
+        public function write(string $string): int;
+    }
+    /**
+    * Compose stream implementations based on a hash of callables.
+    *
+    * Allows for easy testing and extension of a provided stream without needing
+    * to create a concrete class for a simple extension point.
+    *
+    * @generated
+    */
+    final class FnStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param array<string, callable> $methods Hash of method name to a callable.
+        * @generated
+        */
+        public function __construct(array<string, callable> $methods): void;
+        /**
+        * Lazily determine which methods are not implemented.
+        *
+        * @throws \BadMethodCallException
+        * @generated
+        */
+        public function __get(string $name): void;
+        /**
+        * The close method is called on the underlying stream only if possible.
+        *
+        * @generated
+        */
+        public function __destruct(): void;
+        /**
+        * An unserialize would allow the __destruct to run when the unserialized value goes out of scope.
+        *
+        * @throws \LogicException
+        * @generated
+        */
+        public function __wakeup(): void;
+        public function __unserialize(array $data): void;
+        /**
+        * Adds custom functionality to an underlying stream by intercepting
+        *
+        * specific method calls.
+        *
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to decorate
+        * @param array<string, callable> $methods Hash of method name to a callable
+        * @generated
+        */
+        public static function decorate(\Psr\Http\Message\StreamInterface $stream, array<string, callable> $methods): self;
+        /**
+        * @var callable $callable
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * @var string
+        * @generated
+        */
+        public function close(): void;
+        public function detach(): mixed;
+        public function getSize(): ?int;
+        public function tell(): int;
+        public function eof(): bool;
+        public function isSeekable(): bool;
+        public function rewind(): void;
+        public function seek(int $offset, int $whence): void;
+        public function isWritable(): bool;
+        public function write(string $string): int;
+        public function isReadable(): bool;
+        public function read(int $length): string;
+        public function getContents(): string;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getMetadata(?string $key = null): mixed;
+    }
+    final class Header {
+        /**
+        * Parses semicolon-separated header parameters into associative arrays, one
+        *
+        * per comma-separated header value. Parameters without a value are appended
+        * as values under integer keys.
+        *
+        * @param string|array $header Header to parse into components.
+        * @generated
+        */
+        public static function parse(string|array $header): array;
+        /**
+        * Splits an HTTP header defined to contain a comma-separated list into each
+        *
+        * individual value. Empty values are removed.
+        * 
+        * Example headers include `accept`, `cache-control`, and `if-none-match`.
+        * 
+        * This method must not be used to parse headers that are not defined as a
+        * list, such as `user-agent` or `set-cookie`.
+        *
+        * @param string|array<int, string> $values Header value as returned by
+        *  *                                    MessageInterface::getHeader()
+        * @return array<int, string>
+        * @generated
+        */
+        public static function splitList(string|array<int, string> $values): array<int, string>;
+    }
+    /**
+    * Implements all of the PSR-17 interfaces.
+    *
+    * Note: in consuming code it is recommended to require the implemented interfaces
+    * and inject the instance of this class multiple times.
+    *
+    * @generated
+    */
+    final class HttpFactory implements \Psr\Http\Message\RequestFactoryInterface, \Psr\Http\Message\ResponseFactoryInterface, \Psr\Http\Message\ServerRequestFactoryInterface, \Psr\Http\Message\StreamFactoryInterface, \Psr\Http\Message\UploadedFileFactoryInterface, \Psr\Http\Message\UriFactoryInterface {
+        public function createUploadedFile(\Psr\Http\Message\StreamInterface $stream, ?int $size = null, int $error, ?string $clientFilename = null, ?string $clientMediaType = null): \Psr\Http\Message\UploadedFileInterface;
+        public function createStream(string $content = ''): \Psr\Http\Message\StreamInterface;
+        public function createStreamFromFile(string $file, string $mode = 'r'): \Psr\Http\Message\StreamInterface;
+        public function createStreamFromResource(mixed $resource): \Psr\Http\Message\StreamInterface;
+        public function createServerRequest(string $method, mixed $uri, array $serverParams = []): \Psr\Http\Message\ServerRequestInterface;
+        public function createResponse(int $code = 200, string $reasonPhrase = ''): \Psr\Http\Message\ResponseInterface;
+        public function createRequest(string $method, mixed $uri): \Psr\Http\Message\RequestInterface;
+        public function createUri(string $uri = ''): \Psr\Http\Message\UriInterface;
+    }
+    /**
+    * Uses PHP's zlib.inflate filter to inflate zlib (HTTP deflate, RFC1950) or gzipped (RFC1952) content.
+    *
+    * This stream decorator converts the provided stream to a PHP stream resource,
+    * then appends the zlib.inflate filter. The stream is then converted back
+    * to a Guzzle stream resource to be used as a Guzzle stream.
+    *
+    * @see https://datatracker.ietf.org/doc/html/rfc1950
+    * @see https://datatracker.ietf.org/doc/html/rfc1952
+    * @see https://www.php.net/manual/en/filters.compression.php
+    * @generated
+    */
+    final class InflateStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\StreamDecoratorTrait, \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        public function __construct(\Psr\Http\Message\StreamInterface $stream): void;
+        public function read(int $length): string;
+        public function close(): void;
+        public function detach(): mixed;
+    }
+    /**
+    * Lazily reads or writes to a file that is opened only after an IO operation
+    *
+    * take place on the stream.
+    *
+    * @generated
+    */
+    final class LazyOpenStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\StreamDecoratorTrait, \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param string $filename File to lazily open
+        * @param string $mode fopen mode to use when opening the stream
+        * @generated
+        */
+        public function __construct(string $filename, string $mode): void;
+        public function __unserialize(array $data): void;
+        /**
+        * Creates the underlying stream lazily when required.
+        *
+        * @generated
+        */
+        protected function createStream(): \Psr\Http\Message\StreamInterface;
+    }
+    /**
+    * Decorator used to return only a subset of a stream.
+    *
+    * @generated
+    */
+    final class LimitStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\StreamDecoratorTrait, \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to wrap
+        * @param int $limit Total number of bytes to allow to be read
+        *  *                                    from the stream. Pass -1 for no limit.
+        * @param int $offset Position to seek to before reading (only
+        *  *                                    works on seekable streams).
+        * @generated
+        */
+        public function __construct(\Psr\Http\Message\StreamInterface $stream, int $limit = -1, int $offset = 0): void;
+        public function eof(): bool;
+        /**
+        * Returns the size of the limited subset of data
+        *
+        * @generated
+        */
+        public function getSize(): ?int;
+        /**
+        * Allow for a bounded seek on the read limited stream
+        *
+        * @generated
+        */
+        public function seek(int $offset, int $whence): void;
+        /**
+        * Give a relative tell()
+        *
+        * @generated
+        */
+        public function tell(): int;
+        /**
+        * Set the offset to start limiting from
+        *
+        * @param int $offset Offset to seek to and begin byte limiting from
+        * @throws \RuntimeException if the stream cannot be seeked.
+        * @generated
+        */
+        public function setOffset(int $offset): void;
+        /**
+        * Set the limit of bytes that the decorator allows to be read from the
+        *
+        * stream.
+        *
+        * @param int $limit Number of bytes to allow to be read from the stream.
+        *  *                       Use -1 for no limit.
+        * @generated
+        */
+        public function setLimit(int $limit): void;
+        public function read(int $length): string;
+    }
+    final class Message {
+        /**
+        * Returns the string representation of an HTTP message.
+        *
+        * @param \Psr\Http\Message\MessageInterface $message Message to convert to a string.
+        * @generated
+        */
+        public static function toString(\Psr\Http\Message\MessageInterface $message): string;
+        /**
+        * Get a short summary of the message body.
+        *
+        * Will return `null` if the response is not printable.
+        * 
+        * Reads seekable bodies from the beginning and restores the original cursor
+        * position before returning. Pass `null` for `$truncateAt` to use the
+        * default summary length.
+        *
+        * @param \Psr\Http\Message\MessageInterface $message The message to get the body summary
+        * @param ?int $truncateAt Maximum allowed size of the summary
+        * @generated
+        */
+        public static function bodySummary(\Psr\Http\Message\MessageInterface $message, ?int $truncateAt = null): ?string;
+        /**
+        * Attempts to rewind a message body and throws an exception on failure.
+        *
+        * The body of the message will only be rewound if a call to `tell()`
+        * returns a value other than `0`.
+        *
+        * @param \Psr\Http\Message\MessageInterface $message Message to rewind
+        * @throws \RuntimeException
+        * @generated
+        */
+        public static function rewindBody(\Psr\Http\Message\MessageInterface $message): void;
+        /**
+        * Parses an HTTP message into an associative array.
+        *
+        * The array contains the `start-line` key containing the start line of the
+        * message, `headers` key containing an associative array of header array
+        * values, and a `body` key containing the body of the message.
+        *
+        * @param string $message HTTP request or response to parse.
+        * @generated
+        */
+        public static function parseMessage(string $message): array;
+        /**
+        * Constructs a URI for an HTTP request message.
+        *
+        * The URI is composed from the start-line path and the `Host` header, using
+        * `https` when the host's port is `443` and `http` otherwise. Without a
+        * `Host` header, only the path is returned, with extra leading slashes
+        * collapsed so an origin-form target cannot be parsed as a network-path
+        * reference with its own authority. An `InvalidArgumentException` is thrown
+        * when the `Host` header is invalid.
+        *
+        * @param string $path Path from the start-line
+        * @param array $headers Array of headers (each value an array).
+        * @generated
+        */
+        public static function parseRequestUri(string $path, array $headers): string;
+        /**
+        * Parses a request message string into a request object.
+        *
+        * The request-target must be in origin form, absolute form (without a
+        * userinfo component), authority form (`CONNECT`), or asterisk form
+        * (`OPTIONS`), and any `Host` header must be a single valid value;
+        * otherwise an `InvalidArgumentException` is thrown. Non-origin-form
+        * targets are preserved on the returned request via `withRequestTarget()`.
+        *
+        * @param string $message Request message string.
+        * @generated
+        */
+        public static function parseRequest(string $message): \Psr\Http\Message\RequestInterface;
+        /**
+        * Parses a response message string into a response object.
+        *
+        * @param string $message Response message string.
+        * @generated
+        */
+        public static function parseResponse(string $message): \Psr\Http\Message\ResponseInterface;
+    }
+    /**
+    * Trait implementing functionality common to requests and responses.
+    *
+    * @generated
+    */
+    trait MessageTrait {
+        public function getProtocolVersion(): string;
+        /**
+        * @return \Psr\Http\Message\MessageInterface
+        * @generated
+        */
+        public function withProtocolVersion(string $version): \Psr\Http\Message\MessageInterface;
+        public function getHeaders(): array;
+        public function hasHeader(string $name): bool;
+        public function getHeader(string $name): array;
+        public function getHeaderLine(string $name): string;
+        /**
+        * @return \Psr\Http\Message\MessageInterface
+        * @generated
+        */
+        public function withHeader(string $name, mixed $value): \Psr\Http\Message\MessageInterface;
+        /**
+        * @return \Psr\Http\Message\MessageInterface
+        * @generated
+        */
+        public function withAddedHeader(string $name, mixed $value): \Psr\Http\Message\MessageInterface;
+        /**
+        * @return \Psr\Http\Message\MessageInterface
+        * @generated
+        */
+        public function withoutHeader(string $name): \Psr\Http\Message\MessageInterface;
+        public function getBody(): \Psr\Http\Message\StreamInterface;
+        /**
+        * @return \Psr\Http\Message\MessageInterface
+        * @generated
+        */
+        public function withBody(\Psr\Http\Message\StreamInterface $body): \Psr\Http\Message\MessageInterface;
+    }
+    final class MimeType {
+        /**
+        * Determines the MIME type of a file by looking at its extension.
+        *
+        * @see https://raw.githubusercontent.com/jshttp/mime-db/master/db.json
+        * @generated
+        */
+        public static function fromFilename(string $filename): ?string;
+        /**
+        * Maps a file extension to a MIME type.
+        *
+        * @see https://raw.githubusercontent.com/jshttp/mime-db/master/db.json
+        * @generated
+        */
+        public static function fromExtension(string $extension): ?string;
+    }
+    /**
+    * Stream that when read returns bytes for a streaming multipart or
+    *
+    * multipart/form-data stream.
+    *
+    * @generated
+    */
+    final class MultipartStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\StreamDecoratorTrait, \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param array $elements Array of associative arrays, each containing a
+        *  *                                  required "name" key mapping to the form field,
+        *  *                                  name, a required "contents" key mapping to any
+        *  *                                  non-array value accepted by Utils::streamFor()
+        *  *                                  (non-string scalar field values are cast to
+        *  *                                  string), or an array for nested expansion.
+        *  *                                  Optional keys include "headers" (associative
+        *  *                                  array of custom headers) and "filename" (string
+        *  *                                  to send as the filename in the part).
+        *  *                                  When "contents" is an array, it is recursively
+        *  *                                  expanded into multiple fields using bracket notation
+        *  *                                  (e.g., name[0][key]). Empty arrays produce no fields.
+        *  *                                  The "filename" and "headers" options cannot be used
+        *  *                                  with array contents.
+        * @param ?string $boundary You can optionally provide a specific boundary
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public function __construct(array $elements = [], ?string $boundary = null): void;
+        public function getBoundary(): string;
+        public function isWritable(): bool;
+        /**
+        * Create the aggregate stream that will be used to upload the POST data
+        *
+        * @generated
+        */
+        protected function createStream(array $elements = []): \Psr\Http\Message\StreamInterface;
+    }
+    /**
+    * Stream decorator that prevents a stream from being seeked.
+    *
+    * @generated
+    */
+    final class NoSeekStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\StreamDecoratorTrait, \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        public function seek(int $offset, int $whence): void;
+        public function isSeekable(): bool;
+    }
+    /**
+    * Provides a read only stream that pumps data from a PHP callable.
+    *
+    * When invoking the provided callable, the PumpStream will pass the suggested
+    * number of bytes to read to the callable. The callable can choose to ignore
+    * this value and return fewer or more bytes than requested. Any extra data
+    * returned by the callable is buffered internally until drained using the
+    * read() function of the PumpStream. The callable MUST return a non-empty
+    * string when data is available, or false or null when there is no more data
+    * to read.
+    * 
+    * Userland callables that declare no parameters are tolerated by PHP, but
+    * length-aware callables remain the recommended formal shape.
+    *
+    * @generated
+    */
+    final class PumpStream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * @param callable $source Source of the stream data. The callable receives
+        *  *                                                                                            the suggested number of bytes to read, may ignore
+        *  *                                                                                            that value, and may return fewer or more bytes.
+        *  *                                                                                            Extra bytes are buffered. The callable MUST return
+        *  *                                                                                            a non-empty string when producing data, or false|null
+        *  *                                                                                            on error or EOF. Userland callables that declare no
+        *  *                                                                                            parameters are tolerated by PHP, but length-aware
+        *  *                                                                                            callables remain the recommended formal shape.
+        * @param array $options Stream options:
+        *  *                                                                                            - metadata: Hash of metadata to use with stream.
+        *  *                                                                                            - size: Size of the stream, if known.
+        * @generated
+        */
+        public function __construct(callable $source, array $options = []): void;
+        public function __unserialize(array $data): void;
+        public function __toString(): string;
+        public function close(): void;
+        public function detach(): mixed;
+        public function getSize(): ?int;
+        public function tell(): int;
+        public function eof(): bool;
+        public function isSeekable(): bool;
+        public function rewind(): void;
+        public function seek(int $offset, int $whence): void;
+        public function isWritable(): bool;
+        public function write(string $string): int;
+        public function isReadable(): bool;
+        public function read(int $length): string;
+        public function getContents(): string;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getMetadata(?string $key = null): mixed;
+    }
+    final class Query {
+        /**
+        * Parse a query string into an associative array.
+        *
+        * If multiple values are found for the same key, the value of that
+        * key-value pair becomes an array. This function does not parse nested PHP
+        * style arrays into an associative array. For example, `foo[a]=1&foo[b]=2`
+        * will be parsed into `['foo[a]' => '1', 'foo[b]' => '2']`.
+        *
+        * @param string $str Query string to parse
+        * @param int|bool $urlEncoding How the query string is encoded
+        * @generated
+        */
+        public static function parse(string $str, int|bool $urlEncoding = true): array;
+        /**
+        * Build a query string from an array of key-value pairs.
+        *
+        * This function can use the return value of `parse()` to build a query
+        * string. This function does not modify the provided keys when an array is
+        * encountered, unlike `http_build_query()`.
+        *
+        * @param array $params Query string parameters.
+        * @param int|false $encoding Set to false to not encode,
+        *  *                                        PHP_QUERY_RFC3986 to encode using
+        *  *                                        RFC3986, or PHP_QUERY_RFC1738 to
+        *  *                                        encode using RFC1738.
+        * @param bool $treatBoolsAsInts Set to true to encode as 0/1, and
+        *  *                                        false as false/true.
+        * @generated
+        */
+        public static function build(array $params, int|false $encoding, bool $treatBoolsAsInts = true): string;
+    }
+    /**
+    * PSR-7 request implementation.
+    *
+    * @generated
+    */
+    class Request implements \Psr\Http\Message\RequestInterface {
+        use \GuzzleHttp\Psr7\MessageTrait;
+        /**
+        * @param string $method HTTP method
+        * @param string|\Psr\Http\Message\UriInterface $uri URI
+        * @param array<int, string|array<int, string>> $headers Request headers
+        * @param string|resource|\Psr\Http\Message\StreamInterface|null $body Request body
+        * @param string $version Protocol version
+        * @generated
+        */
+        public function __construct(string $method, string|\Psr\Http\Message\UriInterface $uri, array<int, string|array<int, string>> $headers = [], string|resource|\Psr\Http\Message\StreamInterface|null $body = null, string $version = '1.1'): void;
+        public function getRequestTarget(): string;
+        public function withRequestTarget(string $requestTarget): \Psr\Http\Message\RequestInterface;
+        public function getMethod(): string;
+        public function withMethod(string $method): \Psr\Http\Message\RequestInterface;
+        public function getUri(): \Psr\Http\Message\UriInterface;
+        public function withUri(\Psr\Http\Message\UriInterface $uri, bool $preserveHost = false): \Psr\Http\Message\RequestInterface;
+    }
+    /**
+    * PSR-7 response implementation.
+    *
+    * @generated
+    */
+    class Response implements \Psr\Http\Message\ResponseInterface {
+        use \GuzzleHttp\Psr7\MessageTrait;
+        /**
+        * @param int $status Status code
+        * @param array<int, string|array<int, string>> $headers Response headers
+        * @param string|resource|\Psr\Http\Message\StreamInterface|null $body Response body
+        * @param string $version Protocol version
+        * @param ?string $reason Reason phrase (when empty a default will be used based on the status code)
+        * @generated
+        */
+        public function __construct(int $status = 200, array<int, string|array<int, string>> $headers = [], string|resource|\Psr\Http\Message\StreamInterface|null $body = null, string $version = '1.1', ?string $reason = null): void;
+        public function getStatusCode(): int;
+        public function getReasonPhrase(): string;
+        public function withStatus(int $code, string $reasonPhrase = ''): \Psr\Http\Message\ResponseInterface;
+    }
+    /**
+    * Syntax predicates and canonicalization helpers for the URI grammar defined
+    *
+    * by RFC 3986.
+    *
+    * @generated
+    */
+    final class Rfc3986 {
+        /**
+        * Whether the string is a valid URI scheme.
+        *
+        * Per RFC 3986 a scheme must start with a letter, followed by letters,
+        * digits, `+`, `-`, or `.`. The empty string is also accepted, since a URI
+        * reference may omit the scheme.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-3.1
+        * @generated
+        */
+        public static function isValidScheme(string $scheme): bool;
+        /**
+        * Whether the string is a valid URI host.
+        *
+        * Per RFC 3986 the host is `IP-literal / IPv4address / reg-name`. An empty
+        * host is accepted, since the authority (and thus the host) may be empty.
+        * Bracketed values are validated as IPv6 / IPvFuture literals; any other
+        * value is rejected if it contains control characters, whitespace, an
+        * authority or path delimiter (`/ ? # @ \`), an embedded colon denoting
+        * a port, a malformed percent-sequence, or a percent-encoded octet that
+        * decodes to one of those rejected bytes, to a bracket, or to `%` itself.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.2
+        * @generated
+        */
+        public static function isValidHost(string $host): bool;
+        /**
+        * Whether the string is a valid port number (0-65535).
+        *
+        * RFC 3986 defines the port as `*DIGIT`, which also permits an empty port
+        * and has no upper bound. This applies the stricter policy used throughout
+        * the library instead: the value must be a non-empty run of digits (leading
+        * zeros are accepted and normalized) that resolves to 0-65535.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.3
+        * @generated
+        */
+        public static function isValidPort(string $port): bool;
+        /**
+        * Returns the RFC 5952 canonical form of a valid IPv6 address.
+        *
+        * The address must be a valid textual IPv6 address without brackets and
+        * without a zone identifier, such as the inside of an IP-literal accepted
+        * by `isValidHost()`. Canonicalization lowercases the hexadecimal fields,
+        * suppresses leading zeros, and collapses the longest run of two or more
+        * zero fields (the leftmost on a tie) with `::`. Embedded dotted-decimal
+        * notation follows the rendering policy of BIND-derived `inet_ntop()`
+        * implementations and curl: exactly the IPv4-mapped (`::ffff:0:0/96`) and
+        * deprecated IPv4-compatible (`::/96`) layouts use it, while other
+        * embedded-IPv4 forms, including translated (NAT64) well-known prefixes
+        * such as `64:ff9b::/96` (RFC 6052), serialize in pure hexadecimal fields.
+        * 
+        * Validation is strict and platform-independent: the address is checked
+        * against the RFC 3986 `IPv6address` grammar with PHP's
+        * `FILTER_VALIDATE_IP` filter and parsed in pure PHP, so spellings that
+        * only some platform parsers accept, such as the zero-padded dotted octets
+        * in `::ffff:192.168.001.001`, are rejected everywhere.
+        *
+        * @throws \InvalidArgumentException If the address cannot be parsed.
+        * @see https://datatracker.ietf.org/doc/html/rfc5952#section-4
+        * @generated
+        */
+        public static function canonicalizeIpv6(string $address): string;
+    }
+    /**
+    * Server-side HTTP request
+    *
+    * Extends the Request definition to add methods for accessing incoming data,
+    * specifically server parameters, cookies, matched path parameters, query
+    * string arguments, body parameters, and upload file information.
+    * 
+    * "Attributes" are discovered via decomposing the request (and usually
+    * specifically the URI path), and typically will be injected by the application.
+    * 
+    * Requests are considered immutable; all methods that might change state are
+    * implemented such that they retain the internal state of the current
+    * message and return a new instance that contains the changed state.
+    *
+    * @generated
+    */
+    class ServerRequest extends \GuzzleHttp\Psr7\Request implements \Psr\Http\Message\ServerRequestInterface {
+        /**
+        * @param string $method HTTP method
+        * @param string|\Psr\Http\Message\UriInterface $uri URI
+        * @param array<int, string|array<int, string>> $headers Request headers
+        * @param string|resource|\Psr\Http\Message\StreamInterface|null $body Request body
+        * @param string $version Protocol version
+        * @param array $serverParams Typically the $_SERVER superglobal
+        * @generated
+        */
+        public function __construct(string $method, string|\Psr\Http\Message\UriInterface $uri, array<int, string|array<int, string>> $headers = [], string|resource|\Psr\Http\Message\StreamInterface|null $body = null, string $version = '1.1', array $serverParams = []): void;
+        /**
+        * Return an UploadedFile instance array.
+        *
+        * @param array $files An array which respect $_FILES structure
+        * @throws InvalidArgumentException for unrecognized values
+        * @generated
+        */
+        public static function normalizeFiles(array $files): array;
+        /**
+        * Return a ServerRequest populated with superglobals:
+        *
+        * $_GET
+        * $_POST
+        * $_COOKIE
+        * $_FILES
+        * $_SERVER
+        *
+        * @generated
+        */
+        public static function fromGlobals(): \Psr\Http\Message\ServerRequestInterface;
+        /**
+        * Get a Uri populated with values from $_SERVER.
+        *
+        * @generated
+        */
+        public static function getUriFromGlobals(): \Psr\Http\Message\UriInterface;
+        public function getServerParams(): array;
+        public function getUploadedFiles(): array;
+        public function withUploadedFiles(array $uploadedFiles): \Psr\Http\Message\ServerRequestInterface;
+        public function getCookieParams(): array;
+        public function withCookieParams(array $cookies): \Psr\Http\Message\ServerRequestInterface;
+        public function getQueryParams(): array;
+        public function withQueryParams(array $query): \Psr\Http\Message\ServerRequestInterface;
+        /**
+        * @return array|object|null
+        * @generated
+        */
+        public function getParsedBody(): array|object|null;
+        public function withParsedBody(mixed $data): \Psr\Http\Message\ServerRequestInterface;
+        public function getAttributes(): array;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getAttribute(string $name, mixed $default = null): mixed;
+        public function withAttribute(string $name, mixed $value): \Psr\Http\Message\ServerRequestInterface;
+        public function withoutAttribute(string $name): \Psr\Http\Message\ServerRequestInterface;
+    }
+    /**
+    * PHP stream implementation.
+    *
+    * @generated
+    */
+    class Stream implements \Psr\Http\Message\StreamInterface {
+        use \GuzzleHttp\Psr7\NonSerializableStreamTrait;
+        /**
+        * This constructor accepts an associative array of options.
+        *
+        * - size: (int) If a read stream would otherwise have an indeterminate
+        *   size, but the size is known due to foreknowledge, then you can
+        *   provide that size, in bytes.
+        * - metadata: (array) Any additional metadata to return when the metadata
+        *   of the stream is accessed.
+        *
+        * @param resource $stream Stream resource to wrap.
+        * @param array $options Associative array of options.
+        * @throws \InvalidArgumentException if the stream is not a stream resource
+        * @generated
+        */
+        public function __construct(resource $stream, array $options = []): void;
+        /**
+        * Closes the stream when the destructed
+        *
+        * @generated
+        */
+        public function __destruct(): void;
+        public function __toString(): string;
+        public function getContents(): string;
+        public function close(): void;
+        public function detach(): mixed;
+        public function getSize(): ?int;
+        public function isReadable(): bool;
+        public function isWritable(): bool;
+        public function isSeekable(): bool;
+        public function eof(): bool;
+        public function tell(): int;
+        public function rewind(): void;
+        public function seek(int $offset, int $whence): void;
+        public function read(int $length): string;
+        public function write(string $string): int;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getMetadata(?string $key = null): mixed;
+    }
+    /**
+    * Stream decorator trait
+    *
+    * @property StreamInterface $stream
+    * @generated
+    */
+    trait StreamDecoratorTrait {
+        public StreamInterface $stream;
+        /**
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to decorate
+        * @generated
+        */
+        public function __construct(\Psr\Http\Message\StreamInterface $stream): void;
+        /**
+        * Magic method used to create a new stream if streams are not added in
+        *
+        * the constructor of a decorator (e.g., LazyOpenStream).
+        *
+        * @generated
+        */
+        public function __get(string $name): \Psr\Http\Message\StreamInterface;
+        public function __toString(): string;
+        public function getContents(): string;
+        /**
+        * Allow decorators to implement custom methods
+        *
+        * @return mixed
+        * @generated
+        */
+        public function __call(string $method, array $args): mixed;
+        /**
+        * @var callable $callable
+        * @generated
+        */
+        public function close(): void;
+        /**
+        * @return mixed
+        * @generated
+        */
+        public function getMetadata(?string $key = null): mixed;
+        public function detach(): mixed;
+        public function getSize(): ?int;
+        public function eof(): bool;
+        public function tell(): int;
+        public function isReadable(): bool;
+        public function isWritable(): bool;
+        public function isSeekable(): bool;
+        public function rewind(): void;
+        public function seek(int $offset, int $whence): void;
+        public function read(int $length): string;
+        public function write(string $string): int;
+        /**
+        * Implement in subclasses to dynamically create streams when requested.
+        *
+        * @throws \BadMethodCallException
+        * @generated
+        */
+        protected function createStream(): \Psr\Http\Message\StreamInterface;
+    }
+    /**
+    * Converts Guzzle streams into PHP stream resources.
+    *
+    * @see https://www.php.net/streamwrapper
+    * @generated
+    */
+    final class StreamWrapper {
+        /**
+        * @var resource
+        * @generated
+        */
+        public resource $context;
+        /**
+        * Returns a resource representing the stream.
+        *
+        * @param \Psr\Http\Message\StreamInterface $stream The stream to get a resource for
+        * @return resource
+        * @throws \InvalidArgumentException if stream is not readable or writable
+        * @generated
+        */
+        public static function getResource(\Psr\Http\Message\StreamInterface $stream): resource;
+        /**
+        * Creates a stream context that can be used to open a stream as a php stream resource.
+        *
+        * @return resource
+        * @generated
+        */
+        public static function createStreamContext(\Psr\Http\Message\StreamInterface $stream): resource;
+        /**
+        * Registers the stream wrapper if needed
+        *
+        * @generated
+        */
+        public static function register(): void;
+        public function stream_open(string $path, string $mode, int $options, ?string &$opened_path = null): bool;
+        /**
+        * @return string|false
+        * @generated
+        */
+        public function stream_read(int $count): string|false;
+        public function stream_write(string $data): int;
+        /**
+        * @return int|false
+        * @generated
+        */
+        public function stream_tell(): int|false;
+        public function stream_eof(): bool;
+        public function stream_seek(int $offset, int $whence): bool;
+        /**
+        * @return resource|false
+        * @generated
+        */
+        public function stream_cast(int $cast_as): resource|false;
+        /**
+        * @return array|false
+        * @generated
+        */
+        public function stream_stat(): array|false;
+        /**
+        * @return array
+        * @generated
+        */
+        public function url_stat(string $path, int $flags): array;
+    }
+    class UploadedFile implements \Psr\Http\Message\UploadedFileInterface {
+        /**
+        * @param \Psr\Http\Message\StreamInterface|string|resource $streamOrFile
+        * @generated
+        */
+        public function __construct(\Psr\Http\Message\StreamInterface|string|resource $streamOrFile, ?int $size, int $errorStatus, ?string $clientFilename = null, ?string $clientMediaType = null): void;
+        public function isMoved(): bool;
+        public function getStream(): \Psr\Http\Message\StreamInterface;
+        /**
+        * @var string $file
+        * @generated
+        */
+        public function moveTo(string $targetPath): void;
+        public function getSize(): ?int;
+        public function getError(): int;
+        public function getClientFilename(): ?string;
+        public function getClientMediaType(): ?string;
+    }
+    /**
+    * PSR-7 URI implementation.
+    *
+    * @author Michael Dowling
+    * @author Tobias Schultze
+    * @author Matthew Weier O'Phinney
+    * @generated
+    */
+    class Uri implements \Psr\Http\Message\UriInterface, \JsonSerializable {
+        public function __construct(string $uri = ''): void;
+        public function __toString(): string;
+        /**
+        * Composes a URI reference string from its various components according to
+        *
+        * RFC 3986 Section 5.3.
+        * 
+        * Usually this method does not need to be called manually but instead is
+        * used indirectly via `Psr\Http\Message\UriInterface::__toString`.
+        * 
+        * PSR-7 UriInterface treats an empty component the same as a missing
+        * component as `getQuery()`, `getFragment()` etc. always return a string.
+        * This explains the slight difference to RFC 3986 Section 5.3.
+        * 
+        * Another adjustment is that the authority separator is added even when the
+        * authority is missing/empty for the "file" scheme. This is because PHP
+        * stream functions like `file_get_contents` only work with `file:///myfile`
+        * but not with `file:/myfile` although they are equivalent according to RFC
+        * 3986. But `file:///` is the more common syntax for the file scheme anyway
+        * (Chrome for example redirects to that format). The separator is omitted
+        * when such a URI has a rootless or empty path: adding it would turn the
+        * first path segment into the authority of the composed URI, or compose the
+        * string `file://`, which cannot be parsed back into a URI.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-5.3
+        * @generated
+        */
+        public static function composeComponents(?string $scheme, ?string $authority, string $path, ?string $query, ?string $fragment): string;
+        /**
+        * Whether the URI has the default port of the current scheme.
+        *
+        * `Psr\Http\Message\UriInterface::getPort` may return null or the standard
+        * port. This method can be used independently of the implementation.
+        *
+        * @generated
+        */
+        public static function isDefaultPort(\Psr\Http\Message\UriInterface $uri): bool;
+        /**
+        * Whether the URI is absolute, i.e. it has a scheme.
+        *
+        * An instance of UriInterface can either be an absolute URI or a relative
+        * reference. An absolute URI has a scheme. A relative reference is used to
+        * express a URI relative to another URI, the base URI. Relative references
+        * can be divided into several forms according to RFC 3986 Section 4.2:
+        * - network-path references, e.g. `//example.com/path`
+        * - absolute-path references, e.g. `/path`
+        * - relative-path references, e.g. `subpath`
+        *
+        * @see Uri::isNetworkPathReference
+        * @see Uri::isAbsolutePathReference
+        * @see Uri::isRelativePathReference
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-4.2
+        * @generated
+        */
+        public static function isAbsolute(\Psr\Http\Message\UriInterface $uri): bool;
+        /**
+        * Whether the URI is a network-path reference.
+        *
+        * A relative reference that begins with two slash characters is termed a
+        * network-path reference.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-4.2
+        * @generated
+        */
+        public static function isNetworkPathReference(\Psr\Http\Message\UriInterface $uri): bool;
+        /**
+        * Whether the URI is an absolute-path reference.
+        *
+        * A relative reference that begins with a single slash character is termed
+        * an absolute-path reference.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-4.2
+        * @generated
+        */
+        public static function isAbsolutePathReference(\Psr\Http\Message\UriInterface $uri): bool;
+        /**
+        * Whether the URI is a relative-path reference.
+        *
+        * A relative reference that does not begin with a slash character is termed
+        * a relative-path reference.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-4.2
+        * @generated
+        */
+        public static function isRelativePathReference(\Psr\Http\Message\UriInterface $uri): bool;
+        /**
+        * Whether the URI is a same-document reference.
+        *
+        * A same-document reference refers to a URI that is, aside from its
+        * fragment component, identical to the base URI. When no base URI is given,
+        * only an empty URI reference (apart from its fragment) is considered a
+        * same-document reference.
+        *
+        * @param \Psr\Http\Message\UriInterface $uri The URI to check
+        * @param ?\Psr\Http\Message\UriInterface $base An optional base URI to compare against
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-4.4
+        * @generated
+        */
+        public static function isSameDocumentReference(\Psr\Http\Message\UriInterface $uri, ?\Psr\Http\Message\UriInterface $base = null): bool;
+        /**
+        * Creates a new URI with a specific query string value removed.
+        *
+        * Any existing query string values that exactly match the provided key are
+        * removed.
+        *
+        * @param \Psr\Http\Message\UriInterface $uri URI to use as a base.
+        * @param string $key Query string key to remove.
+        * @generated
+        */
+        public static function withoutQueryValue(\Psr\Http\Message\UriInterface $uri, string $key): \Psr\Http\Message\UriInterface;
+        /**
+        * Creates a new URI with a specific query string value.
+        *
+        * Any existing query string values that exactly match the provided key are
+        * removed and replaced with the given key value pair. A value of null will
+        * set the query string key without a value, e.g. "key" instead of
+        * "key=value".
+        *
+        * @param \Psr\Http\Message\UriInterface $uri URI to use as a base.
+        * @param string $key Key to set.
+        * @param ?string $value Value to set
+        * @generated
+        */
+        public static function withQueryValue(\Psr\Http\Message\UriInterface $uri, string $key, ?string $value): \Psr\Http\Message\UriInterface;
+        /**
+        * Creates a new URI with multiple query string values.
+        *
+        * It has the same behavior as `withQueryValue()` but for an associative
+        * array of key => value.
+        *
+        * @param \Psr\Http\Message\UriInterface $uri URI to use as a base.
+        * @param array<int, string|null> $keyValueArray Associative array of key and values
+        * @generated
+        */
+        public static function withQueryValues(\Psr\Http\Message\UriInterface $uri, array<int, string|null> $keyValueArray): \Psr\Http\Message\UriInterface;
+        /**
+        * Creates a URI from a hash of `parse_url` components.
+        *
+        * @see https://www.php.net/manual/en/function.parse-url.php
+        * @throws MalformedUriException If the components do not form a valid URI.
+        * @generated
+        */
+        public static function fromParts(array $parts): \Psr\Http\Message\UriInterface;
+        public function getScheme(): string;
+        public function getAuthority(): string;
+        public function getUserInfo(): string;
+        public function getHost(): string;
+        public function getPort(): ?int;
+        public function getPath(): string;
+        public function getQuery(): string;
+        public function getFragment(): string;
+        public function withScheme(string $scheme): \Psr\Http\Message\UriInterface;
+        public function withUserInfo(string $user, ?string $password = null): \Psr\Http\Message\UriInterface;
+        public function withHost(string $host): \Psr\Http\Message\UriInterface;
+        public function withPort(?int $port): \Psr\Http\Message\UriInterface;
+        public function withPath(string $path): \Psr\Http\Message\UriInterface;
+        public function withQuery(string $query): \Psr\Http\Message\UriInterface;
+        public function withFragment(string $fragment): \Psr\Http\Message\UriInterface;
+        public function jsonSerialize(): string;
+    }
+    /**
+    * Provides methods to determine if a modified URI should be considered
+    *
+    * cross-origin.
+    *
+    * @author Graham Campbell
+    * @generated
+    */
+    final class UriComparator {
+        /**
+        * Determines if a modified URI should be considered cross-origin with
+        *
+        * respect to an original URI.
+        * 
+        * Two URIs are cross-origin when their scheme, host, or effective port
+        * differ. Host comparison is case-insensitive, and bracketed IPv6 literals
+        * are canonicalized to their RFC 5952 form from any PSR-7 implementation
+        * before comparison, so equivalent spellings of the same address are
+        * same-origin. IPvFuture literals and bracketed values that cannot be
+        * parsed as an IPv6 address, such as those carrying zone identifiers,
+        * still compare as case-insensitive text. Missing ports use the default
+        * port for `http`, `https`, `ws`, or `wss`. Other schemes do not receive
+        * implicit default ports.
+        * 
+        * This helper only compares URI origins. It does not implement redirect
+        * handling or credential policy.
+        *
+        * @generated
+        */
+        public static function isCrossOrigin(\Psr\Http\Message\UriInterface $original, \Psr\Http\Message\UriInterface $modified): bool;
+    }
+    /**
+    * Provides methods to normalize and compare URIs.
+    *
+    * @author Tobias Schultze
+    * @see https://datatracker.ietf.org/doc/html/rfc3986#section-6
+    * @generated
+    */
+    final class UriNormalizer {
+        /**
+        * Default normalizations which only include the ones that preserve
+        *
+        * semantics.
+        *
+        * @generated
+        */
+        public const mixed PRESERVING_NORMALIZATIONS;
+        /**
+        * All letters within a percent-encoding triplet (e.g., "%3A") are
+        *
+        * case-insensitive, and should be capitalized. This applies to the
+        * userinfo, host, path, query, and fragment components. Bracketed
+        * IP-literal hosts are skipped as a legacy tolerance for nonstandard values
+        * other implementations may carry; zone-identifier text was briefly valid
+        * URI syntax under RFC 6874, which RFC 9844 obsoleted and reverted. The
+        * userinfo and host are only rewritten when the value returned by the
+        * implementation matches the normalized form, and a userinfo with an empty
+        * user segment is never rewritten. No percent-encoding normalization is
+        * applied to a component that contains malformed percent syntax, such as a
+        * `%` not followed by two hexadecimal digits.
+        * 
+        * Example: http://example.org/a%c2%b1b → http://example.org/a%C2%B1b
+        *
+        * @generated
+        */
+        public const int CAPITALIZE_PERCENT_ENCODING ?? 1;
+        /**
+        * Decodes percent-encoded octets of unreserved characters.
+        *
+        * For consistency, percent-encoded octets in the ranges of ALPHA (%41–%5A
+        * and %61–%7A), DIGIT (%30–%39), hyphen (%2D), period (%2E), underscore
+        * (%5F), or tilde (%7E) should not be created by URI producers and, when
+        * found in a URI, should be decoded to their corresponding unreserved
+        * characters by URI normalizers. This applies to the userinfo, host, path,
+        * query, and fragment components. Since the host is case-insensitive and
+        * PSR-7 requires it to be lowercase, octets decoded in the host are
+        * lowercased (e.g., "%41" becomes "a"). Bracketed IP-literal hosts are
+        * skipped as a legacy tolerance for nonstandard values other
+        * implementations may carry; zone-identifier text was briefly valid URI
+        * syntax under RFC 6874, which RFC 9844 obsoleted and reverted. The
+        * userinfo and host are only rewritten when the value returned by the
+        * implementation matches the normalized form, and a userinfo with an empty
+        * user segment is never rewritten. No percent-encoding normalization is
+        * applied to a component that contains malformed percent syntax, such as a
+        * `%` not followed by two hexadecimal digits.
+        * 
+        * Example: http://example.org/%7Eusern%61me/ → http://example.org/~username/
+        *
+        * @generated
+        */
+        public const int DECODE_UNRESERVED_CHARACTERS ?? 2;
+        /**
+        * Converts the empty path to "/" for http and https URIs.
+        *
+        * Example: http://example.org → http://example.org/
+        *
+        * @generated
+        */
+        public const int CONVERT_EMPTY_PATH ?? 4;
+        /**
+        * Removes the default host of the given URI scheme from the URI.
+        *
+        * Only the "file" scheme defines the default host "localhost". All of
+        * `file:/myfile`, `file:///myfile`, and `file://localhost/myfile` are
+        * equivalent according to RFC 3986. The first format is not accepted by
+        * PHPs stream functions and thus already normalized implicitly to the
+        * second format in the Uri class. See
+        * `GuzzleHttp\Psr7\Uri::composeComponents`.
+        * 
+        * When removing the host leaves a URI without an authority whose path
+        * begins with `//`, the path is serialized with a `/.` prefix.
+        * 
+        * Example: file://localhost/myfile → file:///myfile
+        * Example: file://localhost//x → file:///.//x
+        *
+        * @generated
+        */
+        public const int REMOVE_DEFAULT_HOST ?? 8;
+        /**
+        * Removes the default port of the given URI scheme from the URI.
+        *
+        * Example: http://example.org:80/ → http://example.org/
+        *
+        * @generated
+        */
+        public const int REMOVE_DEFAULT_PORT ?? 16;
+        /**
+        * Removes unnecessary dot-segments.
+        *
+        * Dot-segments in relative-path references are not removed as it would
+        * change the semantics of the URI reference.
+        * 
+        * Example: http://example.org/../a/b/../c/./d.html → http://example.org/a/c/d.html
+        *
+        * @generated
+        */
+        public const int REMOVE_DOT_SEGMENTS ?? 32;
+        /**
+        * Paths which include two or more adjacent slashes are converted to one.
+        *
+        * Webservers usually ignore duplicate slashes and treat those URIs
+        * equivalent. But in theory those URIs do not need to be equivalent. So
+        * this normalization may change the semantics. Encoded slashes (%2F) are
+        * not removed.
+        * 
+        * Example: http://example.org//foo///bar.html → http://example.org/foo/bar.html
+        *
+        * @generated
+        */
+        public const int REMOVE_DUPLICATE_SLASHES ?? 64;
+        /**
+        * Sort query parameters with their values in alphabetical order.
+        *
+        * However, the order of parameters in a URI may be significant (this is not
+        * defined by the standard). So this normalization is not safe and may
+        * change the semantics of the URI.
+        * 
+        * Example: ?lang=en&article=fred → ?article=fred&lang=en
+        * 
+        * Note: The sorting is neither locale nor Unicode aware (the URI query does
+        * not get decoded at all) as the purpose is to be able to compare URIs in a
+        * reproducible way, not to have the params sorted perfectly.
+        *
+        * @generated
+        */
+        public const int SORT_QUERY_PARAMETERS ?? 128;
+        /**
+        * Canonicalizes IPv6 hosts to their RFC 5952 form.
+        *
+        * IPv6 addresses allow leading zeros and multiple placements of the `::`
+        * elision, so the same address has many textual spellings. The canonical
+        * form is required for IPv6 literals in URIs by RFC 5952 Section 6 and
+        * never changes what the URI refers to. Native `Uri` instances already
+        * guarantee canonical output; for other implementations, the canonical
+        * host is requested through `withHost()` and the result is kept only when
+        * the returned `getHost()` exactly matches the requested spelling,
+        * otherwise this step leaves the URI unchanged while other selected
+        * normalizations still apply, and setter exceptions propagate.
+        * 
+        * Example: http://[::0:0a]/ → http://[::a]/
+        *
+        * @generated
+        */
+        public const int CANONICALIZE_IPV6_HOST ?? 256;
+        /**
+        * Returns a normalized URI.
+        *
+        * The scheme and host component are already normalized to lowercase per
+        * PSR-7 UriInterface. This method adds additional normalizations that can
+        * be configured with the `$flags` parameter, which is a bitmask of
+        * normalizations to apply.
+        * 
+        * PSR-7 UriInterface cannot distinguish between an empty component and a
+        * missing component as `getQuery()`, `getFragment()` etc. always return a
+        * string. This means the URIs `/?#` and `/` are treated equivalent which is
+        * not necessarily true according to RFC 3986. But that difference is highly
+        * uncommon in reality. So this potential normalization is implied in PSR-7
+        * as well.
+        * 
+        * A path the URI cannot hold, such as a `//`-leading path without an
+        * authority or a relative-path reference whose first segment contains a
+        * colon, is prefixed with `/.` or `./` respectively instead of throwing, as
+        * `UriResolver::resolve()` does. The percent-encoding normalizations only
+        * do so where they rewrote the path. For example, decoding `a%41:` yields
+        * `./aA:`, since `aA:` would be an absolute URI with the scheme `aa`.
+        *
+        * @param \Psr\Http\Message\UriInterface $uri The URI to normalize
+        * @param int $flags A bitmask of normalizations to apply, see constants
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-6.2
+        * @generated
+        */
+        public static function normalize(\Psr\Http\Message\UriInterface $uri, int $flags = self::PRESERVING_NORMALIZATIONS): \Psr\Http\Message\UriInterface;
+        /**
+        * Whether two URIs can be considered equivalent.
+        *
+        * Both URIs are normalized automatically before comparison with the given
+        * `$normalizations` bitmask. The method also accepts relative URI
+        * references and returns true when they are equivalent. This of course
+        * assumes they will be resolved against the same base URI. If this is not
+        * the case, determination of equivalence or difference of relative
+        * references does not mean anything.
+        *
+        * @param \Psr\Http\Message\UriInterface $uri1 An URI to compare
+        * @param \Psr\Http\Message\UriInterface $uri2 An URI to compare
+        * @param int $normalizations A bitmask of normalizations to apply, see constants
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-6.1
+        * @generated
+        */
+        public static function isEquivalent(\Psr\Http\Message\UriInterface $uri1, \Psr\Http\Message\UriInterface $uri2, int $normalizations = self::PRESERVING_NORMALIZATIONS): bool;
+    }
+    /**
+    * Resolves a URI reference in the context of a base URI and the opposite way.
+    *
+    * @author Tobias Schultze
+    * @see https://datatracker.ietf.org/doc/html/rfc3986#section-5
+    * @generated
+    */
+    final class UriResolver {
+        /**
+        * Removes dot segments from a path and returns the new path according to
+        *
+        * RFC 3986 Section 5.2.4.
+        * 
+        * Excess `..` segments above the root of an absolute path are dropped
+        * without consuming the root, so the result can begin with `//` (e.g.
+        * `/..//a` becomes `//a`). Such a path is not valid for a URI without an
+        * authority (RFC 3986 Section 3.3); `resolve()` and
+        * `UriNormalizer::normalize()` serialize it with a `/.` prefix in that
+        * case, like the WHATWG URL Standard.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-5.2.4
+        * @generated
+        */
+        public static function removeDotSegments(string $path): string;
+        /**
+        * Converts the relative URI into a new URI that is resolved against the
+        *
+        * base URI.
+        * 
+        * When the resolved path is a relative-path reference whose first segment
+        * contains a colon, which would be mistaken for a scheme name (RFC 3986
+        * Section 4.2), it is prefixed with `./`, e.g. `./a:b`.
+        *
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-5.2
+        * @see https://datatracker.ietf.org/doc/html/rfc3986#section-4.2
+        * @generated
+        */
+        public static function resolve(\Psr\Http\Message\UriInterface $base, \Psr\Http\Message\UriInterface $rel): \Psr\Http\Message\UriInterface;
+        /**
+        * Returns the target URI as a relative reference from the base URI.
+        *
+        * This method is the counterpart to `resolve()`:
+        * 
+        *    (string) $target === (string) UriResolver::resolve($base, UriResolver::relativize($base, $target))
+        * 
+        * One use case is to use the current request URI as the base URI and then
+        * generate relative links in your documents to reduce the document size or
+        * offer self-contained downloadable document archives.
+        * 
+        *    $base = new Uri('http://example.com/a/b/');
+        *    echo UriResolver::relativize($base, new Uri('http://example.com/a/b/c'));  // prints 'c'.
+        *    echo UriResolver::relativize($base, new Uri('http://example.com/a/x/y'));  // prints '../x/y'.
+        *    echo UriResolver::relativize($base, new Uri('http://example.com/a/b/?q')); // prints '?q'.
+        *    echo UriResolver::relativize($base, new Uri('http://example.org/a/b/'));   // prints '//example.org/a/b/'.
+        *    echo UriResolver::relativize($base, new Uri('http://example.com'));         // prints '//example.com'.
+        * 
+        * This method also accepts a target that is already relative and will try
+        * to relativize it further. Only a relative-path reference will be returned
+        * as-is.
+        * 
+        *    echo UriResolver::relativize($base, new Uri('/a/b/c'));  // prints 'c' as well
+        *
+        * @generated
+        */
+        public static function relativize(\Psr\Http\Message\UriInterface $base, \Psr\Http\Message\UriInterface $target): \Psr\Http\Message\UriInterface;
+    }
+    final class Utils {
+        /**
+        * Converts ASCII uppercase letters in a string to lowercase.
+        *
+        * Unlike strtolower(), which honors LC_CTYPE before PHP 8.2, the
+        * conversion is locale-independent and leaves every non-ASCII byte
+        * unchanged, as HTTP protocol elements require.
+        *
+        * @generated
+        */
+        public static function asciiToLower(string $string): string;
+        /**
+        * Converts ASCII lowercase letters in a string to uppercase.
+        *
+        * Unlike strtoupper(), which honors LC_CTYPE before PHP 8.2, the
+        * conversion is locale-independent and leaves every non-ASCII byte
+        * unchanged, as HTTP protocol elements require.
+        *
+        * @generated
+        */
+        public static function asciiToUpper(string $string): string;
+        /**
+        * Converts the first character of a string to uppercase when it is an
+        *
+        * ASCII lowercase letter.
+        * 
+        * Unlike ucfirst(), which honors LC_CTYPE before PHP 8.2, the conversion
+        * is locale-independent and leaves every non-ASCII byte unchanged, as
+        * HTTP protocol elements require.
+        *
+        * @generated
+        */
+        public static function asciiUcFirst(string $string): string;
+        /**
+        * Checks whether the haystack contains the needle, comparing ASCII
+        *
+        * letters case-insensitively and without locale sensitivity.
+        *
+        * @generated
+        */
+        public static function caselessContains(string $haystack, string $needle): bool;
+        /**
+        * Checks whether two strings are equal, comparing ASCII letters
+        *
+        * case-insensitively and without locale sensitivity.
+        *
+        * @generated
+        */
+        public static function caselessEquals(string $left, string $right): bool;
+        /**
+        * Remove the items given by the keys from the data, case-insensitively.
+        *
+        * @param array<mixed, string|int> $keys
+        * @generated
+        */
+        public static function caselessRemove(array<mixed, string|int> $keys, array $data): array;
+        /**
+        * Copy the contents of a stream into another stream until the given number
+        *
+        * of bytes have been read, returning the number of bytes copied as an
+        * `int`. On 32-bit PHP, an unbounded copy larger than `PHP_INT_MAX` bytes
+        * cannot be represented by that return type. 64-bit PHP is not affected.
+        * 
+        * The destination must accept writes that make positive progress. Streams
+        * that return 0 as a backpressure or drop signal (a `BufferStream` at its
+        * high water mark, or a full `DroppingStream`) will cause this method to
+        * throw. For full copies, use a normal writable stream such as a file or
+        * `php://temp` stream.
+        * 
+        * Throws `TimeoutException` when PHP-style timeout metadata can be detected
+        * after a source read or destination write cannot make progress.
+        *
+        * @param \Psr\Http\Message\StreamInterface $source Stream to read from
+        * @param \Psr\Http\Message\StreamInterface $dest Stream to write to
+        * @param int $maxLen Maximum number of bytes to read. Pass -1
+        *  *                                    to read the entire stream.
+        * @throws \RuntimeException on error.
+        * @generated
+        */
+        public static function copyToStream(\Psr\Http\Message\StreamInterface $source, \Psr\Http\Message\StreamInterface $dest, int $maxLen = -1): int;
+        /**
+        * Copy the contents of a stream into a string until the given number of
+        *
+        * bytes have been read.
+        * 
+        * Throws `TimeoutException` when PHP-style timeout metadata can be detected
+        * after a stream read cannot make progress.
+        *
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to read
+        * @param int $maxLen Maximum number of bytes to read. Pass -1
+        *  *                                    to read the entire stream.
+        * @throws \RuntimeException on error.
+        * @generated
+        */
+        public static function copyToString(\Psr\Http\Message\StreamInterface $stream, int $maxLen = -1): string;
+        /**
+        * Calculate a hash of a stream.
+        *
+        * This method reads the entire stream to calculate a rolling hash, based on
+        * PHP's `hash_init` functions.
+        * 
+        * Throws `TimeoutException` when PHP-style timeout metadata can be detected
+        * after a stream read cannot make progress.
+        *
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to calculate the hash for
+        * @param string $algo Hash algorithm (e.g. md5, crc32, etc)
+        * @param bool $rawOutput Whether or not to use raw output
+        * @throws \RuntimeException on error.
+        * @generated
+        */
+        public static function hash(\Psr\Http\Message\StreamInterface $stream, string $algo, bool $rawOutput = false): string;
+        /**
+        * Clone and modify a request with the given changes.
+        *
+        * This method is useful for reducing the number of clones needed to mutate
+        * a message.
+        * 
+        * The changes can be one of:
+        * - method: (string) Changes the HTTP method.
+        * - set_headers: (array) Sets the given headers. Values must be strings
+        *   or non-empty arrays of strings.
+        * - remove_headers: (array) Remove the given headers. Values may be
+        *   strings or integers.
+        * - body: (mixed) Sets the given body. Present non-null values are
+        *   converted with self::streamFor(), including resources, streams,
+        *   iterators, callable arrays, closures, invokable objects, and stringable
+        *   objects. String inputs remain literal bodies.
+        * - uri: (UriInterface) Set the URI. When the URI contains a host, the
+        *   Host header is updated from it, and combining this with an explicit
+        *   Host entry in set_headers throws an InvalidArgumentException. Apply
+        *   an intentional Host override separately with withHeader() afterwards.
+        * - query: (string) Set the query string value of the URI.
+        * - version: (string) Set the protocol version.
+        *
+        * @param \Psr\Http\Message\RequestInterface $request Request to clone and modify.
+        * @param array $changes Changes to apply.
+        * @generated
+        */
+        public static function modifyRequest(\Psr\Http\Message\RequestInterface $request, array $changes): \Psr\Http\Message\RequestInterface;
+        /**
+        * Read a line from the stream up to the maximum allowed buffer length.
+        *
+        * Throws `TimeoutException` when PHP-style timeout metadata can be detected
+        * after a stream read cannot make progress.
+        *
+        * @param \Psr\Http\Message\StreamInterface $stream Stream to read from
+        * @param ?int $maxLength Maximum buffer length
+        * @generated
+        */
+        public static function readLine(\Psr\Http\Message\StreamInterface $stream, ?int $maxLength = null): string;
+        /**
+        * Redact the user info part of a URI.
+        *
+        * Returns the URI with the whole userinfo component replaced by "***"
+        * when one is present, so neither the username nor the password survives
+        * into logs and diagnostics. A URI without userinfo is returned
+        * unchanged.
+        *
+        * @generated
+        */
+        public static function redactUserInfo(\Psr\Http\Message\UriInterface $uri): \Psr\Http\Message\UriInterface;
+        /**
+        * Redacts the userinfo of a raw URI string wherever it appears in a
+        *
+        * subject string.
+        * 
+        * The needle is taken verbatim from the raw URI rather than from parsed
+        * components, so credentials that URI normalization would rewrite, such
+        * as raw control bytes or unencoded reserved characters, are still found
+        * in text that embeds the URI exactly as given, for example transport
+        * error messages. A URI without "://" is treated as authority-form: a
+        * host and port with optional userinfo.
+        * 
+        * A URI that does not parse has no trustworthy authority boundary, so
+        * everything between any scheme and its last "@" is redacted as a safe-side
+        * fallback.
+        *
+        * @param string $subject Text that may embed the URI
+        * @param string $uri Raw URI whose userinfo is redacted in the text
+        * @generated
+        */
+        public static function redactUserInfoInString(string $subject, string $uri): string;
+        /**
+        * Formats a URI for automatic diagnostics.
+        *
+        * The whole userinfo component is replaced by "***", and the query and
+        * fragment are removed. The scheme, host, port, and path are preserved.
+        * The returned string is diagnostic-escaped and the formatter never
+        * throws.
+        *
+        * @generated
+        */
+        public static function redactUriForMessage(\Psr\Http\Message\UriInterface $uri): string;
+        /**
+        * Formats a raw URI for automatic diagnostics, including malformed input.
+        *
+        * The whole userinfo component is replaced by "***", and the query and
+        * fragment are removed. The scheme, host, port, and path are preserved
+        * where their boundaries can be determined safely. The returned string is
+        * diagnostic-escaped and the formatter never throws.
+        *
+        * @generated
+        */
+        public static function redactUriStringForMessage(string $uri): string;
+        /**
+        * Create a new stream based on the input type.
+        *
+        * Options are provided as an associative array that can contain the
+        * following keys:
+        * - metadata: Array of custom metadata.
+        * - size: Size of the stream.
+        * 
+        * This method accepts the following `$resource` types:
+        * - `Psr\Http\Message\StreamInterface`: Returns the value as-is.
+        * - `string`: Creates a stream object that uses the given string as the
+        *   contents.
+        * - `resource`: Creates a stream object that wraps the given PHP stream
+        *   resource.
+        * - `Iterator`: If the provided value implements `Iterator`, then a
+        *   read-only stream object will be created that wraps the given iterable.
+        *   Each time the stream is read from, data from the iterator will fill a
+        *   buffer and will be continuously called until the buffer is equal to the
+        *   requested read size. Yielded strings, integers, finite floats,
+        *   booleans, `null`, and stringable objects are converted to string
+        *   chunks; non-finite floats and other values throw
+        *   `UnexpectedValueException` when the stream is read. Values that
+        *   stringify to an empty string are skipped while the iterator advances.
+        *   Subsequent read calls will first read from the buffer and then call
+        *   `next` on the underlying iterator until it is exhausted.
+        * - `object` with `__toString()`: If the object has the `__toString()`
+        *   method, the object will be cast to a string and then a stream will be
+        *   returned that uses the string value.
+        * - `NULL`: When `null` is passed, an empty stream object is returned.
+        * - `callable`: When a callable array, closure, or invokable object is
+        *   passed and no earlier resource or object rule applies, a read-only
+        *   stream object will be created that invokes the given callable. The
+        *   callable is invoked with the suggested number of bytes to read. The
+        *   callable can return fewer or more bytes than requested, but MUST return
+        *   a non-empty string to provide data and MUST return `false` or `null`
+        *   when there is no more data to return. Any additional bytes will be
+        *   buffered and used in subsequent reads. String inputs are always treated
+        *   as string bodies, even when they name callable functions.
+        *
+        * @param resource|string|\Psr\Http\Message\StreamInterface|callable|\Iterator|\Stringable|null $resource Entity body data
+        * @param array $options Additional options
+        * @throws \InvalidArgumentException if the $resource arg is not valid.
+        * @generated
+        */
+        public static function streamFor(resource|string|\Psr\Http\Message\StreamInterface|callable|\Iterator|\Stringable|null $resource = '', array $options = []): \Psr\Http\Message\StreamInterface;
+        /**
+        * Safely opens a PHP stream resource using a filename.
+        *
+        * When `fopen()` fails, PHP normally raises a warning. This function adds
+        * an error handler that checks for errors and throws an exception instead.
+        *
+        * @param string $filename File to open
+        * @param string $mode Mode used to open the file
+        * @return resource
+        * @throws \RuntimeException if the file cannot be opened
+        * @generated
+        */
+        public static function tryFopen(string $filename, string $mode): resource;
+        /**
+        * Safely gets the contents of a given stream.
+        *
+        * When `stream_get_contents()` fails, PHP normally raises a warning. This
+        * function adds an error handler that checks for errors and throws an
+        * exception instead.
+        * 
+        * Throws `TimeoutException` when PHP-style timeout metadata can be detected
+        * after a stream read cannot make progress.
+        *
+        * @param resource $stream
+        * @throws \RuntimeException if the stream cannot be read
+        * @generated
+        */
+        public static function tryGetContents(resource $stream): string;
+        /**
+        * Returns a `UriInterface` for the given value.
+        *
+        * This function accepts a string or `UriInterface` and returns a
+        * `UriInterface` for the given value. If the value is already a
+        * `UriInterface`, it is returned as-is.
+        *
+        * @param string|\Psr\Http\Message\UriInterface $uri
+        * @throws \InvalidArgumentException
+        * @generated
+        */
+        public static function uriFor(string|\Psr\Http\Message\UriInterface $uri): \Psr\Http\Message\UriInterface;
+    }
+}
+namespace GuzzleHttp\Psr7\Exception {
+    /**
+    * Exception thrown if a URI cannot be parsed because it's malformed.
+    *
+    * @generated
+    */
+    class MalformedUriException extends \InvalidArgumentException {
+    }
+    /**
+    * Exception thrown when a stream operation times out.
+    *
+    * @generated
+    */
+    class TimeoutException extends \RuntimeException {
+    }
+}

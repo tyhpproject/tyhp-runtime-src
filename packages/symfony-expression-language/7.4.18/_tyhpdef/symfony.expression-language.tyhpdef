@@ -1,0 +1,382 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\ExpressionLanguage {
+    /**
+    * Compiles a node to PHP code.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Compiler implements \Symfony\Contracts\Service\ResetInterface {
+        public function __construct(array $functions): void;
+        public function getFunction(string $name): array;
+        /**
+        * Gets the current PHP code after compilation.
+        *
+        * @generated
+        */
+        public function getSource(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function reset(): static;
+        /**
+        * Compiles a node.
+        *
+        * @return static
+        * @generated
+        */
+        public function compile(\Symfony\Component\ExpressionLanguage\Node\Node $node): static;
+        public function subcompile(\Symfony\Component\ExpressionLanguage\Node\Node $node): string;
+        /**
+        * Adds a raw string to the compiled code.
+        *
+        * @return static
+        * @generated
+        */
+        public function raw(string $string): static;
+        /**
+        * Adds a quoted string to the compiled code.
+        *
+        * @return static
+        * @generated
+        */
+        public function string(string $value): static;
+        /**
+        * Returns a PHP representation of a given value.
+        *
+        * @return static
+        * @generated
+        */
+        public function repr(mixed $value): static;
+    }
+    /**
+    * Represents an expression.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Expression {
+        protected string $expression;
+        public function __construct(string $expression): void;
+        /**
+        * Gets the expression.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+    }
+    /**
+    * Represents a function that can be used in an expression.
+    *
+    * A function is defined by two PHP callables. The callables are used
+    * by the language to compile and/or evaluate the function.
+    * 
+    * The "compiler" function is used at compilation time and must return a
+    * PHP representation of the function call (it receives the function
+    * arguments as arguments).
+    * 
+    * The "evaluator" function is used for expression evaluation and must return
+    * the value of the function call based on the values defined for the
+    * expression (it receives the values as a first argument and the function
+    * arguments as remaining arguments).
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ExpressionFunction {
+        /**
+        * @param string $name The function name
+        * @param callable $compiler A callable able to compile the function
+        * @param callable $evaluator A callable able to evaluate the function
+        * @generated
+        */
+        public function __construct(string $name, callable $compiler, callable $evaluator): void;
+        public function getName(): string;
+        public function getCompiler(): \Closure;
+        public function getEvaluator(): \Closure;
+        /**
+        * Creates an ExpressionFunction from a PHP function name.
+        *
+        * @param ?string $expressionFunctionName The expression function name (default: same than the PHP function name)
+        * @throws \InvalidArgumentException if given PHP function name does not exist
+        * @throws \InvalidArgumentException if given PHP function name is in namespace
+        *                                   and expression function name is not defined
+        * @generated
+        */
+        public static function fromPhp(string $phpFunctionName, ?string $expressionFunctionName = null): self;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ExpressionFunctionProviderInterface {
+        /**
+        * @return array<int, ExpressionFunction>
+        * @generated
+        */
+        public function getFunctions(): array<int, \Symfony\Component\ExpressionLanguage\ExpressionFunction>;
+    }
+    /**
+    * Allows to compile and evaluate expressions written in your own DSL.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ExpressionLanguage {
+        protected array $functions ?? [];
+        /**
+        * @param iterable<ExpressionFunctionProviderInterface> $providers
+        * @generated
+        */
+        public function __construct(?\Psr\Cache\CacheItemPoolInterface $cache = null, iterable<\Symfony\Component\ExpressionLanguage\ExpressionFunctionProviderInterface> $providers = []): void;
+        /**
+        * Compiles an expression source code.
+        *
+        * @generated
+        */
+        public function compile(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array $names = []): string;
+        /**
+        * Evaluate an expression.
+        *
+        * @generated
+        */
+        public function evaluate(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array $values = []): mixed;
+        /**
+        * Parses an expression.
+        *
+        * @param int $flags
+        * @generated
+        */
+        public function parse(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array $names, int $flags = 0): \Symfony\Component\ExpressionLanguage\ParsedExpression;
+        /**
+        * Validates the syntax of an expression.
+        *
+        * @param array|null $names The list of acceptable variable names in the expression
+        * @param int $flags
+        * @throws SyntaxError When the passed expression is invalid
+        * @generated
+        */
+        public function lint(\Symfony\Component\ExpressionLanguage\Expression|string $expression, array|null $names, int $flags = 0): void;
+        /**
+        * Registers a function.
+        *
+        * @param callable $compiler A callable able to compile the function
+        * @param callable $evaluator A callable able to evaluate the function
+        * @throws \LogicException when registering a function after calling evaluate(), compile() or parse()
+        * @see ExpressionFunction
+        * @generated
+        */
+        public function register(string $name, callable $compiler, callable $evaluator): void;
+        public function addFunction(\Symfony\Component\ExpressionLanguage\ExpressionFunction $function): void;
+        public function registerProvider(\Symfony\Component\ExpressionLanguage\ExpressionFunctionProviderInterface $provider): void;
+        /**
+        * @return void
+        * @generated
+        */
+        protected function registerFunctions(): void;
+    }
+    /**
+    * Lexes an expression.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Lexer {
+        /**
+        * Tokenizes an expression.
+        *
+        * @throws SyntaxError
+        * @generated
+        */
+        public function tokenize(string $expression): \Symfony\Component\ExpressionLanguage\TokenStream;
+    }
+    /**
+    * Represents an already parsed expression.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ParsedExpression extends \Symfony\Component\ExpressionLanguage\Expression {
+        public function __construct(string $expression, \Symfony\Component\ExpressionLanguage\Node\Node $nodes): void;
+        public function getNodes(): \Symfony\Component\ExpressionLanguage\Node\Node;
+    }
+    /**
+    * Parses a token stream.
+    *
+    * This parser implements a "Precedence climbing" algorithm.
+    *
+    * @see http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm
+    * @see http://en.wikipedia.org/wiki/Operator-precedence_parser
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Parser {
+        public const int OPERATOR_LEFT ?? 1;
+        public const int OPERATOR_RIGHT ?? 2;
+        public const int IGNORE_UNKNOWN_VARIABLES ?? 1;
+        public const int IGNORE_UNKNOWN_FUNCTIONS ?? 2;
+        public function __construct(array $functions): void;
+        /**
+        * Converts a token stream to a node tree.
+        *
+        * The valid names is an array where the values
+        * are the names that the user can use in an expression.
+        * 
+        * If the variable name in the compiled PHP code must be
+        * different, define it as the key.
+        * 
+        * For instance, ['this' => 'container'] means that the
+        * variable 'container' can be used in the expression
+        * but the compiled code will use 'this'.
+        *
+        * @param int $flags
+        * @throws SyntaxError
+        * @generated
+        */
+        public function parse(\Symfony\Component\ExpressionLanguage\TokenStream $stream, array $names = [], int $flags = 0): \Symfony\Component\ExpressionLanguage\Node\Node;
+        /**
+        * Validates the syntax of an expression.
+        *
+        * The syntax of the passed expression will be checked, but not parsed.
+        * If you want to skip checking dynamic variable names, pass `Parser::IGNORE_UNKNOWN_VARIABLES` instead of the array.
+        *
+        * @param int $flags
+        * @throws SyntaxError When the passed expression is invalid
+        * @generated
+        */
+        public function lint(\Symfony\Component\ExpressionLanguage\TokenStream $stream, ?array $names = [], int $flags = 0): void;
+        public function parseExpression(int $precedence = 0): \Symfony\Component\ExpressionLanguage\Node\Node;
+        protected function getPrimary(): \Symfony\Component\ExpressionLanguage\Node\Node;
+        protected function parseConditionalExpression(\Symfony\Component\ExpressionLanguage\Node\Node $expr): \Symfony\Component\ExpressionLanguage\Node\Node;
+        public function parsePrimaryExpression(): \Symfony\Component\ExpressionLanguage\Node\Node;
+        public function parseArrayExpression(): \Symfony\Component\ExpressionLanguage\Node\ArrayNode;
+        public function parseHashExpression(): \Symfony\Component\ExpressionLanguage\Node\ArrayNode;
+        public function parsePostfixExpression(\Symfony\Component\ExpressionLanguage\Node\Node $node): \Symfony\Component\ExpressionLanguage\Node\GetAttrNode|\Symfony\Component\ExpressionLanguage\Node\Node;
+        /**
+        * Parses arguments.
+        *
+        * @generated
+        */
+        public function parseArguments(): \Symfony\Component\ExpressionLanguage\Node\Node;
+    }
+    /**
+    * Represents an already serialized parsed expression.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class SerializedParsedExpression extends \Symfony\Component\ExpressionLanguage\ParsedExpression {
+        /**
+        * @param string $expression An expression
+        * @param string $nodes The serialized nodes for the expression
+        * @generated
+        */
+        public function __construct(string $expression, string $nodes): void;
+        public function getNodes(): \Symfony\Component\ExpressionLanguage\Node\Node;
+    }
+    class SyntaxError extends \LogicException {
+        public function __construct(string $message, int $cursor = 0, string $expression = '', ?string $subject = null, ?array $proposals = null): void;
+    }
+    /**
+    * Represents a token.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Token {
+        public const string EOF_TYPE ?? 'end of expression';
+        public const string NAME_TYPE ?? 'name';
+        public const string NUMBER_TYPE ?? 'number';
+        public const string STRING_TYPE ?? 'string';
+        public const string OPERATOR_TYPE ?? 'operator';
+        public const string PUNCTUATION_TYPE ?? 'punctuation';
+        public string $type;
+        public string|int|float|null $value;
+        public ?int $cursor;
+        /**
+        * @param self:: $ *_TYPE $type
+        * @param ?int $cursor The cursor position in the source
+        * @generated
+        */
+        public function __construct(string $type, string|int|float|null $value, ?int $cursor): void;
+        /**
+        * Returns a string representation of the token.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Tests the current token for a type and/or a value.
+        *
+        * @generated
+        */
+        public function test(string $type, ?string $value = null): bool;
+    }
+    /**
+    * Represents a token stream.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class TokenStream {
+        public \Symfony\Component\ExpressionLanguage\Token $current;
+        public function __construct(array $tokens, string $expression = ''): void;
+        /**
+        * Returns a string representation of the token stream.
+        *
+        * @generated
+        */
+        public function __toString(): string;
+        /**
+        * Sets the pointer to the next token and returns the old one.
+        *
+        * @generated
+        */
+        public function next(): void;
+        /**
+        * @param ?string $message The syntax error message
+        * @generated
+        */
+        public function expect(string $type, ?string $value = null, ?string $message = null): void;
+        /**
+        * Checks if end of stream was reached.
+        *
+        * @generated
+        */
+        public function isEOF(): bool;
+    }
+}
+namespace Symfony\Component\ExpressionLanguage\Node {
+    /**
+    * Represents a node in the AST.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Node {
+        public array $nodes ?? [];
+        public array $attributes ?? [];
+        /**
+        * @param array $nodes An array of nodes
+        * @param array $attributes An array of attributes
+        * @generated
+        */
+        public function __construct(array $nodes = [], array $attributes = []): void;
+        public function __toString(): string;
+        public function compile(\Symfony\Component\ExpressionLanguage\Compiler $compiler): void;
+        public function evaluate(array $functions, array $values): mixed;
+        /**
+        * @throws \BadMethodCallException when this node cannot be transformed to an array
+        * @generated
+        */
+        public function toArray(): array;
+        public function dump(): string;
+        protected function dumpString(string $value): string;
+        protected function isHash(array $value): bool;
+    }
+}

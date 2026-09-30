@@ -1,0 +1,286 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: `_tyhpdef/overlays/*.tyhpdef` (not under overlays/stubs/).
+ * spatie/laravel-medialibrary-pro and spatie/temporary-directory are not on
+ * this include graph. Do not inline those namespaces.
+ */
+
+namespace Spatie\MediaLibrary {
+    /**
+     * Overlay: media kept by `clearMediaCollectionExcept()`.
+     */
+    type ExcludedMedia = array<int, \Spatie\MediaLibrary\MediaCollections\Models\Media>|\Illuminate\Support\Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media>;
+
+    /**
+     * Overlay: a media filter is a custom-property map or a predicate on one media item.
+     */
+    type MediaFilter = array<string, mixed>|MediaFilterCallback;
+
+    /**
+     * Overlay: predicate passed to `getMedia()` / `hasMedia()`.
+     */
+    type MediaFilterCallback = callable(\Spatie\MediaLibrary\MediaCollections\Models\Media): bool;
+
+    /**
+     * Overlay: one row passed to `updateMedia()`. The model key name is dynamic.
+     */
+    type MediaUpdateRow = array<string, mixed>;
+
+    // @overlay-against: interface HasMedia
+    partial interface HasMedia {
+        // @overlay-against: function addMultipleMediaFromRequest(array $keys): \Illuminate\Support\Collection
+        public function addMultipleMediaFromRequest(array<int, string> $keys): \Illuminate\Support\Collection;
+
+        // @overlay-against: function clearMediaCollectionExcept(string $collectionName, array|\Illuminate\Support\Collection $excludedMedia): \Spatie\MediaLibrary\HasMedia
+        public function clearMediaCollectionExcept(string $collectionName = 'default', ExcludedMedia $excludedMedia = []): \Spatie\MediaLibrary\HasMedia;
+
+        // @overlay-against: function getFirstMedia(string $collectionName, array|callable $filters): ?\Spatie\MediaLibrary\MediaCollections\Models\Media
+        public function getFirstMedia(string $collectionName, MediaFilter $filters): ?\Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+        // @overlay-against: function getLastMedia(string $collectionName, array|callable $filters): ?\Spatie\MediaLibrary\MediaCollections\Models\Media
+        public function getLastMedia(string $collectionName, MediaFilter $filters): ?\Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+        // @overlay-against: function getMedia(string $collectionName, array|callable $filters): \Illuminate\Support\Collection
+        public function getMedia(string $collectionName = 'default', MediaFilter $filters = []): \Illuminate\Support\Collection;
+
+        // @overlay-against: function updateMedia(array $newMediaArray, string $collectionName): \Illuminate\Support\Collection
+        public function updateMedia(array<int, MediaUpdateRow> $newMediaArray, string $collectionName): \Illuminate\Support\Collection;
+    }
+
+    // @overlay-against: trait InteractsWithMedia
+    partial trait InteractsWithMedia<TMedia extends \Spatie\MediaLibrary\MediaCollections\Models\Media> {
+        // @overlay-against: function __sleep(): array
+        public function __sleep(): array<int, string>;
+
+        // @overlay-against: function addFromMediaLibraryRequest(?array $mediaLibraryRequestItems): \Spatie\MediaLibraryPro\PendingMediaLibraryRequestHandler
+        omit function addFromMediaLibraryRequest();
+
+        // @overlay-against: function addMediaFromBase64(string $base64data, array|string $allowedMimeTypes): \Spatie\MediaLibrary\MediaCollections\FileAdder
+        public function addMediaFromBase64(string $base64data, array<int, string>|string ...$allowedMimeTypes): \Spatie\MediaLibrary\MediaCollections\FileAdder;
+
+        // @overlay-against: function addMediaFromUrl(string $url, array|string $allowedMimeTypes): \Spatie\MediaLibrary\MediaCollections\FileAdder
+        public function addMediaFromUrl(string $url, array<int, string>|string ...$allowedMimeTypes): \Spatie\MediaLibrary\MediaCollections\FileAdder;
+
+        // @overlay-against: function clearMediaCollectionExcept(string $collectionName, array|\Illuminate\Support\Collection|\Spatie\MediaLibrary\MediaCollections\Models\Media $excludedMedia): \Spatie\MediaLibrary\HasMedia
+        public function clearMediaCollectionExcept(string $collectionName = 'default', ExcludedMedia|\Spatie\MediaLibrary\MediaCollections\Models\Media $excludedMedia = []): \Spatie\MediaLibrary\HasMedia;
+
+        // @overlay-against: function getFirstMedia(string $collectionName, mixed $filters): ?\Spatie\MediaLibrary\MediaCollections\Models\Media
+        public function getFirstMedia(string $collectionName = 'default', MediaFilter $filters = []): ?\Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+        // @overlay-against: function getLastMedia(string $collectionName, mixed $filters): ?\Spatie\MediaLibrary\MediaCollections\Models\Media
+        public function getLastMedia(string $collectionName = 'default', MediaFilter $filters = []): ?\Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+        // @overlay-against: function getMedia(string $collectionName, array|callable $filters): \Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection
+        public function getMedia(string $collectionName = 'default', MediaFilter $filters = []): \Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection;
+
+        // @overlay-against: function hasMedia(string $collectionName, array|callable $filters): bool
+        public function hasMedia(string $collectionName = 'default', MediaFilter $filters = []): bool;
+
+        // @overlay-against: function processUnattachedMedia(callable $callable): void
+        public function processUnattachedMedia(callable(TMedia, \Spatie\MediaLibrary\MediaCollections\FileAdder): mixed $callable): void;
+
+        // @overlay-against: function syncFromMediaLibraryRequest(?array $mediaLibraryRequestItems): \Spatie\MediaLibraryPro\PendingMediaLibraryRequestHandler
+        omit function syncFromMediaLibraryRequest();
+
+        // @overlay-against: function updateMedia(array $newMediaArray, string $collectionName): \Illuminate\Support\Collection
+        public function updateMedia(array<int, MediaUpdateRow> $newMediaArray, string $collectionName = 'default'): \Illuminate\Support\Collection;
+    }
+}
+
+namespace Spatie\MediaLibrary\Conversions {
+    /**
+     * Overlay: arguments stored for one image manipulation. Lists and string keys both occur.
+     */
+    type ManipulationParameters = array<int|string, mixed>;
+
+    // @overlay-against: class Conversion implements \Illuminate\Support\Traits\Conditionable
+    partial class Conversion {
+        // @overlay-against: function getPerformOnCollections(): array
+        public function getPerformOnCollections(): array<int, string>;
+    }
+
+    // @overlay-against: class FileManipulator
+    partial class FileManipulator {
+        // @overlay-against: function createDerivedFiles(\Spatie\MediaLibrary\MediaCollections\Models\Media $media, array $onlyConversionNames, bool $onlyMissing, bool $withResponsiveImages, bool $queueAll): void
+        public function createDerivedFiles(\Spatie\MediaLibrary\MediaCollections\Models\Media $media, array<int, string> $onlyConversionNames = [], bool $onlyMissing = false, bool $withResponsiveImages = false, bool $queueAll = false): void;
+    }
+
+    // @overlay-against: class Manipulations
+    partial class Manipulations {
+        // @overlay-against: function __construct(array $manipulations): void
+        public function __construct(array<string, ManipulationParameters> $manipulations = []): void;
+
+        // @overlay-against: function __call(string $method, array $parameters): self
+        public function __call(string $method, array<int, mixed> $parameters): self;
+
+        // @overlay-against: function addManipulation(string $name, array $parameters): self
+        public function addManipulation(string $name, ManipulationParameters $parameters = []): self;
+
+        // @overlay-against: function getManipulationArgument(string $manipulationName): null|string|array
+        public function getManipulationArgument(string $manipulationName): null|string|ManipulationParameters;
+
+        // @overlay-against: function toArray(): array
+        public function toArray(): array<string, ManipulationParameters>;
+    }
+}
+
+namespace Spatie\MediaLibrary\MediaCollections {
+    // @overlay-against: class FileAdder implements \Illuminate\Support\Traits\Macroable
+    partial class FileAdder {
+        // @overlay-against: function addCustomHeaders(array $customRemoteHeaders): self
+        public function addCustomHeaders(array<string, mixed> $customRemoteHeaders): self;
+
+        // @overlay-against: function sanitizingFileName(callable $fileNameSanitizer): self
+        public function sanitizingFileName(\Closure<callable(string): string> $fileNameSanitizer): self;
+
+        // @overlay-against: function withAttributes(array $properties): self
+        public function withAttributes(array<string, mixed> $properties): self;
+
+        // @overlay-against: function withCustomProperties(array $customProperties): self
+        public function withCustomProperties(array<string, mixed> $customProperties): self;
+
+        // @overlay-against: function withManipulations(array $manipulations): self
+        public function withManipulations(array<string, array<string, \Spatie\MediaLibrary\Conversions\ManipulationParameters>> $manipulations): self;
+
+        // @overlay-against: function withProperties(array $properties): self
+        public function withProperties(array<string, mixed> $properties): self;
+    }
+
+    // @overlay-against: class FileAdderFactory
+    partial class FileAdderFactory {
+        // @overlay-against: function createForPendingMedia(\Illuminate\Database\Eloquent\Model $subject, \Spatie\MediaLibraryPro\Dto\PendingMediaItem $pendingMedia): \Spatie\MediaLibrary\MediaCollections\FileAdder
+        omit function createForPendingMedia();
+    }
+
+    // @overlay-against: class Filesystem
+    partial class Filesystem {
+        // @overlay-against: function addCustomRemoteHeaders(array $customRemoteHeaders): void
+        public function addCustomRemoteHeaders(array<string, mixed> $customRemoteHeaders): void;
+
+        // @overlay-against: function getRemoteHeadersForFile(string $file, array $mediaCustomHeaders, ?string $mimeType): array
+        public function getRemoteHeadersForFile(string $file, array<string, mixed> $mediaCustomHeaders = [], ?string $mimeType = null): array<string, mixed>;
+    }
+
+    // @overlay-against: class MediaCollection implements \Illuminate\Support\Traits\Macroable
+    partial class MediaCollection {
+        // @overlay-against: callable $acceptsFile
+        public callable(\Spatie\MediaLibrary\MediaCollections\File, \Spatie\MediaLibrary\HasMedia): bool $acceptsFile;
+
+        // @overlay-against: array $acceptsMimeTypes
+        public array<int, string> $acceptsMimeTypes ?? [];
+
+        // @overlay-against: callable $mediaConversionRegistrations
+        public callable(?\Spatie\MediaLibrary\MediaCollections\Models\Media): mixed $mediaConversionRegistrations;
+
+        // @overlay-against: function acceptsFile(callable $acceptsFile): self
+        public function acceptsFile(callable(\Spatie\MediaLibrary\MediaCollections\File, \Spatie\MediaLibrary\HasMedia): bool $acceptsFile): self;
+
+        // @overlay-against: function acceptsMimeTypes(array $mimeTypes): self
+        public function acceptsMimeTypes(array<int, string> $mimeTypes): self;
+
+        // @overlay-against: function registerMediaConversions(callable $mediaConversionRegistrations): void
+        public function registerMediaConversions(callable(?\Spatie\MediaLibrary\MediaCollections\Models\Media): mixed $mediaConversionRegistrations): void;
+    }
+
+    // @overlay-against: class MediaRepository
+    partial class MediaRepository {
+        // @overlay-against: function getCollection(\Spatie\MediaLibrary\HasMedia $model, string $collectionName, array|callable $filter): \Illuminate\Support\Collection
+        public function getCollection(\Spatie\MediaLibrary\HasMedia $model, string $collectionName, \Spatie\MediaLibrary\MediaFilter $filter = []): \Illuminate\Support\Collection;
+    }
+}
+
+namespace Spatie\MediaLibrary\MediaCollections\Models {
+    /**
+     * Overlay: one conversion's responsive-image record. `urls` are filenames. `base64svg` is omitted until a placeholder is stored.
+     */
+    type ResponsiveImageEntry = struct {
+        array<int, string> $urls;
+        ?string $base64svg;
+    };
+
+    // @overlay-against: class Media extends \Illuminate\Database\Eloquent\Model implements \Illuminate\Contracts\Mail\Attachable, \Illuminate\Contracts\Support\Htmlable, \Illuminate\Contracts\Support\Responsable, \Spatie\MediaLibrary\MediaCollections\Models\Concerns\CustomMediaProperties, \Spatie\MediaLibrary\MediaCollections\Models\Concerns\HasUuid, \Spatie\MediaLibrary\MediaCollections\Models\Concerns\IsSorted
+    partial class Media {
+        // @overlay-against: array $custom_properties
+        public array<string, mixed> $custom_properties;
+
+        // @overlay-against: array $generated_conversions
+        public array<string, bool> $generated_conversions;
+
+        // @overlay-against: array $manipulations
+        public array<string, array<string, \Spatie\MediaLibrary\Conversions\ManipulationParameters>> $manipulations;
+
+        // @overlay-against: array $responsive_images
+        public array<string, ResponsiveImageEntry> $responsive_images;
+
+        // @overlay-against: function copy(\Spatie\MediaLibrary\HasMedia $model, string $collectionName, string $diskName, string $fileName, ?\Closure $fileAdderCallback): self
+        public function copy(\Spatie\MediaLibrary\HasMedia $model, string $collectionName = 'default', string $diskName = '', string $fileName = '', ?\Closure<callable(\Spatie\MediaLibrary\MediaCollections\FileAdder): \Spatie\MediaLibrary\MediaCollections\FileAdder> $fileAdderCallback = null): self;
+
+        // @overlay-against: function getAvailableFullUrl(array $conversionNames): string
+        public function getAvailableFullUrl(array<int, string> $conversionNames): string;
+
+        // @overlay-against: function getAvailablePath(array $conversionNames): string
+        public function getAvailablePath(array<int, string> $conversionNames): string;
+
+        // @overlay-against: function getAvailablePathRelativeToRoot(array $conversionNames): string
+        public function getAvailablePathRelativeToRoot(array<int, string> $conversionNames): string;
+
+        // @overlay-against: function getAvailableTemporaryUrl(array $conversionNames, ?\DateTimeInterface $expiration, array $options): string
+        public function getAvailableTemporaryUrl(array<int, string> $conversionNames, ?\DateTimeInterface $expiration = null, array $options = []): string;
+
+        // @overlay-against: function getAvailableUrl(array $conversionNames): string
+        public function getAvailableUrl(array<int, string> $conversionNames): string;
+
+        // @overlay-against: function getResponsiveImageUrls(string $conversionName): array
+        public function getResponsiveImageUrls(string $conversionName = ''): array<int, string>;
+    }
+}
+
+namespace Spatie\MediaLibrary\MediaCollections\Models\Concerns {
+    // @overlay-against: trait CustomMediaProperties
+    partial trait CustomMediaProperties {
+        // @overlay-against: function getCustomHeaders(): array
+        public function getCustomHeaders(): array<string, mixed>;
+
+        // @overlay-against: function setCustomHeaders(array $customHeaders): self
+        public function setCustomHeaders(array<string, mixed> $customHeaders): self;
+    }
+
+    // @overlay-against: trait IsSorted
+    partial trait IsSorted {
+        // @overlay-against: function setNewOrder(array $ids, int $startOrder): void
+        public static function setNewOrder(array<int, int|string> $ids, int $startOrder = 1): void;
+    }
+}
+
+namespace Spatie\MediaLibrary\ResponsiveImages {
+    // @overlay-against: class ResponsiveImageGenerator
+    partial class ResponsiveImageGenerator {
+        // @overlay-against: function generateResponsiveImage(\Spatie\MediaLibrary\MediaCollections\Models\Media $media, string $baseImage, string $conversionName, int $targetWidth, \Spatie\TemporaryDirectory\TemporaryDirectory $temporaryDirectory, int $conversionQuality): void
+        omit function generateResponsiveImage();
+
+        // @overlay-against: function generateTinyJpg(\Spatie\MediaLibrary\MediaCollections\Models\Media $media, string $originalImagePath, string $conversionName, \Spatie\TemporaryDirectory\TemporaryDirectory $temporaryDirectory): void
+        omit function generateTinyJpg();
+    }
+
+    // @overlay-against: class RegisteredResponsiveImages
+    partial class RegisteredResponsiveImages {
+        // @overlay-against: function getFilenames(): array
+        public function getFilenames(): array<int, string>;
+
+        // @overlay-against: function getUrls(): array
+        public function getUrls(): array<int, string>;
+    }
+}
+
+namespace Spatie\MediaLibrary\Support {
+    // @overlay-against: class MediaStream implements \Illuminate\Contracts\Support\Responsable
+    partial class MediaStream {
+        // @overlay-against: function useZipOptions(callable $zipOptionsCallable): self
+        public function useZipOptions(callable(array<string, mixed>): mixed $zipOptionsCallable): self;
+    }
+
+    // @overlay-against: class TemporaryDirectory
+    omit class TemporaryDirectory {
+    }
+}

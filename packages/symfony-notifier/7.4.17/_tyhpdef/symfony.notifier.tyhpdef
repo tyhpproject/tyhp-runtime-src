@@ -1,0 +1,904 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Generated from PHP source
+ */
+namespace Symfony\Component\Notifier {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class Chatter implements \Symfony\Component\Notifier\ChatterInterface {
+        public function __construct(\Symfony\Component\Notifier\Transport\TransportInterface $transport, ?\Symfony\Component\Messenger\MessageBusInterface $bus = null, ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null): void;
+        public function __toString(): string;
+        public function supports(\Symfony\Component\Notifier\Message\MessageInterface $message): bool;
+        public function send(\Symfony\Component\Notifier\Message\MessageInterface $message): ?\Symfony\Component\Notifier\Message\SentMessage;
+    }
+    /**
+    * Interface for classes able to send chat messages synchronously and/or asynchronously.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ChatterInterface extends \Symfony\Component\Notifier\Transport\TransportInterface {
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class Notifier implements \Symfony\Component\Notifier\NotifierInterface {
+        /**
+        * @param array|\Psr\Container\ContainerInterface $channels
+        * @generated
+        */
+        public function __construct(array|\Psr\Container\ContainerInterface $channels, ?\Symfony\Component\Notifier\Channel\ChannelPolicyInterface $policy = null): void;
+        public function send(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface ...$recipients): void;
+        public function addAdminRecipient(\Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): void;
+        /**
+        * @return array<int, \Symfony\Component\Notifier\Recipient\RecipientInterface>
+        * @generated
+        */
+        public function getAdminRecipients(): array<int, \Symfony\Component\Notifier\Recipient\RecipientInterface>;
+    }
+    /**
+    * Interface for the Notifier system.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface NotifierInterface {
+        public function send(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface ...$recipients): void;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class Texter implements \Symfony\Component\Notifier\TexterInterface {
+        public function __construct(\Symfony\Component\Notifier\Transport\TransportInterface $transport, ?\Symfony\Component\Messenger\MessageBusInterface $bus = null, ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null): void;
+        public function __toString(): string;
+        public function supports(\Symfony\Component\Notifier\Message\MessageInterface $message): bool;
+        public function send(\Symfony\Component\Notifier\Message\MessageInterface $message): ?\Symfony\Component\Notifier\Message\SentMessage;
+    }
+    /**
+    * Interface for classes able to send SMS messages synchronously and/or asynchronously.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface TexterInterface extends \Symfony\Component\Notifier\Transport\TransportInterface {
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class Transport {
+        public static function fromDsn(string $dsn, ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null, ?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null): \Symfony\Component\Notifier\Transport\TransportInterface;
+        public static function fromDsns(array $dsns, ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null, ?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null): \Symfony\Component\Notifier\Transport\TransportInterface;
+        /**
+        * @param iterable<mixed, \Symfony\Component\Notifier\Transport\TransportFactoryInterface> $factories
+        * @generated
+        */
+        public function __construct(iterable<mixed, \Symfony\Component\Notifier\Transport\TransportFactoryInterface> $factories): void;
+        public function fromStrings(array $dsns): \Symfony\Component\Notifier\Transport\Transports;
+        public function fromString(string $dsn): \Symfony\Component\Notifier\Transport\TransportInterface;
+        public function fromDsnObject(\Symfony\Component\Notifier\Transport\Dsn $dsn): \Symfony\Component\Notifier\Transport\TransportInterface;
+    }
+}
+namespace Symfony\Component\Notifier\Channel {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class AbstractChannel implements \Symfony\Component\Notifier\Channel\ChannelInterface {
+        protected ?\Symfony\Component\Notifier\Transport\TransportInterface $transport;
+        protected ?\Symfony\Component\Messenger\MessageBusInterface $bus;
+        public function __construct(?\Symfony\Component\Notifier\Transport\TransportInterface $transport = null, ?\Symfony\Component\Messenger\MessageBusInterface $bus = null): void;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class BrowserChannel implements \Symfony\Component\Notifier\Channel\ChannelInterface {
+        public function __construct(\Symfony\Component\HttpFoundation\RequestStack $stack, \Symfony\Component\Notifier\FlashMessage\FlashMessageImportanceMapperInterface $mapper): void;
+        public function notify(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transportName = null): void;
+        public function supports(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): bool;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ChannelInterface {
+        public function notify(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transportName = null): void;
+        public function supports(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): bool;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class ChannelPolicy implements \Symfony\Component\Notifier\Channel\ChannelPolicyInterface {
+        public function __construct(array $policy): void;
+        public function getChannels(string $importance): array;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ChannelPolicyInterface {
+        /**
+        * @return array<int, string>
+        * @generated
+        */
+        public function getChannels(string $importance): array<int, string>;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ChatChannel extends \Symfony\Component\Notifier\Channel\AbstractChannel {
+        public function notify(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transportName = null): void;
+        public function supports(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): bool;
+    }
+    /**
+    * @author Ahmed Ghanem <ahmedghanem7361@gmail.com>
+    * @generated
+    */
+    class DesktopChannel extends \Symfony\Component\Notifier\Channel\AbstractChannel {
+        public function notify(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transportName = null): void;
+        public function supports(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): bool;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class EmailChannel implements \Symfony\Component\Notifier\Channel\ChannelInterface {
+        public function __construct(?\Symfony\Component\Mailer\Transport\TransportInterface $transport = null, ?\Symfony\Component\Messenger\MessageBusInterface $bus = null, ?string $from = null, ?\Symfony\Component\Mailer\Envelope $envelope = null): void;
+        /**
+        * @param \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient
+        * @generated
+        */
+        public function notify(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transportName = null): void;
+        public function supports(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): bool;
+    }
+    /**
+    * @author Tomas Norkūnas <norkunas.tom@gmail.com>
+    * @generated
+    */
+    class PushChannel extends \Symfony\Component\Notifier\Channel\AbstractChannel {
+        public function notify(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transportName = null): void;
+        public function supports(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): bool;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class SmsChannel extends \Symfony\Component\Notifier\Channel\AbstractChannel {
+        /**
+        * @param \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient
+        * @generated
+        */
+        public function notify(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transportName = null): void;
+        public function supports(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): bool;
+    }
+}
+namespace Symfony\Component\Notifier\DataCollector {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class NotificationDataCollector extends \Symfony\Component\HttpKernel\DataCollector\DataCollector {
+        public function __construct(\Symfony\Component\Notifier\EventListener\NotificationLoggerListener $logger): void;
+        public function collect(\Symfony\Component\HttpFoundation\Request $request, \Symfony\Component\HttpFoundation\Response $response, ?\Throwable $exception = null): void;
+        public function getEvents(): \Symfony\Component\Notifier\Event\NotificationEvents;
+        public function reset(): void;
+        public function getName(): string;
+    }
+}
+namespace Symfony\Component\Notifier\Event {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class NotificationEvents {
+        public function add(\Symfony\Component\Notifier\Event\MessageEvent $event): void;
+        public function getTransports(): array;
+        /**
+        * @return array<int, MessageEvent>
+        * @generated
+        */
+        public function getEvents(?string $name = null): array<int, \Symfony\Component\Notifier\Event\MessageEvent>;
+        /**
+        * @return array<int, \Symfony\Component\Notifier\Message\MessageInterface>
+        * @generated
+        */
+        public function getMessages(?string $name = null): array<int, \Symfony\Component\Notifier\Message\MessageInterface>;
+    }
+}
+namespace Symfony\Component\Notifier\EventListener {
+}
+namespace Symfony\Component\Notifier\Exception {
+    /**
+    * Exception interface for all exceptions thrown by the component.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ExceptionInterface extends \Throwable {
+    }
+    /**
+    * @author Ben Roberts <ben@headsnet.com>
+    * @generated
+    */
+    class FlashMessageImportanceMapperException extends \Symfony\Component\Notifier\Exception\LogicException {
+        public function __construct(string $importance, string $mappingClass): void;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class IncompleteDsnException extends \Symfony\Component\Notifier\Exception\InvalidArgumentException {
+        public function __construct(string $message, ?string $dsn = null, ?\Throwable $previous = null): void;
+        public function getOriginalDsn(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class InvalidArgumentException extends \InvalidArgumentException implements \Symfony\Component\Notifier\Exception\ExceptionInterface {
+    }
+    /**
+    * @author Oskar Stark <oskarstark@googlemail.com>
+    * @generated
+    */
+    class LengthException extends \Symfony\Component\Notifier\Exception\LogicException {
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class LogicException extends \LogicException implements \Symfony\Component\Notifier\Exception\ExceptionInterface {
+    }
+    /**
+    * @author Oskar Stark <oskarstark@googlemail.com>
+    * @generated
+    */
+    class MissingRequiredOptionException extends \Symfony\Component\Notifier\Exception\IncompleteDsnException {
+        public function __construct(string $option, ?string $dsn = null, ?\Throwable $previous = null): void;
+    }
+    /**
+    * @author Yuriy Vilks <igrizzli@gmail.com>
+    * @generated
+    */
+    class MultipleExclusiveOptionsUsedException extends \Symfony\Component\Notifier\Exception\InvalidArgumentException {
+        /**
+        * @param array<int, string> $usedExclusiveOptions
+        * @param array<int, string> $exclusiveOptions
+        * @generated
+        */
+        public function __construct(array<int, string> $usedExclusiveOptions, array<int, string> $exclusiveOptions, ?\Throwable $previous = null): void;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class RuntimeException extends \RuntimeException implements \Symfony\Component\Notifier\Exception\ExceptionInterface {
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class TransportException extends \Symfony\Component\Notifier\Exception\RuntimeException implements \Symfony\Component\Notifier\Exception\TransportExceptionInterface {
+        public function __construct(string $message, \Symfony\Contracts\HttpClient\ResponseInterface $response, int $code = 0, ?\Throwable $previous = null): void;
+        public function getResponse(): \Symfony\Contracts\HttpClient\ResponseInterface;
+        public function getDebug(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface TransportExceptionInterface extends \Symfony\Component\Notifier\Exception\ExceptionInterface {
+        public function getDebug(): string;
+    }
+    /**
+    * @author Oskar Stark <oskarstark@googlemail.com>
+    * @generated
+    */
+    class UnsupportedMessageTypeException extends \Symfony\Component\Notifier\Exception\LogicException {
+        public function __construct(string $transport, string $supported, \Symfony\Component\Notifier\Message\MessageInterface $given): void;
+    }
+    /**
+    * @author Raphaël Geffroy <raphael@geffroy.dev>
+    * @generated
+    */
+    class UnsupportedOptionsException extends \Symfony\Component\Notifier\Exception\LogicException {
+        public function __construct(string $transport, string $supported, \Symfony\Component\Notifier\Message\MessageOptionsInterface $given): void;
+    }
+    /**
+    * @author Konstantin Myakshin <molodchick@gmail.com>
+    * @generated
+    */
+    class UnsupportedSchemeException extends \Symfony\Component\Notifier\Exception\LogicException {
+        /**
+        * @param array<int, string> $supported
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Notifier\Transport\Dsn $dsn, ?string $name = null, array<int, string> $supported = [], ?\Throwable $previous = null): void;
+    }
+}
+namespace Symfony\Component\Notifier\FlashMessage {
+    /**
+    * @author Ben Roberts <ben@headsnet.com>
+    * @generated
+    */
+    abstract class AbstractFlashMessageImportanceMapper {
+        public function flashMessageTypeFromImportance(string $importance): string;
+    }
+    /**
+    * @author Ben Roberts <ben@headsnet.com>
+    * @generated
+    */
+    class BootstrapFlashMessageImportanceMapper extends \Symfony\Component\Notifier\FlashMessage\AbstractFlashMessageImportanceMapper implements \Symfony\Component\Notifier\FlashMessage\FlashMessageImportanceMapperInterface {
+        protected const array IMPORTANCE_MAP ?? [];
+    }
+    /**
+    * @author Ben Roberts <ben@headsnet.com>
+    * @generated
+    */
+    class DefaultFlashMessageImportanceMapper extends \Symfony\Component\Notifier\FlashMessage\AbstractFlashMessageImportanceMapper implements \Symfony\Component\Notifier\FlashMessage\FlashMessageImportanceMapperInterface {
+        protected const array IMPORTANCE_MAP ?? [];
+    }
+    /**
+    * @author Ben Roberts <ben@headsnet.com>
+    * @generated
+    */
+    interface FlashMessageImportanceMapperInterface {
+        /**
+        * @throws FlashMessageImportanceMapperException
+        * @generated
+        */
+        public function flashMessageTypeFromImportance(string $importance): string;
+    }
+}
+namespace Symfony\Component\Notifier\Message {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class ChatMessage implements \Symfony\Component\Notifier\Message\MessageInterface, \Symfony\Component\Notifier\Message\FromNotificationInterface {
+        public function __construct(string $subject, ?\Symfony\Component\Notifier\Message\MessageOptionsInterface $options = null): void;
+        public static function fromNotification(\Symfony\Component\Notifier\Notification\Notification $notification): self;
+        /**
+        * @return static
+        * @generated
+        */
+        public function subject(string $subject): static;
+        public function getSubject(): string;
+        public function getRecipientId(): ?string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function options(\Symfony\Component\Notifier\Message\MessageOptionsInterface $options): static;
+        public function getOptions(): ?\Symfony\Component\Notifier\Message\MessageOptionsInterface;
+        /**
+        * @return static
+        * @generated
+        */
+        public function transport(?string $transport): static;
+        public function getTransport(): ?string;
+        public function getNotification(): ?\Symfony\Component\Notifier\Notification\Notification;
+    }
+    /**
+    * @author Ahmed Ghanem <ahmedghanem7361@gmail.com>
+    * @generated
+    */
+    class DesktopMessage implements \Symfony\Component\Notifier\Message\MessageInterface, \Symfony\Component\Notifier\Message\FromNotificationInterface {
+        public function __construct(string $subject, string $content, ?\Symfony\Component\Notifier\Message\MessageOptionsInterface $options = null): void;
+        public static function fromNotification(\Symfony\Component\Notifier\Notification\Notification $notification): self;
+        public function getSubject(): string;
+        public function getContent(): string;
+        public function getRecipientId(): ?string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setSubject(string $subject): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setContent(string $content): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setOptions(\Symfony\Component\Notifier\Message\MessageOptionsInterface $options): static;
+        public function getOptions(): ?\Symfony\Component\Notifier\Message\MessageOptionsInterface;
+        public function getTransport(): ?string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setTransport(string $transport): static;
+        public function getNotification(): ?\Symfony\Component\Notifier\Notification\Notification;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setNotification(\Symfony\Component\Notifier\Notification\Notification $notification): static;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class EmailMessage implements \Symfony\Component\Notifier\Message\MessageInterface, \Symfony\Component\Notifier\Message\FromNotificationInterface {
+        public function __construct(\Symfony\Component\Mime\RawMessage $message, ?\Symfony\Component\Mailer\Envelope $envelope = null): void;
+        public static function fromNotification(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\EmailRecipientInterface $recipient): self;
+        public function getMessage(): \Symfony\Component\Mime\RawMessage;
+        public function getEnvelope(): ?\Symfony\Component\Mailer\Envelope;
+        /**
+        * @return static
+        * @generated
+        */
+        public function envelope(\Symfony\Component\Mailer\Envelope $envelope): static;
+        public function getSubject(): string;
+        public function getRecipientId(): ?string;
+        public function getOptions(): ?\Symfony\Component\Notifier\Message\MessageOptionsInterface;
+        /**
+        * @return static
+        * @generated
+        */
+        public function transport(?string $transport): static;
+        public function getTransport(): ?string;
+        public function getNotification(): ?\Symfony\Component\Notifier\Notification\Notification;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface FromNotificationInterface {
+        public function getNotification(): ?\Symfony\Component\Notifier\Notification\Notification;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface MessageInterface {
+        public function getRecipientId(): ?string;
+        public function getSubject(): string;
+        public function getOptions(): ?\Symfony\Component\Notifier\Message\MessageOptionsInterface;
+        public function getTransport(): ?string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface MessageOptionsInterface {
+        public function toArray(): array;
+        public function getRecipientId(): ?string;
+    }
+    /**
+    * @author Jan Schädlich <jan.schaedlich@sensiolabs.de>
+    * @generated
+    */
+    final class NullMessage implements \Symfony\Component\Notifier\Message\MessageInterface {
+        public function __construct(\Symfony\Component\Notifier\Message\MessageInterface $message): void;
+        public function getRecipientId(): ?string;
+        public function getSubject(): string;
+        public function getOptions(): ?\Symfony\Component\Notifier\Message\MessageOptionsInterface;
+        public function getTransport(): ?string;
+    }
+    /**
+    * @author Tomas Norkūnas <norkunas.tom@gmail.com>
+    * @generated
+    */
+    class PushMessage implements \Symfony\Component\Notifier\Message\MessageInterface, \Symfony\Component\Notifier\Message\FromNotificationInterface {
+        public function __construct(string $subject, string $content, ?\Symfony\Component\Notifier\Message\MessageOptionsInterface $options = null): void;
+        public static function fromNotification(\Symfony\Component\Notifier\Notification\Notification $notification): self;
+        public function getRecipientId(): ?string;
+        public function subject(string $subject): self;
+        public function getSubject(): string;
+        public function content(string $content): self;
+        public function getContent(): string;
+        public function options(\Symfony\Component\Notifier\Message\MessageOptionsInterface $options): self;
+        public function getOptions(): ?\Symfony\Component\Notifier\Message\MessageOptionsInterface;
+        public function transport(?string $transport): self;
+        public function getTransport(): ?string;
+        public function getNotification(): ?\Symfony\Component\Notifier\Notification\Notification;
+    }
+    /**
+    * @author Jérémy Romey <jeremy@free-agent.fr>
+    * @generated
+    */
+    class SentMessage {
+        /**
+        * @param array $info attaches any Transport-related information to the sent message
+        * @generated
+        */
+        public function __construct(\Symfony\Component\Notifier\Message\MessageInterface $original, string $transport, array $info = []): void;
+        public function getOriginalMessage(): \Symfony\Component\Notifier\Message\MessageInterface;
+        public function getTransport(): string;
+        public function setMessageId(string $id): void;
+        public function getMessageId(): ?string;
+        /**
+        * Returns extra info attached to the message.
+        *
+        * @param ?string $key if null, the whole info array will be returned, else returns the info value or null
+        * @generated
+        */
+        public function getInfo(?string $key = null): mixed;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class SmsMessage implements \Symfony\Component\Notifier\Message\MessageInterface, \Symfony\Component\Notifier\Message\FromNotificationInterface {
+        public function __construct(string $phone, string $subject, string $from = '', ?\Symfony\Component\Notifier\Message\MessageOptionsInterface $options = null): void;
+        public static function fromNotification(\Symfony\Component\Notifier\Notification\Notification $notification, \Symfony\Component\Notifier\Recipient\SmsRecipientInterface $recipient): self;
+        /**
+        * @return static
+        * @generated
+        */
+        public function phone(string $phone): static;
+        public function getPhone(): string;
+        public function getRecipientId(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function subject(string $subject): static;
+        public function getSubject(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function transport(?string $transport): static;
+        public function getTransport(): ?string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function from(string $from): static;
+        public function getFrom(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function options(\Symfony\Component\Notifier\Message\MessageOptionsInterface $options): static;
+        public function getOptions(): ?\Symfony\Component\Notifier\Message\MessageOptionsInterface;
+        public function getNotification(): ?\Symfony\Component\Notifier\Notification\Notification;
+    }
+}
+namespace Symfony\Component\Notifier\Messenger {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class MessageHandler {
+        public function __construct(\Symfony\Component\Notifier\Transport\TransportInterface $transport): void;
+        public function __invoke(\Symfony\Component\Notifier\Message\MessageInterface $message): ?\Symfony\Component\Notifier\Message\SentMessage;
+    }
+}
+namespace Symfony\Component\Notifier\Notification {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface ChatNotificationInterface {
+        public function asChatMessage(\Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transport = null): ?\Symfony\Component\Notifier\Message\ChatMessage;
+    }
+    /**
+    * @author Ahmed Ghanem <ahmedghanem7361@gmail.com>
+    * @generated
+    */
+    interface DesktopNotificationInterface {
+        public function asDesktopMessage(\Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transport = null): ?\Symfony\Component\Notifier\Message\DesktopMessage;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface EmailNotificationInterface {
+        public function asEmailMessage(\Symfony\Component\Notifier\Recipient\EmailRecipientInterface $recipient, ?string $transport = null): ?\Symfony\Component\Notifier\Message\EmailMessage;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class Notification {
+        public const string IMPORTANCE_URGENT ?? 'urgent';
+        public const string IMPORTANCE_HIGH ?? 'high';
+        public const string IMPORTANCE_MEDIUM ?? 'medium';
+        public const string IMPORTANCE_LOW ?? 'low';
+        /**
+        * @param array<int, string> $channels
+        * @generated
+        */
+        public function __construct(string $subject = '', array<int, string> $channels = []): void;
+        /**
+        * @param array<int, string> $channels
+        * @generated
+        */
+        public static function fromThrowable(\Throwable $exception, array<int, string> $channels = []): self;
+        /**
+        * @return static
+        * @generated
+        */
+        public function subject(string $subject): static;
+        public function getSubject(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function content(string $content): static;
+        public function getContent(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function importance(string $importance): static;
+        public function getImportance(): string;
+        /**
+        * @param string $level A PSR Logger log level name
+        * @return static
+        * @generated
+        */
+        public function importanceFromLogLevelName(string $level): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function emoji(string $emoji): static;
+        public function getEmoji(): string;
+        /**
+        * @return static
+        * @generated
+        */
+        public function exception(\Throwable $exception): static;
+        public function getException(): ?\Symfony\Component\ErrorHandler\Exception\FlattenException;
+        public function getExceptionAsString(): string;
+        /**
+        * @param array<int, string> $channels
+        * @return static
+        * @generated
+        */
+        public function channels(array<int, string> $channels): static;
+        /**
+        * @return array<int, string>
+        * @generated
+        */
+        public function getChannels(\Symfony\Component\Notifier\Recipient\RecipientInterface $recipient): array<int, string>;
+        protected function getDefaultEmoji(): string;
+    }
+    interface PushNotificationInterface {
+        public function asPushMessage(\Symfony\Component\Notifier\Recipient\RecipientInterface $recipient, ?string $transport = null): ?\Symfony\Component\Notifier\Message\PushMessage;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface SmsNotificationInterface {
+        public function asSmsMessage(\Symfony\Component\Notifier\Recipient\SmsRecipientInterface $recipient, ?string $transport = null): ?\Symfony\Component\Notifier\Message\SmsMessage;
+    }
+}
+namespace Symfony\Component\Notifier\Recipient {
+    /**
+    * @author Jan Schädlich <jan.schaedlich@sensiolabs.de>
+    * @generated
+    */
+    interface EmailRecipientInterface extends \Symfony\Component\Notifier\Recipient\RecipientInterface {
+        public function getEmail(): string;
+    }
+    /**
+    * @author Jan Schädlich <jan.schaedlich@sensiolabs.de>
+    * @generated
+    */
+    trait EmailRecipientTrait {
+        public function getEmail(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class NoRecipient implements \Symfony\Component\Notifier\Recipient\RecipientInterface {
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Jan Schädlich <jan.schaedlich@sensiolabs.de>
+    * @generated
+    */
+    class Recipient implements \Symfony\Component\Notifier\Recipient\EmailRecipientInterface, \Symfony\Component\Notifier\Recipient\SmsRecipientInterface {
+        use \Symfony\Component\Notifier\Recipient\EmailRecipientTrait, \Symfony\Component\Notifier\Recipient\SmsRecipientTrait;
+        public function __construct(string $email = '', string $phone = ''): void;
+        /**
+        * @return static
+        * @generated
+        */
+        public function email(string $email): static;
+        /**
+        * Sets the phone number (no spaces, international code like in +3312345678).
+        *
+        * @return static
+        * @generated
+        */
+        public function phone(string $phone): static;
+    }
+    /**
+    * @author Jan Schädlich <jan.schaedlich@sensiolabs.de>
+    * @generated
+    */
+    interface RecipientInterface {
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Jan Schädlich <jan.schaedlich@sensiolabs.de>
+    * @generated
+    */
+    interface SmsRecipientInterface extends \Symfony\Component\Notifier\Recipient\RecipientInterface {
+        public function getPhone(): string;
+    }
+    /**
+    * @author Jan Schädlich <jan.schaedlich@sensiolabs.de>
+    * @generated
+    */
+    trait SmsRecipientTrait {
+        public function getPhone(): string;
+    }
+}
+namespace Symfony\Component\Notifier\Transport {
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class AbstractTransport implements \Symfony\Component\Notifier\Transport\TransportInterface {
+        protected const string HOST ?? 'localhost';
+        protected ?string $host ?? null;
+        protected ?int $port ?? null;
+        protected ?\Symfony\Contracts\HttpClient\HttpClientInterface $client ?? null;
+        public function __construct(?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null, ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null): void;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setHost(?string $host): static;
+        /**
+        * @return static
+        * @generated
+        */
+        public function setPort(?int $port): static;
+        public function send(\Symfony\Component\Notifier\Message\MessageInterface $message): \Symfony\Component\Notifier\Message\SentMessage;
+        protected abstract function doSend(\Symfony\Component\Notifier\Message\MessageInterface $message): \Symfony\Component\Notifier\Message\SentMessage;
+        protected function getEndpoint(): string;
+        protected function getDefaultHost(): string;
+    }
+    /**
+    * @author Konstantin Myakshin <molodchick@gmail.com>
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    abstract class AbstractTransportFactory implements \Symfony\Component\Notifier\Transport\TransportFactoryInterface {
+        protected ?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher ?? null;
+        protected ?\Symfony\Contracts\HttpClient\HttpClientInterface $client ?? null;
+        public function __construct(?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null, ?\Symfony\Contracts\HttpClient\HttpClientInterface $client = null): void;
+        public function supports(\Symfony\Component\Notifier\Transport\Dsn $dsn): bool;
+        /**
+        * @return array<int, string>
+        * @generated
+        */
+        protected abstract function getSupportedSchemes(): array<int, string>;
+        protected function getUser(\Symfony\Component\Notifier\Transport\Dsn $dsn): string;
+        protected function getPassword(\Symfony\Component\Notifier\Transport\Dsn $dsn): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @author Oskar Stark <oskarstark@googlemail.com>
+    * @generated
+    */
+    final class Dsn {
+        public function __construct(string $dsn): void;
+        public function getScheme(): string;
+        public function getHost(): string;
+        public function getUser(): ?string;
+        public function getPassword(): ?string;
+        public function getPort(?int $default = null): ?int;
+        public function getOption(string $key, mixed $default = null): mixed;
+        public function getRequiredOption(string $key): mixed;
+        public function getBooleanOption(string $key, bool $default = false): bool;
+        public function getOptions(): array;
+        public function getPath(): ?string;
+        public function getOriginalDsn(): string;
+    }
+    /**
+    * Uses several Transports using a failover algorithm.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class FailoverTransport extends \Symfony\Component\Notifier\Transport\RoundRobinTransport {
+        protected function getNextTransport(\Symfony\Component\Notifier\Message\MessageInterface $message): ?\Symfony\Component\Notifier\Transport\TransportInterface;
+        protected function getInitialCursor(): int;
+        protected function getNameSymbol(): string;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class NullTransport implements \Symfony\Component\Notifier\Transport\TransportInterface {
+        public function __construct(?\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher = null): void;
+        public function send(\Symfony\Component\Notifier\Message\MessageInterface $message): \Symfony\Component\Notifier\Message\SentMessage;
+        public function __toString(): string;
+        public function supports(\Symfony\Component\Notifier\Message\MessageInterface $message): bool;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class NullTransportFactory extends \Symfony\Component\Notifier\Transport\AbstractTransportFactory {
+        public function create(\Symfony\Component\Notifier\Transport\Dsn $dsn): \Symfony\Component\Notifier\Transport\NullTransport;
+        protected function getSupportedSchemes(): array;
+    }
+    /**
+    * Uses several Transports using a round robin algorithm.
+    *
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    class RoundRobinTransport implements \Symfony\Component\Notifier\Transport\TransportInterface {
+        /**
+        * @param array<int, TransportInterface> $transports
+        * @generated
+        */
+        public function __construct(array<int, \Symfony\Component\Notifier\Transport\TransportInterface> $transports, int $retryPeriod = 60): void;
+        public function __toString(): string;
+        public function supports(\Symfony\Component\Notifier\Message\MessageInterface $message): bool;
+        public function send(\Symfony\Component\Notifier\Message\MessageInterface $message): \Symfony\Component\Notifier\Message\SentMessage;
+        /**
+        * Rotates the transport list around and returns the first instance.
+        *
+        * @generated
+        */
+        protected function getNextTransport(\Symfony\Component\Notifier\Message\MessageInterface $message): ?\Symfony\Component\Notifier\Transport\TransportInterface;
+        protected function isTransportDead(\Symfony\Component\Notifier\Transport\TransportInterface $transport): bool;
+        protected function getInitialCursor(): int;
+        protected function getNameSymbol(): string;
+    }
+    /**
+    * @author Konstantin Myakshin <molodchick@gmail.com>
+    * @generated
+    */
+    interface TransportFactoryInterface {
+        /**
+        * @throws UnsupportedSchemeException
+        * @throws IncompleteDsnException
+        * @throws MissingRequiredOptionException
+        * @generated
+        */
+        public function create(\Symfony\Component\Notifier\Transport\Dsn $dsn): \Symfony\Component\Notifier\Transport\TransportInterface;
+        public function supports(\Symfony\Component\Notifier\Transport\Dsn $dsn): bool;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    interface TransportInterface extends \Stringable {
+        /**
+        * @throws TransportExceptionInterface
+        * @generated
+        */
+        public function send(\Symfony\Component\Notifier\Message\MessageInterface $message): ?\Symfony\Component\Notifier\Message\SentMessage;
+        public function supports(\Symfony\Component\Notifier\Message\MessageInterface $message): bool;
+    }
+    /**
+    * @author Fabien Potencier <fabien@symfony.com>
+    * @generated
+    */
+    final class Transports implements \Symfony\Component\Notifier\Transport\TransportInterface {
+        /**
+        * @param iterable<string, TransportInterface> $transports
+        * @generated
+        */
+        public function __construct(iterable<string, \Symfony\Component\Notifier\Transport\TransportInterface> $transports): void;
+        public function __toString(): string;
+        public function supports(\Symfony\Component\Notifier\Message\MessageInterface $message): bool;
+        public function send(\Symfony\Component\Notifier\Message\MessageInterface $message): \Symfony\Component\Notifier\Message\SentMessage;
+    }
+}

@@ -1,0 +1,564 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef  (not under overlays/stubs/)
+ * ConsoleOutput extends Symfony Console's ConsoleOutput. This package does not
+ * require that wrapper for the output helpers; omit rather than inventing it.
+ */
+
+namespace Laravel\Prompts\Output {
+    // @overlay-against: class ConsoleOutput extends \Symfony\Component\Console\Output\ConsoleOutput
+    omit class ConsoleOutput {};
+    // @overlay-against: class BufferedConsoleOutput extends \Laravel\Prompts\Output\ConsoleOutput
+    omit class BufferedConsoleOutput {};
+}
+
+namespace Laravel\Prompts {
+    type TaskStableMessage = struct {
+        string $type;
+        string $message;
+    };
+
+    // @overlay-against: class AutoCompletePrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\TypedValue
+    partial class AutoCompletePrompt {
+        /**
+         * Overlay: `AutoCompletePrompt::matches()` calls a closure with `value()` and treats each option as a string.
+         */
+        // @overlay-against: array|\Closure $options
+        public array<int|string, string>|\Closure<callable(string): array<int|string, string>|\Illuminate\Support\Collection<int|string, string>> $options;
+
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(string): mixed> $transform;
+
+        /**
+         * Overlay: `AutoCompletePrompt::__construct()` uses the documented types.
+         */
+        // @overlay-against: function __construct(string $label, array|\Illuminate\Support\Collection|\Closure $options, string $placeholder, string $default, bool|string $required, mixed $validate, string $hint, ?\Closure $transform): void
+        public function __construct(string $label, array<int|string, string>|\Illuminate\Support\Collection<int, string>|\Closure<callable(string): array<int|string, string>|\Illuminate\Support\Collection<int, string>> $options = [], string $placeholder = '', string $default = '', bool|string $required = false, mixed $validate = null, string $hint = '', ?\Closure $transform = null): void;
+    }
+
+    // @overlay-against: class ConfirmPrompt extends \Laravel\Prompts\Prompt
+    partial class ConfirmPrompt {
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(bool): mixed> $transform;
+    }
+
+    // @overlay-against: class DataTablePrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\Scrolling, \Laravel\Prompts\Concerns\TypedValue
+    partial class DataTablePrompt {
+        /**
+         * Overlay: `DataTablePrompt::filteredRows()` calls the filter with each row and the typed query.
+         */
+        // @overlay-against: ?\Closure $filter
+        public ?\Closure<callable(array<int, string>, string): bool> $filter;
+
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(int|string|null): mixed> $transform;
+
+        /**
+         * Overlay: `DataTablePrompt::__construct()` uses the header and row properties.
+         */
+        // @overlay-against: function __construct(array|\Illuminate\Support\Collection $headers, array|\Illuminate\Support\Collection|null $rows, int $scroll, string $label, string $hint, bool|string $required, mixed $validate, ?\Closure $transform, ?\Closure $filter): void
+        public function __construct(array<int, string|array<int, string>>|\Illuminate\Support\Collection<int, string|array<int, string>> $headers = [], array<int|string, array<int, string>>|\Illuminate\Support\Collection<int|string, array<int, string>>|null $rows = null, int $scroll = 10, string $label = '', string $hint = '', bool|string $required = false, mixed $validate = null, ?\Closure $transform = null, ?\Closure $filter = null): void;
+
+        /**
+         * Overlay: `DataTablePrompt::value()` returns the highlighted row key.
+         */
+        // @overlay-against: function value(): mixed
+        public function value(): int|string|null;
+    }
+
+    // @overlay-against: class FormBuilder
+    partial class FormBuilder {
+        /**
+         * Overlay: `FormBuilder::submit()` stores each step result under the step name or index.
+         */
+        // @overlay-against: array $responses
+        protected array<int|string, mixed> $responses;
+
+        /**
+         * Overlay: `FormBuilder::multisearch()` uses the documented types.
+         */
+        // @overlay-against: function multisearch(string $label, \Closure $options, string $placeholder, int $scroll, bool|string $required, mixed $validate, string $hint, ?string $name, ?\Closure $transform): self
+        public function multisearch(string $label, \Closure<callable(string): array<int|string, string>> $options, string $placeholder = '', int $scroll = 5, bool|string $required = false, mixed $validate = null, string $hint = 'Use the space bar to select options.', ?string $name = null, ?\Closure $transform = null): self;
+
+        /**
+         * Overlay: `FormBuilder::multiselect()` uses `MultiSelectPrompt`'s option and default lists.
+         */
+        // @overlay-against: function multiselect(string $label, array|\Illuminate\Support\Collection $options, array|\Illuminate\Support\Collection $default, int $scroll, bool|string $required, mixed $validate, string $hint, ?string $name, ?\Closure $transform): self
+        public function multiselect(string $label, array<int|string, string>|\Illuminate\Support\Collection<int, string> $options, array<int|string>|\Illuminate\Support\Collection<int, int|string> $default = [], int $scroll = 5, bool|string $required = false, mixed $validate = null, string $hint = 'Use the space bar to select options.', ?string $name = null, ?\Closure $transform = null): self;
+
+        /**
+         * Overlay: `FormBuilder::progress()` uses the method's `TSteps` template.
+         */
+        // @overlay-against: function progress(string $label, iterable|int $steps, ?\Closure $callback, string $hint, ?string $name): self
+        public function progress<TSteps extends iterable<mixed>|int, TReturn>(string $label, TSteps $steps, ?\Closure $callback = null, string $hint = '', ?string $name = null): self;
+
+        /**
+         * Overlay: `FormBuilder::search()` uses the documented types.
+         */
+        // @overlay-against: function search(string $label, \Closure $options, string $placeholder, int $scroll, mixed $validate, string $hint, bool|string $required, ?string $name, ?\Closure $transform): self
+        public function search(string $label, \Closure<callable(string): array<int|string, string>> $options, string $placeholder = '', int $scroll = 5, mixed $validate = null, string $hint = '', bool|string $required = true, ?string $name = null, ?\Closure $transform = null): self;
+
+        /**
+         * Overlay: `FormBuilder::select()` uses `SelectPrompt`'s option map.
+         */
+        // @overlay-against: function select(string $label, array|\Illuminate\Support\Collection $options, int|string|null $default, int $scroll, mixed $validate, string $hint, bool|string $required, ?string $name, ?\Closure $transform): self
+        public function select(string $label, array<int|string, string>|\Illuminate\Support\Collection<int, string> $options, int|string|null $default = null, int $scroll = 5, mixed $validate = null, string $hint = '', bool|string $required = true, ?string $name = null, ?\Closure $transform = null): self;
+
+        /**
+         * Overlay: `FormBuilder::spin()` uses the documented types.
+         */
+        // @overlay-against: function spin(\Closure $callback, string $message, ?string $name): self
+        public function spin(\Closure<callable(): mixed> $callback, string $message = '', ?string $name = null): self;
+
+        /**
+         * Overlay: `FormBuilder::submit()` returns the response map keyed by step name or index.
+         */
+        // @overlay-against: function submit(): array
+        public function submit(): array<int|string, mixed>;
+
+        /**
+         * Overlay: `FormBuilder::suggest()` uses the documented types.
+         */
+        // @overlay-against: function suggest(string $label, array|\Illuminate\Support\Collection|\Closure $options, string $placeholder, string $default, int $scroll, bool|string $required, mixed $validate, string $hint, ?string $name, ?\Closure $transform): self
+        public function suggest(string $label, array<int|string, string>|\Illuminate\Support\Collection<int, string>|\Closure<callable(string): array<int|string, string>> $options, string $placeholder = '', string $default = '', int $scroll = 5, bool|string $required = false, mixed $validate = null, string $hint = '', ?string $name = null, ?\Closure $transform = null): self;
+
+        /**
+         * Overlay: `FormBuilder::table()` uses `Table`'s header and row lists.
+         */
+        // @overlay-against: function table(array|\Illuminate\Support\Collection $headers, array|\Illuminate\Support\Collection|null $rows, ?string $name): self
+        public function table(array<int, string|array<int, string>>|\Illuminate\Support\Collection<int, string|array<int, string>> $headers = [], array<int, array<int, string>>|\Illuminate\Support\Collection<int, array<int, string>>|null $rows = null, ?string $name = null): self;
+    }
+
+    // @overlay-against: class FormStep
+    partial class FormStep {
+        /**
+         * Overlay: `FormStep::shouldRun()` calls the condition with the response map and returns that result.
+         */
+        // @overlay-against: \Closure $condition
+        protected readonly \Closure<callable(array<mixed>): bool> $condition;
+
+        /**
+         * Overlay: `FormStep::run()` calls the step with the responses, previous response, and name.
+         */
+        // @overlay-against: \Closure $step
+        protected readonly \Closure<callable(array<mixed>, mixed, string|null): mixed> $step;
+    }
+
+    // @overlay-against: class Grid extends \Laravel\Prompts\Prompt
+    partial class Grid {
+        /**
+         * Overlay: `Grid::__construct()` uses the item list property.
+         */
+        // @overlay-against: function __construct(array|\Illuminate\Support\Collection $items, ?int $maxWidth): void
+        public function __construct(array<int, string>|\Illuminate\Support\Collection<int, string> $items = [], ?int $maxWidth = null): void;
+    }
+
+    // @overlay-against: class MultiSearchPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\HasInfo, \Laravel\Prompts\Concerns\Scrolling, \Laravel\Prompts\Concerns\Truncation, \Laravel\Prompts\Concerns\TypedValue
+    partial class MultiSearchPrompt {
+        /**
+         * Overlay: `HasInfo::infoText()` calls the closure with `highlightedValue()` and uses the result as text.
+         */
+        // @overlay-against: string|\Closure $info
+        public string|\Closure<callable(int|string|null): string|null> $info;
+
+        /**
+         * Overlay: `MultiSearchPrompt::matches()` calls the closure with the typed query and reads match keys and labels.
+         */
+        // @overlay-against: \Closure $options
+        public \Closure<callable(string): array<int|string, string>> $options;
+
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(array<int, int|string>): mixed> $transform;
+
+        /**
+         * Overlay: `MultiSearchPrompt::__construct()` uses the documented types.
+         */
+        // @overlay-against: function __construct(string $label, \Closure $options, string $placeholder, int $scroll, bool|string $required, mixed $validate, string $hint, ?\Closure $transform, string|\Closure $info): void
+        public function __construct(string $label, \Closure<callable(string): array<int|string, string>> $options, string $placeholder = '', int $scroll = 5, bool|string $required = false, mixed $validate = null, string $hint = '', ?\Closure $transform = null, string|\Closure $info = ''): void;
+    }
+
+    // @overlay-against: class MultiSelectPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\HasInfo, \Laravel\Prompts\Concerns\Scrolling
+    partial class MultiSelectPrompt {
+        /**
+         * Overlay: `HasInfo::infoText()` calls the closure with `highlightedValue()` and uses the result as text.
+         */
+        // @overlay-against: string|\Closure $info
+        public string|\Closure<callable(int|string|null): string|null> $info;
+
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(array<int, int|string>): mixed> $transform;
+
+        /**
+         * Overlay: `MultiSelectPrompt::__construct()` uses the option and default properties.
+         */
+        // @overlay-against: function __construct(string $label, array|\Illuminate\Support\Collection $options, array|\Illuminate\Support\Collection $default, int $scroll, bool|string $required, mixed $validate, string $hint, ?\Closure $transform, string|\Closure $info): void
+        public function __construct(string $label, array<int|string, string>|\Illuminate\Support\Collection<int, string> $options, array<int|string>|\Illuminate\Support\Collection<int, int|string> $default = [], int $scroll = 5, bool|string $required = false, mixed $validate = null, string $hint = '', ?\Closure $transform = null, string|\Closure $info = ''): void;
+    }
+
+    // @overlay-against: class NumberPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\TypedValue
+    partial class NumberPrompt {
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(int|string): mixed> $transform;
+    }
+
+    // @overlay-against: class PasswordPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\TypedValue
+    partial class PasswordPrompt {
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(string): mixed> $transform;
+    }
+
+    // @overlay-against: class Progress extends \Laravel\Prompts\Prompt
+    partial class Progress {
+        /**
+         * Overlay: `Progress::$steps` uses the class template.
+         */
+        // @overlay-against: iterable|int $steps
+        public TSteps $steps;
+
+        /**
+         * Overlay: `Progress::__construct()` uses the class template.
+         */
+        // @overlay-against: function __construct(string $label, iterable|int $steps, string $hint): void
+        public function __construct(string $label, TSteps $steps, string $hint = ''): void;
+
+        /**
+         * Overlay: `Progress::map()` calls the callback with each step and `$this`, then collects the results.
+         */
+        // @overlay-against: function map(\Closure $callback): array
+        public function map<TReturn>(\Closure<callable(mixed, self): TReturn> $callback): array<TReturn>;
+    }
+
+    // @overlay-against: class Prompt implements \Laravel\Prompts\Concerns\Colors, \Laravel\Prompts\Concerns\Cursor, \Laravel\Prompts\Concerns\Erase, \Laravel\Prompts\Concerns\Events, \Laravel\Prompts\Concerns\FakesInputOutput, \Laravel\Prompts\Concerns\Fallback, \Laravel\Prompts\Concerns\Interactivity, \Laravel\Prompts\Concerns\Themes
+    partial class Prompt {
+        /**
+         * Overlay: `Prompt::prompt()` calls the cancel closure with no arguments and wraps the result.
+         */
+        // @overlay-against: ?\Closure $cancelUsing
+        protected static ?\Closure<callable(): mixed> $cancelUsing;
+
+        /**
+         * Overlay: `Prompt::handleKeyPress()` calls the revert closure with no arguments.
+         */
+        // @overlay-against: ?\Closure $revertUsing
+        protected static ?\Closure<callable(): mixed> $revertUsing;
+
+        /**
+         * Overlay: `Prompt::validate()` calls the validator with `$this` and requires a string or null.
+         */
+        // @overlay-against: ?\Closure $validateUsing
+        protected static ?\Closure<callable(self): string|null> $validateUsing;
+
+        /**
+         * Overlay: `Prompt::transform()` passes the value into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(mixed): mixed> $transform;
+
+        /**
+         * Overlay: `Prompt::runLoop()` calls the callback with each key read from the terminal.
+         */
+        // @overlay-against: function runLoop(callable $callable): mixed
+        public function runLoop(callable(string): mixed $callable): mixed;
+    }
+
+    // @overlay-against: class SearchPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\HasInfo, \Laravel\Prompts\Concerns\Scrolling, \Laravel\Prompts\Concerns\Truncation, \Laravel\Prompts\Concerns\TypedValue
+    partial class SearchPrompt {
+        /**
+         * Overlay: `HasInfo::infoText()` calls the closure with `highlightedValue()` and uses the result as text.
+         */
+        // @overlay-against: string|\Closure $info
+        public string|\Closure<callable(int|string|null): string|null> $info;
+
+        /**
+         * Overlay: `SearchPrompt::matches()` calls the closure with the typed query and reads match keys and labels.
+         */
+        // @overlay-against: \Closure $options
+        public \Closure<callable(string): array<int|string, string>> $options;
+
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(int|string|null): mixed> $transform;
+
+        /**
+         * Overlay: `SearchPrompt::__construct()` uses the documented types.
+         */
+        // @overlay-against: function __construct(string $label, \Closure $options, string $placeholder, int $scroll, mixed $validate, string $hint, bool|string $required, ?\Closure $transform, string|\Closure $info): void
+        public function __construct(string $label, \Closure<callable(string): array<int|string, string>> $options, string $placeholder = '', int $scroll = 5, mixed $validate = null, string $hint = '', bool|string $required = true, ?\Closure $transform = null, string|\Closure $info = ''): void;
+    }
+
+    // @overlay-against: class SelectPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\HasInfo, \Laravel\Prompts\Concerns\Scrolling
+    partial class SelectPrompt {
+        /**
+         * Overlay: `HasInfo::infoText()` calls the closure with `highlightedValue()` and uses the result as text.
+         */
+        // @overlay-against: string|\Closure $info
+        public string|\Closure<callable(int|string|null): string|null> $info;
+
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(int|string|null): mixed> $transform;
+
+        /**
+         * Overlay: `SelectPrompt::__construct()` uses the option map property.
+         */
+        // @overlay-against: function __construct(string $label, array|\Illuminate\Support\Collection $options, int|string|null $default, int $scroll, mixed $validate, string $hint, bool|string $required, ?\Closure $transform, string|\Closure $info): void
+        public function __construct(string $label, array<int|string, string>|\Illuminate\Support\Collection<int, string> $options, int|string|null $default = null, int $scroll = 5, mixed $validate = null, string $hint = '', bool|string $required = true, ?\Closure $transform = null, string|\Closure $info = ''): void;
+    }
+
+    // @overlay-against: class Spinner extends \Laravel\Prompts\Prompt
+    partial class Spinner {
+        /**
+         * Overlay: `Spinner::renderStatically()` calls the callback with no arguments and returns its result.
+         */
+        // @overlay-against: function renderStatically(\Closure $callback): TReturn
+        protected function renderStatically<TReturn extends mixed>(\Closure<callable(): TReturn> $callback): TReturn;
+
+        /**
+         * Overlay: `Spinner::spin()` calls the callback with no arguments and returns its result.
+         */
+        // @overlay-against: function spin(\Closure $callback): TReturn
+        public function spin<TReturn extends mixed>(\Closure<callable(): TReturn> $callback): TReturn;
+    }
+
+    // @overlay-against: class Stream extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Themes\Default\Concerns\InteractsWithStrings
+    partial class Stream {
+        /**
+         * Overlay: `Stream::lines()` calls each fade closure with the fading message.
+         */
+        // @overlay-against: array $fadingOutColors
+        protected array<int, \Closure<callable(string): string>> $fadingOutColors;
+
+        /**
+         * Overlay: `Stream::fadeOut()` uses the documented types.
+         */
+        // @overlay-against: function fadeOut(int $steps): array
+        protected function fadeOut(int $steps = 10): array<int, \Closure<callable(string): string>>;
+
+        /**
+         * Overlay: `Stream::prompt()` throws and does not return.
+         */
+        // @overlay-against: function prompt(): mixed
+        public function prompt(): never;
+    }
+
+    // @overlay-against: class SuggestPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\HasInfo, \Laravel\Prompts\Concerns\Scrolling, \Laravel\Prompts\Concerns\Truncation, \Laravel\Prompts\Concerns\TypedValue
+    partial class SuggestPrompt {
+        /**
+         * Overlay: `HasInfo::infoText()` calls the closure with `highlightedValue()` and uses the result as text.
+         */
+        // @overlay-against: string|\Closure $info
+        public string|\Closure<callable(string|null): string|null> $info;
+
+        /**
+         * Overlay: `SuggestPrompt::matches()` calls a closure with `value()` and treats each option as a string.
+         */
+        // @overlay-against: array|\Closure $options
+        public array<int|string, string>|\Closure<callable(string): array<int|string, string>|\Illuminate\Support\Collection<int|string, string>> $options;
+
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(string): mixed> $transform;
+
+        /**
+         * Overlay: `SuggestPrompt::__construct()` uses the documented types.
+         */
+        // @overlay-against: function __construct(string $label, array|\Illuminate\Support\Collection|\Closure $options, string $placeholder, string $default, int $scroll, bool|string $required, mixed $validate, string $hint, ?\Closure $transform, string|\Closure $info): void
+        public function __construct(string $label, array<int|string, string>|\Illuminate\Support\Collection<int, string>|\Closure<callable(string): array<int|string, string>|\Illuminate\Support\Collection<int, string>> $options, string $placeholder = '', string $default = '', int $scroll = 5, bool|string $required = false, mixed $validate = null, string $hint = '', ?\Closure $transform = null, string|\Closure $info = ''): void;
+    }
+
+    // @overlay-against: class Table extends \Laravel\Prompts\Prompt
+    partial class Table {
+        /**
+         * Overlay: `Table::__construct()` uses the header and row properties.
+         */
+        // @overlay-against: function __construct(array|\Illuminate\Support\Collection $headers, array|\Illuminate\Support\Collection|null $rows): void
+        public function __construct(array<int, string|array<int, string>>|\Illuminate\Support\Collection<int, string|array<int, string>> $headers = [], array<int, array<int, string>>|\Illuminate\Support\Collection<int, array<int, string>>|null $rows = null): void;
+    }
+
+    // @overlay-against: class Task extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Themes\Default\Concerns\InteractsWithStrings
+    partial class Task {
+        /**
+         * Overlay: `Task::receiveMessages()` appends `{type, message}` rows, and the renderer reads both fields.
+         */
+        // @overlay-against: array $stableMessages
+        public array<int, TaskStableMessage> $stableMessages;
+
+        /**
+         * Overlay: `Task::renderStatically()` calls the callback with a `Logger` and returns its result.
+         */
+        // @overlay-against: function renderStatically(\Closure $callback): TReturn
+        protected function renderStatically<TReturn extends mixed>(\Closure<callable(\Laravel\Prompts\Support\Logger): TReturn> $callback): TReturn;
+
+        /**
+         * Overlay: `Task::run()` calls the callback with a `Logger` and returns its result.
+         */
+        // @overlay-against: function run(\Closure $callback): TReturn
+        public function run<TReturn extends mixed>(\Closure<callable(\Laravel\Prompts\Support\Logger): TReturn> $callback): TReturn;
+    }
+
+    // @overlay-against: class Terminal
+    partial class Terminal {
+        /**
+         * Overlay: `Terminal::queryColors()` stores a three-int RGB triple.
+         */
+        // @overlay-against: array|null $backgroundColor
+        protected static array<int, int>|null $backgroundColor;
+
+        /**
+         * Overlay: `Terminal::queryColors()` stores a three-int RGB triple.
+         */
+        // @overlay-against: array|null $foregroundColor
+        protected static array<int, int>|null $foregroundColor;
+
+        /**
+         * Overlay: `Terminal::backgroundColor()` returns the RGB triple from `queryColors()`.
+         */
+        // @overlay-against: function backgroundColor(): array
+        public function backgroundColor(): array<int, int>;
+
+        /**
+         * Overlay: `Terminal::foregroundColor()` returns the RGB triple from `queryColors()`.
+         */
+        // @overlay-against: function foregroundColor(): array
+        public function foregroundColor(): array<int, int>;
+    }
+
+    // @overlay-against: class TextareaPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\Scrolling, \Laravel\Prompts\Concerns\TypedValue, \Laravel\Prompts\Themes\Default\Concerns\InteractsWithStrings
+    partial class TextareaPrompt {
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(string): mixed> $transform;
+    }
+
+    // @overlay-against: class TextPrompt extends \Laravel\Prompts\Prompt implements \Laravel\Prompts\Concerns\TypedValue
+    partial class TextPrompt {
+        /**
+         * Overlay: `Prompt::transform()` passes `value()` into the closure and returns its result.
+         */
+        // @overlay-against: ?\Closure $transform
+        public ?\Closure<callable(string): mixed> $transform;
+    }
+}
+
+namespace Laravel\Prompts\Concerns {
+    // @overlay-against: trait Fallback
+    partial trait Fallback {
+        /**
+         * Overlay: `Fallback::fallback()` calls the registered closure with `$this` and returns its result.
+         */
+        // @overlay-against: array $fallbacks
+        protected static array<string, callable(\Laravel\Prompts\Prompt): mixed> $fallbacks;
+
+        /**
+         * Overlay: `Fallback::fallbackUsing()` uses the documented types.
+         */
+        // @overlay-against: function fallbackUsing(\Closure $fallback): void
+        public static function fallbackUsing(\Closure<callable(mixed $this): mixed> $fallback): void;
+    }
+
+    // @overlay-against: trait Termwind
+    partial trait Termwind {
+        /**
+         * Overlay: `Termwind::restoreEscapeSequences()` returns the `preg_replace` result for a string subject.
+         */
+        // @overlay-against: function restoreEscapeSequences(string $string): mixed
+        protected function restoreEscapeSequences(string $string): string|null;
+
+        /**
+         * Overlay: `Termwind::termwind()` returns `restoreEscapeSequences()`.
+         */
+        // @overlay-against: function termwind(string $html): mixed
+        protected function termwind(string $html): string|null;
+    }
+
+    // @overlay-against: trait Themes
+    partial trait Themes {
+        /**
+         * Overlay: `Themes::renderTheme()` calls the renderer with `$this` and returns its string.
+         */
+        // @overlay-against: function getRenderer(): callable
+        protected function getRenderer(): callable(\Laravel\Prompts\Prompt): string;
+    }
+
+    // @overlay-against: trait TypedValue
+    partial trait TypedValue {
+        /**
+         * Overlay: `TypedValue::trackTypedValue()` calls `$ignore` with the key and uses the result as a bool.
+         */
+        // @overlay-against: function trackTypedValue(string $default, bool $submit, ?callable $ignore, bool $allowNewLine): void
+        protected function trackTypedValue(string $default = '', bool $submit = true, ?callable(string): bool $ignore = null, bool $allowNewLine = false): void;
+    }
+}
+
+namespace Laravel\Prompts\Themes\Default {
+    // @overlay-against: class CalloutRenderer extends \Laravel\Prompts\Themes\Default\Renderer implements \Laravel\Prompts\Themes\Default\Concerns\DrawsBoxes
+    partial class CalloutRenderer {
+        /**
+         * Overlay: `CalloutRenderer::resolvePart()` returns a string or the list of lines from a list renderer.
+         */
+        // @overlay-against: function resolvePart(string|\Laravel\Prompts\Elements\ElementContract $part): string|array
+        protected function resolvePart(string|\Laravel\Prompts\Elements\ElementContract $part): string|array<int, string>;
+    }
+
+    // @overlay-against: class Renderer implements \Laravel\Prompts\Concerns\Colors, \Laravel\Prompts\Concerns\Truncation
+    partial class Renderer {
+        /**
+         * Overlay: `Renderer::__toString()` concatenates the rendered output into a string.
+         */
+        // @overlay-against: function __toString(): mixed
+        public function __toString(): string;
+
+        /**
+         * Overlay: `Renderer::when()` calls the callback with `$this`.
+         */
+        // @overlay-against: function when(mixed $value, callable $callback, ?callable $default): self
+        protected function when(mixed $value, callable(self): mixed $callback, ?callable(self): mixed $default = null): self;
+    }
+}
+
+namespace Laravel\Prompts\Themes\Default\Concerns {
+    type AnsiTextSegment = struct {
+        string $text;
+        string $codes;
+        string $link;
+    };
+
+    // @overlay-against: trait InteractsWithStrings
+    partial trait InteractsWithStrings {
+        /**
+         * Overlay: `InteractsWithStrings::parseAnsiText()` appends segments with `text`, `codes`, and `link`.
+         */
+        // @overlay-against: function parseAnsiText(string $text): array
+        protected function parseAnsiText(string $text): array<int, AnsiTextSegment>;
+    }
+}
