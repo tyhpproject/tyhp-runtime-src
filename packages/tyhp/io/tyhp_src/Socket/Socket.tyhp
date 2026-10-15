@@ -1,0 +1,71 @@
+<?tyhp
+
+namespace Tyhp\Io\Socket;
+
+use Tyhp\CancellationToken;
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Io\IoWait;
+
+/**
+ * Opens non-blocking stream sockets on the event loop.
+ */
+final class Socket {
+    /**
+     * Connects to tcp://host:port, tls://host:port, or unix:///path.
+     *
+     * tls:// connects over TCP, then performs a TLS handshake that verifies the
+     * peer certificate against host. Rejects with IoException when the connection
+     * fails, TimeoutException after $timeoutMs (0 means no limit), and
+     * OperationCancelledException when $token is cancelled.
+     */
+    async public static function connectAsync(
+        string $address,
+        int $timeoutMs = 10000,
+        ?CancellationToken $token = null
+    ): SocketConnection {
+        $token?->throwIfCancellationRequested();
+        // parse_url() rejects unix:///path, so the scheme is read as the text before "://".
+        int|false $separator = \strpos($address, '://');
+        string $scheme = $separator === false ? '' : \strtolower(\substr($address, 0, $separator));
+        if ($scheme !== 'tcp' && $scheme !== 'tls' && $scheme !== 'unix') {
+            throw new \InvalidArgumentException('Socket addresses use tcp://, tls://, or unix://, got "' . $address . '".');
+        }
+        bool $tls = $scheme === 'tls';
+        string $target = $tls ? 'tcp' . \substr($address, 3) : $address;
+
+        int $errno = 0;
+        string $errstr = '';
+        mixed $stream = @\stream_socket_client(
+            $target,
+            $errno,
+            $errstr,
+            $timeoutMs > 0 ? $timeoutMs / 1000 : null,
+            \STREAM_CLIENT_CONNECT | \STREAM_CLIENT_ASYNC_CONNECT
+        );
+        if (!\is_resource($stream)) {
+            throw new IoException('Could not connect to ' . $address . ': ' . ($errstr !== '' ? $errstr : 'connection failed.'), $errno);
+        }
+        \stream_set_blocking($stream, false);
+
+        try {
+            await IoWait::writable($stream, $token, $timeoutMs);
+            if (\stream_socket_get_name($stream, true) === false) {
+                throw new IoException('Could not connect to ' . $address . ': connection refused.');
+            }
+        } catch (\Throwable $e) {
+            \fclose($stream);
+            throw $e;
+        }
+
+        SocketConnection $connection = new SocketConnection($stream);
+        if ($tls) {
+            try {
+                await $connection->enableTls((string) \parse_url($address, \PHP_URL_HOST), $token);
+            } catch (\Throwable $e) {
+                $connection->close();
+                throw $e;
+            }
+        }
+        return $connection;
+    }
+}

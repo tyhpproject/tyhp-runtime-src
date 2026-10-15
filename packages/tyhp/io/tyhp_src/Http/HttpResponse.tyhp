@@ -1,0 +1,56 @@
+<?tyhp
+
+namespace Tyhp\Io\Http;
+
+use Tyhp\Io\Exceptions\HttpStatusException;
+use Tyhp\Json;
+
+/**
+ * A completed HTTP response. Every status, including 4xx and 5xx, resolves
+ * normally; call ensureSuccess() to turn a non-2xx status into an exception.
+ *
+ * Header names are lower-case. A repeated header keeps each value in order.
+ * After redirects, headers and url describe the final response.
+ */
+final class HttpResponse {
+    public function __construct(
+        public readonly int $status,
+        public readonly array<string, array<int, string>> $headers,
+        public readonly string $body,
+        public readonly string $url
+    ) {}
+
+    public function isSuccess(): bool {
+        return $this->status >= 200 && $this->status < 300;
+    }
+
+    /**
+     * Returns the first value of a header, or null when it is absent.
+     */
+    public function header(string $name): ?string {
+        array<int, string> $values = $this->headers[\strtolower($name)] ?? [];
+        return $values[0] ?? null;
+    }
+
+    public function headerValues(string $name): array<int, string> {
+        return $this->headers[\strtolower($name)] ?? [];
+    }
+
+    /**
+     * Decodes the body as JSON into T. Throws \JsonException for invalid JSON and
+     * IncompatibleTypeException when the value does not match T.
+     */
+    public function json<T extends struct>(): T {
+        return Json::decode<T>($this->body);
+    }
+
+    /**
+     * Returns this response, or throws HttpStatusException when the status is not 2xx.
+     */
+    public function ensureSuccess(): HttpResponse {
+        if (!$this->isSuccess()) {
+            throw new HttpStatusException($this);
+        }
+        return $this;
+    }
+}

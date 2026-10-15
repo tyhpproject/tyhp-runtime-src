@@ -1,0 +1,511 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Compiler: 805.1.0.0
+ * Generated: 2026-10-14T20:54:18.2039290Z
+ */
+namespace Tyhp\Io {
+    /**
+    * Blocking work for Offload::runAsync().
+    *
+    * When the job runs in a tyhp/parallel worker, it follows the ParallelTask
+    * rules: the object and its result must be serializable, and the worker must
+    * be able to autoload the class.
+    */
+    interface OffloadJob<T extends void|mixed = mixed> {
+        public function run(): T;
+    }
+    /**
+    * Moves blocking work off the event loop.
+    *
+    * With tyhp/parallel installed and Parallel::isAvailable() true, the job runs
+    * in a worker process and this process keeps serving other fibers. Otherwise
+    * the job runs here and blocks the event loop until it returns.
+    */
+    final class Offload {
+        /**
+        * Resolves with the job's result. In a worker, a job that throws rejects
+        * with ParallelException, and a cancelled token stops the worker.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "runAsync__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function runAsync<T extends void|mixed>(\Tyhp\Io\OffloadJob<T> $job, ?\Tyhp\CancellationToken $token = null): T;
+        /**
+        * Returns true when runAsync() sends jobs to tyhp/parallel workers.
+        */
+        public static function usesWorkers(): bool;
+    }
+}
+namespace Tyhp\Io\Db {
+    #[\Tyhp\GenericRuntime(erased: false, aliasFactory: "DbValue", layouts: [1], compiler: "805.1.0.0")]
+    type DbValue = int|float|string|bool|null;
+    /**
+    * PostgreSQL over ext-pgsql's asynchronous libpq API. Connecting, sending, and
+    * waiting for results all run on the event loop.
+    *
+    * Placeholders are $1, $2, ... Cancelling a token sends a cancel request for the
+    * running statement, waits for the server to stop it, and then rejects with
+    * OperationCancelledException.
+    */
+    final class PostgresConnection implements \Tyhp\Io\Db\DbConnection {
+        /**
+        * Connects with a libpq connection string, for example
+        * "host=127.0.0.1 port=5432 dbname=app user=app password=secret".
+        */
+        async public static function connectAsync(string $connectionString, ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Db\PostgresConnection;
+        async public function queryAsync(string $sql, array<int, \Tyhp\Io\Db\DbValue> $params = [], ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Db\DbResult;
+        async public function transactionAsync(array<int, \Tyhp\Io\Db\DbStatement> $statements, ?\Tyhp\CancellationToken $token = null): array<int, \Tyhp\Io\Db\DbResult>;
+        public function close(): void;
+    }
+    type PdoOptions = struct {
+        string $dsn = '';
+        ?string $username;
+        ?string $password;
+        array<int, int|string|bool> $attributes = [];
+    };
+    /**
+    * Any PDO driver, with each call run through Offload.
+    *
+    * With tyhp/parallel available, statements run in a worker process that keeps
+    * one PDO connection per DSN and user, so the event loop stays free. Without
+    * it, they run in this process and block the loop. Placeholders are ?, bound
+    * in order. transactionAsync() runs the whole transaction in a single call;
+    * BEGIN and COMMIT sent through queryAsync() may run in different workers.
+    */
+    final class PdoConnection implements \Tyhp\Io\Db\DbConnection {
+        public function __construct(\Tyhp\Io\Db\PdoOptions $options): void;
+        async public function queryAsync(string $sql, array<int, \Tyhp\Io\Db\DbValue> $params = [], ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Db\DbResult;
+        async public function transactionAsync(array<int, \Tyhp\Io\Db\DbStatement> $statements, ?\Tyhp\CancellationToken $token = null): array<int, \Tyhp\Io\Db\DbResult>;
+        /**
+        * Closes this process's cached connection. Worker connections stay open for
+        * later calls with the same options.
+        */
+        public function close(): void;
+    }
+    type MySqlOptions = struct {
+        string $host = '127.0.0.1';
+        int $port = 3306;
+        string $user = 'root';
+        string $password = '';
+        string $database = '';
+        string $charset = 'utf8mb4';
+        ?string $socket;
+        int $connectTimeoutSeconds = 10;
+    };
+    /**
+    * MySQL and MariaDB over ext-mysqli with MYSQLI_ASYNC queries.
+    *
+    * The connection handshake blocks the event loop; statements do not. Placeholders
+    * are ?, replaced client-side with escaped literals, so a ? inside a quoted string
+    * or a comment is not a placeholder. Cancelling a token runs KILL QUERY for the
+    * statement on a second, short-lived connection, then rejects with
+    * OperationCancelledException.
+    */
+    final class MySqlConnection implements \Tyhp\Io\Db\DbConnection {
+        async public static function connectAsync(?\Tyhp\Io\Db\MySqlOptions $options = null, ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Db\MySqlConnection;
+        async public function queryAsync(string $sql, array<int, \Tyhp\Io\Db\DbValue> $params = [], ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Db\DbResult;
+        async public function transactionAsync(array<int, \Tyhp\Io\Db\DbStatement> $statements, ?\Tyhp\CancellationToken $token = null): array<int, \Tyhp\Io\Db\DbResult>;
+        public function close(): void;
+    }
+    type DbStatement = struct {
+        string $sql = '';
+        array<int, \Tyhp\Io\Db\DbValue> $params = [];
+    };
+    /**
+    * The rows and counts from one statement.
+    *
+    * Rows are keyed by column name, and SQL NULL arrives as null. How the other
+    * column values are typed depends on the connection:
+    *
+    * - PostgresConnection converts integer columns to int, float4/float8 columns
+    *   to float, and boolean columns to bool; every other column is a string.
+    * - MySqlConnection returns integer and float columns as int and float. A
+    *   BOOLEAN column is TINYINT(1), so it arrives as int. Other columns are
+    *   strings.
+    * - PdoConnection returns the values exactly as the PDO driver and its
+    *   attributes produce them; nothing is converted.
+    *
+    * lastInsertId is set when the driver reports one for the statement.
+    */
+    final class DbResult {
+        readonly public array<int, array<string, mixed>> $rows ?? [];
+        readonly public int $affectedRows ?? 0;
+        readonly public ?string $lastInsertId ?? null;
+        public function __construct(array<int, array<string, mixed>> $rows = [], int $affectedRows = 0, ?string $lastInsertId = null): void;
+        public function count(): int;
+        public function first(): ?array<string, mixed>;
+        /**
+        * Returns the first column of the first row, or null when there are no rows.
+        */
+        public function scalar(): mixed;
+        /**
+        * Returns every row as T. Throws IncompatibleTypeException for the first row
+        * that does not match T.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "rowsAs__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public function rowsAs<T extends struct>(): array<int, T>;
+        /**
+        * Returns the first row as T, or null when there are no rows.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "firstAs__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public function firstAs<T extends struct>(): ?T;
+    }
+    /**
+    * A database connection whose statements run without blocking the event loop.
+    *
+    * Statements on one connection run one at a time in call order; open more
+    * connections for concurrent queries. Failures reject with DbException.
+    */
+    interface DbConnection {
+        /**
+        * Runs one statement with positional parameters.
+        */
+        public function queryAsync(string $sql, array<int, \Tyhp\Io\Db\DbValue> $params = [], ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<\Tyhp\Io\Db\DbResult>;
+        /**
+        * Runs the statements in one transaction and resolves with one result per
+        * statement. The first failure rolls the transaction back and rejects.
+        */
+        public function transactionAsync(array<int, \Tyhp\Io\Db\DbStatement> $statements, ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<array<int, \Tyhp\Io\Db\DbResult>>;
+        public function close(): void;
+    }
+}
+namespace Tyhp\Io\Dns {
+    /**
+    * Host name resolution through the system resolver, run with Offload.
+    */
+    final class Dns {
+        /**
+        * Resolves $host to its IPv4 addresses (including /etc/hosts entries) followed
+        * by any IPv6 addresses from DNS. An IP address resolves to itself. Rejects
+        * with IoException when nothing resolves and the lookup runs in this
+        * process. When Offload runs it in a tyhp/parallel worker
+        * (Offload::usesWorkers()), a failure, including nothing resolving, rejects
+        * with ParallelException instead.
+        */
+        public static function resolveAsync(string $host, ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<array<int, string>>;
+    }
+}
+namespace Tyhp\Io\Exceptions {
+    /**
+    * Thrown when Redis returns an error reply or the connection fails.
+    */
+    final class RedisException extends \Tyhp\Io\Exceptions\IoException {
+        public function __construct(string $message, ?\Throwable $previous = null): void;
+    }
+    /**
+    * Thrown by Process::mustRunAsync() when the command exits with a non-zero code.
+    * The code is the exit code.
+    */
+    final class ProcessFailedException extends \Tyhp\Io\Exceptions\IoException {
+        public function __construct(\Tyhp\Io\Process\ProcessResult $result): void;
+        public function getResult(): \Tyhp\Io\Process\ProcessResult;
+    }
+    /**
+    * Thrown when this PHP process lacks the extension an operation needs.
+    */
+    final class IoUnavailableException extends \Tyhp\Io\Exceptions\IoException {
+        public function __construct(string $message, ?\Throwable $previous = null): void;
+    }
+    /**
+    * Base class for failures reported by tyhp/io.
+    */
+    class IoException extends \RuntimeException {
+        public function __construct(string $message, int $code = 0, ?\Throwable $previous = null): void;
+    }
+    /**
+    * Thrown by HttpResponse::ensureSuccess() for a status outside 200–299.
+    * The code is the HTTP status.
+    */
+    final class HttpStatusException extends \Tyhp\Io\Exceptions\HttpException {
+        public function __construct(\Tyhp\Io\Http\HttpResponse $response): void;
+        public function getResponse(): \Tyhp\Io\Http\HttpResponse;
+    }
+    /**
+    * Thrown when an HTTP request fails before a response arrives: DNS, connect,
+    * TLS, or transfer errors. The code is the curl error number.
+    */
+    class HttpException extends \Tyhp\Io\Exceptions\IoException {
+        public function __construct(string $message, int $code = 0, ?\Throwable $previous = null): void;
+    }
+    /**
+    * Thrown when a database connection or statement fails.
+    * getSqlState() returns the five-character SQLSTATE when the driver reports one.
+    */
+    final class DbException extends \Tyhp\Io\Exceptions\IoException {
+        public function __construct(string $message, string $sqlState = '', ?\Throwable $previous = null): void;
+        public function getSqlState(): string;
+    }
+}
+namespace Tyhp\Io\File {
+    /**
+    * Local file operations that share the event loop.
+    *
+    * PHP has no non-blocking file I/O, so each call reads or writes in 256 KiB
+    * chunks and lets other fibers, timers, and sockets run between chunks. One
+    * chunk still blocks briefly. A cancelled token stops the operation at the next
+    * chunk; a write stopped that way leaves a partial file.
+    */
+    final class File {
+        async public static function readAsync(string $path, ?\Tyhp\CancellationToken $token = null): string;
+        /**
+        * Reads the file and decodes it as JSON into T. Throws \JsonException for
+        * invalid JSON and IncompatibleTypeException when the value does not match T.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "readJsonAsync__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function readJsonAsync<T extends struct>(string $path, ?\Tyhp\CancellationToken $token = null): T;
+        /**
+        * Creates or truncates the file, then writes $contents.
+        */
+        async public static function writeAsync(string $path, string $contents, ?\Tyhp\CancellationToken $token = null): void;
+        async public static function appendAsync(string $path, string $contents, ?\Tyhp\CancellationToken $token = null): void;
+        /**
+        * Copies $from to $to, replacing $to when it exists.
+        */
+        async public static function copyAsync(string $from, string $to, ?\Tyhp\CancellationToken $token = null): void;
+        /**
+        * Returns the lower-case hex digest of the file for any algorithm in hash_algos().
+        */
+        async public static function hashAsync(string $path, string $algorithm = 'sha256', ?\Tyhp\CancellationToken $token = null): string;
+        /**
+        * Iterates the file line by line without loading it whole. Lines exclude
+        * "\n" and "\r\n". The file opens when iteration starts and closes at the end.
+        *
+        * @example `foreach (await File::linesAsync($path) as $line) { ... }`
+        */
+        public static function linesAsync(string $path): \Tyhp\Contracts\AsyncIterable<string>;
+    }
+}
+namespace Tyhp\Io\Http {
+    /**
+    * A completed HTTP response. Every status, including 4xx and 5xx, resolves
+    * normally; call ensureSuccess() to turn a non-2xx status into an exception.
+    *
+    * Header names are lower-case. A repeated header keeps each value in order.
+    * After redirects, headers and url describe the final response.
+    */
+    final class HttpResponse {
+        readonly public int $status;
+        readonly public array<string, array<int, string>> $headers;
+        readonly public string $body;
+        readonly public string $url;
+        public function __construct(int $status, array<string, array<int, string>> $headers, string $body, string $url): void;
+        public function isSuccess(): bool;
+        /**
+        * Returns the first value of a header, or null when it is absent.
+        */
+        public function header(string $name): ?string;
+        public function headerValues(string $name): array<int, string>;
+        /**
+        * Decodes the body as JSON into T. Throws \JsonException for invalid JSON and
+        * IncompatibleTypeException when the value does not match T.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "json__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public function json<T extends struct>(): T;
+        /**
+        * Returns this response, or throws HttpStatusException when the status is not 2xx.
+        */
+        public function ensureSuccess(): \Tyhp\Io\Http\HttpResponse;
+    }
+    type HttpRequest = struct {
+        string $url = '';
+        string $method = 'GET';
+        array<string, string> $headers = [];
+        string $body = '';
+        int $timeoutMs = 30000;
+        int $connectTimeoutMs = 10000;
+        bool $followRedirects = true;
+        int $maxRedirects = 5;
+        bool $verifyTls = true;
+    };
+    /**
+    * Non-blocking HTTP and HTTPS over ext-curl.
+    *
+    * Requests from one client share a curl multi handle and run concurrently on
+    * the tyhp/async event loop. Only http:// and https:// URLs are accepted,
+    * including on redirects. Cancelling a token aborts its transfer.
+    */
+    final class HttpClient {
+        /**
+        * @param $defaultHeaders Sent with every request unless the request sets the
+        *     same header name (case-insensitive).
+        */
+        public function __construct(array<string, string> $defaultHeaders = []): void;
+        /**
+        * A process-wide client with no default headers.
+        */
+        public static function shared(): \Tyhp\Io\Http\HttpClient;
+        /**
+        * Starts the request and resolves when the whole response has arrived.
+        *
+        * Rejects with HttpException for transport failures, TimeoutException when
+        * timeoutMs elapses, and OperationCancelledException when $token is cancelled.
+        */
+        public function sendAsync(\Tyhp\Io\Http\HttpRequest $request, ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<\Tyhp\Io\Http\HttpResponse>;
+        public function getAsync(string $url, array<string, string> $headers = [], ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<\Tyhp\Io\Http\HttpResponse>;
+        public function postAsync(string $url, string $body, array<string, string> $headers = [], ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<\Tyhp\Io\Http\HttpResponse>;
+        /**
+        * Sends $payload as a JSON body with Content-Type: application/json.
+        * Throws \JsonException when $payload cannot be encoded.
+        */
+        public function postJsonAsync(string $url, mixed $payload, array<string, string> $headers = [], ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<\Tyhp\Io\Http\HttpResponse>;
+        /**
+        * GETs $url, requires a 2xx status, and decodes the body into T. Sends
+        * Accept: application/json unless $headers sets an Accept header (the name
+        * is matched case-insensitively).
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "getJsonAsync__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public function getJsonAsync<T extends struct>(string $url, array<string, string> $headers = [], ?\Tyhp\CancellationToken $token = null): T;
+    }
+}
+namespace Tyhp\Io\Process {
+    type ProcessResult = struct {
+        array<int, string> $command = [];
+        int $exitCode = 0;
+        int $signal = 0;
+        string $stdout = '';
+        string $stderr = '';
+    };
+    type ProcessOptions = struct {
+        ?string $cwd;
+        ?array<string, string> $env;
+        string $input = '';
+        int $timeoutMs = 0;
+    };
+    /**
+    * Runs external commands without blocking the event loop.
+    *
+    * The command is an argument list passed to the program directly, with no
+    * shell, so arguments need no quoting. stdout and stderr are collected in full.
+    */
+    final class Process {
+        /**
+        * Resolves with the result once the command exits, whatever its exit code.
+        *
+        * Rejects with IoException when the command cannot start, TimeoutException
+        * when options timeoutMs elapses, and OperationCancelledException when $token
+        * is cancelled. In both of the last two cases the command is killed first.
+        */
+        public static function runAsync(array<int, string> $command, ?\Tyhp\Io\Process\ProcessOptions $options = null, ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<\Tyhp\Io\Process\ProcessResult>;
+        /**
+        * Like runAsync(), but throws ProcessFailedException when the exit code is not 0.
+        */
+        async public static function mustRunAsync(array<int, string> $command, ?\Tyhp\Io\Process\ProcessOptions $options = null, ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Process\ProcessResult;
+    }
+}
+namespace Tyhp\Io\Redis {
+    type RedisOptions = struct {
+        string $host = '127.0.0.1';
+        int $port = 6379;
+        bool $tls = false;
+        ?string $username;
+        ?string $password;
+        int $database = 0;
+        int $connectTimeoutMs = 10000;
+    };
+    /**
+    * Redis client speaking RESP2 over one connection.
+    *
+    * Commands from concurrent fibers are pipelined on the connection, and each
+    * Promise resolves with its own reply. Error replies reject with RedisException
+    * and leave the connection usable. A transport failure rejects every pending
+    * command and closes the client. Every command must produce exactly one reply,
+    * so do not send SUBSCRIBE, PSUBSCRIBE, or MONITOR through commandAsync().
+    */
+    final class RedisClient {
+        /**
+        * Connects, then sends AUTH and SELECT when the options ask for them.
+        */
+        async public static function connectAsync(?\Tyhp\Io\Redis\RedisOptions $options = null, ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Redis\RedisClient;
+        /**
+        * Sends one command. The reply decodes to string (simple and bulk strings),
+        * int, null (nil), or array<int, mixed> (arrays; nested error replies become
+        * RedisException values).
+        */
+        public function commandAsync(string $name, string|int|float ...$arguments): \Tyhp\Promise<mixed>;
+        async public function pingAsync(): string;
+        async public function getAsync(string $key): ?string;
+        /**
+        * Sets $key. A positive $ttlMs expires the key after that many milliseconds.
+        */
+        async public function setAsync(string $key, string $value, int $ttlMs = 0): void;
+        /**
+        * Deletes the keys and returns how many existed.
+        */
+        async public function delAsync(string $key, string ...$keys): int;
+        async public function existsAsync(string $key): bool;
+        async public function incrAsync(string $key, int $by = 1): int;
+        /**
+        * Returns false when $key does not exist.
+        */
+        async public function expireAsync(string $key, int $seconds): bool;
+        /**
+        * Sets hash fields and returns how many were new.
+        */
+        async public function hSetAsync(string $key, array<string, string> $fields): int;
+        async public function hGetAsync(string $key, string $field): ?string;
+        async public function hGetAllAsync(string $key): array<string, string>;
+        /**
+        * Prepends values and returns the new list length.
+        */
+        async public function lPushAsync(string $key, string $value, string ...$values): int;
+        /**
+        * Appends values and returns the new list length.
+        */
+        async public function rPushAsync(string $key, string $value, string ...$values): int;
+        async public function lRangeAsync(string $key, int $start = 0, int $stop = -1): array<int, string>;
+        /**
+        * Returns the number of subscribers that received the message.
+        */
+        async public function publishAsync(string $channel, string $message): int;
+        /**
+        * Closes the connection. Commands still waiting reject with RedisException.
+        */
+        public function close(): void;
+        public function isClosed(): bool;
+    }
+}
+namespace Tyhp\Io\Socket {
+    /**
+    * A connected, non-blocking stream socket.
+    *
+    * One read may be pending at a time. Writes may overlap; they are sent in call
+    * order. Cancelling a read or write leaves buffered data in place.
+    */
+    final class SocketConnection {
+        /**
+        * Returns up to $maxBytes, waiting until at least one byte is available.
+        * Returns '' once the peer has closed the connection and the buffer is empty.
+        */
+        async public function readAsync(int $maxBytes = 65536, ?\Tyhp\CancellationToken $token = null): string;
+        /**
+        * Returns the next line without its "\n" or "\r\n". At end of stream, returns
+        * the final unterminated line, then null. Throws IoException when a line is
+        * longer than $maxBytes.
+        */
+        async public function readLineAsync(int $maxBytes = 1048576, ?\Tyhp\CancellationToken $token = null): ?string;
+        /**
+        * Returns exactly $length bytes. Throws IoException when the connection
+        * closes first; the bytes already received stay buffered.
+        */
+        async public function readExactlyAsync(int $length, ?\Tyhp\CancellationToken $token = null): string;
+        /**
+        * Resolves once every byte of $data has been handed to the operating system.
+        */
+        public function writeAsync(string $data, ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<void>;
+        public function close(): void;
+        public function isClosed(): bool;
+    }
+    /**
+    * Opens non-blocking stream sockets on the event loop.
+    */
+    final class Socket {
+        /**
+        * Connects to tcp://host:port, tls://host:port, or unix:///path.
+        *
+        * tls:// connects over TCP, then performs a TLS handshake that verifies the
+        * peer certificate against host. Rejects with IoException when the connection
+        * fails, TimeoutException after $timeoutMs (0 means no limit), and
+        * OperationCancelledException when $token is cancelled.
+        */
+        async public static function connectAsync(string $address, int $timeoutMs = 10000, ?\Tyhp\CancellationToken $token = null): \Tyhp\Io\Socket\SocketConnection;
+    }
+}

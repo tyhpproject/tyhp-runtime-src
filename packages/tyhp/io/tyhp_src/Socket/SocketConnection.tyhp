@@ -1,0 +1,207 @@
+<?tyhp
+
+namespace Tyhp\Io\Socket;
+
+use Tyhp\CancellationToken;
+use Tyhp\EventLoop;
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Io\IoPending;
+use Tyhp\Io\IoWait;
+use Tyhp\Promise;
+
+/**
+ * A connected, non-blocking stream socket.
+ *
+ * One read may be pending at a time. Writes may overlap; they are sent in call
+ * order. Cancelling a read or write leaves buffered data in place.
+ */
+final class SocketConnection {
+    private const int CHUNK_BYTES = 65536;
+
+    private string $buffer = '';
+    private bool $eof = false;
+    private bool $closed = false;
+    private bool $reading = false;
+    private Promise<void> $writeTail;
+    private ?IoPending<void> $readWait = null;
+    private ?IoPending<void> $writeWait = null;
+
+    internal function __construct(
+        #[\Tyhp\PhpType('mixed')] private readonly resource $stream
+    ) {
+        $this->writeTail = Promise::resolved<void>();
+    }
+
+    /**
+     * Returns up to $maxBytes, waiting until at least one byte is available.
+     * Returns '' once the peer has closed the connection and the buffer is empty.
+     */
+    async public function readAsync(int $maxBytes = 65536, ?CancellationToken $token = null): string {
+        $this->beginRead();
+        try {
+            while ($this->buffer === '' && !$this->eof) {
+                await $this->fill($token);
+            }
+            return $this->take(\min(\max(1, $maxBytes), \strlen($this->buffer)));
+        } finally {
+            $this->reading = false;
+        }
+    }
+
+    /**
+     * Returns the next line without its "\n" or "\r\n". At end of stream, returns
+     * the final unterminated line, then null. Throws IoException when a line is
+     * longer than $maxBytes.
+     */
+    async public function readLineAsync(int $maxBytes = 1048576, ?CancellationToken $token = null): ?string {
+        $this->beginRead();
+        try {
+            int|false $newline = \strpos($this->buffer, "\n");
+            while ($newline === false && !$this->eof) {
+                if (\strlen($this->buffer) > $maxBytes) {
+                    throw new IoException('A line exceeded ' . $maxBytes . ' bytes.');
+                }
+                await $this->fill($token);
+                $newline = \strpos($this->buffer, "\n");
+            }
+            if ($newline === false) {
+                return $this->buffer === '' ? null : $this->take(\strlen($this->buffer));
+            }
+            string $line = $this->take($newline + 1);
+            return \rtrim($line, "\r\n");
+        } finally {
+            $this->reading = false;
+        }
+    }
+
+    /**
+     * Returns exactly $length bytes. Throws IoException when the connection
+     * closes first; the bytes already received stay buffered.
+     */
+    async public function readExactlyAsync(int $length, ?CancellationToken $token = null): string {
+        $this->beginRead();
+        try {
+            while (\strlen($this->buffer) < $length && !$this->eof) {
+                await $this->fill($token);
+            }
+            if (\strlen($this->buffer) < $length) {
+                throw new IoException('The connection closed after ' . \strlen($this->buffer) . ' of ' . $length . ' bytes.');
+            }
+            return $this->take($length);
+        } finally {
+            $this->reading = false;
+        }
+    }
+
+    /**
+     * Resolves once every byte of $data has been handed to the operating system.
+     */
+    public function writeAsync(string $data, ?CancellationToken $token = null): Promise<void> {
+        Promise<void> $current = $this->writeAfter($this->writeTail, $data, $token);
+        $this->writeTail = $current;
+        return $current;
+    }
+
+    public function close(): void {
+        if ($this->closed) {
+            return;
+        }
+        $this->closed = true;
+        $this->eof = true;
+        EventLoop $loop = EventLoop::getInstance();
+        $loop->removeReadStream($this->stream);
+        $loop->removeWriteStream($this->stream);
+        IoException $closed = new IoException('The connection is closed.');
+        $this->readWait?->reject($closed);
+        $this->writeWait?->reject($closed);
+        $this->readWait = null;
+        $this->writeWait = null;
+        if (\is_resource($this->stream)) {
+            \fclose($this->stream);
+        }
+    }
+
+    public function isClosed(): bool {
+        return $this->closed;
+    }
+
+    internal async function enableTls(string $peerName, ?CancellationToken $token): void {
+        \stream_context_set_option($this->stream, 'ssl', 'peer_name', $peerName);
+        \stream_context_set_option($this->stream, 'ssl', 'verify_peer', true);
+        \stream_context_set_option($this->stream, 'ssl', 'verify_peer_name', true);
+        bool $done = false;
+        while (!$done) {
+            int|bool $result = @\stream_socket_enable_crypto($this->stream, true, \STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if ($result === true) {
+                $done = true;
+            } else if ($result === false) {
+                ?array $error = \error_get_last();
+                throw new IoException('TLS handshake with ' . $peerName . ' failed: ' . (string) ($error['message'] ?? 'unknown error.'));
+            } else {
+                await $this->waitFor(false, $token);
+            }
+        }
+    }
+
+    private function waitFor(bool $write, ?CancellationToken $token): Promise<void> {
+        if ($this->closed) {
+            return Promise::rejected<void>(new IoException('The connection is closed.'));
+        }
+        IoPending<void> $wait = IoWait::wait($this->stream, $write, $token);
+        if ($write) {
+            $this->writeWait = $wait;
+        } else {
+            $this->readWait = $wait;
+        }
+        return $wait->promise();
+    }
+
+    async private function writeAfter(Promise<void> $previous, string $data, ?CancellationToken $token): void {
+        try {
+            await $previous;
+        } catch (\Throwable $e) {
+            (void) $e;
+        }
+        int $offset = 0;
+        int $length = \strlen($data);
+        while ($offset < $length) {
+            if ($this->closed) {
+                throw new IoException('The connection is closed.');
+            }
+            int|false $written = @\fwrite($this->stream, \substr($data, $offset, self::CHUNK_BYTES));
+            if ($written === false) {
+                throw new IoException('Writing to the connection failed.');
+            }
+            $offset += $written;
+            if ($offset < $length) {
+                await $this->waitFor(true, $token);
+            }
+        }
+    }
+
+    private function beginRead(): void {
+        if ($this->reading) {
+            throw new \LogicException('Another read on this connection is still pending.');
+        }
+        $this->reading = true;
+    }
+
+    async private function fill(?CancellationToken $token): void {
+        await $this->waitFor(false, $token);
+        if ($this->closed) {
+            throw new IoException('The connection is closed.');
+        }
+        string|false $chunk = @\fread($this->stream, self::CHUNK_BYTES);
+        if ($chunk === false || ($chunk === '' && \feof($this->stream))) {
+            $this->eof = true;
+            return;
+        }
+        $this->buffer .= $chunk;
+    }
+
+    private function take(int $length): string {
+        string $chunk = \substr($this->buffer, 0, $length);
+        $this->buffer = \substr($this->buffer, $length);
+        return $chunk;
+    }
+}

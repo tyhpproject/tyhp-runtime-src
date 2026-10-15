@@ -1,0 +1,83 @@
+<?tyhp
+
+namespace Tyhp\Backend;
+
+internal final class BcMathBackend implements DecimalBackend
+{
+    /**
+     * True when every digit is zero. `bccomp()` at the result scale would also report a
+     * non-zero value such as `0.001` as zero at scale 2.
+     */
+    private function isZero(string $value): bool {
+        return \ltrim(\str_replace(['-', '.'], '', $value), '0') === '';
+    }
+
+    public function add(string $a, string $b, int $scale): string {
+        return \bcadd($a, $b, $scale);
+    }
+
+    public function subtract(string $a, string $b, int $scale): string {
+        return \bcsub($a, $b, $scale);
+    }
+
+    public function multiply(string $a, string $b, int $scale): string {
+        return \bcmul($a, $b, $scale);
+    }
+
+    public function divide(string $a, string $b, int $scale): string {
+        if ($this->isZero($b)) {
+            throw new \DivisionByZeroError('Division by zero');
+        }
+
+        return \bcdiv($a, $b, $scale);
+    }
+
+    public function modulo(string $a, string $b, int $scale): string {
+        if ($this->isZero($b)) {
+            throw new \DivisionByZeroError('Modulo by zero');
+        }
+
+        return \bcmod($a, $b, $scale);
+    }
+
+    public function power(string $base, int $exponent, int $scale): string {
+        return \bcpow($base, (string) $exponent, $scale);
+    }
+
+    public function sqrt(string $value, int $scale): string {
+        if (\str_starts_with($value, '-') && !$this->isZero($value)) {
+            throw new \InvalidArgumentException('Square root of a negative number is not supported');
+        }
+
+        return \bcsqrt($value, $scale);
+    }
+
+    public function compare(string $a, string $b, int $scale): -1|0|1 {
+        return \bccomp($a, $b, $scale);
+    }
+
+    public function negate(string $value): string {
+        string $stripped = \ltrim(\str_replace(['-', '.'], '', $value), '0');
+        if ($stripped === '') {
+            return $value;
+        }
+
+        if (\str_starts_with($value, '-')) {
+            return \substr($value, 1);
+        }
+
+        return '-' . $value;
+    }
+
+    public function abs(string $value): string {
+        if (\str_starts_with($value, '-')) {
+            return \substr($value, 1);
+        }
+
+        return $value;
+    }
+
+    public function getName(): string {
+        return 'bcmath';
+    }
+}

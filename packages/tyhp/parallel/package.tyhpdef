@@ -1,0 +1,146 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Compiler: 805.1.0.0
+ * Generated: 2026-10-14T20:53:41.7756700Z
+ */
+namespace Tyhp {
+    /**
+    * One unit of work for a tyhp/parallel worker process.
+    *
+    * Parallel::runAsync() serializes the object once, when the task is queued, and
+    * the worker runs an unserialized copy. Changing the object afterward does not
+    * affect that run. Its properties and the value returned from run() must be
+    * serializable, and the worker must be able to autoload the task class. The
+    * copy does not share the caller's objects, sockets, or database connections.
+    *
+    * When run() returns, the caller's Promise resolves with that value. When it
+    * throws, the Promise rejects with a ParallelException whose getRemoteError()
+    * describes the exception. Calling exit() or crashing the worker fails the
+    * task, and the pool starts a new worker.
+    */
+    interface ParallelTask<T extends void|mixed = mixed> {
+        public function run(): T;
+    }
+    type ParallelRemoteError = struct {
+        string $class = '';
+        string $message = '';
+        int $code = 0;
+        string $file = '';
+        int $line = 0;
+        string $trace = '';
+    };
+    /**
+    * Process pool for CPU work that must leave the current process.
+    *
+    * await stays on the tyhp/async fiber loop. A CLI program hosts the pool in
+    * this process: call start() before opening database connections, and the
+    * pool forks with pcntl. A php-fpm worker does not fork. It uses the same
+    * runAsync(), forAsync(), forEachAsync(), and invokeAsync() calls, and
+    * TYHP_PARALLEL_SOCKET names the Unix socket of a worker service started with serve().
+    *
+    * Each task is a serializable ParallelTask, and the process that runs it must
+    * be able to autoload that class. runAsync() resolves with one task's result.
+    * forAsync(), forEachAsync(), and invokeAsync() wait for every task and keep
+    * input keys and order.
+    *
+    * Every call takes an optional CancellationToken. Cancelling removes a queued
+    * task, or stops the worker running it and starts a replacement, and the
+    * Promise rejects with OperationCancelledException.
+    */
+    final class Parallel {
+        /**
+        * Prepares this process to run tasks.
+        *
+        * With no TYHP_PARALLEL_SOCKET, forks a pool in this process. Repeat calls
+        * with the same count are ignored. A different count throws. The default
+        * used by runAsync() when start() was not called is 4 workers.
+        *
+        * When TYHP_PARALLEL_SOCKET is set, connects to the worker service and
+        * throws ParallelUnavailableException if it is not accepting connections.
+        * That service chooses the worker count.
+        */
+        public static function start(int $workers = 4): void;
+        /**
+        * Hosts the pool and accepts clients until SIGTERM or SIGINT.
+        *
+        * The socket is created with $socketMode (0660 by default). php-fpm workers
+        * set TYHP_PARALLEL_SOCKET to the same path. Run this as the php-fpm user,
+        * or as a user in the same group, and start it before opening database
+        * connections. The service must be able to autoload every task class the
+        * clients send. When a client disconnects, its unfinished tasks are cancelled.
+        */
+        public static function serve(string $socketPath, int $workers = 4, int $socketMode = 0660): void;
+        /**
+        * Stops this process's workers or closes its worker service connection,
+        * and fails every task that has not finished. A worker service keeps
+        * running when one of its clients shuts down. Safe to call more than once.
+        */
+        public static function shutdown(): void;
+        /**
+        * Returns true when runAsync() can send work to another process: TYHP_PARALLEL_SOCKET
+        * names a worker service, or this is a CLI process with ext-pcntl and ext-posix.
+        * Returns false inside a worker. A configured service is not contacted, so
+        * when that service is down runAsync() throws ParallelUnavailableException.
+        */
+        public static function isAvailable(): bool;
+        /**
+        * Queues one task and returns a Promise of its result.
+        *
+        * The task is serialized before this method returns. Throws
+        * ParallelUnavailableException when no pool or service can be reached. The Promise rejects
+        * with ParallelException when the task throws, its worker exits, or the
+        * result does not match T, and with OperationCancelledException when
+        * $token is cancelled first.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "runAsync__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function runAsync<T extends __Awaited<void|mixed>>(\Tyhp\ParallelTask<T> $task, ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<T>;
+        /**
+        * Runs every index in [$fromInclusive, $toExclusive) and returns the
+        * results keyed by that index. The end index is exclusive, matching
+        * C# Parallel.For. Fails fast like invokeAsync().
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "forAsync__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function forAsync<T extends __Awaited<void|mixed>>(int $fromInclusive, int $toExclusive, callable(int): \Tyhp\ParallelTask<T> $factory, ?\Tyhp\CancellationToken $token = null): array<int, T>;
+        /**
+        * Builds one task per item in the caller, then runs those tasks on the pool.
+        * Result keys match the input keys. Fails fast like invokeAsync().
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "forEachAsync__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function forEachAsync<TItem, TResult extends __Awaited<void|mixed>, TKey extends int|string = int|string>(array<TKey, TItem> $items, callable(TItem): \Tyhp\ParallelTask<TResult> $factory, ?\Tyhp\CancellationToken $token = null): array<TKey, TResult>;
+        /**
+        * Runs every task and returns the results under the same keys.
+        *
+        * When one task fails, the others are cancelled and the first failure is
+        * thrown. When $token is cancelled, every task is cancelled and
+        * OperationCancelledException is thrown.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "invokeAsync__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function invokeAsync<T extends __Awaited<void|mixed>, TKey extends int|string = int|string>(array<TKey, \Tyhp\ParallelTask<T>> $tasks, ?\Tyhp\CancellationToken $token = null): array<TKey, T>;
+    }
+}
+namespace Tyhp\Exceptions {
+    /**
+    * This process cannot run a parallel task.
+    *
+    * A CLI program hosts the pool itself and needs ext-pcntl and ext-posix.
+    * Any other SAPI connects to a worker service named by TYHP_PARALLEL_SOCKET.
+    */
+    final class ParallelUnavailableException extends \Tyhp\Exceptions\ParallelException {
+        public function __construct(string $message): void;
+    }
+    /**
+    * A parallel task failed, or the pool could not deliver it.
+    *
+    * When the task threw inside the worker, getRemoteError() describes that
+    * exception, including its class, code, file, line, and trace. When the pool,
+    * the worker process, or the service connection failed instead, it is null.
+    */
+    class ParallelException extends \RuntimeException {
+        public function __construct(string $message, ?\Tyhp\ParallelRemoteError $remoteError = null, ?\Throwable $previous = null): void;
+        /** The exception thrown in the worker, or null when the task did not throw. */
+        public function getRemoteError(): ?\Tyhp\ParallelRemoteError;
+        /** Class of the exception thrown in the worker, or '' when the task did not throw. */
+        public function getRemoteClass(): string;
+    }
+}

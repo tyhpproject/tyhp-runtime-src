@@ -1,0 +1,38 @@
+<?tyhp
+
+namespace Tyhp\Io\Dns;
+
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Io\OffloadJob;
+
+internal final class DnsLookup implements OffloadJob<array<int, string>> {
+    public function __construct(private readonly string $host) {}
+
+    public function run(): array<int, string> {
+        if (\filter_var($this->host, \FILTER_VALIDATE_IP) !== false) {
+            return [$this->host];
+        }
+        array<int, string> $addresses = [];
+        mixed $ipv4 = \gethostbynamel($this->host);
+        if (\is_array($ipv4)) {
+            foreach ($ipv4 as $address) {
+                if (\is_string($address)) {
+                    $addresses[] = $address;
+                }
+            }
+        }
+        mixed $records = @\dns_get_record($this->host, \DNS_AAAA);
+        if (\is_array($records)) {
+            foreach ($records as $record) {
+                mixed $ipv6 = \is_array($record) ? ($record['ipv6'] ?? null) : null;
+                if (\is_string($ipv6)) {
+                    $addresses[] = $ipv6;
+                }
+            }
+        }
+        if (\count($addresses) === 0) {
+            throw new IoException('Could not resolve host ' . $this->host . '.');
+        }
+        return \array_values(\array_unique($addresses));
+    }
+}

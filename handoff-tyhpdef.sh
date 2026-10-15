@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
-PACKAGES_DIR="$REPO_ROOT/packages"
+PACKAGES_DIR="$REPO_ROOT/packages/tyhpdef"
 
 DRY_RUN=0
 SCENARIO=""

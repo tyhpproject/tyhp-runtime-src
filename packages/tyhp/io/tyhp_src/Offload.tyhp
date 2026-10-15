@@ -1,0 +1,41 @@
+<?tyhp
+
+namespace Tyhp\Io;
+
+use Tyhp\CancellationToken;
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Parallel;
+
+/**
+ * Moves blocking work off the event loop.
+ *
+ * With tyhp/parallel installed and Parallel::isAvailable() true, the job runs
+ * in a worker process and this process keeps serving other fibers. Otherwise
+ * the job runs here and blocks the event loop until it returns.
+ */
+final class Offload {
+    /**
+     * Resolves with the job's result. In a worker, a job that throws rejects
+     * with ParallelException, and a cancelled token stops the worker.
+     */
+    async public static function runAsync<T extends void|mixed>(OffloadJob<T> $job, ?CancellationToken $token = null): T {
+        $token?->throwIfCancellationRequested();
+        if (!self::usesWorkers()) {
+            return $job->run();
+        }
+        mixed $value = await Parallel::runAsync<mixed>(new OffloadTask($job), $token);
+        if ($value is T) {
+            return $value;
+        }
+        throw new IoException(
+            'The offloaded job returned ' . \get_debug_type($value) . ', which does not match its declared result type.'
+        );
+    }
+
+    /**
+     * Returns true when runAsync() sends jobs to tyhp/parallel workers.
+     */
+    public static function usesWorkers(): bool {
+        return \class_exists(Parallel::class) && Parallel::isAvailable();
+    }
+}

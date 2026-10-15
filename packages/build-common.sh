@@ -1,6 +1,11 @@
 #!/bin/bash
 # Shared helpers for base-build-all.sh / base-rebuild-all.sh / base-build-all-dryrun.sh.
 # Sourced by those scripts; not meant to be run directly.
+# Requires SCRIPT_DIR (the packages/ directory) to be set by the sourcing script.
+
+# Compiled runtime packages (core, async, ..., compiler) live under packages/tyhp/<pkg>.
+# Generated dist trees stay at packages/dist/.
+TYHP_PKG_DIR="$SCRIPT_DIR/tyhp"
 
 # Dist package semver: MAJOR = PHP (802/803/804/805).
 # Each package has its own independent X.Y in composer.json (not the compiler version):
@@ -27,7 +32,7 @@ DIST_BUILDS=(
 SINGLE_VERSION_PACKAGES=(compiler)
 
 # Packages emitted into dist/tyhp-<pkg>/<version>/ once per PHP major.
-DIST_PACKAGES=(core decimal async lambda)
+DIST_PACKAGES=(core decimal async lambda parallel io)
 
 # Optional package name from the command line. Empty means build every package.
 SELECTED_PACKAGE=""
@@ -106,12 +111,12 @@ else:
 PY
 }
 
-# Read version from packages/<pkg>/composer.json into
+# Read version from packages/tyhp/<pkg>/composer.json into
 # PACKAGE_VERSION_MINOR / PACKAGE_VERSION_PATCH / PACKAGE_VERSION_SUFFIX.
 # Always reloads — packages version independently and must not share the first load.
 load_package_release_version() {
   local pkg="$1"
-  local composer_json="$SCRIPT_DIR/$pkg/composer.json"
+  local composer_json="$TYHP_PKG_DIR/$pkg/composer.json"
   local parsed
   local suffix
   local raw
@@ -208,13 +213,17 @@ matching_minor_constraint_for() {
   local dep_pkg="$1"
   local parsed
   local x
-  parsed="$(_parse_package_source_version "$SCRIPT_DIR/$dep_pkg/composer.json")" || return 1
+  parsed="$(_parse_package_source_version "$TYHP_PKG_DIR/$dep_pkg/composer.json")" || return 1
   IFS='|' read -r x _ _ _ <<< "$parsed"
   echo "802.${x}.* || 803.${x}.* || 804.${x}.* || 805.${x}.*"
 }
 
 core_version_constraint() {
   matching_minor_constraint_for "core"
+}
+
+async_version_constraint() {
+  matching_minor_constraint_for "async"
 }
 
 assert_valid_package_versions() {
@@ -227,7 +236,7 @@ assert_valid_package_versions() {
   local raw
 
   for pkg in "${pkgs[@]}"; do
-    parsed="$(_parse_package_source_version "$SCRIPT_DIR/$pkg/composer.json")" || return 1
+    parsed="$(_parse_package_source_version "$TYHP_PKG_DIR/$pkg/composer.json")" || return 1
     IFS='|' read -r x y suffix raw <<< "$parsed"
     if [[ -n "$suffix" ]]; then
       suffix="-${suffix}"
@@ -289,9 +298,9 @@ write_dist_composer_json() {
   php_c="$(php_constraint_for_major "$php_major")"
   php_label="$(php_label_for_major "$php_major")"
   core_constraint="$(core_version_constraint)"
-  interop_version="$(read_package_interop_contract_version "$SCRIPT_DIR/$pkg/composer.json")" || return 1
-  tyhp_require="$(read_package_tyhp_require "$SCRIPT_DIR/$pkg/composer.json")" || return 1
-  tyhp_package="$(read_package_tyhp_package "$SCRIPT_DIR/$pkg/composer.json")" || return 1
+  interop_version="$(read_package_interop_contract_version "$TYHP_PKG_DIR/$pkg/composer.json")" || return 1
+  tyhp_require="$(read_package_tyhp_require "$TYHP_PKG_DIR/$pkg/composer.json")" || return 1
+  tyhp_package="$(read_package_tyhp_package "$TYHP_PKG_DIR/$pkg/composer.json")" || return 1
 
   mkdir -p "$out_dir"
 
@@ -332,7 +341,10 @@ write_dist_composer_json() {
         "psr-4": {
             "Tyhp\\\\": "src/Tyhp/",
             "Tyhp\\\\Composer\\\\": "plugin/"
-        }
+        },
+        "files": [
+            "src/_functions.php"
+        ]
     }
 }
 EOF
@@ -367,7 +379,10 @@ EOF
     "autoload": {
         "psr-4": {
             "Tyhp\\\\": "src/Tyhp/"
-        }
+        },
+        "files": [
+            "src/_functions.php"
+        ]
     }
 }
 EOF
@@ -450,6 +465,94 @@ EOF
 }
 EOF
       ;;
+    parallel)
+      local async_constraint
+      async_constraint="$(async_version_constraint)"
+      cat > "$out_dir/composer.json" <<EOF
+{
+    "name": "${composer_name}",
+    "description": "Tyhp runtime parallel (PHP ${php_label}) — process pool for isolated CPU work",
+    "type": "library",
+    "bin": [
+        "bin/tyhp-parallel"
+    ],
+    "license": "Apache-2.0",
+    "version": "${version}",
+    "extra": {
+        "tyhp": {
+            "interopContractVersion": ${interop_version},
+            "require": ${tyhp_require},
+            "package": ${tyhp_package}
+        }
+    },
+    "require": {
+        "php": "${php_c}",
+        "ext-pcntl": "*",
+        "ext-posix": "*",
+        "tyhp/core": "${core_constraint}",
+        "tyhp/async": "${async_constraint}"
+    },
+    "require-dev": {
+        "tyhpdef/php": "@dev"
+    },
+    "config": {
+        "allow-plugins": {
+            "tyhp/core": true
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Tyhp\\\\": "src/Tyhp/"
+        }
+    }
+}
+EOF
+      ;;
+    io)
+      local async_constraint
+      async_constraint="$(async_version_constraint)"
+      cat > "$out_dir/composer.json" <<EOF
+{
+    "name": "${composer_name}",
+    "description": "Tyhp runtime io (PHP ${php_label}) — HTTP, processes, files, sockets, Redis, and databases on the tyhp/async event loop",
+    "type": "library",
+    "license": "Apache-2.0",
+    "version": "${version}",
+    "extra": {
+        "tyhp": {
+            "interopContractVersion": ${interop_version},
+            "require": ${tyhp_require},
+            "package": ${tyhp_package}
+        }
+    },
+    "require": {
+        "php": "${php_c}",
+        "tyhp/core": "${core_constraint}",
+        "tyhp/async": "${async_constraint}"
+    },
+    "require-dev": {
+        "tyhpdef/php": "@dev"
+    },
+    "suggest": {
+        "ext-curl": "Required by HttpClient",
+        "ext-pgsql": "Required by PostgresConnection",
+        "ext-mysqli": "Required by MySqlConnection",
+        "ext-pdo": "Required by PdoConnection",
+        "tyhp/parallel": "Runs PdoConnection, Dns, and Offload work in worker processes instead of blocking the event loop"
+    },
+    "config": {
+        "allow-plugins": {
+            "tyhp/core": true
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Tyhp\\\\": "src/Tyhp/"
+        }
+    }
+}
+EOF
+      ;;
     *)
       echo "unknown package: $pkg" >&2
       return 1
@@ -502,7 +605,7 @@ copy_dist_tyhpdefs() {
   local pkg="$1"
   local php_major="$2"
   local out_dir
-  local src_dir="$SCRIPT_DIR/$pkg"
+  local src_dir="$TYHP_PKG_DIR/$pkg"
 
   out_dir="$(dist_package_dir "$pkg" "$php_major")"
 
@@ -518,7 +621,7 @@ copy_dist_plugin() {
   local pkg="$1"
   local php_major="$2"
   local out_dir
-  local src_dir="$SCRIPT_DIR/$pkg/plugin"
+  local src_dir="$TYHP_PKG_DIR/$pkg/plugin"
 
   [[ "$pkg" == "core" ]] || return 0
 
@@ -532,8 +635,29 @@ copy_dist_plugin() {
   cp -R "$src_dir" "$out_dir/plugin"
 }
 
+# Copy the worker-service launcher into published parallel artifacts.
+copy_dist_cli() {
+  local pkg="$1"
+  local php_major="$2"
+  local out_dir
+  local src
+
+  [[ "$pkg" == "parallel" ]] || return 0
+
+  src="$TYHP_PKG_DIR/$pkg/bin/tyhp-parallel"
+  if [[ ! -f "$src" ]]; then
+    echo "missing parallel cli: $src" >&2
+    return 1
+  fi
+
+  out_dir="$(dist_package_dir "$pkg" "$php_major")"
+  mkdir -p "$out_dir/bin"
+  cp "$src" "$out_dir/bin/tyhp-parallel"
+  chmod +x "$out_dir/bin/tyhp-parallel"
+}
+
 # Point dist/tyhp-<pkg>/<php_major>.latest at the version just built, so other packages
-# can depend on a stable path (e.g. ../dist/tyhp-core/805.latest) across version bumps.
+# can depend on a stable path (e.g. ../../dist/tyhp-core/805.latest) across version bumps.
 # The link target is relative, keeping the dist tree relocatable.
 link_dist_latest_major() {
   local pkg="$1"
@@ -571,8 +695,32 @@ finalize_dist_package() {
   write_dist_license "$pkg" "$php_major"
   copy_dist_tyhpdefs "$pkg" "$php_major"
   copy_dist_plugin "$pkg" "$php_major"
+  copy_dist_cli "$pkg" "$php_major"
   cleanup_dist_build_artifacts "$pkg" "$php_major"
   link_dist_latest_major "$pkg" "$php_major"
+}
+
+# Remove a previous dist tree. A full build calls this before any package so
+# old 80N.x.y directories and .latest links cannot outlive a version bump.
+# A single-package build leaves dist alone: that package may depend on a
+# sibling that was already built.
+clear_dist() {
+  echo "==> Clearing dist/"
+  rm -rf "$SCRIPT_DIR/dist"
+  mkdir -p "$SCRIPT_DIR/dist"
+}
+
+# Path installs are symlinks into dist/ and packages/tyhpdef/. composer update
+# dumps the autoload of whatever is already in vendor/ before it can replace
+# those links, so a deleted dist version fails on src/_functions.php. Drop
+# vendor/ and the lock, then let update install from the path repos and write
+# a new lock.
+reset_package_composer_install() {
+  local pkg_dir="$TYHP_PKG_DIR/$1"
+
+  echo "==> Resetting vendor and lock ($1)"
+  rm -rf "$pkg_dir/vendor"
+  rm -f "$pkg_dir/composer.lock"
 }
 
 # Refresh vendor/ from the package's composer.json before compiling so tyhpdef
@@ -581,14 +729,16 @@ run_composer_update() {
   local pkg="$1"
   local code
 
-  if [[ ! -f "$SCRIPT_DIR/$pkg/composer.json" ]]; then
-    echo "composer.json not found: $SCRIPT_DIR/$pkg/composer.json" >&2
+  if [[ ! -f "$TYHP_PKG_DIR/$pkg/composer.json" ]]; then
+    echo "composer.json not found: $TYHP_PKG_DIR/$pkg/composer.json" >&2
     return 1
   fi
 
+  reset_package_composer_install "$pkg"
+
   echo "==> composer update ($pkg)"
   set +e
-  (cd "$SCRIPT_DIR/$pkg" && composer update --no-interaction)
+  (cd "$TYHP_PKG_DIR/$pkg" && composer update --no-interaction)
   code=$?
   set -e
 
@@ -607,7 +757,7 @@ run_tyhp_build() {
 
   echo "==> Building $pkg ($label) -> dist/tyhp-${pkg}/$(package_version "$php_major")/"
   set +e
-  (cd "$SCRIPT_DIR/$pkg" && dotnet "$TYHP_DLL" build --clean \
+  (cd "$TYHP_PKG_DIR/$pkg" && dotnet "$TYHP_DLL" build --clean \
     --output:phpVersion="$php_version")
   code=$?
   set -e
@@ -632,7 +782,7 @@ run_single_version_build() {
   echo "==> Building $pkg"
   run_composer_update "$pkg" || return $?
   set +e
-  (cd "$SCRIPT_DIR/$pkg" && dotnet "$TYHP_DLL" build)
+  (cd "$TYHP_PKG_DIR/$pkg" && dotnet "$TYHP_DLL" build)
   code=$?
   set -e
 
@@ -649,7 +799,7 @@ clear_package_cache() {
 
   echo "==> Clearing cache for $pkg"
   set +e
-  (cd "$SCRIPT_DIR/$pkg" && dotnet "$TYHP_DLL" clear_cache)
+  (cd "$TYHP_PKG_DIR/$pkg" && dotnet "$TYHP_DLL" clear_cache)
   code=$?
   set -e
 

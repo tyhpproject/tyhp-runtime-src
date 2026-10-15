@@ -1,0 +1,262 @@
+<?tyhp
+
+namespace Tyhp\Io\Redis;
+
+use Tyhp\CancellationToken;
+use Tyhp\Io\Exceptions\RedisException;
+use Tyhp\Io\IoPending;
+use Tyhp\Io\Socket\Socket;
+use Tyhp\Io\Socket\SocketConnection;
+use Tyhp\Promise;
+
+/**
+ * Redis client speaking RESP2 over one connection.
+ *
+ * Commands from concurrent fibers are pipelined on the connection, and each
+ * Promise resolves with its own reply. Error replies reject with RedisException
+ * and leave the connection usable. A transport failure rejects every pending
+ * command and closes the client. Every command must produce exactly one reply,
+ * so do not send SUBSCRIBE, PSUBSCRIBE, or MONITOR through commandAsync().
+ */
+final class RedisClient {
+    private RespParser $parser;
+    private array<int, IoPending<mixed>> $waiting = [];
+    private bool $readerRunning = false;
+    private bool $closed = false;
+
+    private function __construct(private readonly SocketConnection $connection) {
+        $this->parser = new RespParser();
+    }
+
+    /**
+     * Connects, then sends AUTH and SELECT when the options ask for them.
+     */
+    async public static function connectAsync(?RedisOptions $options = null, ?CancellationToken $token = null): RedisClient {
+        RedisOptions $settings = $options ?? new RedisOptions();
+        string $address = ($settings->tls ? 'tls://' : 'tcp://') . $settings->host . ':' . $settings->port;
+        SocketConnection $connection = await Socket::connectAsync($address, $settings->connectTimeoutMs, $token);
+        RedisClient $client = new RedisClient($connection);
+        try {
+            ?string $password = $settings->password;
+            ?string $username = $settings->username;
+            if ($password !== null && $username !== null) {
+                await $client->commandAsync('AUTH', $username, $password);
+            } else if ($password !== null) {
+                await $client->commandAsync('AUTH', $password);
+            }
+            if ($settings->database !== 0) {
+                await $client->commandAsync('SELECT', $settings->database);
+            }
+        } catch (\Throwable $e) {
+            $client->close();
+            throw $e;
+        }
+        return $client;
+    }
+
+    /**
+     * Sends one command. The reply decodes to string (simple and bulk strings),
+     * int, null (nil), or array<int, mixed> (arrays; nested error replies become
+     * RedisException values).
+     */
+    public function commandAsync(string $name, string|int|float ...$arguments): Promise<mixed> {
+        IoPending<mixed> $pending = new IoPending<mixed>();
+        if ($this->closed) {
+            $pending->reject(new RedisException('The Redis connection is closed.'));
+            return $pending->promise();
+        }
+        array<int, string> $parts = [$name];
+        foreach ($arguments as $argument) {
+            $parts[] = (string) $argument;
+        }
+        $this->waiting[] = $pending;
+        $this->connection->writeAsync(RespParser::encode($parts))->catch(function (\Throwable $error): void {
+            $this->fail(new RedisException('Writing to Redis failed: ' . $error->getMessage(), $error));
+        });
+        $this->ensureReader();
+        return $pending->promise();
+    }
+
+    async public function pingAsync(): string {
+        return self::stringReply(await $this->commandAsync('PING'));
+    }
+
+    async public function getAsync(string $key): ?string {
+        mixed $reply = await $this->commandAsync('GET', $key);
+        return $reply === null ? null : self::stringReply($reply);
+    }
+
+    /**
+     * Sets $key. A positive $ttlMs expires the key after that many milliseconds.
+     */
+    async public function setAsync(string $key, string $value, int $ttlMs = 0): void {
+        if ($ttlMs > 0) {
+            await $this->commandAsync('SET', $key, $value, 'PX', $ttlMs);
+        } else {
+            await $this->commandAsync('SET', $key, $value);
+        }
+    }
+
+    /**
+     * Deletes the keys and returns how many existed.
+     */
+    async public function delAsync(string $key, string ...$keys): int {
+        return self::intReply(await $this->commandAsync('DEL', $key, ...$keys));
+    }
+
+    async public function existsAsync(string $key): bool {
+        return self::intReply(await $this->commandAsync('EXISTS', $key)) > 0;
+    }
+
+    async public function incrAsync(string $key, int $by = 1): int {
+        return self::intReply(await $this->commandAsync('INCRBY', $key, $by));
+    }
+
+    /**
+     * Returns false when $key does not exist.
+     */
+    async public function expireAsync(string $key, int $seconds): bool {
+        return self::intReply(await $this->commandAsync('EXPIRE', $key, $seconds)) === 1;
+    }
+
+    /**
+     * Sets hash fields and returns how many were new.
+     */
+    async public function hSetAsync(string $key, array<string, string> $fields): int {
+        array<int, string> $arguments = [$key];
+        foreach ($fields as $field => $value) {
+            $arguments[] = $field;
+            $arguments[] = $value;
+        }
+        return self::intReply(await $this->commandAsync('HSET', ...$arguments));
+    }
+
+    async public function hGetAsync(string $key, string $field): ?string {
+        mixed $reply = await $this->commandAsync('HGET', $key, $field);
+        return $reply === null ? null : self::stringReply($reply);
+    }
+
+    async public function hGetAllAsync(string $key): array<string, string> {
+        array<int, string> $flat = self::stringList(await $this->commandAsync('HGETALL', $key));
+        array<string, string> $fields = [];
+        for (int $i = 0; $i + 1 < \count($flat); $i += 2) {
+            $fields[$flat[$i]] = $flat[$i + 1];
+        }
+        return $fields;
+    }
+
+    /**
+     * Prepends values and returns the new list length.
+     */
+    async public function lPushAsync(string $key, string $value, string ...$values): int {
+        return self::intReply(await $this->commandAsync('LPUSH', $key, $value, ...$values));
+    }
+
+    /**
+     * Appends values and returns the new list length.
+     */
+    async public function rPushAsync(string $key, string $value, string ...$values): int {
+        return self::intReply(await $this->commandAsync('RPUSH', $key, $value, ...$values));
+    }
+
+    async public function lRangeAsync(string $key, int $start = 0, int $stop = -1): array<int, string> {
+        return self::stringList(await $this->commandAsync('LRANGE', $key, $start, $stop));
+    }
+
+    /**
+     * Returns the number of subscribers that received the message.
+     */
+    async public function publishAsync(string $channel, string $message): int {
+        return self::intReply(await $this->commandAsync('PUBLISH', $channel, $message));
+    }
+
+    /**
+     * Closes the connection. Commands still waiting reject with RedisException.
+     */
+    public function close(): void {
+        $this->fail(new RedisException('The Redis connection is closed.'));
+    }
+
+    public function isClosed(): bool {
+        return $this->closed;
+    }
+
+    private function ensureReader(): void {
+        if ($this->readerRunning) {
+            return;
+        }
+        $this->readerRunning = true;
+        $this->readReplies();
+    }
+
+    async private function readReplies(): void {
+        try {
+            while (\count($this->waiting) > 0 && !$this->closed) {
+                string $chunk = await $this->connection->readAsync();
+                if ($chunk === '') {
+                    throw new RedisException('Redis closed the connection.');
+                }
+                $this->parser->feed($chunk);
+                ?RespReply $reply = $this->parser->next();
+                while ($reply !== null) {
+                    $this->deliver($reply);
+                    $reply = $this->parser->next();
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->fail($e instanceof RedisException ? $e : new RedisException('Reading from Redis failed: ' . $e->getMessage(), $e));
+        } finally {
+            $this->readerRunning = false;
+        }
+    }
+
+    private function deliver(RespReply $reply): void {
+        ?IoPending<mixed> $pending = \array_shift($this->waiting);
+        if ($pending === null) {
+            throw new RedisException('Redis sent a reply with no command waiting for it.');
+        }
+        ?string $error = $reply->error;
+        if ($error !== null) {
+            $pending->reject(new RedisException($error));
+            return;
+        }
+        $pending->resolve($reply->value);
+    }
+
+    private function fail(RedisException $error): void {
+        if (!$this->closed) {
+            $this->closed = true;
+            $this->connection->close();
+        }
+        array<int, IoPending<mixed>> $waiting = $this->waiting;
+        $this->waiting = [];
+        foreach ($waiting as $pending) {
+            $pending->reject($error);
+        }
+    }
+
+    private static function stringReply(mixed $reply): string {
+        if (\is_string($reply)) {
+            return $reply;
+        }
+        throw new RedisException('Expected a string reply, got ' . \get_debug_type($reply) . '.');
+    }
+
+    private static function intReply(mixed $reply): int {
+        if (\is_int($reply)) {
+            return $reply;
+        }
+        throw new RedisException('Expected an integer reply, got ' . \get_debug_type($reply) . '.');
+    }
+
+    private static function stringList(mixed $reply): array<int, string> {
+        if (!\is_array($reply)) {
+            throw new RedisException('Expected an array reply, got ' . \get_debug_type($reply) . '.');
+        }
+        array<int, string> $items = [];
+        foreach ($reply as $item) {
+            $items[] = self::stringReply($item);
+        }
+        return $items;
+    }
+}

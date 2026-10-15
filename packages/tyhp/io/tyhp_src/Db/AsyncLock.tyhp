@@ -1,0 +1,32 @@
+<?tyhp
+
+namespace Tyhp\Io\Db;
+
+use Tyhp\Deferred;
+
+/**
+ * FIFO mutual exclusion between fibers. release() hands the lock to the next waiter.
+ */
+internal final class AsyncLock {
+    private bool $held = false;
+    private array<int, Deferred<void>> $waiters = [];
+
+    async public function acquire(): void {
+        if (!$this->held) {
+            $this->held = true;
+            return;
+        }
+        Deferred<void> $turn = new Deferred<void>();
+        $this->waiters[] = $turn;
+        await $turn->getPromise();
+    }
+
+    public function release(): void {
+        ?Deferred<void> $next = \array_shift($this->waiters);
+        if ($next === null) {
+            $this->held = false;
+            return;
+        }
+        $next->resolve();
+    }
+}

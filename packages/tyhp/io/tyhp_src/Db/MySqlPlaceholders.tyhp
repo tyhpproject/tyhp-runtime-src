@@ -1,0 +1,98 @@
+<?tyhp
+
+namespace Tyhp\Io\Db;
+
+/**
+ * Replaces ? placeholders with escaped literals. A ? inside a quoted string,
+ * a backtick identifier, or a comment is left alone.
+ */
+internal final class MySqlPlaceholders {
+    public static function interpolate(string $sql, array<int, DbValue> $params, callable(string): string $escape): string {
+        array<int, DbValue> $values = \array_values($params);
+        string $out = '';
+        int $length = \strlen($sql);
+        int $i = 0;
+        int $used = 0;
+        while ($i < $length) {
+            int $plain = \strcspn($sql, "'\"`#-/?", $i);
+            if ($plain > 0) {
+                $out .= \substr($sql, $i, $plain);
+                $i += $plain;
+                continue;
+            }
+            string $char = $sql[$i];
+            int $end = $i + 1;
+            if ($char === "'" || $char === '"' || $char === '`') {
+                $end = self::quotedEnd($sql, $i, $char);
+            } else if ($char === '#' || ($char === '-' && self::startsDashComment($sql, $i))) {
+                int|false $newline = \strpos($sql, "\n", $i);
+                $end = $newline === false ? $length : $newline;
+            } else if ($char === '/' && ($sql[$i + 1] ?? '') === '*') {
+                int|false $close = \strpos($sql, '*/', $i + 2);
+                $end = $close === false ? $length : $close + 2;
+            } else if ($char === '?') {
+                if ($used >= \count($values)) {
+                    throw new \InvalidArgumentException('The statement has more ? placeholders than parameters.');
+                }
+                $out .= self::literal($values[$used], $escape);
+                $used++;
+                $i++;
+                continue;
+            }
+            $out .= \substr($sql, $i, $end - $i);
+            $i = $end;
+        }
+        if ($used !== \count($values)) {
+            throw new \InvalidArgumentException(
+                'The statement has ' . $used . ' ? placeholders but ' . \count($values) . ' parameters.'
+            );
+        }
+        return $out;
+    }
+
+    private static function quotedEnd(string $sql, int $start, string $quote): int {
+        int $length = \strlen($sql);
+        int $i = $start + 1;
+        while ($i < $length) {
+            string $char = $sql[$i];
+            if ($char === '\\' && $quote !== '`') {
+                $i += 2;
+            } else if ($char === $quote) {
+                if (($sql[$i + 1] ?? '') !== $quote) {
+                    return $i + 1;
+                }
+                $i += 2;
+            } else {
+                $i++;
+            }
+        }
+        return $length;
+    }
+
+    private static function startsDashComment(string $sql, int $i): bool {
+        if (($sql[$i + 1] ?? '') !== '-') {
+            return false;
+        }
+        string $next = $sql[$i + 2] ?? '';
+        return $next === '' || $next === ' ' || $next === "\t" || $next === "\n" || $next === "\r";
+    }
+
+    private static function literal(DbValue $value, callable(string): string $escape): string {
+        if ($value === null) {
+            return 'NULL';
+        }
+        if (\is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+        if (\is_int($value)) {
+            return (string) $value;
+        }
+        if (\is_float($value)) {
+            if (!\is_finite($value)) {
+                throw new \InvalidArgumentException('MySQL cannot store a non-finite float.');
+            }
+            return (string) $value;
+        }
+        return "'" . $escape($value) . "'";
+    }
+}

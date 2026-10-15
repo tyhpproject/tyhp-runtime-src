@@ -1,0 +1,133 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Contracts\AsyncIsDisposable;
+use Tyhp\Contracts\IsDisposable;
+use Tyhp\Exceptions\AggregateException;
+use Tyhp\Exceptions\AsyncContextException;
+use Tyhp\Exceptions\InvalidPromiseStateException;
+
+final class DisposableScope implements IsDisposable {
+    private array<IsDisposable|AsyncIsDisposable> $disposables = [];
+    private bool $disposed = false;
+    private \SplObjectStorage $released;
+
+    private function __construct() {
+        $this->released = new \SplObjectStorage();
+    }
+
+    public static function create(): DisposableScope {
+        return new DisposableScope();
+    }
+
+    /**
+     * Registers a disposable resource with this scope.
+     * Resources are disposed in reverse registration order (LIFO)
+     * when this scope exits via __destruct() or explicit dispose().
+     */
+    public function using(IsDisposable|AsyncIsDisposable $resource): mixed {
+        $this->disposables[] = $resource;
+        return $resource;
+    }
+
+    public function __destruct() {
+        if ($this->disposed) {
+            return;
+        }
+        $this->disposed = true;
+        try {
+            $this->disposeAll();
+        } catch (\Throwable $e) {
+            \trigger_error(
+                \sprintf('DisposableScope disposal error during destruction: %s', $e->getMessage()),
+                E_USER_WARNING
+            );
+        }
+    }
+
+    public function dispose(): void {
+        if ($this->disposed) {
+            return;
+        }
+        $this->disposed = true;
+        $this->disposeAll();
+    }
+
+    /**
+     * Releases a resource from this scope so it will not be disposed on scope exit.
+     * Call this after manually disposing a resource to prevent double-disposal.
+     */
+    public function release(IsDisposable|AsyncIsDisposable $resource): void {
+        $this->released->offsetSet($resource, null);
+    }
+
+    /**
+     * Disposes all registered resources in reverse order, skipping any
+     * that have been released.
+     */
+    private function disposeAll(): void {
+        array<\Throwable> $errors = [];
+
+        foreach (\array_reverse($this->disposables) as $disposable) {
+            if ($this->released->offsetExists($disposable)) {
+                continue;
+            }
+            try {
+                if ($disposable instanceof AsyncIsDisposable) {
+                    $this->awaitDispose($disposable->disposeAsync());
+                } else if ($disposable instanceof IsDisposable) {
+                    $disposable->dispose();
+                }
+            } catch (\Throwable $e) {
+                $errors[] = $e;
+            }
+        }
+        $this->disposables = [];
+        if (!empty($errors)) {
+            foreach ($errors as $err) {
+                \trigger_error(
+                    \sprintf('DisposableScope disposal error [%s]: %s', \get_class($err), $err->getMessage()),
+                    E_USER_WARNING
+                );
+            }
+            if (\count($errors) === 1) {
+                throw $errors[0];
+            }
+            throw new AggregateException($errors, 'One or more errors during disposal');
+        }
+    }
+
+    /**
+     * Waits for an async disposable to settle without re-entering EventLoop::run()
+     * or draining unrelated work after this promise completes.
+     *
+     * Already-settled promises are observed immediately (including from a sync
+     * callback on a live loop). A pending promise inside a Fiber uses _await so
+     * the running loop can resume this Fiber. A pending promise with the loop
+     * idle uses wait() (runUntilSettled). A pending promise from a synchronous
+     * callback while the loop is running cannot be awaited and throws.
+     */
+    private function awaitDispose(Promise<void> $promise): void {
+        if ($promise->isFaulted()) {
+            throw $promise->getError() ?? new InvalidPromiseStateException('Promise was rejected without an error.');
+        }
+        if ($promise->isFulfilled()) {
+            return;
+        }
+
+        if (\Fiber::getCurrent() !== null) {
+            \Tyhp\Promise::_await<void>($promise);
+            return;
+        }
+
+        EventLoop $loop = EventLoop::getInstance();
+        if ($loop->isRunning()) {
+            throw new AsyncContextException(
+                'Cannot wait for async disposal from a synchronous callback while the EventLoop is running. Dispose from a Fiber or after the loop has stopped.'
+            );
+        }
+
+        $promise->wait();
+    }
+}

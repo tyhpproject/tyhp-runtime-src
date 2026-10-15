@@ -1,0 +1,316 @@
+<?tyhp
+
+namespace Tyhp\Io\Http;
+
+use Tyhp\CancellationToken;
+use Tyhp\EventLoop;
+use Tyhp\Exceptions\TimeoutException;
+use Tyhp\Io\Exceptions\HttpException;
+use Tyhp\Io\Exceptions\IoUnavailableException;
+use Tyhp\Io\IoPending;
+use Tyhp\Promise;
+
+/**
+ * Non-blocking HTTP and HTTPS over ext-curl.
+ *
+ * Requests from one client share a curl multi handle and run concurrently on
+ * the tyhp/async event loop. Only http:// and https:// URLs are accepted,
+ * including on redirects. Cancelling a token aborts its transfer.
+ */
+final class HttpClient {
+    private static ?HttpClient $shared = null;
+
+    private ?\CurlMultiHandle $multi = null;
+    private array<int, HttpTransfer> $transfers = [];
+    private ?string $timer = null;
+    private ?EventLoop $timerLoop = null;
+
+    /**
+     * @param $defaultHeaders Sent with every request unless the request sets the
+     *     same header name (case-insensitive).
+     */
+    public function __construct(
+        private readonly array<string, string> $defaultHeaders = []
+    ) {}
+
+    /**
+     * A process-wide client with no default headers.
+     */
+    public static function shared(): HttpClient {
+        HttpClient $client = self::$shared ?? new HttpClient();
+        self::$shared = $client;
+        return $client;
+    }
+
+    /**
+     * Starts the request and resolves when the whole response has arrived.
+     *
+     * Rejects with HttpException for transport failures, TimeoutException when
+     * timeoutMs elapses, and OperationCancelledException when $token is cancelled.
+     */
+    public function sendAsync(HttpRequest $request, ?CancellationToken $token = null): Promise<HttpResponse> {
+        IoPending<HttpResponse> $pending = new IoPending<HttpResponse>();
+        try {
+            $token?->throwIfCancellationRequested();
+            IoUnavailableException::requireExtension('curl', 'HttpClient');
+            $this->start($request, $pending, $token);
+        } catch (\Throwable $e) {
+            $pending->reject($e);
+        }
+        return $pending->promise();
+    }
+
+    public function getAsync(string $url, array<string, string> $headers = [], ?CancellationToken $token = null): Promise<HttpResponse> {
+        return $this->sendAsync(new HttpRequest() with [url => $url, headers => $headers], $token);
+    }
+
+    public function postAsync(
+        string $url,
+        string $body,
+        array<string, string> $headers = [],
+        ?CancellationToken $token = null
+    ): Promise<HttpResponse> {
+        return $this->sendAsync(new HttpRequest() with [url => $url, method => 'POST', headers => $headers, body => $body], $token);
+    }
+
+    /**
+     * Sends $payload as a JSON body with Content-Type: application/json.
+     * Throws \JsonException when $payload cannot be encoded.
+     */
+    public function postJsonAsync(
+        string $url,
+        mixed $payload,
+        array<string, string> $headers = [],
+        ?CancellationToken $token = null
+    ): Promise<HttpResponse> {
+        string $body = \json_encode($payload, \JSON_THROW_ON_ERROR);
+        $headers['Content-Type'] = 'application/json';
+        return $this->postAsync($url, $body, $headers, $token);
+    }
+
+    /**
+     * GETs $url, requires a 2xx status, and decodes the body into T. Sends
+     * Accept: application/json unless $headers sets an Accept header (the name
+     * is matched case-insensitively).
+     */
+    async public function getJsonAsync<T extends struct>(
+        string $url,
+        array<string, string> $headers = [],
+        ?CancellationToken $token = null
+    ): T {
+        if (!self::hasHeader($headers, 'Accept')) {
+            $headers['Accept'] = 'application/json';
+        }
+        HttpResponse $response = await $this->getAsync($url, $headers, $token);
+        return $response->ensureSuccess()->json<T>();
+    }
+
+    /**
+     * Header names are case-insensitive.
+     */
+    private static function hasHeader(array<string, string> $headers, string $name): bool {
+        string $wanted = \strtolower($name);
+        foreach (\array_keys($headers) as $existing) {
+            if (\strtolower($existing) === $wanted) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function start(HttpRequest $request, IoPending<HttpResponse> $pending, ?CancellationToken $token): void {
+        string $url = $request->url;
+        string $scheme = \strtolower((string) \parse_url($url, \PHP_URL_SCHEME));
+        if ($scheme !== 'http' && $scheme !== 'https') {
+            throw new \InvalidArgumentException('HttpClient only accepts http:// and https:// URLs, got "' . $url . '".');
+        }
+
+        \CurlHandle|false $handle = \curl_init();
+        if ($handle === false) {
+            throw new HttpException('curl_init() failed.');
+        }
+        HttpTransfer $transfer = new HttpTransfer($handle, $pending, $url, $request->timeoutMs, $request->connectTimeoutMs);
+
+        array<int, mixed> $options = [
+            \CURLOPT_URL => $url,
+            \CURLOPT_RETURNTRANSFER => true,
+            \CURLOPT_HTTPHEADER => $this->headerLines($request->headers),
+            \CURLOPT_HEADERFUNCTION => function (\CurlHandle $curl, string $line) use ($transfer): int {
+                $transfer->headerLine($line);
+                return \strlen($line);
+            },
+            \CURLOPT_TIMEOUT_MS => \max(0, $request->timeoutMs),
+            \CURLOPT_CONNECTTIMEOUT_MS => \max(0, $request->connectTimeoutMs),
+            \CURLOPT_FOLLOWLOCATION => $request->followRedirects,
+            \CURLOPT_MAXREDIRS => \max(0, $request->maxRedirects),
+            \CURLOPT_SSL_VERIFYPEER => $request->verifyTls,
+            \CURLOPT_SSL_VERIFYHOST => $request->verifyTls ? 2 : 0,
+            \CURLOPT_PROTOCOLS => \CURLPROTO_HTTP | \CURLPROTO_HTTPS,
+            \CURLOPT_REDIR_PROTOCOLS => \CURLPROTO_HTTP | \CURLPROTO_HTTPS,
+            \CURLOPT_ENCODING => '',
+            \CURLOPT_NOSIGNAL => true,
+        ];
+
+        string $method = \strtoupper($request->method);
+        if ($method === 'HEAD') {
+            $options[\CURLOPT_NOBODY] = true;
+        } else if ($method === 'GET' && $request->body === '') {
+            $options[\CURLOPT_HTTPGET] = true;
+        } else {
+            $options[\CURLOPT_CUSTOMREQUEST] = $method;
+            $options[\CURLOPT_POSTFIELDS] = $request->body;
+        }
+
+        if (!\curl_setopt_array($handle, $options)) {
+            throw new HttpException('Invalid curl options for ' . $url . ': ' . \curl_error($handle));
+        }
+
+        \CurlMultiHandle $multi = $this->multi();
+        int $added = \curl_multi_add_handle($multi, $handle);
+        if ($added !== \CURLM_OK) {
+            throw new HttpException('curl_multi_add_handle() failed: ' . \curl_multi_strerror($added), $added);
+        }
+        $this->transfers[\spl_object_id($handle)] = $transfer;
+        $pending->cancelWith($token, function () use ($transfer): void {
+            $this->detach($transfer);
+        });
+        $this->schedule();
+    }
+
+    private function headerLines(array<string, string> $requestHeaders): array<int, string> {
+        array<string, string> $merged = [];
+        array<string, string> $names = [];
+        foreach ([$this->defaultHeaders, $requestHeaders] as $headers) {
+            foreach ($headers as $name => $value) {
+                string $key = \strtolower($name);
+                $merged[$key] = $value;
+                $names[$key] = $name;
+            }
+        }
+        if (!isset($merged['expect'])) {
+            $merged['expect'] = '';
+            $names['expect'] = 'Expect';
+        }
+        array<int, string> $lines = [];
+        foreach ($merged as $key => $value) {
+            if (\preg_match('/[\r\n]/', $names[$key] . $value) === 1) {
+                throw new \InvalidArgumentException('HTTP header "' . $names[$key] . '" contains a line break.');
+            }
+            $lines[] = $value === '' ? $names[$key] . ':' : $names[$key] . ': ' . $value;
+        }
+        return $lines;
+    }
+
+    private function multi(): \CurlMultiHandle {
+        \CurlMultiHandle $multi = $this->multi ?? \curl_multi_init();
+        $this->multi = $multi;
+        return $multi;
+    }
+
+    private function schedule(): void {
+        EventLoop $loop = EventLoop::getInstance();
+        if ($this->timer !== null && $this->timerLoop === $loop) {
+            return;
+        }
+        $this->timerLoop = $loop;
+        $this->timer = $loop->delay(1, function (): void {
+            $this->timer = null;
+            $this->poll();
+        });
+    }
+
+    private function poll(): void {
+        \CurlMultiHandle $multi = $this->multi();
+        int $running = 0;
+        int $status = \CURLM_CALL_MULTI_PERFORM;
+        while ($status === \CURLM_CALL_MULTI_PERFORM) {
+            $status = \curl_multi_exec($multi, $running);
+        }
+
+        bool $more = true;
+        while ($more) {
+            mixed $info = \curl_multi_info_read($multi);
+            if (!\is_array($info)) {
+                $more = false;
+                continue;
+            }
+            mixed $handle = $info['handle'] ?? null;
+            mixed $result = $info['result'] ?? null;
+            if ($handle instanceof \CurlHandle && \is_int($result)) {
+                $this->complete($handle, $result);
+            }
+        }
+
+        if ($status !== \CURLM_OK) {
+            HttpException $error = new HttpException('curl_multi_exec() failed: ' . \curl_multi_strerror($status), $status);
+            foreach ($this->transfers as $transfer) {
+                $this->detach($transfer);
+                $transfer->pending->reject($error);
+            }
+            return;
+        }
+        if (\count($this->transfers) > 0) {
+            $this->schedule();
+        }
+    }
+
+    private function complete(\CurlHandle $handle, int $result): void {
+        ?HttpTransfer $transfer = $this->transfers[\spl_object_id($handle)] ?? null;
+        if ($transfer === null) {
+            \curl_multi_remove_handle($this->multi(), $handle);
+            return;
+        }
+        $this->detach($transfer);
+
+        if ($result === \CURLE_OK) {
+            $transfer->pending->resolve(new HttpResponse(
+                (int) \curl_getinfo($handle, \CURLINFO_RESPONSE_CODE),
+                $transfer->headers,
+                (string) \curl_multi_getcontent($handle),
+                (string) \curl_getinfo($handle, \CURLINFO_EFFECTIVE_URL),
+            ));
+            return;
+        }
+        if ($result === \CURLE_OPERATION_TIMEDOUT) {
+            $transfer->pending->reject($this->timeoutError($transfer, $handle));
+            return;
+        }
+        string $error = \curl_error($handle);
+        $transfer->pending->reject(new HttpException(
+            'HTTP request to ' . $transfer->url . ' failed: ' . ($error !== '' ? $error : \curl_strerror($result)),
+            $result
+        ));
+    }
+
+    /**
+     * curl reports the connect timeout and the whole-transfer timeout with the same code. The
+     * connect limit is the one that fired when the connection was never established and that
+     * limit is the shorter (or the only) one.
+     */
+    private function timeoutError(HttpTransfer $transfer, \CurlHandle $handle): TimeoutException {
+        bool $connected = (int) \curl_getinfo($handle, \CURLINFO_CONNECT_TIME_T) > 0;
+        bool $connectLimitFirst = $transfer->connectTimeoutMs > 0
+            && ($transfer->timeoutMs <= 0 || $transfer->connectTimeoutMs <= $transfer->timeoutMs);
+
+        if (!$connected && $connectLimitFirst) {
+            return new TimeoutException(
+                'HTTP request to ' . $transfer->url . ' timed out connecting after ' . $transfer->connectTimeoutMs . 'ms.',
+                $transfer->connectTimeoutMs
+            );
+        }
+
+        return new TimeoutException(
+            'HTTP request to ' . $transfer->url . ' timed out after ' . $transfer->timeoutMs . 'ms.',
+            $transfer->timeoutMs
+        );
+    }
+
+    private function detach(HttpTransfer $transfer): void {
+        int $id = \spl_object_id($transfer->handle);
+        if (!isset($this->transfers[$id])) {
+            return;
+        }
+        unset($this->transfers[$id]);
+        \curl_multi_remove_handle($this->multi(), $transfer->handle);
+    }
+}

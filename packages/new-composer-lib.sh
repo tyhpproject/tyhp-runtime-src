@@ -2,13 +2,13 @@
 # Scaffold a tyhpdef/<vendor>-<name> runtime package that wraps a Packagist library
 # and generate Layer 1 tyhpdefs with `tyhp generate_tyhpdef --package-path`.
 #
-# Per-upstream-version trees: packages/<vendor>-<name>/<upstream>/.
+# Per-upstream-version trees: packages/tyhpdef/<vendor>-<name>/<upstream>/.
 # Folder name is the upstream version string (3.0.2, 3.0.0-alpha.1), not the
 # Tyhp four-part version. Tyhpdef-only revisions (3.0.2.1) stay in that same
 # folder and only bump composer.json version. Other version directories are
 # never overwritten. --force replaces only the requested version directory.
 #
-# PHP-ext packages and php/core/async/decimal/lambda stay flat (no version
+# PHP-ext packages and php stay flat under packages/tyhpdef/ (no version
 # folder). This script only writes Composer-lib version trees.
 #
 # composer.json: php >=8.2 and vendor/package in require; tyhpdef/php @dev in
@@ -33,7 +33,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPILER_ROOT="$(cd "$REPO_ROOT/../tyhp" && pwd)"
 TYHP_DLL="${TYHP_DLL:-$COMPILER_ROOT/bin/Debug/net9.0/tyhp.dll}"
-LICENSE_SRC="$SCRIPT_DIR/php-ext-bz2/LICENSE"
+TYHPDEF_DIR="$SCRIPT_DIR/tyhpdef"
+LICENSE_SRC="$TYHPDEF_DIR/php-ext-bz2/LICENSE"
 
 DRY_RUN=0
 FORCE=0
@@ -47,13 +48,13 @@ usage() {
 Usage: new-composer-lib.sh [options] <vendor/package>
 
 Download a Packagist package and scaffold a Tyhp runtime package at
-packages/<vendor>-<name>/<upstream>/ (slash → dash; folder name is the
+packages/tyhpdef/<vendor>-<name>/<upstream>/ (slash → dash; folder name is the
 upstream version, not the Tyhp four-part version). Then run Composer in that
 directory and generate Layer 1 from vendor/<vendor>/<package> via the existing
 --package-path flag (there is no --composer-package alias).
 
 Defaults
-  output dir     packages/<vendor>-<name>/<upstream>/
+  output dir     packages/tyhpdef/<vendor>-<name>/<upstream>/
   composer       run in that version directory
   generate       tyhp generate_tyhpdef --package-path=./vendor/<vendor>/<package>
                  --output=./_tyhpdef/ --overwrite
@@ -93,7 +94,7 @@ Versioning
 Per-upstream-version directories
   Each upstream version is its own tree:
 
-    packages/<vendor>-<name>/<upstream>/
+    packages/tyhpdef/<vendor>-<name>/<upstream>/
 
   Scaffolding 3.0.1 while 3.0.2 already exists writes only 3.0.1/ and does not
   need --force. --force replaces that one version directory (hand-written
@@ -116,9 +117,9 @@ Options:
 
 Examples:
   ./new-composer-lib.sh psr/log --version 3.0.2
-                          → packages/psr-log/3.0.2/
+                          → packages/tyhpdef/psr-log/3.0.2/
   ./new-composer-lib.sh psr/log --version 3.0.1
-                          → packages/psr-log/3.0.1/ (3.0.2/ untouched)
+                          → packages/tyhpdef/psr-log/3.0.1/ (3.0.2/ untouched)
   ./new-composer-lib.sh monolog/monolog --version 3.5.0
   ./new-composer-lib.sh monolog/monolog --version 3.5.0 --revision 1
   ./new-composer-lib.sh monolog/monolog --version 3.5.0-alpha.1
@@ -306,7 +307,7 @@ IFS=$'\t' read -r TYHP_VERSION UPSTREAM_REQUIRE UPSTREAM_DIR <<< "$PARSED"
 VENDOR="${PACKAGE_NAME%%/*}"
 PROJ="${PACKAGE_NAME#*/}"
 DIR_NAME="${VENDOR}-${PROJ}"
-PKG_PARENT="$SCRIPT_DIR/$DIR_NAME"
+PKG_PARENT="$TYHPDEF_DIR/$DIR_NAME"
 PKG_DIR="$PKG_PARENT/$UPSTREAM_DIR"
 PUBLIC_COMPOSER_NAME="tyhpdef/${DIR_NAME}"
 PKG_COMPOSER_NAME="${PUBLIC_COMPOSER_NAME}-impl"

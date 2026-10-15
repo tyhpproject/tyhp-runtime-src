@@ -1,0 +1,208 @@
+<?tyhp
+
+namespace Tyhp\Backend;
+
+/**
+ * Operands are parsed exactly at their own scale. Each operation computes the exact result and
+ * truncates it toward zero to the requested scale, which is what bcmath does.
+ */
+internal final class GmpBackend implements DecimalBackend
+{
+    private static array<int, \GMP> $scaleFactors = [];
+
+    private static function scaleFactor(int $scale): \GMP {
+        return self::$scaleFactors[$scale] ??= \gmp_pow(\gmp_init(10), $scale);
+    }
+
+    /**
+     * Number of digits after the decimal point.
+     */
+    private function scaleOf(string $value): int {
+        $dot = \strpos($value, '.');
+
+        return $dot === false ? 0 : \strlen($value) - $dot - 1;
+    }
+
+    /**
+     * The value's digits as an integer, i.e. the value multiplied by 10 to the power of its own
+     * scale. Nothing is cut off.
+     */
+    private function parse(string $value): \GMP {
+        bool $negative = false;
+
+        if (\str_starts_with($value, '-')) {
+            $negative = true;
+            $value = \substr($value, 1);
+        }
+
+        array $parts = \explode('.', $value, 2);
+        string $intPart = (string) ($parts[0] === '' ? '0' : $parts[0]);
+        string $fracPart = (string) ($parts[1] ?? '');
+
+        \GMP $gmp = \gmp_init($intPart . $fracPart, 10);
+
+        return $negative ? \gmp_neg($gmp) : $gmp;
+    }
+
+    /**
+     * Moves an integer from one decimal scale to another. Widening is exact; narrowing truncates
+     * toward zero.
+     */
+    private function rescale(\GMP $value, int $from, int $to): \GMP {
+        if ($to === $from) {
+            return $value;
+        }
+
+        if ($to > $from) {
+            return \gmp_mul($value, self::scaleFactor($to - $from));
+        }
+
+        return \gmp_div_q($value, self::scaleFactor($from - $to), \GMP_ROUND_ZERO);
+    }
+
+    private function fromScaled(\GMP $value, int $scale): string {
+        string $str = \gmp_strval($value);
+        bool $negative = false;
+
+        if (\str_starts_with($str, '-')) {
+            $negative = true;
+            $str = \substr($str, 1);
+        }
+
+        if ($scale === 0) {
+            return ($negative ? '-' : '') . $str;
+        }
+
+        $str = \str_pad($str, $scale + 1, '0', \STR_PAD_LEFT);
+        string $intPart = \substr($str, 0, -$scale);
+        string $fracPart = \substr($str, -$scale);
+
+        string $result = $intPart . '.' . $fracPart;
+
+        return ($negative ? '-' : '') . $result;
+    }
+
+    public function add(string $a, string $b, int $scale): string {
+        int $sa = $this->scaleOf($a);
+        int $sb = $this->scaleOf($b);
+        int $working = \max($sa, $sb);
+        \GMP $sum = \gmp_add($this->rescale($this->parse($a), $sa, $working), $this->rescale($this->parse($b), $sb, $working));
+
+        return $this->fromScaled($this->rescale($sum, $working, $scale), $scale);
+    }
+
+    public function subtract(string $a, string $b, int $scale): string {
+        int $sa = $this->scaleOf($a);
+        int $sb = $this->scaleOf($b);
+        int $working = \max($sa, $sb);
+        \GMP $difference = \gmp_sub($this->rescale($this->parse($a), $sa, $working), $this->rescale($this->parse($b), $sb, $working));
+
+        return $this->fromScaled($this->rescale($difference, $working, $scale), $scale);
+    }
+
+    public function multiply(string $a, string $b, int $scale): string {
+        \GMP $product = \gmp_mul($this->parse($a), $this->parse($b));
+
+        return $this->fromScaled($this->rescale($product, $this->scaleOf($a) + $this->scaleOf($b), $scale), $scale);
+    }
+
+    public function divide(string $a, string $b, int $scale): string {
+        \GMP $divisor = $this->parse($b);
+
+        if (\gmp_cmp($divisor, \gmp_init(0)) === 0) {
+            throw new \DivisionByZeroError('Division by zero');
+        }
+
+        // (A / 10^sa) / (B / 10^sb) at `scale` digits, as one integer division.
+        \GMP $numerator = \gmp_mul($this->parse($a), self::scaleFactor($this->scaleOf($b) + $scale));
+        \GMP $denominator = \gmp_mul($divisor, self::scaleFactor($this->scaleOf($a)));
+
+        return $this->fromScaled(\gmp_div_q($numerator, $denominator, \GMP_ROUND_ZERO), $scale);
+    }
+
+    public function modulo(string $a, string $b, int $scale): string {
+        \GMP $divisor = $this->parse($b);
+
+        if (\gmp_cmp($divisor, \gmp_init(0)) === 0) {
+            throw new \DivisionByZeroError('Modulo by zero');
+        }
+
+        int $sa = $this->scaleOf($a);
+        int $sb = $this->scaleOf($b);
+        int $working = \max($sa, $sb);
+        \GMP $remainder = \gmp_div_r(
+            $this->rescale($this->parse($a), $sa, $working),
+            $this->rescale($divisor, $sb, $working),
+            \GMP_ROUND_ZERO,
+        );
+
+        return $this->fromScaled($this->rescale($remainder, $working, $scale), $scale);
+    }
+
+    public function power(string $base, int $exponent, int $scale): string {
+        if ($exponent < 0) {
+            throw new \InvalidArgumentException('Negative exponents are not supported');
+        }
+
+        \GMP $result = \gmp_pow($this->parse($base), $exponent);
+
+        return $this->fromScaled($this->rescale($result, $this->scaleOf($base) * $exponent, $scale), $scale);
+    }
+
+    public function sqrt(string $value, int $scale): string {
+        \GMP $parsed = $this->parse($value);
+
+        if (\gmp_cmp($parsed, \gmp_init(0)) < 0) {
+            throw new \InvalidArgumentException('Square root of a negative number is not supported');
+        }
+
+        // floor(sqrt(x) * 10^scale) is the integer square root of floor(x * 10^(2 * scale)).
+        \GMP $radicand = $this->rescale($parsed, $this->scaleOf($value), 2 * $scale);
+
+        return $this->fromScaled(\gmp_sqrt($radicand), $scale);
+    }
+
+    /**
+     * Compares the two values after cutting each to `$scale` digits (the `bccomp()` contract).
+     */
+    public function compare(string $a, string $b, int $scale): -1|0|1 {
+        \GMP $sa = $this->rescale($this->parse($a), $this->scaleOf($a), $scale);
+        \GMP $sb = $this->rescale($this->parse($b), $this->scaleOf($b), $scale);
+        int $cmp = \gmp_cmp($sa, $sb);
+
+        if ($cmp < 0) {
+            return -1;
+        }
+
+        if ($cmp > 0) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    public function negate(string $value): string {
+        string $stripped = \ltrim(\str_replace(['-', '.'], '', $value), '0');
+        if ($stripped === '') {
+            return $value;
+        }
+
+        if (\str_starts_with($value, '-')) {
+            return \substr($value, 1);
+        }
+
+        return '-' . $value;
+    }
+
+    public function abs(string $value): string {
+        if (\str_starts_with($value, '-')) {
+            return \substr($value, 1);
+        }
+
+        return $value;
+    }
+
+    public function getName(): string {
+        return 'gmp';
+    }
+}

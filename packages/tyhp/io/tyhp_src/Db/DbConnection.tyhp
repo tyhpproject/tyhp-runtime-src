@@ -1,0 +1,27 @@
+<?tyhp
+
+namespace Tyhp\Io\Db;
+
+use Tyhp\CancellationToken;
+use Tyhp\Promise;
+
+/**
+ * A database connection whose statements run without blocking the event loop.
+ *
+ * Statements on one connection run one at a time in call order; open more
+ * connections for concurrent queries. Failures reject with DbException.
+ */
+interface DbConnection {
+    /**
+     * Runs one statement with positional parameters.
+     */
+    public function queryAsync(string $sql, array<int, DbValue> $params = [], ?CancellationToken $token = null): Promise<DbResult>;
+
+    /**
+     * Runs the statements in one transaction and resolves with one result per
+     * statement. The first failure rolls the transaction back and rejects.
+     */
+    public function transactionAsync(array<int, DbStatement> $statements, ?CancellationToken $token = null): Promise<array<int, DbResult>>;
+
+    public function close(): void;
+}

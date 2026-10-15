@@ -1,0 +1,325 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Exceptions\OperationCancelledException;
+use Tyhp\Exceptions\ParallelException;
+use Tyhp\Exceptions\ParallelUnavailableException;
+
+/**
+ * Process pool for CPU work that must leave the current process.
+ *
+ * await stays on the tyhp/async fiber loop. A CLI program hosts the pool in
+ * this process: call start() before opening database connections, and the
+ * pool forks with pcntl. A php-fpm worker does not fork. It uses the same
+ * runAsync(), forAsync(), forEachAsync(), and invokeAsync() calls, and
+ * TYHP_PARALLEL_SOCKET names the Unix socket of a worker service started with serve().
+ *
+ * Each task is a serializable ParallelTask, and the process that runs it must
+ * be able to autoload that class. runAsync() resolves with one task's result.
+ * forAsync(), forEachAsync(), and invokeAsync() wait for every task and keep
+ * input keys and order.
+ *
+ * Every call takes an optional CancellationToken. Cancelling removes a queued
+ * task, or stops the worker running it and starts a replacement, and the
+ * Promise rejects with OperationCancelledException.
+ */
+final class Parallel {
+    /**
+     * Prepares this process to run tasks.
+     *
+     * With no TYHP_PARALLEL_SOCKET, forks a pool in this process. Repeat calls
+     * with the same count are ignored. A different count throws. The default
+     * used by runAsync() when start() was not called is 4 workers.
+     *
+     * When TYHP_PARALLEL_SOCKET is set, connects to the worker service and
+     * throws ParallelUnavailableException if it is not accepting connections.
+     * That service chooses the worker count.
+     */
+    public static function start(int $workers = 4): void {
+        self::assertNotWorker();
+        ?string $socket = self::workerServiceSocket();
+        if ($socket !== null) {
+            ParallelClient::instance($socket)->connect();
+            return;
+        }
+        ParallelPool::instance()->start($workers);
+    }
+
+    /**
+     * Hosts the pool and accepts clients until SIGTERM or SIGINT.
+     *
+     * The socket is created with $socketMode (0660 by default). php-fpm workers
+     * set TYHP_PARALLEL_SOCKET to the same path. Run this as the php-fpm user,
+     * or as a user in the same group, and start it before opening database
+     * connections. The service must be able to autoload every task class the
+     * clients send. When a client disconnects, its unfinished tasks are cancelled.
+     */
+    public static function serve(string $socketPath, int $workers = 4, int $socketMode = 0660): void {
+        (new ParallelServer())->serve($socketPath, $workers, $socketMode);
+    }
+
+    /**
+     * Stops this process's workers or closes its worker service connection,
+     * and fails every task that has not finished. A worker service keeps
+     * running when one of its clients shuts down. Safe to call more than once.
+     */
+    public static function shutdown(): void {
+        ParallelClient::shutdown();
+        ParallelPool::shutdown();
+    }
+
+    /**
+     * Returns true when runAsync() can send work to another process: TYHP_PARALLEL_SOCKET
+     * names a worker service, or this is a CLI process with ext-pcntl and ext-posix.
+     * Returns false inside a worker. A configured service is not contacted, so
+     * when that service is down runAsync() throws ParallelUnavailableException.
+     */
+    public static function isAvailable(): bool {
+        if (ParallelPool::inWorker()) {
+            return false;
+        }
+        if (self::workerServiceSocket() !== null) {
+            return true;
+        }
+        string $sapi = \PHP_SAPI;
+        if ($sapi !== 'cli' && $sapi !== 'phpdbg') {
+            return false;
+        }
+        return \function_exists('pcntl_fork') && \function_exists('posix_kill');
+    }
+
+    /**
+     * Queues one task and returns a Promise of its result.
+     *
+     * The task is serialized before this method returns. Throws
+     * ParallelUnavailableException when no pool or service can be reached. The Promise rejects
+     * with ParallelException when the task throws, its worker exits, or the
+     * result does not match T, and with OperationCancelledException when
+     * $token is cancelled first.
+     */
+    public static function runAsync<T extends __Awaited<void|mixed>>(
+        ParallelTask<T> $task,
+        ?CancellationToken $token = null
+    ): Promise<T> {
+        self::assertNotWorker();
+        if ($token !== null && $token->isCancellationRequested()) {
+            return Promise::rejected<T>(new OperationCancelledException($token));
+        }
+
+        string $payload = self::snapshot($task);
+        ParallelBackend $backend = self::backend();
+        Deferred<T> $deferred = new Deferred<T>();
+        bool $settled = false;
+        ?\Closure<callable(): void> $unregister = null;
+
+        int $id = $backend->enqueue(
+            $payload,
+            function (string $result) use ($deferred, &$settled, &$unregister): void {
+                if ($settled) {
+                    return;
+                }
+                $settled = true;
+                if ($unregister !== null) {
+                    $unregister();
+                }
+                ?\Throwable $restoreError = null;
+                mixed $value = null;
+                try {
+                    $value = self::restore($result);
+                } catch (\Throwable $e) {
+                    $restoreError = $e;
+                }
+                if ($restoreError !== null) {
+                    $deferred->reject($restoreError);
+                    return;
+                }
+                if ($value is T) {
+                    $deferred->resolve($value);
+                    return;
+                }
+                $deferred->reject(new ParallelException(
+                    'The task returned ' . \get_debug_type($value) . ', which does not match its declared result type.'
+                ));
+            },
+            function (\Throwable $error) use ($deferred, &$settled, &$unregister): void {
+                if ($settled) {
+                    return;
+                }
+                $settled = true;
+                if ($unregister !== null) {
+                    $unregister();
+                }
+                $deferred->reject($error);
+            },
+        );
+
+        if ($token !== null && !$settled) {
+            CancellationToken $cancelToken = $token;
+            $unregister = $cancelToken->register(function () use ($backend, $id, $cancelToken): void {
+                $backend->cancel($id, new OperationCancelledException($cancelToken));
+            });
+        }
+        return $deferred->getPromise();
+    }
+
+    /**
+     * Runs every index in [$fromInclusive, $toExclusive) and returns the
+     * results keyed by that index. The end index is exclusive, matching
+     * C# Parallel.For. Fails fast like invokeAsync().
+     */
+    async public static function forAsync<T extends __Awaited<void|mixed>>(
+        int $fromInclusive,
+        int $toExclusive,
+        callable(int): ParallelTask<T> $factory,
+        ?CancellationToken $token = null
+    ): array<int, T> {
+        if ($fromInclusive > $toExclusive) {
+            throw new \InvalidArgumentException(
+                'fromInclusive must be less than or equal to toExclusive.'
+            );
+        }
+        array<int, ParallelTask<T>> $tasks = [];
+        for (int $i = $fromInclusive; $i < $toExclusive; $i++) {
+            $tasks[$i] = $factory($i);
+        }
+        return await self::invokeAsync<T, int>($tasks, $token);
+    }
+
+    /**
+     * Builds one task per item in the caller, then runs those tasks on the pool.
+     * Result keys match the input keys. Fails fast like invokeAsync().
+     */
+    async public static function forEachAsync<TItem, TResult extends __Awaited<void|mixed>, TKey extends int|string = int|string>(
+        array<TKey, TItem> $items,
+        callable(TItem): ParallelTask<TResult> $factory,
+        ?CancellationToken $token = null
+    ): array<TKey, TResult> {
+        array<TKey, ParallelTask<TResult>> $tasks = [];
+        foreach ($items as $key => $item) {
+            $tasks[$key] = $factory($item);
+        }
+        return await self::invokeAsync<TResult, TKey>($tasks, $token);
+    }
+
+    /**
+     * Runs every task and returns the results under the same keys.
+     *
+     * When one task fails, the others are cancelled and the first failure is
+     * thrown. When $token is cancelled, every task is cancelled and
+     * OperationCancelledException is thrown.
+     */
+    async public static function invokeAsync<T extends __Awaited<void|mixed>, TKey extends int|string = int|string>(
+        array<TKey, ParallelTask<T>> $tasks,
+        ?CancellationToken $token = null
+    ): array<TKey, T> {
+        $token?->throwIfCancellationRequested();
+
+        CancellationTokenSource $group = new CancellationTokenSource();
+        ?\Closure<callable(): void> $unlink = null;
+        if ($token !== null) {
+            $unlink = $token->register(function () use ($group): void {
+                $group->cancel();
+            });
+        }
+
+        ?\Throwable $firstError = null;
+        array<TKey, T> $results = [];
+        try {
+            array<TKey, Promise<T>> $promises = [];
+            foreach ($tasks as $key => $task) {
+                Promise<T> $promise = self::runAsync<T>($task, $group->getToken());
+                $promise->catch(function (\Throwable $error) use (&$firstError, $group): void {
+                    if ($firstError === null && !($error instanceof OperationCancelledException)) {
+                        $firstError = $error;
+                        $group->cancel();
+                    }
+                });
+                $promises[$key] = $promise;
+            }
+            foreach ($promises as $key => $promise) {
+                $results[$key] = await $promise;
+            }
+        } catch (\Throwable $e) {
+            $group->cancel();
+            if ($token !== null && $token->isCancellationRequested()) {
+                throw new OperationCancelledException($token);
+            }
+            throw $firstError ?? $e;
+        } finally {
+            if ($unlink !== null) {
+                $unlink();
+            }
+            $group->dispose();
+        }
+        return $results;
+    }
+
+    internal static function workerServiceSocket(): ?string {
+        mixed $value = \getenv('TYHP_PARALLEL_SOCKET');
+        if (!($value is string)) {
+            return null;
+        }
+        if ($value === '') {
+            return null;
+        }
+        return $value;
+    }
+
+    internal static function assertAvailable(): void {
+        self::assertNotWorker();
+        string $sapi = \PHP_SAPI;
+        if ($sapi !== 'cli' && $sapi !== 'phpdbg') {
+            throw new ParallelUnavailableException(
+                'tyhp/parallel requires the CLI SAPI, or TYHP_PARALLEL_SOCKET pointing at a worker service.'
+            );
+        }
+        if (!\function_exists('pcntl_fork') || !\function_exists('posix_kill')) {
+            throw new ParallelUnavailableException(
+                'tyhp/parallel requires ext-pcntl and ext-posix.'
+            );
+        }
+    }
+
+    private static function assertNotWorker(): void {
+        if (ParallelPool::inWorker()) {
+            throw new ParallelUnavailableException(
+                'Parallel cannot be used inside a worker process.'
+            );
+        }
+    }
+
+    private static function backend(): ParallelBackend {
+        ?string $socket = self::workerServiceSocket();
+        if ($socket !== null) {
+            return ParallelClient::instance($socket);
+        }
+        self::assertAvailable();
+        return ParallelPool::instance();
+    }
+
+    private static function snapshot(mixed $task): string {
+        string $payload = '';
+        try {
+            $payload = \serialize($task);
+        } catch (\Throwable $e) {
+            throw new ParallelException('Parallel tasks must be serializable. ' . $e->getMessage(), null, $e);
+        }
+        ParallelFrames::checkData($payload, 'The task');
+        return $payload;
+    }
+
+    private static function restore(string $payload): mixed {
+        if ($payload === \serialize(false)) {
+            return false;
+        }
+        mixed $value = @\unserialize($payload, ['allowed_classes' => true]);
+        if ($value === false) {
+            throw new ParallelException('The task result could not be unserialized.');
+        }
+        if ($value instanceof \__PHP_Incomplete_Class) {
+            throw new ParallelException('The task result is an object of a class this process cannot load.');
+        }
+        return $value;
+    }
+}

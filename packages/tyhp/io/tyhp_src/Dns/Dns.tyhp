@@ -1,0 +1,24 @@
+<?tyhp
+
+namespace Tyhp\Io\Dns;
+
+use Tyhp\CancellationToken;
+use Tyhp\Io\Offload;
+use Tyhp\Promise;
+
+/**
+ * Host name resolution through the system resolver, run with Offload.
+ */
+final class Dns {
+    /**
+     * Resolves $host to its IPv4 addresses (including /etc/hosts entries) followed
+     * by any IPv6 addresses from DNS. An IP address resolves to itself. Rejects
+     * with IoException when nothing resolves and the lookup runs in this
+     * process. When Offload runs it in a tyhp/parallel worker
+     * (Offload::usesWorkers()), a failure, including nothing resolving, rejects
+     * with ParallelException instead.
+     */
+    public static function resolveAsync(string $host, ?CancellationToken $token = null): Promise<array<int, string>> {
+        return Offload::runAsync<array<int, string>>(new DnsLookup($host), $token);
+    }
+}

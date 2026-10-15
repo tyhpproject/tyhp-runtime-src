@@ -17,7 +17,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPILER_ROOT="$(cd "$REPO_ROOT/../tyhp" && pwd)"
 TYHP_DLL="${TYHP_DLL:-$COMPILER_ROOT/bin/Debug/net9.0/tyhp.dll}"
-LICENSE_SRC="$SCRIPT_DIR/php-ext-bz2/LICENSE"
+TYHPDEF_DIR="$SCRIPT_DIR/tyhpdef"
+LICENSE_SRC="$TYHPDEF_DIR/php-ext-bz2/LICENSE"
 
 DEFAULT_PHP_TARGETS="8.2,8.3,8.4,8.5"
 ALWAYS_PRESENT_REGEX='^(core|date|filter|hash|json|libxml|pcre|random|reflection|spl|standard)$'
@@ -33,12 +34,12 @@ usage() {
   cat <<'EOF'
 Usage: new-php-ext.sh [options] <extension>
 
-Scaffold packages/php-ext-<name>/ for a PHP extension and generate
+Scaffold packages/tyhpdef/php-ext-<name>/ for a PHP extension and generate
 Layer 1 + Layer 2 tyhpdefs with the real CLI:
 
   dotnet <tyhp.dll> generate_tyhpdef --ext-name=<extension> \
     --php-targets=8.2,8.3,8.4,8.5 \
-    --output=packages/php-ext-<name>/_tyhpdef/ \
+    --output=packages/tyhpdef/php-ext-<name>/_tyhpdef/ \
     --output-file=Ext.<Stem>.tyhpdef --overwrite
 
 <extension> is the PHP extension name passed to --ext-name (e.g. redis, bz2,
@@ -72,7 +73,7 @@ Overlay stamp:
   exits 5 (CompileWarning). That is expected; the stamp still applied.
   Working invocation:
 
-    (cd packages/php-ext-<name>/tests && dotnet "$TYHP_DLL" overlay stamp)
+    (cd packages/tyhpdef/php-ext-<name>/tests && dotnet "$TYHP_DLL" overlay stamp)
 
   Treat exit 0 or 5 as success for that command. Do not add the four runtime
   packages to silence 8027 unless you intend to restamp their overlays too.
@@ -215,7 +216,7 @@ fi
 
 EXT_LOWER="$(printf '%s' "$EXT_NAME" | tr '[:upper:]' '[:lower:]')"
 PKG_DIRNAME="php-ext-${EXT_LOWER}"
-PKG_DIR="$SCRIPT_DIR/$PKG_DIRNAME"
+PKG_DIR="$TYHPDEF_DIR/$PKG_DIRNAME"
 PKG_COMPOSER_NAME="tyhpdef/${PKG_DIRNAME}"
 STEM="$(ext_tyhpdef_stem "$EXT_NAME")"
 LAYER1_FILE="Ext.${STEM}.tyhpdef"

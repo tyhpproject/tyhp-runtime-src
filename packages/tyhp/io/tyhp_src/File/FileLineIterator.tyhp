@@ -1,0 +1,61 @@
+<?tyhp
+
+namespace Tyhp\Io\File;
+
+use Tyhp\Contracts\AsyncIterator;
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Promise;
+
+internal final class FileLineIterator implements AsyncIterator<string> {
+    private const int LINES_PER_YIELD = 1000;
+
+    private mixed $handle = null;
+    private bool $done = false;
+    private string $line = '';
+    private int $sinceYield = 0;
+    private int $bytesSinceYield = 0;
+
+    public function __construct(private readonly string $path) {}
+
+    public function next(): Promise<bool> {
+        return async {
+            if ($this->done) {
+                return false;
+            }
+            if ($this->sinceYield >= self::LINES_PER_YIELD || $this->bytesSinceYield >= File::CHUNK_BYTES) {
+                $this->sinceYield = 0;
+                $this->bytesSinceYield = 0;
+                await Promise::yieldTick();
+            }
+            mixed $open = $this->handle;
+            resource $handle = \is_resource($open) ? $open : File::open($this->path, 'rb');
+            $this->handle = $handle;
+            string|false $line = \fgets($handle);
+            if ($line === false) {
+                bool $failed = !\feof($handle);
+                $this->finish();
+                if ($failed) {
+                    throw new IoException('Could not read ' . $this->path . '.');
+                }
+                return false;
+            }
+            $this->sinceYield++;
+            $this->bytesSinceYield += \strlen($line);
+            $this->line = \rtrim($line, "\r\n");
+            return true;
+        };
+    }
+
+    public function current(): Promise<string> {
+        return Promise::resolved<string>($this->line);
+    }
+
+    private function finish(): void {
+        $this->done = true;
+        mixed $handle = $this->handle;
+        $this->handle = null;
+        if (\is_resource($handle)) {
+            \fclose($handle);
+        }
+    }
+}

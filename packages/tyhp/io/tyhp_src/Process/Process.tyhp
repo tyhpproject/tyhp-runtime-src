@@ -1,0 +1,57 @@
+<?tyhp
+
+namespace Tyhp\Io\Process;
+
+use Tyhp\CancellationToken;
+use Tyhp\Io\Exceptions\ProcessFailedException;
+use Tyhp\Io\IoPending;
+use Tyhp\Promise;
+
+/**
+ * Runs external commands without blocking the event loop.
+ *
+ * The command is an argument list passed to the program directly, with no
+ * shell, so arguments need no quoting. stdout and stderr are collected in full.
+ */
+final class Process {
+    /**
+     * Resolves with the result once the command exits, whatever its exit code.
+     *
+     * Rejects with IoException when the command cannot start, TimeoutException
+     * when options timeoutMs elapses, and OperationCancelledException when $token
+     * is cancelled. In both of the last two cases the command is killed first.
+     */
+    public static function runAsync(
+        array<int, string> $command,
+        ?ProcessOptions $options = null,
+        ?CancellationToken $token = null
+    ): Promise<ProcessResult> {
+        IoPending<ProcessResult> $pending = new IoPending<ProcessResult>();
+        try {
+            $token?->throwIfCancellationRequested();
+            if (\count($command) === 0) {
+                throw new \InvalidArgumentException('The command must name a program.');
+            }
+            ProcessRun $run = new ProcessRun(\array_values($command), $options ?? new ProcessOptions(), $pending);
+            $run->start($token);
+        } catch (\Throwable $e) {
+            $pending->reject($e);
+        }
+        return $pending->promise();
+    }
+
+    /**
+     * Like runAsync(), but throws ProcessFailedException when the exit code is not 0.
+     */
+    async public static function mustRunAsync(
+        array<int, string> $command,
+        ?ProcessOptions $options = null,
+        ?CancellationToken $token = null
+    ): ProcessResult {
+        ProcessResult $result = await self::runAsync($command, $options, $token);
+        if ($result->exitCode !== 0) {
+            throw new ProcessFailedException($result);
+        }
+        return $result;
+    }
+}

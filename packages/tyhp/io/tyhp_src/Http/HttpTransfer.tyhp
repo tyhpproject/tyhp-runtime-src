@@ -1,0 +1,31 @@
+<?tyhp
+
+namespace Tyhp\Io\Http;
+
+use Tyhp\Io\IoPending;
+
+internal final class HttpTransfer {
+    public array<string, array<int, string>> $headers = [];
+
+    public function __construct(
+        public readonly \CurlHandle $handle,
+        public readonly IoPending<HttpResponse> $pending,
+        public readonly string $url,
+        public readonly int $timeoutMs,
+        public readonly int $connectTimeoutMs = 0
+    ) {}
+
+    public function headerLine(string $line): void {
+        string $trimmed = \rtrim($line, "\r\n");
+        if (\str_starts_with($trimmed, 'HTTP/')) {
+            $this->headers = [];
+            return;
+        }
+        int|false $colon = \strpos($trimmed, ':');
+        if ($colon === false || $colon === 0) {
+            return;
+        }
+        string $name = \strtolower(\trim(\substr($trimmed, 0, $colon)));
+        $this->headers[$name][] = \trim(\substr($trimmed, $colon + 1));
+    }
+}

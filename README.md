@@ -1,7 +1,7 @@
 # tyhp-runtime-src
 
 Source for Tyhp's Composer packages: compiled helpers (`tyhp/core`, `tyhp/async`,
-`tyhp/decimal`, `tyhp/lambda`, `tyhp/compiler`) and type-definition packages
+`tyhp/decimal`, `tyhp/lambda`, `tyhp/parallel`, `tyhp/io`, `tyhp/compiler`) and type-definition packages
 (`tyhpdef/php`, `tyhpdef/php-ext-*`, and Composer-lib companions).
 
 The compiler lives in [tyhp](https://github.com/tyhpproject/tyhp). Language docs
@@ -13,7 +13,15 @@ is the source tree. It is not itself a Composer package.
 
 ## Layout
 
-Package trees are under `packages/`. Build and scaffold scripts live there
+Package trees are under `packages/`:
+
+| Folder | Contents |
+| ------ | -------- |
+| `packages/tyhp/<pkg>/` | Compiled runtime packages (`core`, `async`, `decimal`, `lambda`, `parallel`, `io`, `compiler`), built from `tyhp_src/` |
+| `packages/tyhpdef/<pkg>/` | Type-definition packages: `php`, `php-ext-*`, and Composer-lib companions (`<vendor>-<name>/<upstream-version>/`) |
+| `packages/dist/` | Generated per-PHP-version output of `base-build-all.sh` (gitignored) |
+
+Build and scaffold scripts live in `packages/` itself
 (`base-build-all.sh`, `test-all-tyhpdef.sh`, `new-composer-lib.sh`,
 `new-php-ext.sh`). Ownership scripts and `TYHPDEF_OWNERSHIP.md` are at the
 repository root. `scripts/publish-runtime-packages.sh` publishes to
@@ -43,7 +51,7 @@ export TYHP_DLL="$PWD/../tyhp/bin/Debug/net9.0/tyhp.dll"
 ```
 
 `base-build-all.sh` emits compiled packages for PHP 8.2–8.5. Do not hand-edit
-generated PHP under `packages/*/src/`. Fix the Tyhp compiler or the package's
+generated PHP under `packages/tyhp/*/src/`. Fix the Tyhp compiler or the package's
 `tyhp_src` / tyhpdefs and re-emit.
 
 Lint every tyhpdef package:

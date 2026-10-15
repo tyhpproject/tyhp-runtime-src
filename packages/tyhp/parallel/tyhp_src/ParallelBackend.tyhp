@@ -1,0 +1,20 @@
+<?tyhp
+
+namespace Tyhp;
+
+/** Where Parallel sends serialized tasks: a forked pool or the worker service. */
+internal interface ParallelBackend {
+    /**
+     * Queues a serialized task and returns its job id. Exactly one callback
+     * runs, and it may run before this method returns. $onSuccess receives
+     * the serialized result.
+     */
+    public function enqueue(
+        string $payload,
+        \Closure<callable(string): void> $onSuccess,
+        \Closure<callable(\Throwable): void> $onFailure,
+    ): int;
+
+    /** Stops a queued or running job and fails it with $reason. Unknown ids are ignored. */
+    public function cancel(int $id, \Throwable $reason): void;
+}

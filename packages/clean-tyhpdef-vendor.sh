@@ -4,38 +4,39 @@
 # Deletes only:
 #   vendor/ directories
 #   composer.lock files
-# under packages/<name>/<version>/ (a version directory that contains
+# under packages/tyhpdef/<name>/<version>/ (a version directory that contains
 # composer.json). One path argument cleans that package directory instead.
 #
 #   clean-tyhpdef-vendor.sh
-#       Clean every packages/<name>/<version>/ that has composer.json.
-#       Does not touch flat packages (php, php-ext-*, core, compiler, …).
+#       Clean every packages/tyhpdef/<name>/<version>/ that has composer.json.
+#       Does not touch flat packages (tyhpdef/php, tyhpdef/php-ext-*, tyhp/*).
 #
 #   clean-tyhpdef-vendor.sh <package-dir>
 #       Clean vendor/ and composer.lock in that one directory. The directory
-#       must be packages/<name> or packages/<name>/<version>
-#       and must not be packages/compiler.
+#       must be under packages/tyhpdef/ or packages/tyhp/
+#       and must not be packages/tyhp/compiler.
 #
-# Never deletes docs/vendor, packages/compiler/vendor, a repo-root
+# Never deletes docs/vendor, packages/tyhp/compiler/vendor, a repo-root
 # vendor/, anything outside packages/, overlay files, Layer 1
 # tyhpdefs, or src/.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PACKAGES_DIR="$SCRIPT_DIR"
+TYHPDEF_DIR="$PACKAGES_DIR/tyhpdef"
 
 usage() {
   cat <<'EOF'
 Usage: clean-tyhpdef-vendor.sh [<package-dir>]
 
 With no argument, remove vendor/ and composer.lock from every
-packages/<name>/<version>/ directory that contains composer.json.
+packages/tyhpdef/<name>/<version>/ directory that contains composer.json.
 
 With a package directory, remove vendor/ and composer.lock only in that
-directory. The directory must sit under packages/ and must not be
-packages/compiler.
+directory. The directory must sit under packages/tyhpdef/ or packages/tyhp/
+and must not be packages/tyhp/compiler.
 
-Does not remove docs/vendor, packages/compiler/vendor, a repository
+Does not remove docs/vendor, packages/tyhp/compiler/vendor, a repository
 root vendor/, or anything outside packages/. Overlay files, Layer 1
 tyhpdefs, and src/ are left in place.
 EOF
@@ -69,16 +70,16 @@ assert_safe_package_dir() {
       echo "Refusing to clean the packages directory itself: $real" >&2
       exit 1
       ;;
-    "$packages_real"/*) ;;
+    "$packages_real"/tyhpdef/*|"$packages_real"/tyhp/*) ;;
     *)
-      echo "Refusing to clean outside packages: $real" >&2
+      echo "Refusing to clean outside packages/tyhpdef and packages/tyhp: $real" >&2
       exit 1
       ;;
   esac
 
   case "$real" in
-    "$packages_real"/compiler|"$packages_real"/compiler/*)
-      echo "Refusing to clean packages/compiler: $real" >&2
+    "$packages_real"/tyhp/compiler|"$packages_real"/tyhp/compiler/*)
+      echo "Refusing to clean packages/tyhp/compiler: $real" >&2
       exit 1
       ;;
   esac
@@ -101,11 +102,11 @@ if [[ $# -eq 1 ]]; then
   exit 0
 fi
 
-# All version directories: packages/<name>/<version>/composer.json.
-# Flat trees (packages/php/composer.json) are not selected.
+# All version directories: packages/tyhpdef/<name>/<version>/composer.json.
+# Flat trees (packages/tyhpdef/php/composer.json) are not selected.
 shopt -s nullglob
 cleaned=0
-for composer_json in "$PACKAGES_DIR"/*/*/composer.json; do
+for composer_json in "$TYHPDEF_DIR"/*/*/composer.json; do
   assert_safe_package_dir "$(dirname "$composer_json")"
   cleaned=$((cleaned + 1))
 done

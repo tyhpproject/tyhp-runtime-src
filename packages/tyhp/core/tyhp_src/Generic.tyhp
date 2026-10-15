@@ -1,0 +1,765 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Exceptions\InvalidTypeException;
+
+/**
+ * Binds type arguments to a Tyhp generic class or callable from hand-written PHP
+ * and from Tyhp sites that construct or call a **foreign** compiled-library generic
+ * (`#[\Tyhp\GenericRuntime]` on the vendor tyhpdef). Same-compilation Tyhp sites
+ * still emit the per-class factory / `__tyhpGeneric` binder directly.
+ *
+ *     // Class (Mechanism C, tracked or erased — same spelling)
+ *     $box = \Tyhp\Generic::bind(Box::class, \Tyhp\Type::int())(42);
+ *     $box = \Tyhp\Generic::bind(Box::class, \Tyhp\Type::int())->new(42); // new() ≡ __invoke
+ *
+ *     // Callable (Mechanism D) — prefer a first-class callable to the *clean* name
+ *     $awaitInt = \Tyhp\Generic::bind(\Tyhp\Promise::_await(...), \Tyhp\Type::int());
+ *     $awaitInt($promise);
+ *
+ * `bind()` does not construct. `__invoke` / `new()` runs the named factory (types then
+ * constructor arguments) or `new $class(...)` when `erased: true`. For callables,
+ * a tracked binder is invoked with type arguments only; an erased callable becomes
+ * `\Closure::fromCallable` (by-ref preserved).
+ *
+ * `TTarget` exists only in PHPDoc. Tyhp's own generics are runtime bindings carried on the
+ * constructed instance; making this class generic in Tyhp would bind a parameter nothing here
+ * reads. The template costs nothing at runtime and is what lets PHPStan / Psalm / Phan / IDEs
+ * infer the constructed type from `bind(Foo::class, …)`.
+ *
+ * @template TTarget of object
+ *
+ * @phpstan-template TTarget of object
+ * @psalm-template TTarget of object
+ */
+final class Generic
+{
+    /**
+     * @var array<string, \ReflectionClass<object>>
+     * @phpstan-var array<string, \ReflectionClass<object>>
+     * @psalm-var array<string, \ReflectionClass<object>>
+     */
+    private static array<string, \ReflectionClass> $classReflectionCache = [];
+
+    /**
+     * @var array<string, \ReflectionMethod>
+     * @phpstan-var array<string, \ReflectionMethod>
+     * @psalm-var array<string, \ReflectionMethod>
+     */
+    private static array<string, \ReflectionMethod> $methodReflectionCache = [];
+
+    /**
+     * @var array<string, \ReflectionFunction>
+     * @phpstan-var array<string, \ReflectionFunction>
+     * @psalm-var array<string, \ReflectionFunction>
+     */
+    private static array<string, \ReflectionFunction> $functionReflectionCache = [];
+
+    /**
+     * @var array<string, GenericRuntime>
+     * @phpstan-var array<string, GenericRuntime>
+     * @psalm-var array<string, GenericRuntime>
+     */
+    private static array<string, GenericRuntime> $classRuntimeCache = [];
+
+    /**
+     * @var array<string, GenericRuntime>
+     * @phpstan-var array<string, GenericRuntime>
+     * @psalm-var array<string, GenericRuntime>
+     */
+    private static array<string, GenericRuntime> $methodRuntimeCache = [];
+
+    /**
+     * @var array<string, GenericRuntime>
+     * @phpstan-var array<string, GenericRuntime>
+     * @psalm-var array<string, GenericRuntime>
+     */
+    private static array<string, GenericRuntime> $functionRuntimeCache = [];
+
+    private bool $spent = false;
+
+    /**
+     * Wrapper closures made by {@see Generic::wrapCallable()}, each mapped to the native
+     * first-class callable it wraps and the factory that rebuilds it around another target.
+     * Weak keys: an entry lives as long as its wrapper.
+     */
+    private static ?\WeakMap $wrappedCallables = null;
+
+    /**
+     * Wrap a first-class callable of a generic function or method so that it keeps
+     * its type-binding identity.
+     *
+     * Emitted for a first-class callable whose parameters accept more than their declared
+     * types (implicit conversions): `$factory` receives a callable and returns the typed
+     * closure that converts the arguments and then calls it. `$target` is the native
+     * first-class callable of the generic function or method. The returned closure behaves as
+     * `$factory($target)`; {@see Generic::bind()} on it binds `$target` and applies the same
+     * `$factory` to the bound closure, so the conversions survive the binding.
+     *
+     * @param \Closure $target  Native first-class callable of the generic function or method.
+     * @param \Closure $factory `fn(\Closure $target): \Closure` returning the converting closure.
+     *
+     * @return \Closure
+     *
+     * @throws \InvalidArgumentException When `$factory` does not return a `\Closure`.
+     */
+    public static function wrapCallable(\Closure $target, \Closure $factory): \Closure
+    {
+        mixed $wrapper = $factory($target);
+        if (!($wrapper instanceof \Closure)) {
+            throw new \InvalidArgumentException('Generic::wrapCallable() expects the factory to return a \Closure.');
+        }
+
+        \WeakMap $registry = self::$wrappedCallables ??= new \WeakMap();
+        array<int, \Closure> $entry = [$target, $factory];
+        $registry[$wrapper] = $entry;
+
+        return $wrapper;
+    }
+
+    /**
+     * Bind type arguments to a generic class or callable.
+     *
+     * When `$target` is a `class-string`, returns a {@see Generic} binder whose `new(...)` /
+     * `__invoke(...)` runs that class's constructor and yields an instance of `TClass`.
+     * When `$target` is any other callable, returns the emitted value-signature `\Closure`
+     * from that callable's `__tyhpGeneric` binder, or `\Closure::fromCallable` when erased.
+     *
+     * Pass one `\Tyhp\Type` (or `null`) per generic parameter of the target, in declaration
+     * order. A null argument leaves that parameter unbound, which resolves the same way a
+     * missing argument does at a Tyhp call site: declared default, else constraint, else mixed.
+     *
+     * @template TCallable of callable
+     * @template TClass of object
+     *
+     * @param class-string<TClass>|TCallable $target
+     * @param ?\Tyhp\Type                    ...$typeArguments
+     *
+     * @return ($target is class-string<TClass> ? self<TClass> : TCallable)
+     *
+     * @phpstan-template TCallable of callable
+     * @phpstan-template TClass of object
+     * @phpstan-param class-string<TClass>|TCallable $target
+     * @phpstan-param ?\Tyhp\Type                    ...$typeArguments
+     * @phpstan-return ($target is class-string<TClass> ? self<TClass> : TCallable)
+     *
+     * @psalm-template TCallable of callable
+     * @psalm-template TClass of object
+     * @psalm-param class-string<TClass>|TCallable $target
+     * @psalm-param ?\Tyhp\Type                    ...$typeArguments
+     * @psalm-return ($target is class-string<TClass> ? self<TClass> : TCallable)
+     *
+     * @throws InvalidTypeException     When the target has no `GenericRuntime` stamp, or when
+     *                                  an instance method is bound without a receiver.
+     * @throws \ReflectionException     When a class-string does not name a loadable class.
+     * @throws \InvalidArgumentException When `$target` is neither a class-string nor a
+     *                                  resolvable named callable, or is an anonymous Closure.
+     */
+    public static function bind(mixed $target, ?\Tyhp\Type ...$typeArguments): mixed
+    {
+        if (\is_string($target)) {
+            if (\str_contains($target, '::')) {
+                return self::bindCallable($target, $typeArguments);
+            }
+
+            if (\class_exists($target)) {
+                return self::bindClass($target, $typeArguments);
+            }
+
+            if (\function_exists($target) || \is_callable($target)) {
+                return self::bindCallable($target, $typeArguments);
+            }
+
+            // Not yet loaded: ReflectionClass autoloads and throws \ReflectionException
+            // when the name is not a class (same as a missing class-string at a PHP call site).
+            return self::bindClass($target, $typeArguments);
+        }
+
+        if (\is_callable($target)) {
+            return self::bindCallable($target, $typeArguments);
+        }
+
+        throw new \InvalidArgumentException(
+            'Generic::bind() expects a class-string or callable as its first argument.',
+        );
+    }
+
+    /**
+     * @template T of object
+     *
+     * @param class-string<T>   $className
+     * @param list<?\Tyhp\Type> $typeArguments
+     *
+     * @return self<T>
+     *
+     * @throws InvalidTypeException
+     * @throws \ReflectionException
+     */
+    private static function bindClass(string $className, array<string|int, ?\Tyhp\Type> $typeArguments): self
+    {
+        \ReflectionClass<object> $reflection = self::reflectClass($className);
+        GenericRuntime $info = self::runtimeForClass($className, $reflection);
+        self::assertLayoutSupported($info, $className);
+
+        return new self($className, $typeArguments, $info->erased, $info->factory);
+    }
+
+    /**
+     * @throws \ReflectionException
+     */
+    private static function reflectClass(string $className): \ReflectionClass<object>
+    {
+        if (!\class_exists($className)) {
+            throw new \ReflectionException('Class "' . $className . '" does not exist');
+        }
+
+        self::$classReflectionCache[$className] ??= new \ReflectionClass<object>($className);
+        return self::$classReflectionCache[$className];
+    }
+
+    /**
+     * @param mixed             $callable
+     * @param list<?\Tyhp\Type> $typeArguments
+     *
+     * @return \Closure
+     *
+     * @throws InvalidTypeException
+     * @throws \InvalidArgumentException
+     */
+    private static function bindCallable(mixed $callable, array<string|int, ?\Tyhp\Type> $typeArguments): \Closure
+    {
+        if ($callable instanceof \Closure) {
+            \WeakMap|null $registry = self::$wrappedCallables;
+            if ($registry !== null && $registry->offsetExists($callable)) {
+                mixed $entry = $registry[$callable];
+                if (\is_array($entry)) {
+                    mixed $wrappedTarget = $entry[0] ?? null;
+                    mixed $wrappedFactory = $entry[1] ?? null;
+                    if ($wrappedTarget instanceof \Closure && $wrappedFactory instanceof \Closure) {
+                        return self::wrapCallable(self::bindCallable($wrappedTarget, $typeArguments), $wrappedFactory);
+                    }
+                }
+            }
+
+            \ReflectionFunction $ref = new \ReflectionFunction($callable);
+            if ($ref->isAnonymous()) {
+                throw new \InvalidArgumentException(
+                    'Generic::bind() cannot bind an anonymous Closure; pass a first-class callable '
+                    . 'to a named function/method.',
+                );
+            }
+
+            mixed $thisObj = $ref->getClosureThis();
+            ?\ReflectionClass<object> $calledClass = $ref->getClosureCalledClass();
+            string $name = $ref->getName();
+
+            if ($calledClass !== null) {
+                return self::invokeMethodTarget(
+                    $calledClass->getName(),
+                    $name,
+                    \is_object($thisObj) ? $thisObj : null,
+                    $typeArguments,
+                );
+            }
+
+            return self::invokeFunctionTarget($name, $typeArguments);
+        }
+
+        if (
+            \is_array($callable)
+            && \array_key_exists(0, $callable)
+            && \array_key_exists(1, $callable)
+            && \is_string($callable[1])
+        ) {
+            mixed $receiverOrClass = $callable[0];
+            string $methodName = $callable[1];
+
+            if (\is_object($receiverOrClass)) {
+                $className = $receiverOrClass::class;
+                if (\class_exists($className)) {
+                    return self::invokeMethodTarget(
+                        $className,
+                        $methodName,
+                        $receiverOrClass,
+                        $typeArguments,
+                    );
+                }
+            }
+
+            if (\is_string($receiverOrClass) && \class_exists($receiverOrClass)) {
+                return self::invokeMethodTarget(
+                    $receiverOrClass,
+                    $methodName,
+                    null,
+                    $typeArguments,
+                );
+            }
+        }
+
+        if (\is_string($callable)) {
+            if (\str_contains($callable, '::')) {
+                array $split = \explode('::', $callable, 2);
+                string|__ClassName<object> $className2 = (string) $split[0];
+                if (\class_exists($className2)) {
+                    return self::invokeMethodTarget(
+                        $className2,
+                        (string) $split[1],
+                        null,
+                        $typeArguments,
+                    );
+                }
+            }
+
+            return self::invokeFunctionTarget($callable, $typeArguments);
+        }
+
+        throw new \InvalidArgumentException(
+            'Generic::bind() could not resolve the callable to a named function or method.',
+        );
+    }
+
+    /**
+     * @param class-string<object> $className
+     * @param string               $methodName
+     * @param object|null          $thisObj
+     * @param list<?\Tyhp\Type>    $typeArguments
+     *
+     * @return \Closure
+     *
+     * @throws InvalidTypeException
+     */
+    private static function invokeMethodTarget(
+        __ClassName<object> $className,
+        string $methodName,
+        mixed $thisObj,
+        array<string|int, ?\Tyhp\Type> $typeArguments,
+    ): \Closure {
+        string $suffix = '__tyhpGeneric';
+        string $cleanName = \str_ends_with($methodName, $suffix)
+            ? \substr($methodName, 0, -\strlen($suffix))
+            : $methodName;
+
+        self::$classReflectionCache[$className] ??= new \ReflectionClass<object>($className);
+        \ReflectionClass<object> $class = self::$classReflectionCache[$className];
+        if (!$class->hasMethod($cleanName)) {
+            throw new InvalidTypeException(
+                \sprintf('Method %s::%s is not a generic Tyhp method.', $className, $cleanName),
+            );
+        }
+
+        string $methodKey = $className . '::' . $cleanName;
+        self::$methodReflectionCache[$methodKey] ??= $class->getMethod($cleanName);
+        \ReflectionMethod $method = self::$methodReflectionCache[$methodKey];
+        GenericRuntime $info = self::runtimeForMethod($methodKey, $method);
+        self::assertLayoutSupported($info, $className . '::' . $cleanName);
+
+        if ($info->erased) {
+            array $callable = $method->isStatic()
+                ? [$className, $cleanName]
+                : [\is_object($thisObj) ? $thisObj : null, $cleanName];
+            if (!$method->isStatic() && !\is_object($thisObj)) {
+                throw new InvalidTypeException(
+                    \sprintf(
+                        'Generic::bind() requires an instance first-class callable for non-static '
+                        . 'method %s::%s (e.g. $obj->%s(...)).',
+                        $className,
+                        $cleanName,
+                        $cleanName,
+                    ),
+                );
+            }
+
+            return \Closure::fromCallable($callable);
+        }
+
+        string $binderName = $info->binder ?? '';
+        if ($binderName === '') {
+            throw new InvalidTypeException(
+                \sprintf(
+                    'Method %s::%s has no generic binder; it was not compiled as a '
+                    . 'runtime-tracked Tyhp generic method.',
+                    $className,
+                    $cleanName,
+                ),
+            );
+        }
+
+        if (\str_contains($binderName, '::')) {
+            array $parts = \explode('::', $binderName, 2);
+            string $binderClass = (string) $parts[0];
+            $binderName = (string) $parts[1];
+            if (!\class_exists($binderClass)) {
+                throw new InvalidTypeException(
+                    \sprintf(
+                        'Generic binder class \'%s\' for method %s::%s does not exist.',
+                        $binderClass,
+                        $className,
+                        $cleanName,
+                    ),
+                );
+            }
+
+            self::$classReflectionCache[$binderClass] ??= new \ReflectionClass<object>($binderClass);
+            $class = self::$classReflectionCache[$binderClass];
+            $className = $binderClass;
+        }
+
+        string $binderKey = $className . '::' . $binderName;
+        if (!$class->hasMethod($binderName)) {
+            throw new InvalidTypeException(
+                \sprintf(
+                    'Method %s::%s has no generic binder \'%s\'.',
+                    $className,
+                    $cleanName,
+                    $binderName,
+                ),
+            );
+        }
+
+        self::$methodReflectionCache[$binderKey] ??= $class->getMethod($binderName);
+        \ReflectionMethod $binder = self::$methodReflectionCache[$binderKey];
+        if (!$binder->isStatic() && !\is_object($thisObj)) {
+            throw new InvalidTypeException(
+                \sprintf(
+                    'Generic::bind() requires an instance first-class callable for non-static '
+                    . 'method %s::%s (e.g. $obj->%s(...)).',
+                    $className,
+                    $cleanName,
+                    $cleanName,
+                ),
+            );
+        }
+
+        array $boundTypeArguments = self::padTypeArguments($binder, $typeArguments);
+        mixed $bound = $binder->isStatic()
+            ? $binder->invokeArgs(null, $boundTypeArguments)
+            : $binder->invokeArgs(\is_object($thisObj) ? $thisObj : null, $boundTypeArguments);
+
+        if (!$bound instanceof \Closure) {
+            throw new InvalidTypeException(
+                \sprintf(
+                    'Generic binder %s::%s did not return a \\Closure.',
+                    $className,
+                    $binderName,
+                ),
+            );
+        }
+
+        return $bound;
+    }
+
+    /**
+     * @param string            $functionName
+     * @param list<?\Tyhp\Type> $typeArguments
+     *
+     * @return \Closure
+     *
+     * @throws InvalidTypeException
+     */
+    private static function invokeFunctionTarget(
+        string $functionName,
+        array<string|int, ?\Tyhp\Type> $typeArguments,
+    ): \Closure {
+        string $suffix = '__tyhpGeneric';
+        string $cleanName = \str_ends_with($functionName, $suffix)
+            ? \substr($functionName, 0, -\strlen($suffix))
+            : $functionName;
+
+        if (!\function_exists($cleanName)) {
+            throw new InvalidTypeException(
+                \sprintf('Function %s is not a generic Tyhp function.', $cleanName),
+            );
+        }
+
+        self::$functionReflectionCache[$cleanName] ??= new \ReflectionFunction($cleanName);
+        \ReflectionFunction $function = self::$functionReflectionCache[$cleanName];
+        GenericRuntime $info = self::runtimeForFunction($cleanName, $function);
+        self::assertLayoutSupported($info, $cleanName);
+
+        if ($info->erased) {
+            return \Closure::fromCallable($cleanName);
+        }
+
+        string $binderName = $info->binder ?? '';
+        if ($binderName === '' || !\function_exists($binderName)) {
+            throw new InvalidTypeException(
+                \sprintf(
+                    'Function %s has no generic binder \'%s\'; it was not compiled as a '
+                    . 'runtime-tracked Tyhp generic function.',
+                    $cleanName,
+                    $binderName,
+                ),
+            );
+        }
+
+        \ReflectionFunction $binderFunction = new \ReflectionFunction($binderName);
+        array $boundTypeArguments = self::padTypeArguments($binderFunction, $typeArguments);
+        mixed $bound = \call_user_func_array_unsafe($binderName, $boundTypeArguments);
+        if (!$bound instanceof \Closure) {
+            throw new InvalidTypeException(
+                \sprintf('Generic binder %s did not return a \\Closure.', $binderName),
+            );
+        }
+
+        return $bound;
+    }
+
+    /**
+     * @param class-string<object> $className
+     * @param \ReflectionClass<object> $reflection
+     */
+    private static function runtimeForClass(string $className, \ReflectionClass $reflection): GenericRuntime
+    {
+        if (\array_key_exists($className, self::$classRuntimeCache)) {
+            return self::$classRuntimeCache[$className];
+        }
+
+        ?GenericRuntime $info = self::readGenericRuntime($reflection->getAttributes(GenericRuntime::class));
+        if ($info === null) {
+            throw new InvalidTypeException(
+                \sprintf('Class \'%s\' is not a generic Tyhp class.', $className),
+            );
+        }
+
+        self::$classRuntimeCache[$className] = $info;
+        return $info;
+    }
+
+    private static function runtimeForMethod(string $key, \ReflectionMethod $method): GenericRuntime
+    {
+        if (\array_key_exists($key, self::$methodRuntimeCache)) {
+            return self::$methodRuntimeCache[$key];
+        }
+
+        ?GenericRuntime $info = self::readGenericRuntime($method->getAttributes(GenericRuntime::class));
+        if ($info === null) {
+            throw new InvalidTypeException(
+                \sprintf('Method %s is not a generic Tyhp method.', $key),
+            );
+        }
+
+        self::$methodRuntimeCache[$key] = $info;
+        return $info;
+    }
+
+    private static function runtimeForFunction(string $name, \ReflectionFunction $function): GenericRuntime
+    {
+        if (\array_key_exists($name, self::$functionRuntimeCache)) {
+            return self::$functionRuntimeCache[$name];
+        }
+
+        ?GenericRuntime $info = self::readGenericRuntime($function->getAttributes(GenericRuntime::class));
+        if ($info === null) {
+            throw new InvalidTypeException(
+                \sprintf('Function %s is not a generic Tyhp function.', $name),
+            );
+        }
+
+        self::$functionRuntimeCache[$name] = $info;
+        return $info;
+    }
+
+    /**
+     * @param array<int, \ReflectionAttribute<GenericRuntime>> $attributes
+     */
+    private static function readGenericRuntime(
+        array<int, \ReflectionAttribute<GenericRuntime>> $attributes,
+    ): ?GenericRuntime {
+        if ($attributes === []) {
+            return null;
+        }
+
+        GenericRuntime $instance = $attributes[0]->newInstance();
+        return $instance;
+    }
+
+    private static function assertLayoutSupported(GenericRuntime $info, string $target): void
+    {
+        bool $ok = false;
+        foreach ($info->layouts as $layout) {
+            if ($layout === 1) {
+                $ok = true;
+                break;
+            }
+        }
+
+        if ($ok) {
+            return;
+        }
+
+        string $listed = \implode(', ', $info->layouts);
+        string $compiled = $info->compiler !== null && $info->compiler !== ''
+            ? '; compiled by ' . $info->compiler
+            : '';
+        throw new InvalidTypeException(
+            \sprintf(
+                'GenericRuntime layouts [%s] on \'%s\' have no intersection with this runtime (supported [1])%s.',
+                $listed,
+                $target,
+                $compiled,
+            ),
+        );
+    }
+
+    /**
+     * Pads `$typeArguments` up to a factory/binder's declared generic arity with `null`, so that
+     * omitting trailing type arguments at a `bind()` call site behaves exactly like passing an
+     * explicit `null` for each of them (per the class doc: "leaves that parameter unbound").
+     * Reflection, not caller bookkeeping, is the arity source of truth since `GenericRuntime`
+     * itself carries no arity.
+     *
+     * @param list<?\Tyhp\Type> $typeArguments
+     *
+     * @return list<?\Tyhp\Type>
+     */
+    private static function padTypeArguments(
+        \ReflectionFunctionAbstract $target,
+        array<string|int, ?\Tyhp\Type> $typeArguments,
+    ): array<string|int, ?\Tyhp\Type> {
+        int $arity = self::genericParameterArity($target);
+        for (int $i = \count($typeArguments); $i < $arity; $i++) {
+            $typeArguments[] = null;
+        }
+
+        return $typeArguments;
+    }
+
+    /**
+     * Counts the leading `?\Tyhp\Type $__generic_*`-shaped parameters a generated factory or
+     * binder declares. Those are the only parameters `bind()`'s type arguments ever fill; a
+     * factory's trailing constructor-forwarding parameters (or a binder having none at all)
+     * stop the count at the first parameter that is not a bare nullable `\Tyhp\Type`.
+     */
+    private static function genericParameterArity(\ReflectionFunctionAbstract $target): int
+    {
+        int $count = 0;
+        foreach ($target->getParameters() as $parameter) {
+            ?\ReflectionType $type = $parameter->getType();
+            if (
+                !$type instanceof \ReflectionNamedType
+                || $type->getName() !== Type::class
+                || !$type->allowsNull()
+            ) {
+                break;
+            }
+
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * @param string            $className
+     * @param list<?\Tyhp\Type> $typeArguments
+     * @param bool              $erased
+     * @param string|null       $factory
+     */
+    private function __construct(
+        private readonly string $className,
+        private readonly array $typeArguments,
+        private readonly bool $erased,
+        private readonly ?string $factory,
+    ): void {}
+
+    /**
+     * Run the constructor and hand back the instance.
+     *
+     * Prefer {@see new()} where the inferred type matters: IDEs and analyzers track a templated
+     * return through a named method more reliably than through `__invoke`.
+     *
+     * @param mixed ...$constructorArguments Arguments forwarded to `TTarget::__construct`.
+     *
+     * @return TTarget
+     *
+     * @throws InvalidTypeException
+     * @throws \LogicException
+     */
+    public function __invoke(mixed ...$constructorArguments): object
+    {
+        return $this->newWithArgs($constructorArguments);
+    }
+
+    /**
+     * Run the constructor and hand back the instance. Equivalent to {@see __invoke()}.
+     *
+     * @param mixed ...$constructorArguments Arguments forwarded to `TTarget::__construct`.
+     *
+     * @return TTarget
+     *
+     * @throws InvalidTypeException
+     * @throws \LogicException
+     */
+    public function new(mixed ...$constructorArguments): object
+    {
+        return $this->newWithArgs($constructorArguments);
+    }
+
+    /**
+     * @param array<int|string, mixed> $constructorArguments Positional entries are int-keyed; named
+     *                                                       arguments keep their string key.
+     *
+     * @return TTarget
+     *
+     * @throws InvalidTypeException
+     * @throws \LogicException
+     */
+    private function newWithArgs(array $constructorArguments): object
+    {
+        if ($this->spent) {
+            throw new \LogicException(
+                \sprintf(
+                    'Generic instance of \'%s\' has already been constructed.',
+                    $this->className,
+                ),
+            );
+        }
+
+        $this->spent = true;
+
+        if ($this->erased || $this->factory === null || $this->factory === '') {
+            mixed $instance = self::reflectClass($this->className)->newInstanceArgs($constructorArguments);
+            if (!\is_object($instance)) {
+                throw new InvalidTypeException(
+                    \sprintf('Class \'%s\' could not be constructed.', $this->className),
+                );
+            }
+
+            return $instance;
+        }
+
+        string $factory = $this->factory ?? '';
+        \ReflectionMethod $factoryMethod = self::reflectClass($this->className)->getMethod($factory);
+        array $typeArguments = self::padTypeArguments($factoryMethod, $this->typeArguments);
+
+        array $invokeArgs = [];
+        foreach ($typeArguments as $typeArgument) {
+            $invokeArgs[] = $typeArgument;
+        }
+
+        // Positional arguments append after the type arguments; named arguments keep their name so
+        // `invokeArgs()` binds them to the factory's constructor-forwarding parameters instead of
+        // sliding into the next positional slot.
+        foreach ($constructorArguments as $argumentKey => $constructorArgument) {
+            if (\is_string($argumentKey)) {
+                $invokeArgs[$argumentKey] = $constructorArgument;
+            } else {
+                $invokeArgs[] = $constructorArgument;
+            }
+        }
+
+        mixed $bound = $factoryMethod->invokeArgs(null, $invokeArgs);
+        if (!\is_object($bound)) {
+            throw new InvalidTypeException(
+                \sprintf(
+                    'Generic factory %s::%s did not return an object.',
+                    $this->className,
+                    $this->factory,
+                ),
+            );
+        }
+
+        return $bound;
+    }
+}

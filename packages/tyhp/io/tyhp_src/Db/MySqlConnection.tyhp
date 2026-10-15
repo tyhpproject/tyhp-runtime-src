@@ -1,0 +1,185 @@
+<?tyhp
+
+namespace Tyhp\Io\Db;
+
+use Tyhp\CancellationToken;
+use Tyhp\Exceptions\OperationCancelledException;
+use Tyhp\Io\Exceptions\DbException;
+use Tyhp\Io\Exceptions\IoUnavailableException;
+use Tyhp\Promise;
+
+/**
+ * MySQL and MariaDB over ext-mysqli with MYSQLI_ASYNC queries.
+ *
+ * The connection handshake blocks the event loop; statements do not. Placeholders
+ * are ?, replaced client-side with escaped literals, so a ? inside a quoted string
+ * or a comment is not a placeholder. Cancelling a token runs KILL QUERY for the
+ * statement on a second, short-lived connection, then rejects with
+ * OperationCancelledException.
+ */
+final class MySqlConnection implements DbConnection {
+    private const int MAX_POLL_MS = 10;
+
+    private AsyncLock $lock;
+    private bool $closed = false;
+
+    private function __construct(
+        private readonly \mysqli $mysqli,
+        private readonly MySqlOptions $options
+    ) {
+        $this->lock = new AsyncLock();
+    }
+
+    async public static function connectAsync(?MySqlOptions $options = null, ?CancellationToken $token = null): MySqlConnection {
+        IoUnavailableException::requireExtension('mysqli', 'MySqlConnection');
+        $token?->throwIfCancellationRequested();
+        MySqlOptions $settings = $options ?? new MySqlOptions();
+        return new MySqlConnection(self::open($settings), $settings);
+    }
+
+    async public function queryAsync(string $sql, array<int, DbValue> $params = [], ?CancellationToken $token = null): DbResult {
+        await $this->lock->acquire();
+        try {
+            return await $this->execute($sql, $params, $token);
+        } finally {
+            $this->lock->release();
+        }
+    }
+
+    async public function transactionAsync(array<int, DbStatement> $statements, ?CancellationToken $token = null): array<int, DbResult> {
+        await $this->lock->acquire();
+        try {
+            await $this->execute('START TRANSACTION', [], $token);
+            array<int, DbResult> $results = [];
+            try {
+                foreach ($statements as $statement) {
+                    $results[] = await $this->execute($statement->sql, $statement->params, $token);
+                }
+                await $this->execute('COMMIT', [], null);
+            } catch (\Throwable $e) {
+                if (!$this->closed) {
+                    try {
+                        await $this->execute('ROLLBACK', [], null);
+                    } catch (\Throwable $rollbackError) {
+                        (void) $rollbackError;
+                    }
+                }
+                throw $e;
+            }
+            return $results;
+        } finally {
+            $this->lock->release();
+        }
+    }
+
+    public function close(): void {
+        if ($this->closed) {
+            return;
+        }
+        $this->closed = true;
+        $this->mysqli->close();
+    }
+
+    async private function execute(string $sql, array<int, DbValue> $params, ?CancellationToken $token): DbResult {
+        if ($this->closed) {
+            throw new DbException('The MySQL connection is closed.');
+        }
+        $token?->throwIfCancellationRequested();
+        string $text = MySqlPlaceholders::interpolate($sql, $params, fn(string $value): string => $this->mysqli->real_escape_string($value));
+
+        try {
+            $this->mysqli->query($text, \MYSQLI_ASYNC);
+        } catch (\mysqli_sql_exception $e) {
+            throw new DbException($e->getMessage(), $e->getSqlState(), $e);
+        }
+
+        int $wait = 1;
+        bool $ready = false;
+        while (!$ready) {
+            ?array $read = [$this->mysqli];
+            ?array $error = [$this->mysqli];
+            array $reject = [$this->mysqli];
+            int|false $count = \mysqli_poll($read, $error, $reject, 0, 0);
+            if ($count === false) {
+                throw new DbException('mysqli_poll() failed.');
+            }
+            if ($count > 0 || \count($reject) > 0) {
+                $ready = true;
+            } else {
+                try {
+                    await Promise::delay($wait, $token);
+                } catch (OperationCancelledException $e) {
+                    $this->killRunningQuery();
+                    try {
+                        $this->mysqli->reap_async_query();
+                    } catch (\Throwable $reapError) {
+                        (void) $reapError;
+                    }
+                    throw $e;
+                }
+                $wait = \min($wait * 2, self::MAX_POLL_MS);
+            }
+        }
+
+        mixed $result = false;
+        try {
+            $result = $this->mysqli->reap_async_query();
+        } catch (\mysqli_sql_exception $e) {
+            throw new DbException($e->getMessage(), $e->getSqlState(), $e);
+        }
+        if ($result === false) {
+            throw new DbException($this->mysqli->error, $this->mysqli->sqlstate);
+        }
+        if ($result instanceof \mysqli_result) {
+            array<int, array<string, mixed>> $rows = $result->fetch_all(\MYSQLI_ASSOC);
+            $result->free();
+            return new DbResult($rows, \count($rows));
+        }
+        int|string $insertId = $this->mysqli->insert_id;
+        return new DbResult(
+            [],
+            (int) $this->mysqli->affected_rows,
+            $insertId !== 0 && $insertId !== '0' ? (string) $insertId : null
+        );
+    }
+
+    private function killRunningQuery(): void {
+        try {
+            \mysqli $killer = self::open($this->options);
+            try {
+                $killer->query('KILL QUERY ' . $this->mysqli->thread_id);
+            } finally {
+                $killer->close();
+            }
+        } catch (\Throwable $e) {
+            (void) $e;
+        }
+    }
+
+    private static function open(MySqlOptions $options): \mysqli {
+        \mysqli|false $mysqli = \mysqli_init();
+        if ($mysqli === false) {
+            throw new DbException('mysqli_init() failed.');
+        }
+        $mysqli->options(\MYSQLI_OPT_CONNECT_TIMEOUT, $options->connectTimeoutSeconds);
+        $mysqli->options(\MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
+        try {
+            if (!@$mysqli->real_connect(
+                $options->host,
+                $options->user,
+                $options->password,
+                $options->database,
+                $options->port,
+                $options->socket
+            )) {
+                throw new DbException('Could not connect to MySQL: ' . (string) $mysqli->connect_error);
+            }
+            if (!$mysqli->set_charset($options->charset)) {
+                throw new DbException('Could not set the MySQL charset to ' . $options->charset . ': ' . $mysqli->error);
+            }
+        } catch (\mysqli_sql_exception $e) {
+            throw new DbException('Could not connect to MySQL: ' . $e->getMessage(), $e->getSqlState(), $e);
+        }
+        return $mysqli;
+    }
+}

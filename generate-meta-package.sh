@@ -12,7 +12,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
-PACKAGES_DIR="$REPO_ROOT/packages"
+PACKAGES_DIR="$REPO_ROOT/packages/tyhpdef"
 
 DRY_RUN=0
 OUT_DIR=""
@@ -28,8 +28,9 @@ Write the public tyhpdef metapackage from an impl version folder.
   ./generate-meta-package.sh nesbot-carbon/3.14.0
   ./generate-meta-package.sh --dry-run nesbot-carbon/3.14.0
 
-The argument is packages/<vendor>-<name>/<upstream>/ (the packages/ prefix
-is optional). Public version is that upstream folder name. Public require of
+The argument is packages/tyhpdef/<vendor>-<name>/<upstream>/ (the
+packages/tyhpdef/ or packages/ prefix is optional). Public version is that
+upstream folder name. Public require of
 the impl is ~{numeric-core}.0 when the upstream version is stable, and the
 exact impl version when it is a prerelease.
 
@@ -83,6 +84,7 @@ $(usage)"
 
 FOLDER="${FOLDER%/}"
 FOLDER="${FOLDER#packages/}"
+FOLDER="${FOLDER#tyhpdef/}"
 IMPL_DIR="$PACKAGES_DIR/$FOLDER"
 [[ -f "$IMPL_DIR/composer.json" ]] || die "impl composer.json not found: $IMPL_DIR/composer.json"
 

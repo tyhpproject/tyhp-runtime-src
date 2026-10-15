@@ -1,0 +1,134 @@
+<?tyhp
+
+namespace Tyhp;
+
+/**
+ * A non-blocking socket registered with the event loop, with frame buffering.
+ */
+internal final class ParallelLink {
+    private string $readBuffer = '';
+    private string $writeBuffer = '';
+    private bool $writeArmed = false;
+    private bool $open = true;
+
+    /**
+     * $onReadable runs when the socket has data. $onClosed runs when a queued
+     * write finds the peer gone. Neither runs after close().
+     */
+    public function __construct(
+        public readonly int $id,
+        #[\Tyhp\PhpType('mixed')] public readonly resource $socket,
+        \Closure<callable(): void> $onReadable,
+        private readonly \Closure<callable(): void> $onClosed,
+    ) {
+        \stream_set_blocking($socket, false);
+        EventLoop::getInstance()->addReadStream($socket, function (mixed $stream) use ($onReadable): void {
+            if ($this->open) {
+                $onReadable();
+            }
+        });
+    }
+
+    public function isOpen(): bool {
+        return $this->open && !\feof($this->socket);
+    }
+
+    /**
+     * Queues bytes and writes what the socket accepts now. The rest is written
+     * when the socket becomes writable. False means the peer has closed.
+     */
+    public function send(string $bytes): bool {
+        if (!$this->open) {
+            return false;
+        }
+        $this->writeBuffer .= $bytes;
+        return $this->flush();
+    }
+
+    /** Reads what is available and decodes every complete frame. */
+    public function receive(): ParallelReceive {
+        if (!$this->open) {
+            return new ParallelReceive() with ['closed' => true];
+        }
+
+        bool $closed = false;
+        bool $reading = true;
+        while ($reading) {
+            mixed $chunk = @\fread($this->socket, 65536);
+            if (!($chunk is string) || $chunk === '') {
+                $closed = \feof($this->socket);
+                $reading = false;
+            } else {
+                $this->readBuffer .= $chunk;
+            }
+        }
+
+        array<int, ParallelFrame> $frames = [];
+        ?string $bytes = ParallelFrames::tryPop($this->readBuffer);
+        while ($bytes !== null) {
+            $frames[] = ParallelFrames::decode($bytes);
+            $bytes = ParallelFrames::tryPop($this->readBuffer);
+        }
+        return new ParallelReceive() with ['frames' => $frames, 'closed' => $closed];
+    }
+
+    public function close(): void {
+        if (!$this->open) {
+            return;
+        }
+        $this->open = false;
+        EventLoop::getInstance()->removeReadStream($this->socket);
+        EventLoop::getInstance()->removeWriteStream($this->socket);
+        @\fclose($this->socket);
+    }
+
+    /**
+     * Closes this process's copy of the descriptor in a forked worker.
+     * The parent's copy and its event loop registration are unaffected.
+     */
+    public function closeInChild(): void {
+        $this->open = false;
+        if (\is_resource($this->socket)) {
+            @\fclose($this->socket);
+        }
+    }
+
+    private function flush(): bool {
+        while ($this->writeBuffer !== '') {
+            mixed $written = @\fwrite($this->socket, $this->writeBuffer);
+            if (!($written is int) || $written === 0) {
+                if ($written === false || \feof($this->socket)) {
+                    return false;
+                }
+                $this->armWrite();
+                return true;
+            }
+            $this->writeBuffer = \substr($this->writeBuffer, $written);
+        }
+        $this->disarmWrite();
+        return true;
+    }
+
+    private function armWrite(): void {
+        if ($this->writeArmed) {
+            return;
+        }
+        $this->writeArmed = true;
+        EventLoop::getInstance()->addWriteStream($this->socket, function (mixed $stream): void {
+            if (!$this->open) {
+                return;
+            }
+            if (!$this->flush()) {
+                ($this->onClosed)();
+            }
+        });
+    }
+
+    private function disarmWrite(): void {
+        if (!$this->writeArmed) {
+            return;
+        }
+        $this->writeArmed = false;
+        EventLoop::getInstance()->removeWriteStream($this->socket);
+    }
+}

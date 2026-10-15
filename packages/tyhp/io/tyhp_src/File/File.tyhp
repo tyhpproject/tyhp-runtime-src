@@ -1,0 +1,172 @@
+<?tyhp
+
+namespace Tyhp\Io\File;
+
+use Tyhp\CancellationToken;
+use Tyhp\Contracts\AsyncIterable;
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Json;
+use Tyhp\Promise;
+
+/**
+ * Local file operations that share the event loop.
+ *
+ * PHP has no non-blocking file I/O, so each call reads or writes in 256 KiB
+ * chunks and lets other fibers, timers, and sockets run between chunks. One
+ * chunk still blocks briefly. A cancelled token stops the operation at the next
+ * chunk; a write stopped that way leaves a partial file.
+ */
+final class File {
+    internal const int CHUNK_BYTES = 262144;
+
+    async public static function readAsync(string $path, ?CancellationToken $token = null): string {
+        resource $handle = self::open($path, 'rb');
+        string $contents = '';
+        try {
+            bool $more = true;
+            while ($more) {
+                $token?->throwIfCancellationRequested();
+                string|false $chunk = \fread($handle, self::CHUNK_BYTES);
+                if ($chunk === false) {
+                    throw new IoException('Could not read ' . $path . '.');
+                }
+                $contents .= $chunk;
+                $more = !\feof($handle) && $chunk !== '';
+                if ($more) {
+                    await Promise::yieldTick();
+                }
+            }
+        } finally {
+            \fclose($handle);
+        }
+        return $contents;
+    }
+
+    /**
+     * Reads the file and decodes it as JSON into T. Throws \JsonException for
+     * invalid JSON and IncompatibleTypeException when the value does not match T.
+     */
+    async public static function readJsonAsync<T extends struct>(string $path, ?CancellationToken $token = null): T {
+        string $json = await self::readAsync($path, $token);
+        return Json::decode<T>($json);
+    }
+
+    /**
+     * Creates or truncates the file, then writes $contents.
+     */
+    async public static function writeAsync(string $path, string $contents, ?CancellationToken $token = null): void {
+        await self::put($path, $contents, 'wb', $token);
+    }
+
+    async public static function appendAsync(string $path, string $contents, ?CancellationToken $token = null): void {
+        await self::put($path, $contents, 'ab', $token);
+    }
+
+    /**
+     * Copies $from to $to, replacing $to when it exists.
+     */
+    async public static function copyAsync(string $from, string $to, ?CancellationToken $token = null): void {
+        resource $source = self::open($from, 'rb');
+        try {
+            resource $target = self::open($to, 'wb');
+            try {
+                bool $more = true;
+                while ($more) {
+                    $token?->throwIfCancellationRequested();
+                    string|false $chunk = \fread($source, self::CHUNK_BYTES);
+                    if ($chunk === false) {
+                        throw new IoException('Could not read ' . $from . '.');
+                    }
+                    self::writeAll($target, $chunk, $to);
+                    $more = !\feof($source) && $chunk !== '';
+                    if ($more) {
+                        await Promise::yieldTick();
+                    }
+                }
+            } finally {
+                \fclose($target);
+            }
+        } finally {
+            \fclose($source);
+        }
+    }
+
+    /**
+     * Returns the lower-case hex digest of the file for any algorithm in hash_algos().
+     */
+    async public static function hashAsync(string $path, string $algorithm = 'sha256', ?CancellationToken $token = null): string {
+        if (!\in_array($algorithm, \hash_algos(), true)) {
+            throw new \InvalidArgumentException('Unknown hash algorithm "' . $algorithm . '".');
+        }
+        resource $handle = self::open($path, 'rb');
+        try {
+            \HashContext $context = \hash_init($algorithm);
+            bool $more = true;
+            while ($more) {
+                $token?->throwIfCancellationRequested();
+                string|false $chunk = \fread($handle, self::CHUNK_BYTES);
+                if ($chunk === false) {
+                    throw new IoException('Could not read ' . $path . '.');
+                }
+                \hash_update($context, $chunk);
+                $more = !\feof($handle) && $chunk !== '';
+                if ($more) {
+                    await Promise::yieldTick();
+                }
+            }
+            return \hash_final($context);
+        } finally {
+            \fclose($handle);
+        }
+    }
+
+    /**
+     * Iterates the file line by line without loading it whole. Lines exclude
+     * "\n" and "\r\n". The file opens when iteration starts and closes at the end.
+     *
+     * @example `foreach (await File::linesAsync($path) as $line) { ... }`
+     */
+    public static function linesAsync(string $path): AsyncIterable<string> {
+        return new FileLines($path);
+    }
+
+    internal static function open(string $path, string $mode): resource {
+        resource|false $handle = @\fopen($path, $mode);
+        if (!\is_resource($handle)) {
+            ?array $error = \error_get_last();
+            throw new IoException('Could not open ' . $path . ': ' . (string) ($error['message'] ?? 'fopen() failed.'));
+        }
+        return $handle;
+    }
+
+    async private static function put(string $path, string $contents, string $mode, ?CancellationToken $token): void {
+        $token?->throwIfCancellationRequested();
+        resource $handle = self::open($path, $mode);
+        try {
+            int $offset = 0;
+            int $length = \strlen($contents);
+            while ($offset < $length) {
+                $token?->throwIfCancellationRequested();
+                self::writeAll($handle, \substr($contents, $offset, self::CHUNK_BYTES), $path);
+                $offset += self::CHUNK_BYTES;
+                if ($offset < $length) {
+                    await Promise::yieldTick();
+                }
+            }
+        } finally {
+            \fclose($handle);
+        }
+    }
+
+    private static function writeAll(#[\Tyhp\PhpType('mixed')] resource $handle, string $bytes, string $path): void {
+        int $offset = 0;
+        int $length = \strlen($bytes);
+        while ($offset < $length) {
+            int|false $written = \fwrite($handle, \substr($bytes, $offset));
+            if ($written === false || $written === 0) {
+                throw new IoException('Could not write ' . $path . '.');
+            }
+            $offset += $written;
+        }
+    }
+}

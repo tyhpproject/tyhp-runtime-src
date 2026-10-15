@@ -1,0 +1,21 @@
+<?tyhp
+
+namespace Tyhp;
+
+/**
+ * One unit of work for a tyhp/parallel worker process.
+ *
+ * Parallel::runAsync() serializes the object once, when the task is queued, and
+ * the worker runs an unserialized copy. Changing the object afterward does not
+ * affect that run. Its properties and the value returned from run() must be
+ * serializable, and the worker must be able to autoload the task class. The
+ * copy does not share the caller's objects, sockets, or database connections.
+ *
+ * When run() returns, the caller's Promise resolves with that value. When it
+ * throws, the Promise rejects with a ParallelException whose getRemoteError()
+ * describes the exception. Calling exit() or crashing the worker fails the
+ * task, and the pool starts a new worker.
+ */
+interface ParallelTask<T extends void|mixed = mixed> {
+    public function run(): T;
+}

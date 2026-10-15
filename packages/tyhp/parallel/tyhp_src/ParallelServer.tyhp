@@ -1,0 +1,336 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Exceptions\ParallelException;
+
+/**
+ * CLI process that owns the worker pool and accepts many client connections.
+ *
+ * Task payloads are forwarded to workers as bytes. This process never
+ * unserializes client objects.
+ */
+internal final class ParallelServer {
+    private static ?ParallelServer $active = null;
+
+    private mixed $listenSocket = null;
+    private string $socketPath = '';
+    private int $ownerPid = 0;
+    private bool $stopped = false;
+    private int $nextClientId = 0;
+    private array<int, ParallelLink> $clients = [];
+
+    /** Client id => (client job id => pool job id). Pool id 0 means enqueue has not returned yet. */
+    private array<int, array<int, int>> $clientJobs = [];
+    private ?Deferred<bool> $done = null;
+
+    /** Called in a new worker: closes the listen socket and client sockets copied by fork. */
+    public static function closeInheritedSockets(): void {
+        ?ParallelServer $server = self::$active;
+        if ($server === null) {
+            return;
+        }
+        self::$active = null;
+        $server->stopped = true;
+        mixed $listen = $server->listenSocket;
+        $server->listenSocket = null;
+        if (\is_resource($listen)) {
+            @\fclose($listen);
+        }
+        foreach ($server->clients as $link) {
+            $link->closeInChild();
+        }
+        $server->clients = [];
+        $server->clientJobs = [];
+    }
+
+    public function serve(string $socketPath, int $workers, int $socketMode): void {
+        if ($workers < 1) {
+            throw new \InvalidArgumentException('Worker count must be at least 1.');
+        }
+        if ($socketMode < 0 || $socketMode > 0777) {
+            throw new \InvalidArgumentException('Socket mode must be between 0 and 0777.');
+        }
+        if (self::$active !== null) {
+            throw new \LogicException('This process is already running a parallel worker service.');
+        }
+        \putenv('TYHP_PARALLEL_SOCKET');
+        Parallel::assertAvailable();
+        self::claimSocketPath($socketPath);
+
+        $this->socketPath = $socketPath;
+        $this->ownerPid = \posix_getpid();
+        $this->bind($socketPath, $socketMode);
+        self::$active = $this;
+
+        int $owner = $this->ownerPid;
+        \register_shutdown_function(static function () use ($socketPath, $owner): void {
+            if (\posix_getpid() === $owner && \file_exists($socketPath)) {
+                @\unlink($socketPath);
+            }
+        });
+        $this->installSignals();
+        ParallelPool::instance()->start($workers);
+        \fwrite(
+            \STDERR,
+            'tyhp-parallel listening on ' . $socketPath . ' with ' . (string) $workers . " workers\n"
+        );
+
+        Deferred<bool> $done = new Deferred<bool>();
+        $this->done = $done;
+        try {
+            EventLoop::getInstance()->run($done->getPromise());
+        } finally {
+            $this->requestStop();
+        }
+    }
+
+    private static function claimSocketPath(string $path): void {
+        if ($path === '' || \str_contains($path, "\0")) {
+            throw new \InvalidArgumentException('Socket path is empty.');
+        }
+        if (\strlen($path) > 100) {
+            throw new \InvalidArgumentException('Socket path is too long for a Unix socket.');
+        }
+        if (!\file_exists($path)) {
+            return;
+        }
+
+        int $errorCode = 0;
+        ?string $errorMessage = null;
+        mixed $probe = @\stream_socket_client('unix://' . $path, $errorCode, $errorMessage, 0.2);
+        if (\is_resource($probe)) {
+            \fclose($probe);
+            throw new ParallelException(
+                'A parallel worker service is already listening on ' . $path . '.'
+            );
+        }
+        \unlink($path);
+    }
+
+    private function bind(string $path, int $socketMode): void {
+        int $errorCode = 0;
+        ?string $errorMessage = null;
+        mixed $listen = \stream_socket_server('unix://' . $path, $errorCode, $errorMessage);
+        if (!\is_resource($listen)) {
+            string $detail = 'bind failed';
+            if ($errorMessage is string) {
+                if ($errorMessage !== '') {
+                    $detail = $errorMessage;
+                }
+            }
+            throw new ParallelException('Could not listen on ' . $path . '. ' . $detail);
+        }
+
+        \chmod($path, $socketMode);
+        \stream_set_blocking($listen, false);
+        $this->listenSocket = $listen;
+        EventLoop::getInstance()->addReadStream($listen, function (mixed $stream): void {
+            $this->accept();
+        });
+    }
+
+    /** Signal handlers only schedule the stop, so no callback is torn down mid-run. */
+    private function installSignals(): void {
+        \pcntl_async_signals(true);
+        \pcntl_signal(\SIGTERM, function (int $signal, \PcntlSiginfo $info): void {
+            (void) $signal;
+            (void) $info;
+            $this->scheduleStop();
+        });
+        \pcntl_signal(\SIGINT, function (int $signal, \PcntlSiginfo $info): void {
+            (void) $signal;
+            (void) $info;
+            $this->scheduleStop();
+        });
+    }
+
+    private function scheduleStop(): void {
+        EventLoop::getInstance()->defer(function (): void {
+            $this->requestStop();
+        });
+    }
+
+    private function accept(): void {
+        mixed $listen = $this->listenSocket;
+        if ($this->stopped || !\is_resource($listen)) {
+            return;
+        }
+        bool $accepting = true;
+        while ($accepting) {
+            mixed $socket = @\stream_socket_accept($listen, 0);
+            if (!\is_resource($socket)) {
+                $accepting = false;
+            } else {
+                $this->nextClientId++;
+                int $id = $this->nextClientId;
+                $this->clientJobs[$id] = [];
+                $this->clients[$id] = new ParallelLink(
+                    $id,
+                    $socket,
+                    function () use ($id): void {
+                        $this->onClientReadable($id);
+                    },
+                    function () use ($id): void {
+                        $this->dropClient($id);
+                    },
+                );
+            }
+        }
+    }
+
+    private function onClientReadable(int $id): void {
+        if ($this->stopped || !isset($this->clients[$id])) {
+            return;
+        }
+        ?ParallelReceive $received = $this->receiveFrom($id);
+        if ($received === null) {
+            return;
+        }
+        foreach ($received->frames as $frame) {
+            if (!isset($this->clients[$id])) {
+                return;
+            }
+            $this->handleClientFrame($id, $frame);
+        }
+        if ($received->closed) {
+            $this->dropClient($id);
+        }
+    }
+
+    private function receiveFrom(int $id): ?ParallelReceive {
+        try {
+            return $this->clients[$id]->receive();
+        } catch (\Throwable $e) {
+            (void) $e;
+            $this->dropClient($id);
+            return null;
+        }
+    }
+
+    private function handleClientFrame(int $clientId, ParallelFrame $frame): void {
+        ParallelFrameOp $op = ParallelFrames::op($frame);
+        if ($op === ParallelFrameOp::Cancel) {
+            $this->cancelClientJob($clientId, $frame->id);
+            return;
+        }
+        int $clientJobId = $frame->id;
+        if ($op !== ParallelFrameOp::Run || isset($this->clientJobs[$clientId][$clientJobId])) {
+            $this->dropClient($clientId);
+            return;
+        }
+
+        $this->clientJobs[$clientId][$clientJobId] = 0;
+        try {
+            int $poolJobId = ParallelPool::instance()->enqueue(
+                $frame->payload,
+                function (string $result) use ($clientId, $clientJobId): void {
+                    if ($this->forget($clientId, $clientJobId)) {
+                        $this->reply($clientId, $clientJobId, $result, null);
+                    }
+                },
+                function (\Throwable $error) use ($clientId, $clientJobId): void {
+                    if ($this->forget($clientId, $clientJobId)) {
+                        $this->reply($clientId, $clientJobId, '', $error);
+                    }
+                },
+            );
+            if (isset($this->clientJobs[$clientId][$clientJobId])) {
+                $this->clientJobs[$clientId][$clientJobId] = $poolJobId;
+            }
+        } catch (\Throwable $e) {
+            if ($this->forget($clientId, $clientJobId)) {
+                $this->reply($clientId, $clientJobId, '', $e);
+            }
+        }
+    }
+
+    private function cancelClientJob(int $clientId, int $clientJobId): void {
+        if (!isset($this->clientJobs[$clientId][$clientJobId])) {
+            return;
+        }
+        int $poolJobId = $this->clientJobs[$clientId][$clientJobId];
+        unset($this->clientJobs[$clientId][$clientJobId]);
+        ParallelPool::instance()->cancel($poolJobId, new ParallelException('The client cancelled the task.'));
+    }
+
+    /** Stops tracking a client job. False when it was already cancelled or dropped. */
+    private function forget(int $clientId, int $clientJobId): bool {
+        if (!isset($this->clientJobs[$clientId][$clientJobId])) {
+            return false;
+        }
+        unset($this->clientJobs[$clientId][$clientJobId]);
+        return true;
+    }
+
+    private function reply(int $clientId, int $clientJobId, string $result, ?\Throwable $error): void {
+        if (!isset($this->clients[$clientId])) {
+            return;
+        }
+        string $bytes = $error === null
+            ? ParallelFrames::success($clientJobId, $result)
+            : ParallelFrames::failure($clientJobId, $error);
+        if (!$this->clients[$clientId]->send($bytes)) {
+            $this->dropClient($clientId);
+        }
+    }
+
+    /** Closes a client connection and cancels every task it still has queued or running. */
+    private function dropClient(int $id): void {
+        if (!isset($this->clients[$id])) {
+            return;
+        }
+        ParallelLink $link = $this->clients[$id];
+        unset($this->clients[$id]);
+        $link->close();
+
+        array<int, int> $jobs = $this->clientJobs[$id] ?? [];
+        unset($this->clientJobs[$id]);
+        if ($this->stopped) {
+            return;
+        }
+        foreach ($jobs as $poolJobId) {
+            ParallelPool::instance()->cancel($poolJobId, new ParallelException('The client disconnected.'));
+        }
+    }
+
+    private function requestStop(): void {
+        if ($this->stopped) {
+            return;
+        }
+        $this->stopped = true;
+        self::$active = null;
+
+        mixed $listen = $this->listenSocket;
+        $this->listenSocket = null;
+        if (\is_resource($listen)) {
+            EventLoop::getInstance()->removeReadStream($listen);
+            @\fclose($listen);
+        }
+
+        array<int, ParallelLink> $clients = $this->clients;
+        $this->clients = [];
+        $this->clientJobs = [];
+        foreach ($clients as $link) {
+            $link->close();
+        }
+
+        try {
+            ParallelPool::shutdown();
+        } catch (\Throwable $e) {
+            (void) $e;
+        }
+
+        if ($this->socketPath !== '' && \posix_getpid() === $this->ownerPid && \file_exists($this->socketPath)) {
+            @\unlink($this->socketPath);
+        }
+        ?Deferred<bool> $done = $this->done;
+        if ($done !== null) {
+            try {
+                $done->resolve(true);
+            } catch (\Throwable $e) {
+                (void) $e;
+            }
+        }
+    }
+}

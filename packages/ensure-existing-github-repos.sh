@@ -15,7 +15,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPILER_ROOT="$(cd "$REPO_ROOT/../tyhp" && pwd)"
-PACKAGES_DIR="$SCRIPT_DIR"
+PACKAGES_DIR="$SCRIPT_DIR/tyhpdef"
 GITHUB_ORG="tyhpproject-packages"
 
 DRY_RUN=0

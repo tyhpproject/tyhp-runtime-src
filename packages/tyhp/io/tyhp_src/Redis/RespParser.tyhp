@@ -1,0 +1,98 @@
+<?tyhp
+
+namespace Tyhp\Io\Redis;
+
+use Tyhp\Io\Exceptions\RedisException;
+
+/**
+ * Incremental RESP2 decoder. Error replies nested in an array decode to
+ * RedisException values in that array.
+ */
+internal final class RespParser {
+    private const int COMPACT_BYTES = 65536;
+
+    private string $buffer = '';
+    private int $offset = 0;
+
+    public function feed(string $data): void {
+        $this->buffer .= $data;
+    }
+
+    /**
+     * Returns the next complete reply, or null when more bytes are needed.
+     */
+    public function next(): ?RespReply {
+        ?RespReply $reply = $this->parse($this->offset);
+        if ($reply === null) {
+            return null;
+        }
+        $this->offset = $reply->end;
+        if ($this->offset >= \strlen($this->buffer)) {
+            $this->buffer = '';
+            $this->offset = 0;
+        } else if ($this->offset > self::COMPACT_BYTES) {
+            $this->buffer = \substr($this->buffer, $this->offset);
+            $this->offset = 0;
+        }
+        return $reply;
+    }
+
+    public static function encode(array<int, string> $arguments): string {
+        string $out = '*' . \count($arguments) . "\r\n";
+        foreach ($arguments as $argument) {
+            $out .= '$' . \strlen($argument) . "\r\n" . $argument . "\r\n";
+        }
+        return $out;
+    }
+
+    private function parse(int $position): ?RespReply {
+        if ($position >= \strlen($this->buffer)) {
+            return null;
+        }
+        int|false $lineEnd = \strpos($this->buffer, "\r\n", $position);
+        if ($lineEnd === false) {
+            return null;
+        }
+        string $type = $this->buffer[$position];
+        string $line = \substr($this->buffer, $position + 1, $lineEnd - $position - 1);
+        int $next = $lineEnd + 2;
+
+        if ($type === '+') {
+            return new RespReply($line, null, $next);
+        }
+        if ($type === '-') {
+            return new RespReply(null, $line, $next);
+        }
+        if ($type === ':') {
+            return new RespReply((int) $line, null, $next);
+        }
+        if ($type === '$') {
+            int $length = (int) $line;
+            if ($length < 0) {
+                return new RespReply(null, null, $next);
+            }
+            if (\strlen($this->buffer) < $next + $length + 2) {
+                return null;
+            }
+            return new RespReply(\substr($this->buffer, $next, $length), null, $next + $length + 2);
+        }
+        if ($type === '*') {
+            int $count = (int) $line;
+            if ($count < 0) {
+                return new RespReply(null, null, $next);
+            }
+            array<int, mixed> $items = [];
+            int $cursor = $next;
+            for (int $i = 0; $i < $count; $i++) {
+                ?RespReply $item = $this->parse($cursor);
+                if ($item === null) {
+                    return null;
+                }
+                $items[] = $item->error !== null ? new RedisException($item->error) : $item->value;
+                $cursor = $item->end;
+            }
+            return new RespReply($items, null, $cursor);
+        }
+        throw new RedisException('Received an invalid RESP reply type "' . $type . '".');
+    }
+}

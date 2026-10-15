@@ -1,0 +1,408 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Exceptions\ParallelException;
+
+/**
+ * Forked workers owned by a CLI process or by the worker service.
+ * Each worker runs one task at a time over its own socket pair, and the
+ * owner watches every socket with the tyhp/async event loop.
+ */
+internal final class ParallelPool implements ParallelBackend {
+    private static ?ParallelPool $instance = null;
+    private static bool $shutdownHooked = false;
+    private static bool $inWorker = false;
+
+    private array<int, ParallelJob> $queue = [];
+    private array<int, ParallelJob> $running = [];
+    private array<int, ParallelWorkerHandle> $workers = [];
+    private int $workersWanted = 4;
+    private int $nextJobId = 1;
+    private bool $started = false;
+    private bool $shuttingDown = false;
+    private bool $inPump = false;
+    private bool $pumpAgain = false;
+
+    private function __construct() {}
+
+    public static function instance(): ParallelPool {
+        return self::$instance ??= new ParallelPool();
+    }
+
+    /** True inside a forked worker process. */
+    public static function inWorker(): bool {
+        return self::$inWorker;
+    }
+
+    public static function shutdown(): void {
+        ?ParallelPool $pool = self::$instance;
+        if ($pool === null) {
+            return;
+        }
+        $pool->shutdownWorkers();
+        self::$instance = null;
+    }
+
+    public function start(int $workers): void {
+        if ($workers < 1) {
+            throw new \InvalidArgumentException('Worker count must be at least 1.');
+        }
+        Parallel::assertAvailable();
+        if ($this->started) {
+            if ($workers !== $this->workersWanted) {
+                throw new \LogicException(
+                    'The parallel pool is already started with ' . (string) $this->workersWanted . ' workers.'
+                );
+            }
+            return;
+        }
+        $this->workersWanted = $workers;
+        $this->started = true;
+        self::hookShutdown();
+        $this->requestPump();
+    }
+
+    public function enqueue(
+        string $payload,
+        \Closure<callable(string): void> $onSuccess,
+        \Closure<callable(\Throwable): void> $onFailure,
+    ): int {
+        if ($this->shuttingDown) {
+            throw new ParallelException('The parallel pool is shutting down.');
+        }
+        ParallelFrames::checkData($payload, 'The task');
+
+        int $id = $this->nextJobId;
+        $this->nextJobId++;
+        $this->queue[$id] = new ParallelJob($id, $payload, $onSuccess, $onFailure);
+
+        if (!$this->started) {
+            $this->start($this->workersWanted);
+        } else {
+            $this->requestPump();
+        }
+        return $id;
+    }
+
+    public function cancel(int $id, \Throwable $reason): void {
+        if (isset($this->queue[$id])) {
+            ParallelJob $queued = $this->queue[$id];
+            unset($this->queue[$id]);
+            ($queued->onFailure)($reason);
+            return;
+        }
+        if (!isset($this->running[$id])) {
+            return;
+        }
+
+        ParallelJob $job = $this->running[$id];
+        unset($this->running[$id]);
+        array<int, ParallelWorkerHandle> $workers = $this->workers;
+        foreach ($workers as $pid => $worker) {
+            if ($worker->jobId === $id) {
+                $this->removeWorker($pid);
+            }
+        }
+        ($job->onFailure)($reason);
+        $this->requestPump();
+    }
+
+    public function shutdownWorkers(): void {
+        if (self::$inWorker || $this->shuttingDown) {
+            return;
+        }
+        $this->shuttingDown = true;
+        $this->started = false;
+
+        array<int, ParallelJob> $queued = $this->queue;
+        array<int, ParallelJob> $running = $this->running;
+        $this->queue = [];
+        $this->running = [];
+
+        foreach (\array_keys($this->workers) as $pid) {
+            $this->removeWorker($pid);
+        }
+
+        foreach ($queued as $job) {
+            ($job->onFailure)(new ParallelException('The parallel pool shut down before the task ran.'));
+        }
+        foreach ($running as $job) {
+            ($job->onFailure)(new ParallelException('The parallel pool shut down while the task was running.'));
+        }
+    }
+
+    private static function hookShutdown(): void {
+        if (self::$shutdownHooked) {
+            return;
+        }
+        self::$shutdownHooked = true;
+        \register_shutdown_function(static function (): void {
+            ParallelPool::shutdown();
+        });
+    }
+
+    /** Forks from the main stack: a fork inside a Fiber would copy that Fiber's suspended state. */
+    private function requestPump(): void {
+        if (\Fiber::getCurrent() !== null) {
+            EventLoop::getInstance()->defer(function (): void {
+                $this->pump();
+            });
+            return;
+        }
+        $this->pump();
+    }
+
+    private function pump(): void {
+        if ($this->shuttingDown) {
+            return;
+        }
+        if (\Fiber::getCurrent() !== null) {
+            $this->requestPump();
+            return;
+        }
+        if ($this->inPump) {
+            $this->pumpAgain = true;
+            return;
+        }
+
+        $this->inPump = true;
+        try {
+            do {
+                $this->pumpAgain = false;
+                while ($this->started && \count($this->workers) < $this->workersWanted) {
+                    $this->spawnWorker();
+                }
+                $this->dispatch();
+            } while ($this->pumpAgain);
+        } finally {
+            $this->inPump = false;
+        }
+    }
+
+    private function spawnWorker(): void {
+        mixed $pair = \stream_socket_pair(\STREAM_PF_UNIX, \STREAM_SOCK_STREAM, \STREAM_IPPROTO_IP);
+        if (!\is_array($pair) || !isset($pair[0]) || !isset($pair[1])) {
+            throw new ParallelException('stream_socket_pair failed.');
+        }
+        mixed $parentEnd = $pair[0];
+        mixed $childEnd = $pair[1];
+        if (!\is_resource($parentEnd) || !\is_resource($childEnd)) {
+            throw new ParallelException('stream_socket_pair did not return stream resources.');
+        }
+
+        int $pid = \pcntl_fork();
+        if ($pid === -1) {
+            \fclose($parentEnd);
+            \fclose($childEnd);
+            throw new ParallelException('pcntl_fork failed.');
+        }
+        if ($pid === 0) {
+            self::$inWorker = true;
+            try {
+                \fclose($parentEnd);
+                $this->runWorker($childEnd);
+            } catch (\Throwable $e) {
+                (void) $e;
+            }
+            \posix_kill(\posix_getpid(), \SIGKILL);
+            exit(0);
+        }
+
+        \fclose($childEnd);
+        $this->workers[$pid] = new ParallelWorkerHandle($pid, new ParallelLink(
+            $pid,
+            $parentEnd,
+            function () use ($pid): void {
+                $this->onWorkerReadable($pid);
+            },
+            function () use ($pid): void {
+                $this->retireWorker($pid, new ParallelException('The worker closed its socket.'));
+            },
+        ));
+    }
+
+    /**
+     * Worker main loop. Ends with SIGKILL so destructors and shutdown functions
+     * copied from the parent (PDO, sockets, buffered output) never run here.
+     */
+    private function runWorker(#[\Tyhp\PhpType('mixed')] resource $socket): never {
+        \pcntl_async_signals(false);
+        \pcntl_signal(\SIGTERM, \SIG_DFL);
+        \pcntl_signal(\SIGINT, \SIG_DFL);
+        \gc_disable();
+        foreach ($this->workers as $worker) {
+            $worker->link->closeInChild();
+        }
+        ParallelServer::closeInheritedSockets();
+        $this->workers = [];
+        $this->queue = [];
+        $this->running = [];
+        EventLoop::resetInstance();
+        \stream_set_blocking($socket, true);
+
+        string $buffer = '';
+        bool $reading = true;
+        try {
+            while ($reading) {
+                mixed $chunk = @\fread($socket, 65536);
+                if (!($chunk is string) || $chunk === '') {
+                    $reading = false;
+                } else {
+                    $buffer .= $chunk;
+                    ?string $bytes = ParallelFrames::tryPop($buffer);
+                    while ($bytes !== null) {
+                        ParallelFrame $frame = ParallelFrames::decode($bytes);
+                        if (ParallelFrames::op($frame) !== ParallelFrameOp::Run) {
+                            throw new ParallelException('The worker received an unexpected frame.');
+                        }
+                        ParallelFrames::writeAll($socket, self::runJob($frame));
+                        $bytes = ParallelFrames::tryPop($buffer);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            try {
+                ParallelFrames::writeAll($socket, ParallelFrames::fatal($e));
+            } catch (\Throwable $writeError) {
+                (void) $writeError;
+            }
+        }
+
+        \posix_kill(\posix_getpid(), \SIGKILL);
+        exit(0);
+    }
+
+    /** Runs one task in the worker and returns the encoded Result frame. */
+    private static function runJob(ParallelFrame $frame): string {
+        try {
+            mixed $task = @\unserialize($frame->payload, ['allowed_classes' => true]);
+            if ($task instanceof \__PHP_Incomplete_Class) {
+                throw new ParallelException(
+                    'The worker could not load task class ' . self::incompleteClassName($task) . '.'
+                );
+            }
+            if (!($task instanceof ParallelTask)) {
+                throw new ParallelException('The worker received a payload that is not a ParallelTask.');
+            }
+            mixed $value = $task->run();
+            return ParallelFrames::success($frame->id, \serialize($value));
+        } catch (\Throwable $e) {
+            return ParallelFrames::failure($frame->id, ParallelException::fromRemote(ParallelFrames::describe($e)));
+        }
+    }
+
+    private static function incompleteClassName(\__PHP_Incomplete_Class $task): string {
+        array<int|string, mixed> $fields = (array) $task;
+        mixed $name = $fields['__PHP_Incomplete_Class_Name'] ?? null;
+        if ($name is string) {
+            return $name;
+        }
+        return 'unknown';
+    }
+
+    private function dispatch(): void {
+        array<int, ParallelWorkerHandle> $workers = $this->workers;
+        foreach ($workers as $pid => $worker) {
+            mixed $first = \array_key_first($this->queue);
+            if (!($first is int)) {
+                return;
+            }
+            if (!isset($this->workers[$pid]) || $worker->jobId !== null) {
+                continue;
+            }
+            ParallelJob $job = $this->queue[$first];
+            unset($this->queue[$first]);
+            $worker->jobId = $job->id;
+            $this->running[$job->id] = $job;
+            if (!$worker->link->send(ParallelFrames::run($job->id, $job->payload))) {
+                $this->retireWorker($pid, new ParallelException('The worker closed its socket before it received the task.'));
+            }
+        }
+    }
+
+    private function onWorkerReadable(int $pid): void {
+        if (!isset($this->workers[$pid])) {
+            return;
+        }
+        ?ParallelReceive $received = $this->receiveFrom($pid);
+        if ($received === null) {
+            return;
+        }
+        foreach ($received->frames as $frame) {
+            if (!isset($this->workers[$pid])) {
+                return;
+            }
+            $this->handleWorkerFrame($pid, $frame);
+        }
+        if ($received->closed) {
+            $this->retireWorker($pid, new ParallelException('The worker exited before it finished the task.'));
+        }
+    }
+
+    private function receiveFrom(int $pid): ?ParallelReceive {
+        try {
+            return $this->workers[$pid]->link->receive();
+        } catch (\Throwable $e) {
+            $this->retireWorker($pid, new ParallelException('The worker sent a malformed frame.', null, $e));
+            return null;
+        }
+    }
+
+    private function handleWorkerFrame(int $pid, ParallelFrame $frame): void {
+        ParallelFrameOp $op = ParallelFrames::op($frame);
+        if ($op === ParallelFrameOp::Fatal) {
+            $this->retireWorker($pid, ParallelFrames::exceptionOf($frame, 'The worker failed.'));
+            return;
+        }
+        if ($op !== ParallelFrameOp::Result) {
+            $this->retireWorker($pid, new ParallelException('The worker sent an unexpected frame.'));
+            return;
+        }
+
+        ParallelWorkerHandle $worker = $this->workers[$pid];
+        if ($worker->jobId === $frame->id) {
+            $worker->jobId = null;
+        }
+        if (!isset($this->running[$frame->id])) {
+            $this->requestPump();
+            return;
+        }
+        ParallelJob $job = $this->running[$frame->id];
+        unset($this->running[$frame->id]);
+
+        if ($frame->ok) {
+            ($job->onSuccess)($frame->payload);
+        } else {
+            ($job->onFailure)(ParallelFrames::exceptionOf($frame, 'The task failed.'));
+        }
+        $this->requestPump();
+    }
+
+    /** Removes a worker, fails the task it was running, and starts a replacement. */
+    private function retireWorker(int $pid, \Throwable $reason): void {
+        if (!isset($this->workers[$pid])) {
+            return;
+        }
+        ?int $jobId = $this->workers[$pid]->jobId;
+        $this->removeWorker($pid);
+        if ($jobId !== null && isset($this->running[$jobId])) {
+            ParallelJob $job = $this->running[$jobId];
+            unset($this->running[$jobId]);
+            ($job->onFailure)($reason);
+        }
+        $this->requestPump();
+    }
+
+    private function removeWorker(int $pid): void {
+        if (!isset($this->workers[$pid])) {
+            return;
+        }
+        ParallelWorkerHandle $worker = $this->workers[$pid];
+        unset($this->workers[$pid]);
+        $worker->link->close();
+        \posix_kill($pid, \SIGKILL);
+        int $status = 0;
+        \pcntl_waitpid($pid, $status);
+    }
+}

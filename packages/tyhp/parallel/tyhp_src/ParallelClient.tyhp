@@ -1,0 +1,180 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Exceptions\ParallelException;
+use Tyhp\Exceptions\ParallelUnavailableException;
+
+/**
+ * Connection from this process to a worker service started by tyhp-parallel serve.
+ * Many processes can connect at once. This process keeps one socket.
+ */
+internal final class ParallelClient implements ParallelBackend {
+    private static ?ParallelClient $instance = null;
+    private static bool $shutdownHooked = false;
+
+    private ?ParallelLink $link = null;
+    private int $nextJobId = 1;
+    private array<int, ParallelJob> $inflight = [];
+
+    private function __construct(private readonly string $socketPath) {}
+
+    public static function instance(string $socketPath): ParallelClient {
+        ?ParallelClient $current = self::$instance;
+        if ($current !== null && $current->socketPath === $socketPath) {
+            return $current;
+        }
+        if ($current !== null) {
+            $current->failAll('The parallel worker service socket changed.');
+        }
+        ParallelClient $client = new ParallelClient($socketPath);
+        self::$instance = $client;
+        return $client;
+    }
+
+    public static function shutdown(): void {
+        ?ParallelClient $client = self::$instance;
+        if ($client === null) {
+            return;
+        }
+        self::$instance = null;
+        $client->failAll('The connection to the parallel worker service closed.');
+    }
+
+    public function enqueue(
+        string $payload,
+        \Closure<callable(string): void> $onSuccess,
+        \Closure<callable(\Throwable): void> $onFailure,
+    ): int {
+        ParallelLink $link = $this->connect();
+        int $id = $this->nextJobId;
+        string $frame = ParallelFrames::run($id, $payload);
+        $this->nextJobId++;
+        $this->inflight[$id] = new ParallelJob($id, $payload, $onSuccess, $onFailure);
+        if (!$link->send($frame)) {
+            $this->failAll('The parallel worker service closed the connection.');
+        }
+        return $id;
+    }
+
+    public function cancel(int $id, \Throwable $reason): void {
+        if (!isset($this->inflight[$id])) {
+            return;
+        }
+        ParallelJob $job = $this->inflight[$id];
+        unset($this->inflight[$id]);
+        ($job->onFailure)($reason);
+
+        ?ParallelLink $link = $this->link;
+        if ($link !== null && !$link->send(ParallelFrames::cancel($id))) {
+            $this->failAll('The parallel worker service closed the connection.');
+        }
+    }
+
+    /** Opens the service connection if it is not already open. */
+    public function connect(): ParallelLink {
+        ?ParallelLink $current = $this->link;
+        if ($current !== null && $current->isOpen()) {
+            return $current;
+        }
+        if ($current !== null) {
+            $this->failAll('The connection to the parallel worker service closed.');
+        }
+
+        int $errorCode = 0;
+        ?string $errorMessage = null;
+        mixed $socket = @\stream_socket_client(
+            'unix://' . $this->socketPath,
+            $errorCode,
+            $errorMessage,
+            1.0
+        );
+        if (!\is_resource($socket)) {
+            string $detail = 'Could not connect to the parallel worker service at ' . $this->socketPath . '.';
+            if ($errorMessage is string) {
+                if ($errorMessage !== '') {
+                    $detail .= ' ' . $errorMessage;
+                }
+            }
+            throw new ParallelUnavailableException($detail);
+        }
+
+        ParallelLink $link = new ParallelLink(
+            0,
+            $socket,
+            function (): void {
+                $this->onReadable();
+            },
+            function (): void {
+                $this->failAll('The parallel worker service closed the connection.');
+            },
+        );
+        $this->link = $link;
+        self::hookShutdown();
+        return $link;
+    }
+
+    private static function hookShutdown(): void {
+        if (self::$shutdownHooked) {
+            return;
+        }
+        self::$shutdownHooked = true;
+        \register_shutdown_function(static function (): void {
+            ParallelClient::shutdown();
+        });
+    }
+
+    private function onReadable(): void {
+        ?ParallelLink $link = $this->link;
+        if ($link === null) {
+            return;
+        }
+        ?ParallelReceive $received = null;
+        try {
+            $received = $link->receive();
+        } catch (\Throwable $e) {
+            $this->failAll('The parallel worker service sent a malformed frame. ' . $e->getMessage());
+            return;
+        }
+        if ($received === null) {
+            return;
+        }
+        foreach ($received->frames as $frame) {
+            if (ParallelFrames::op($frame) !== ParallelFrameOp::Result) {
+                $this->failAll('The parallel worker service sent an unexpected frame.');
+                return;
+            }
+            $this->settle($frame);
+        }
+        if ($received->closed) {
+            $this->failAll('The parallel worker service closed the connection.');
+        }
+    }
+
+    private function settle(ParallelFrame $frame): void {
+        if (!isset($this->inflight[$frame->id])) {
+            return;
+        }
+        ParallelJob $job = $this->inflight[$frame->id];
+        unset($this->inflight[$frame->id]);
+        if ($frame->ok) {
+            ($job->onSuccess)($frame->payload);
+            return;
+        }
+        ($job->onFailure)(ParallelFrames::exceptionOf($frame, 'The task failed.'));
+    }
+
+    private function failAll(string $reason): void {
+        ?ParallelLink $link = $this->link;
+        $this->link = null;
+        if ($link !== null) {
+            $link->close();
+        }
+        array<int, ParallelJob> $jobs = $this->inflight;
+        $this->inflight = [];
+        ParallelException $error = new ParallelException($reason);
+        foreach ($jobs as $job) {
+            ($job->onFailure)($error);
+        }
+    }
+}

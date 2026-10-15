@@ -1,0 +1,67 @@
+<?tyhp
+
+namespace Tyhp\Io;
+
+use Tyhp\CancellationToken;
+use Tyhp\EventLoop;
+use Tyhp\Exceptions\TimeoutException;
+use Tyhp\Promise;
+
+/**
+ * Waits on the event loop for one stream to become readable or writable.
+ * A stream has one waiter per direction at a time.
+ */
+internal final class IoWait {
+    public static function readable(mixed $stream, ?CancellationToken $token = null, int $timeoutMs = 0): Promise<void> {
+        return self::wait($stream, false, $token, $timeoutMs)->promise();
+    }
+
+    public static function writable(mixed $stream, ?CancellationToken $token = null, int $timeoutMs = 0): Promise<void> {
+        return self::wait($stream, true, $token, $timeoutMs)->promise();
+    }
+
+    /**
+     * Rejecting the returned wait does not unregister the stream; the owner must
+     * remove it from the event loop before closing it.
+     */
+    public static function wait(mixed $stream, bool $write, ?CancellationToken $token = null, int $timeoutMs = 0): IoPending<void> {
+        if ($token !== null && $token->isCancellationRequested()) {
+            IoPending<void> $cancelled = new IoPending<void>();
+            $cancelled->cancelWith($token, function (): void {});
+            return $cancelled;
+        }
+
+        IoPending<void> $pending = new IoPending<void>();
+        EventLoop $loop = EventLoop::getInstance();
+        ?string $timer = null;
+        \Closure<callable(): void> $cleanup = function () use ($loop, $stream, $write, &$timer): void {
+            if ($write) {
+                $loop->removeWriteStream($stream);
+            } else {
+                $loop->removeReadStream($stream);
+            }
+            if ($timer !== null) {
+                $loop->cancelTimer($timer);
+                $timer = null;
+            }
+        };
+        \Closure<callable(mixed): void> $ready = function (mixed $ready) use ($pending, $cleanup): void {
+            $cleanup();
+            $pending->resolve();
+        };
+
+        if ($write) {
+            $loop->addWriteStream($stream, $ready);
+        } else {
+            $loop->addReadStream($stream, $ready);
+        }
+        if ($timeoutMs > 0) {
+            $timer = $loop->delay($timeoutMs, function () use ($pending, $cleanup, $timeoutMs): void {
+                $cleanup();
+                $pending->reject(new TimeoutException('The operation timed out after ' . $timeoutMs . 'ms.', $timeoutMs));
+            });
+        }
+        $pending->cancelWith($token, $cleanup);
+        return $pending;
+    }
+}

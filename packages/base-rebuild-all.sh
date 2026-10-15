@@ -1,6 +1,6 @@
 #!/bin/bash
 # Rebuild every first-party dist package (all PHP versions) plus single-version packages.
-# Pass a package name to rebuild only that one: core, decimal, async, lambda, or compiler.
+# Pass a package name to rebuild only that one: core, decimal, async, lambda, parallel, io, or compiler.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -18,6 +18,10 @@ if [[ ! -f "$TYHP_DLL" ]]; then
   echo "tyhp compiler not found at: $TYHP_DLL" >&2
   echo "Build the compiler first: dotnet build $COMPILER_ROOT/tyhp.csproj" >&2
   exit 1
+fi
+
+if [[ -z "$SELECTED_PACKAGE" ]]; then
+  clear_dist
 fi
 
 build_package() {

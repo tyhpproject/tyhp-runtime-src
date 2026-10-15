@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
-PACKAGES_DIR="$REPO_ROOT/packages"
+PACKAGES_DIR="$REPO_ROOT/packages/tyhpdef"
 USER_AGENT="tyhp-scan-upstream-tyhpdefs (+https://github.com/tyhpproject/tyhp-runtime-src)"
 CACHE_DIR="${TYHP_SCAN_CACHE:-$REPO_ROOT/.packagist-scan-cache}"
 
@@ -22,8 +22,7 @@ Classify Packagist extras for versioned Composer-lib impl trees.
   ./scan-upstream-tyhpdefs.sh --json report.json --markdown report.md
   ./scan-upstream-tyhpdefs.sh --only nesbot/carbon
 
-Skips php, php-ext-*, and compiled tyhp/* (core, async, decimal, lambda,
-compiler). Fetches https://packagist.org/packages/{vendor}/{name}.json
+Scans packages/tyhpdef/ only and skips php and php-ext-*. Fetches https://packagist.org/packages/{vendor}/{name}.json
 one package at a time. HTTP 200 bodies are cached under .packagist-scan-cache/
 for this run (override with TYHP_SCAN_CACHE). The cache is not committed.
 
@@ -84,7 +83,7 @@ cache_dir = os.environ["CACHE_DIR"]
 json_out = os.environ.get("JSON_OUT") or ""
 md_out = os.environ.get("MD_OUT") or ""
 only = (os.environ.get("ONLY") or "").strip()
-skip_names = {"core", "async", "decimal", "lambda", "compiler", "dist", "vendor", "php"}
+skip_names = {"dist", "vendor", "php"}
 failures = []
 
 def die(msg, code=1):

@@ -22,7 +22,7 @@ TYHP_DLL=../tyhp/bin/Debug/net9.0/tyhp.dll ./packages/test-all-tyhpdef.sh
 ```
 
 A compiled helper can be rebuilt with `./packages/base-build-all.sh <package>`.
-Do not hand-edit generated PHP under `packages/*/src/`. Fix Tyhp first
+Do not hand-edit generated PHP under `packages/tyhp/*/src/`. Fix Tyhp first
 (compiler, checker, emitter, or tyhpdefs) and re-emit.
 
 Owner-maintained type definitions follow [TYHPDEF_OWNERSHIP.md](TYHPDEF_OWNERSHIP.md).

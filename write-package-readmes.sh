@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
-PACKAGES_DIR="$REPO_ROOT/packages"
+PACKAGES_DIR="$REPO_ROOT/packages/tyhpdef"
 OWNERSHIP_ISSUE_URL="https://github.com/tyhpproject/tyhp-runtime-src/issues/new?template=tyhpdef-ownership.yml"
 OWNERSHIP_DOC_URL="https://github.com/tyhpproject/tyhp-runtime-src"
 
@@ -26,7 +26,7 @@ Refresh README sections marked with <!-- tyhp-readme:start --> and
   ./write-package-readmes.sh --package nesbot-carbon
   ./write-package-readmes.sh --dry-run
 
-Skip core, async, decimal, lambda, and compiler. Composer-lib version folders
+Scans packages/tyhpdef/ only. Composer-lib version folders
 get the implementation README. php and php-ext-* get the first-party section.
 Handed-off public metapackage text is written with --emit public or
 --emit handed-off (used by generate-meta-package.sh).
@@ -97,7 +97,7 @@ emit = os.environ.get("EMIT") or "all"
 out_dir = os.environ.get("OUT_DIR") or ""
 issue_url = os.environ["OWNERSHIP_ISSUE_URL"]
 doc_url = os.environ["OWNERSHIP_DOC_URL"]
-skip = {"core", "async", "decimal", "lambda", "compiler", "dist", "vendor"}
+skip = {"dist", "vendor"}
 
 START = "<!-- tyhp-readme:start -->"
 END = "<!-- tyhp-readme:end -->"
@@ -110,6 +110,8 @@ def folder_name(name):
     name = name.strip().strip("/")
     if name.startswith("packages/"):
         name = name[len("packages/"):]
+    if name.startswith("tyhpdef/"):
+        name = name[len("tyhpdef/"):]
     if "/" in name and not os.path.isdir(os.path.join(packages, name.split("/")[0])):
         vendor, proj = name.split("/", 1)
         return f"{vendor}-{proj}"

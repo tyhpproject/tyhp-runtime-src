@@ -1,0 +1,46 @@
+<?tyhp
+
+namespace Tyhp\Exceptions;
+
+use Tyhp\ParallelRemoteError;
+
+/**
+ * A parallel task failed, or the pool could not deliver it.
+ *
+ * When the task threw inside the worker, getRemoteError() describes that
+ * exception, including its class, code, file, line, and trace. When the pool,
+ * the worker process, or the service connection failed instead, it is null.
+ */
+class ParallelException extends \RuntimeException {
+    private ?ParallelRemoteError $remoteError;
+
+    public function __construct(
+        string $message,
+        ?ParallelRemoteError $remoteError = null,
+        ?\Throwable $previous = null
+    ): parent($message, 0, $previous) {
+        $this->remoteError = $remoteError;
+    }
+
+    /** The exception thrown in the worker, or null when the task did not throw. */
+    public function getRemoteError(): ?ParallelRemoteError {
+        return $this->remoteError;
+    }
+
+    /** Class of the exception thrown in the worker, or '' when the task did not throw. */
+    public function getRemoteClass(): string {
+        ?ParallelRemoteError $remote = $this->remoteError;
+        if ($remote === null) {
+            return '';
+        }
+        return $remote->class;
+    }
+
+    internal static function fromRemote(ParallelRemoteError $remote): ParallelException {
+        string $message = $remote->class . ': ' . $remote->message;
+        if ($remote->file !== '') {
+            $message .= ' in ' . $remote->file . ':' . (string) $remote->line;
+        }
+        return new ParallelException($message, $remote);
+    }
+}

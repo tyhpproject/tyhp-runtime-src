@@ -3,7 +3,7 @@
 # Does not scaffold, bump constraints, call new-composer-lib.sh, or publish.
 #
 # Composer-lib packages use versioned trees:
-#   packages/<vendor>-<name>/<upstream>/
+#   packages/tyhpdef/<vendor>-<name>/<upstream>/
 # where <upstream> is the snapshot version string (3.0.2, 3.0.0-alpha.1), not
 # the Tyhp four-part version (3.0.2.0) and not 80N.X.Y (that scheme is for
 # compiled tyhp/* helpers only; tyhpdef/* including php-ext and php use the
@@ -38,9 +38,9 @@ usage() {
   cat <<'EOF'
 Usage: check-composer-lib-updates.sh [options]
 
-Scan packages/*/<upstream>/ Composer-lib tyhpdef wrappers, query
+Scan packages/tyhpdef/*/<upstream>/ Composer-lib tyhpdef wrappers, query
 Packagist for the latest stable upstream version, and list packages that need
-attention. This script never writes under packages, never calls
+attention. This script never writes under packages/, never calls
 new-composer-lib.sh, and never publishes.
 
 A package is listed when either:
@@ -61,9 +61,9 @@ The pager is skipped when stdout is not a TTY, TERM is dumb, less is
 missing, --no-pager/--no-less is set, or GIT_PAGER/PAGER is cat or empty.
 
 Composer-lib detection
-  Versioned layout packages/<folder>/<upstream-version>/composer.json
-  with no composer.json at <folder>/ (flat trees are php-ext / core / php /
-  async / decimal / lambda). php-ext-* and those runtimes are skipped.
+  Versioned layout packages/tyhpdef/<folder>/<upstream-version>/composer.json
+  with no composer.json at <folder>/ (flat trees are php and php-ext-*).
+  php-ext-* and php are skipped.
 
 Options:
   -h, --help              Show this help
@@ -150,7 +150,7 @@ import shutil
 import sys
 import zipfile
 
-SKIP_NAMES = {"core", "php", "async", "decimal", "lambda", "dist", "vendor"}
+SKIP_NAMES = {"php", "vendor"}
 VERSION_RE = re.compile(r"^[0-9]+(?:\.[0-9]+)*(?:-[0-9A-Za-z.-]+)?$")
 PKG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
@@ -1170,13 +1170,13 @@ DISCOVER_TMP="$WORK_ROOT/discover.tsv"
 ERRORS_TMP="$WORK_ROOT/errors.txt"
 : > "$ERRORS_TMP"
 
-run_py discover "$SCRIPT_DIR" > "$DISCOVER_TMP"
+run_py discover "$SCRIPT_DIR/tyhpdef" > "$DISCOVER_TMP"
 
 if [[ ! -s "$DISCOVER_TMP" ]]; then
   if [[ "$JSON_OUT" -eq 1 ]]; then
     echo '{"outdated":[],"checked":0,"errors":[]}'
   else
-    echo "No Composer-lib tyhpdef packages found under $SCRIPT_DIR."
+    echo "No Composer-lib tyhpdef packages found under $SCRIPT_DIR/tyhpdef."
   fi
   exit 0
 fi

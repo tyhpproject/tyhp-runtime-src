@@ -1,0 +1,79 @@
+<?tyhp
+
+namespace Tyhp\Io;
+
+use Tyhp\CancellationToken;
+use Tyhp\Deferred;
+use Tyhp\Exceptions\OperationCancelledException;
+use Tyhp\Promise;
+
+/**
+ * One in-flight operation. The first resolve() or reject() settles it; later
+ * calls are ignored, so completion, timeout, and cancellation callbacks can race.
+ */
+internal final class IoPending<T extends __Awaited<void|mixed> = void> {
+    private Deferred<T> $deferred;
+    private bool $settled = false;
+    private ?\Closure<callable(): void> $unregister = null;
+
+    public function __construct() {
+        $this->deferred = new Deferred<T>();
+    }
+
+    public function promise(): Promise<T> {
+        return $this->deferred->getPromise();
+    }
+
+    public function isSettled(): bool {
+        return $this->settled;
+    }
+
+    /**
+     * When $token is cancelled before this settles, runs $onCancel and rejects
+     * with OperationCancelledException. $onCancel must not throw.
+     */
+    public function cancelWith(?CancellationToken $token, callable(): void $onCancel): void {
+        if ($token === null || $this->settled) {
+            return;
+        }
+        CancellationToken $cancelToken = $token;
+        ?\Closure<callable(): void> $unregister = $cancelToken->register(function () use ($cancelToken, $onCancel): void {
+            if ($this->settled) {
+                return;
+            }
+            $onCancel();
+            $this->reject(new OperationCancelledException($cancelToken));
+        });
+        if ($this->settled) {
+            $unregister();
+            return;
+        }
+        $this->unregister = $unregister;
+    }
+
+    public function resolve(?T $value = null): void {
+        if ($this->settled) {
+            return;
+        }
+        $this->settled = true;
+        $this->release();
+        $this->deferred->resolve($value);
+    }
+
+    public function reject(\Throwable $error): void {
+        if ($this->settled) {
+            return;
+        }
+        $this->settled = true;
+        $this->release();
+        $this->deferred->reject($error);
+    }
+
+    private function release(): void {
+        ?\Closure<callable(): void> $unregister = $this->unregister;
+        $this->unregister = null;
+        if ($unregister !== null) {
+            $unregister();
+        }
+    }
+}

@@ -1,0 +1,538 @@
+<?tyhp
+
+namespace Tyhp\Backend;
+
+/**
+ * Operands are parsed exactly at their own scale. Each operation computes the exact result and
+ * truncates it toward zero to the requested scale, which is what bcmath does.
+ */
+final class IntegerScaledBackend implements DecimalBackend
+{
+    private static bool $warningEmitted = false;
+
+    public function __construct() {
+        if (!self::$warningEmitted) {
+            self::$warningEmitted = true;
+            \trigger_error(
+                'Tyhp\Decimal: Neither ext-decimal, ext-bcmath, nor ext-gmp is loaded. '
+                . 'Using pure-PHP integer-scaled fallback, which is slower and has precision limitations. '
+                . 'Install ext-decimal (preferred) or ext-bcmath for optimal performance: '
+                . 'https://php-decimal.github.io/ or https://www.php.net/manual/en/book.bc.php',
+                \E_USER_NOTICE,
+            );
+        }
+    }
+
+    /**
+     * @internal
+     */
+    public static function resetWarningState(): void {
+        self::$warningEmitted = false;
+    }
+
+    /**
+     * Number of digits after the decimal point.
+     */
+    private function scaleOf(string $value): int {
+        $dot = \strpos($value, '.');
+
+        return $dot === false ? 0 : \strlen($value) - $dot - 1;
+    }
+
+    /**
+     * The value's digits as an integer string, i.e. the value multiplied by 10 to the power of its
+     * own scale. Nothing is cut off, and zero never carries a sign.
+     */
+    private function parse(string $value): string {
+        bool $negative = false;
+
+        if (\str_starts_with($value, '-')) {
+            $negative = true;
+            $value = \substr($value, 1);
+        }
+
+        array $parts = \explode('.', $value, 2);
+        string $intPart = (string) ($parts[0] === '' ? '0' : $parts[0]);
+        string $fracPart = (string) ($parts[1] ?? '');
+
+        string $combined = \ltrim($intPart . $fracPart, '0') ?: '0';
+
+        return ($negative && $combined !== '0') ? '-' . $combined : $combined;
+    }
+
+    /**
+     * Moves an integer from one decimal scale to another. Widening is exact; narrowing truncates
+     * toward zero.
+     */
+    private function rescale(string $value, int $from, int $to): string {
+        if ($to === $from || $value === '0') {
+            return $value;
+        }
+
+        if ($to > $from) {
+            return $value . \str_repeat('0', $to - $from);
+        }
+
+        return $this->stringDiv($value, $this->stringPow10($from - $to));
+    }
+
+    private function fromScaled(string $value, int $scale): string {
+        bool $negative = false;
+
+        if (\str_starts_with($value, '-')) {
+            $negative = true;
+            $value = \substr($value, 1);
+        }
+
+        if ($scale === 0) {
+            return ($negative ? '-' : '') . ($value === '' ? '0' : $value);
+        }
+
+        $value = \str_pad($value, $scale + 1, '0', \STR_PAD_LEFT);
+        string $intPart = \substr($value, 0, -$scale);
+        string $fracPart = \substr($value, -$scale);
+
+        if ($intPart === '' || $intPart === '0') {
+            $intPart = '0';
+        }
+
+        string $result = $intPart . '.' . $fracPart;
+
+        return ($negative ? '-' : '') . $result;
+    }
+
+    private function stringAdd(string $a, string $b): string {
+        bool $negA = \str_starts_with($a, '-');
+        bool $negB = \str_starts_with($b, '-');
+
+        if ($negA) {
+            $a = \substr($a, 1);
+        }
+        if ($negB) {
+            $b = \substr($b, 1);
+        }
+
+        if (!$negA && !$negB) {
+            return $this->unsignedAdd($a, $b);
+        }
+
+        if ($negA && $negB) {
+            string $result = $this->unsignedAdd($a, $b);
+            return $result === '0' ? '0' : '-' . $result;
+        }
+
+        if ($negA) {
+            (-1|0|1) $cmp = $this->unsignedCompare($a, $b);
+            if ($cmp === 0) {
+                return '0';
+            }
+            if ($cmp > 0) {
+                return '-' . $this->unsignedSubtract($a, $b);
+            }
+            return $this->unsignedSubtract($b, $a);
+        }
+
+        (-1|0|1) $cmp = $this->unsignedCompare($b, $a);
+        if ($cmp === 0) {
+            return '0';
+        }
+        if ($cmp > 0) {
+            return '-' . $this->unsignedSubtract($b, $a);
+        }
+        return $this->unsignedSubtract($a, $b);
+    }
+
+    private function stringSub(string $a, string $b): string {
+        if (\str_starts_with($b, '-')) {
+            return $this->stringAdd($a, \substr($b, 1));
+        }
+
+        return $this->stringAdd($a, '-' . $b);
+    }
+
+    private function stringMul(string $a, string $b): string {
+        bool $negA = \str_starts_with($a, '-');
+        bool $negB = \str_starts_with($b, '-');
+
+        if ($negA) {
+            $a = \substr($a, 1);
+        }
+        if ($negB) {
+            $b = \substr($b, 1);
+        }
+
+        bool $resultNeg = $negA !== $negB;
+        string $result = $this->unsignedMultiply($a, $b);
+
+        if ($result === '0') {
+            return '0';
+        }
+
+        return $resultNeg ? '-' . $result : $result;
+    }
+
+    private function stringDiv(string $a, string $b): string {
+        if ($b === '0') {
+            throw new \DivisionByZeroError('Division by zero');
+        }
+
+        bool $negA = \str_starts_with($a, '-');
+        bool $negB = \str_starts_with($b, '-');
+
+        if ($negA) {
+            $a = \substr($a, 1);
+        }
+        if ($negB) {
+            $b = \substr($b, 1);
+        }
+
+        bool $resultNeg = $negA !== $negB;
+        string $result = $this->unsignedDivide($a, $b);
+
+        if ($result === '0') {
+            return '0';
+        }
+
+        return $resultNeg ? '-' . $result : $result;
+    }
+
+    private function stringMod(string $a, string $b): string {
+        string $quotient = $this->stringDiv($a, $b);
+        string $product = $this->stringMul($quotient, $b);
+
+        return $this->stringSub($a, $product);
+    }
+
+    private function unsignedAdd(string $a, string $b): string {
+        int $maxLen = \max(\strlen($a), \strlen($b));
+        $a = \str_pad($a, $maxLen, '0', \STR_PAD_LEFT);
+        $b = \str_pad($b, $maxLen, '0', \STR_PAD_LEFT);
+
+        int $carry = 0;
+        array<int, int> $digits = [];
+
+        for (int $i = $maxLen - 1; $i >= 0; $i--) {
+            int $sum = (int) $a[$i] + (int) $b[$i] + $carry;
+            $carry = \intdiv($sum, 10);
+            $digits[] = $sum % 10;
+        }
+
+        if ($carry > 0) {
+            $digits[] = $carry;
+        }
+
+        return \ltrim(\implode('', \array_reverse($digits)), '0') ?: '0';
+    }
+
+    private function unsignedSubtract(string $a, string $b): string {
+        int $maxLen = \max(\strlen($a), \strlen($b));
+        $a = \str_pad($a, $maxLen, '0', \STR_PAD_LEFT);
+        $b = \str_pad($b, $maxLen, '0', \STR_PAD_LEFT);
+
+        int $borrow = 0;
+        array<int, int> $digits = [];
+
+        for (int $i = $maxLen - 1; $i >= 0; $i--) {
+            int $diff = (int) $a[$i] - (int) $b[$i] - $borrow;
+
+            if ($diff < 0) {
+                $diff += 10;
+                $borrow = 1;
+            } else {
+                $borrow = 0;
+            }
+
+            $digits[] = $diff;
+        }
+
+        return \ltrim(\implode('', \array_reverse($digits)), '0') ?: '0';
+    }
+
+    private function unsignedCompare(string $a, string $b): -1|0|1 {
+        $a = \ltrim($a, '0') ?: '0';
+        $b = \ltrim($b, '0') ?: '0';
+
+        if (\strlen($a) !== \strlen($b)) {
+            return \strlen($a) > \strlen($b) ? 1 : -1;
+        }
+
+        return $a <=> $b;
+    }
+
+    private function unsignedMultiply(string $a, string $b): string {
+        $a = \ltrim($a, '0') ?: '0';
+        $b = \ltrim($b, '0') ?: '0';
+
+        if ($a === '0' || $b === '0') {
+            return '0';
+        }
+
+        int $lenA = \strlen($a);
+        int $lenB = \strlen($b);
+        array<int, int> $result = \array_fill(0, $lenA + $lenB, 0);
+
+        for (int $i = $lenA - 1; $i >= 0; $i--) {
+            for (int $j = $lenB - 1; $j >= 0; $j--) {
+                int $mul = (int) $a[$i] * (int) $b[$j];
+                int $p1 = $i + $j;
+                int $p2 = $i + $j + 1;
+                int $sum = $mul + $result[$p2];
+
+                $result[$p2] = $sum % 10;
+                $result[$p1] += \intdiv($sum, 10);
+            }
+        }
+
+        string $str = \ltrim(\implode('', $result), '0');
+
+        return $str === '' ? '0' : $str;
+    }
+
+    private function unsignedDivide(string $a, string $b): string {
+        $a = \ltrim($a, '0') ?: '0';
+        $b = \ltrim($b, '0') ?: '0';
+
+        if ($this->unsignedCompare($a, $b) < 0) {
+            return '0';
+        }
+
+        string $quotient = '';
+        string $remainder = '0';
+
+        for (int $i = 0; $i < \strlen($a); $i++) {
+            $remainder = \ltrim($remainder . $a[$i], '0') ?: '0';
+
+            int $lo = 0;
+            int $hi = 9;
+            int $digit = 0;
+
+            while ($lo <= $hi) {
+                int $mid = ($lo + $hi) >> 1;
+                string $product = $this->unsignedMultiplySingle($b, $mid);
+                int $cmp = $this->unsignedCompare($product, $remainder);
+
+                if ($cmp <= 0) {
+                    $digit = $mid;
+                    $lo = $mid + 1;
+                } else {
+                    $hi = $mid - 1;
+                }
+            }
+
+            if ($digit > 0) {
+                $remainder = $this->unsignedSubtract($remainder, $this->unsignedMultiplySingle($b, $digit));
+            }
+
+            $quotient .= (string) $digit;
+        }
+
+        return \ltrim($quotient, '0') ?: '0';
+    }
+
+    private function unsignedMultiplySingle(string $a, int $d): string {
+        if ($d === 0 || $a === '0') {
+            return '0';
+        }
+        if ($d === 1) {
+            return $a;
+        }
+
+        int $carry = 0;
+        array<int, int> $digits = [];
+
+        for (int $i = \strlen($a) - 1; $i >= 0; $i--) {
+            int $prod = (int) $a[$i] * $d + $carry;
+            $digits[] = $prod % 10;
+            $carry = \intdiv($prod, 10);
+        }
+
+        if ($carry > 0) {
+            $digits[] = $carry;
+        }
+
+        return \implode('', \array_reverse($digits));
+    }
+
+    private function stringPow10(int $n): string {
+        if ($n === 0) {
+            return '1';
+        }
+
+        return '1' . \str_repeat('0', $n);
+    }
+
+    public function add(string $a, string $b, int $scale): string {
+        int $sa = $this->scaleOf($a);
+        int $sb = $this->scaleOf($b);
+        int $working = \max($sa, $sb);
+        string $sum = $this->stringAdd(
+            $this->rescale($this->parse($a), $sa, $working),
+            $this->rescale($this->parse($b), $sb, $working),
+        );
+
+        return $this->fromScaled($this->rescale($sum, $working, $scale), $scale);
+    }
+
+    public function subtract(string $a, string $b, int $scale): string {
+        int $sa = $this->scaleOf($a);
+        int $sb = $this->scaleOf($b);
+        int $working = \max($sa, $sb);
+        string $difference = $this->stringSub(
+            $this->rescale($this->parse($a), $sa, $working),
+            $this->rescale($this->parse($b), $sb, $working),
+        );
+
+        return $this->fromScaled($this->rescale($difference, $working, $scale), $scale);
+    }
+
+    public function multiply(string $a, string $b, int $scale): string {
+        string $product = $this->stringMul($this->parse($a), $this->parse($b));
+
+        return $this->fromScaled($this->rescale($product, $this->scaleOf($a) + $this->scaleOf($b), $scale), $scale);
+    }
+
+    public function divide(string $a, string $b, int $scale): string {
+        string $divisor = $this->parse($b);
+
+        if ($divisor === '0') {
+            throw new \DivisionByZeroError('Division by zero');
+        }
+
+        // (A / 10^sa) / (B / 10^sb) at `scale` digits, as one integer division.
+        string $numerator = $this->rescale($this->parse($a), 0, $this->scaleOf($b) + $scale);
+        string $denominator = $this->rescale($divisor, 0, $this->scaleOf($a));
+
+        return $this->fromScaled($this->stringDiv($numerator, $denominator), $scale);
+    }
+
+    public function modulo(string $a, string $b, int $scale): string {
+        string $divisor = $this->parse($b);
+
+        if ($divisor === '0') {
+            throw new \DivisionByZeroError('Modulo by zero');
+        }
+
+        int $sa = $this->scaleOf($a);
+        int $sb = $this->scaleOf($b);
+        int $working = \max($sa, $sb);
+        string $remainder = $this->stringMod(
+            $this->rescale($this->parse($a), $sa, $working),
+            $this->rescale($divisor, $sb, $working),
+        );
+
+        return $this->fromScaled($this->rescale($remainder, $working, $scale), $scale);
+    }
+
+    public function power(string $base, int $exponent, int $scale): string {
+        if ($exponent < 0) {
+            throw new \InvalidArgumentException('Negative exponents are not supported');
+        }
+
+        // Exact integer power by squaring; the result is at scaleOf($base) * $exponent digits.
+        string $result = '1';
+        string $currentBase = $this->parse($base);
+        int $remaining = $exponent;
+
+        while ($remaining > 0) {
+            if (($remaining & 1) === 1) {
+                $result = $this->stringMul($result, $currentBase);
+            }
+            $remaining >>= 1;
+            if ($remaining > 0) {
+                $currentBase = $this->stringMul($currentBase, $currentBase);
+            }
+        }
+
+        return $this->fromScaled($this->rescale($result, $this->scaleOf($base) * $exponent, $scale), $scale);
+    }
+
+    public function sqrt(string $value, int $scale): string {
+        string $parsed = $this->parse($value);
+
+        if (\str_starts_with($parsed, '-')) {
+            throw new \InvalidArgumentException('Square root of a negative number is not supported');
+        }
+
+        if ($parsed === '0') {
+            return $this->fromScaled('0', $scale);
+        }
+
+        // floor(sqrt(x) * 10^scale) is the integer square root of floor(x * 10^(2 * scale)).
+        string $scaled = $this->rescale($parsed, $this->scaleOf($value), 2 * $scale);
+
+        if ($scaled === '0') {
+            return $this->fromScaled('0', $scale);
+        }
+
+        // Integer Newton iteration from a power of ten at or above the root: the guesses
+        // decrease monotonically and stop at floor(sqrt($scaled)).
+        string $guess = $this->stringPow10(\intdiv(\strlen($scaled) + 1, 2));
+        string $two = '2';
+
+        bool $converged = false;
+        while (!$converged) {
+            string $quotient = $this->stringDiv($scaled, $guess);
+            string $sum = $this->stringAdd($guess, $quotient);
+            string $newGuess = $this->stringDiv($sum, $two);
+
+            if ($this->unsignedCompare($newGuess, $guess) >= 0) {
+                $converged = true;
+            } else {
+                $guess = $newGuess;
+            }
+        }
+
+        return $this->fromScaled($guess, $scale);
+    }
+
+    /**
+     * Compares the two values after cutting each to `$scale` digits (the `bccomp()` contract).
+     */
+    public function compare(string $a, string $b, int $scale): -1|0|1 {
+        string $sa = $this->rescale($this->parse($a), $this->scaleOf($a), $scale);
+        string $sb = $this->rescale($this->parse($b), $this->scaleOf($b), $scale);
+
+        bool $negA = \str_starts_with($sa, '-');
+        bool $negB = \str_starts_with($sb, '-');
+
+        if ($negA && !$negB) {
+            return ($sa === '0' && $sb === '0') ? 0 : -1;
+        }
+
+        if (!$negA && $negB) {
+            return ($sa === '0' && $sb === '0') ? 0 : 1;
+        }
+
+        if ($negA && $negB) {
+            (-1|0|1) $cmp = $this->unsignedCompare(\substr($sa, 1), \substr($sb, 1));
+            return -$cmp;
+        }
+
+        return $this->unsignedCompare($sa, $sb);
+    }
+
+    public function negate(string $value): string {
+        string $stripped = \ltrim(\str_replace(['-', '.'], '', $value), '0');
+        if ($stripped === '') {
+            return $value;
+        }
+
+        if (\str_starts_with($value, '-')) {
+            return \substr($value, 1);
+        }
+
+        return '-' . $value;
+    }
+
+    public function abs(string $value): string {
+        if (\str_starts_with($value, '-')) {
+            return \substr($value, 1);
+        }
+
+        return $value;
+    }
+
+    public function getName(): string {
+        return 'integer-scaled';
+    }
+}

@@ -1,0 +1,205 @@
+<?tyhp
+
+namespace Tyhp\Io\Db;
+
+use Tyhp\CancellationToken;
+use Tyhp\Exceptions\OperationCancelledException;
+use Tyhp\Io\Exceptions\DbException;
+use Tyhp\Io\Exceptions\IoUnavailableException;
+use Tyhp\Io\IoWait;
+use Tyhp\Promise;
+
+/**
+ * PostgreSQL over ext-pgsql's asynchronous libpq API. Connecting, sending, and
+ * waiting for results all run on the event loop.
+ *
+ * Placeholders are $1, $2, ... Cancelling a token sends a cancel request for the
+ * running statement, waits for the server to stop it, and then rejects with
+ * OperationCancelledException.
+ */
+final class PostgresConnection implements DbConnection {
+    private AsyncLock $lock;
+    private bool $closed = false;
+
+    private function __construct(
+        private readonly \PgSql\Connection $pg
+    ) {
+        $this->lock = new AsyncLock();
+    }
+
+    /**
+     * Connects with a libpq connection string, for example
+     * "host=127.0.0.1 port=5432 dbname=app user=app password=secret".
+     */
+    async public static function connectAsync(string $connectionString, ?CancellationToken $token = null): PostgresConnection {
+        IoUnavailableException::requireExtension('pgsql', 'PostgresConnection');
+        $token?->throwIfCancellationRequested();
+        \PgSql\Connection|false $pg = @\pg_connect($connectionString, \PGSQL_CONNECT_ASYNC | \PGSQL_CONNECT_FORCE_NEW);
+        if ($pg === false) {
+            ?array $error = \error_get_last();
+            throw new DbException('Could not connect to PostgreSQL: ' . (string) ($error['message'] ?? 'pg_connect() failed.'));
+        }
+        try {
+            bool $connected = false;
+            while (!$connected) {
+                int $status = \pg_connect_poll($pg);
+                if ($status === \PGSQL_POLLING_OK) {
+                    $connected = true;
+                } else if ($status === \PGSQL_POLLING_FAILED) {
+                    throw new DbException('Could not connect to PostgreSQL: ' . \trim(\pg_last_error($pg)));
+                } else if ($status === \PGSQL_POLLING_READING) {
+                    await IoWait::readable(self::socketOf($pg), $token);
+                } else if ($status === \PGSQL_POLLING_WRITING) {
+                    await IoWait::writable(self::socketOf($pg), $token);
+                } else {
+                    await Promise::yield();
+                }
+            }
+        } catch (\Throwable $e) {
+            \pg_close($pg);
+            throw $e;
+        }
+        return new PostgresConnection($pg);
+    }
+
+    async public function queryAsync(string $sql, array<int, DbValue> $params = [], ?CancellationToken $token = null): DbResult {
+        await $this->lock->acquire();
+        try {
+            return await $this->execute($sql, $params, $token);
+        } finally {
+            $this->lock->release();
+        }
+    }
+
+    async public function transactionAsync(array<int, DbStatement> $statements, ?CancellationToken $token = null): array<int, DbResult> {
+        await $this->lock->acquire();
+        try {
+            await $this->execute('BEGIN', [], $token);
+            array<int, DbResult> $results = [];
+            try {
+                foreach ($statements as $statement) {
+                    $results[] = await $this->execute($statement->sql, $statement->params, $token);
+                }
+                await $this->execute('COMMIT', [], null);
+            } catch (\Throwable $e) {
+                if (!$this->closed) {
+                    try {
+                        await $this->execute('ROLLBACK', [], null);
+                    } catch (\Throwable $rollbackError) {
+                        (void) $rollbackError;
+                    }
+                }
+                throw $e;
+            }
+            return $results;
+        } finally {
+            $this->lock->release();
+        }
+    }
+
+    public function close(): void {
+        if ($this->closed) {
+            return;
+        }
+        $this->closed = true;
+        \pg_close($this->pg);
+    }
+
+    async private function execute(string $sql, array<int, DbValue> $params, ?CancellationToken $token): DbResult {
+        if ($this->closed) {
+            throw new DbException('The PostgreSQL connection is closed.');
+        }
+        $token?->throwIfCancellationRequested();
+
+        array<int, ?string> $wire = [];
+        foreach ($params as $param) {
+            $wire[] = self::wireValue($param);
+        }
+        if (!@\pg_send_query_params($this->pg, $sql, $wire)) {
+            throw new DbException(\trim(\pg_last_error($this->pg)));
+        }
+
+        try {
+            while (\pg_connection_busy($this->pg)) {
+                await IoWait::readable(self::socketOf($this->pg), $token);
+                if (!\pg_consume_input($this->pg)) {
+                    throw new DbException(\trim(\pg_last_error($this->pg)));
+                }
+            }
+        } catch (OperationCancelledException $e) {
+            @\pg_cancel_query($this->pg);
+            throw $e;
+        }
+
+        ?\PgSql\Result $last = null;
+        ?DbException $failure = null;
+        \PgSql\Result|false $result = \pg_get_result($this->pg);
+        while ($result !== false) {
+            int $status = \pg_result_status($result);
+            if ($status === \PGSQL_FATAL_ERROR || $status === \PGSQL_BAD_RESPONSE || $status === \PGSQL_NONFATAL_ERROR) {
+                $failure ??= new DbException(
+                    \trim(\pg_result_error($result) ?: 'PostgreSQL reported an error.'),
+                    (string) \pg_result_error_field($result, \PGSQL_DIAG_SQLSTATE)
+                );
+            } else {
+                $last = $result;
+            }
+            $result = \pg_get_result($this->pg);
+        }
+        if ($failure !== null) {
+            throw $failure;
+        }
+        return $last === null ? new DbResult() : self::toResult($last);
+    }
+
+    private static function socketOf(\PgSql\Connection $pg): resource {
+        resource|false $socket = \pg_socket($pg);
+        if ($socket === false) {
+            throw new DbException('The PostgreSQL connection has no socket.');
+        }
+        return $socket;
+    }
+
+    private static function wireValue(DbValue $value): ?string {
+        if ($value === null) {
+            return null;
+        }
+        if (\is_bool($value)) {
+            return $value ? 't' : 'f';
+        }
+        if (\is_float($value) && !\is_finite($value)) {
+            return \is_nan($value) ? 'NaN' : ($value > 0 ? 'Infinity' : '-Infinity');
+        }
+        return (string) $value;
+    }
+
+    private static function toResult(\PgSql\Result $result): DbResult {
+        array<string, string> $types = [];
+        int $fields = \pg_num_fields($result);
+        for (int $i = 0; $i < $fields; $i++) {
+            $types[\pg_field_name($result, $i)] = \pg_field_type($result, $i);
+        }
+        array<int, array<string, mixed>> $rows = [];
+        foreach (\pg_fetch_all($result, \PGSQL_ASSOC) as $raw) {
+            array<string, mixed> $row = [];
+            foreach ($raw as $column => $value) {
+                $row[$column] = $value === null ? null : self::convert((string) $value, $types[$column] ?? 'text');
+            }
+            $rows[] = $row;
+        }
+        return new DbResult($rows, \pg_affected_rows($result));
+    }
+
+    private static function convert(string $value, string $type): mixed {
+        if ($type === 'int2' || $type === 'int4' || $type === 'int8' || $type === 'oid') {
+            return (int) $value;
+        }
+        if ($type === 'float4' || $type === 'float8') {
+            return (float) $value;
+        }
+        if ($type === 'bool') {
+            return $value === 't';
+        }
+        return $value;
+    }
+}

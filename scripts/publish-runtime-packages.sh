@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 # Build runtime packages in this repo and publish installable trees to
 # tyhpproject-packages/{package} repositories. Discovers packages from
-# packages/*/composer.json (flat: compiled runtimes, tyhpdef/php, php-ext-*)
-# and packages/*/*/composer.json (versioned Composer-lib wrappers).
+# packages/tyhp/*/composer.json (compiled runtimes and the compiler),
+# packages/tyhpdef/*/composer.json (tyhpdef/php, php-ext-*) and
+# packages/tyhpdef/*/*/composer.json (versioned Composer-lib wrappers).
 # Ignores packages/dist and any path named vendor. If a GitHub repo
 # does not exist yet, that package is skipped with a warning unless
 # --create-github-repos is passed, in which case an empty public repo is
 # created (same gh repo create as ensure-existing-github-repos.sh: no README,
 # license, or .gitignore; no local remote add). After the first create, each
-# later create waits 30 seconds. If GitHub rejects a create for going too
-# quickly, the script waits and retries that repo. Not a submodule workflow.
+# later create waits GITHUB_CREATE_INTER_DELAY seconds. Other GitHub calls wait
+# GITHUB_REQUEST_DELAY seconds and retry timeouts and rate limits. Repos
+# already confirmed are recorded in .github-repo-cache (gitignored) and are
+# not looked up again. If a later clone or push finds one of those repos
+# missing, the script creates it and retries that operation. Not a
+# submodule workflow.
 #
 # Pass --package NAME to publish one package (and leave the other GitHub repos
-# untouched). NAME is a path relative to packages (php, php-ext-bz2,
+# untouched). NAME is a package folder name (php, php-ext-bz2, core,
 # compiler, psr-log/3.0.2) or a Composer name (tyhpdef/php, tyhp/core,
 # tyhp/compiler). Without --package, every discovered package with a GitHub
 # repo is published.
@@ -25,7 +30,7 @@
 # <vendor>-<name> (public metapackage, tag = upstream version) and
 # <vendor>-<name>-impl (implementation, tag = four-part composer.json version).
 # generate-meta-package.sh writes the public tree. The source folder is
-# packages/<vendor>-<name>/<upstream>/. A handed-off folder does not retag a
+# packages/tyhpdef/<vendor>-<name>/<upstream>/. A handed-off folder does not retag a
 # public version that already exists and does not publish an impl tag. A
 # public version that has never been tagged is published once from the
 # handed-off metapackage (no impl require). First-party php, php-ext-*, and
@@ -35,14 +40,15 @@
 # composer.json version as the Packagist / git tag (for example 1.0.0 or 0.1).
 # They are one tree across PHP 8.2–8.5; they do not get 80N.X.Y tags.
 #
-# Compiled tyhp/* packages (core, async, decimal, lambda) stay flat and are
-# tagged once per PHP target (802 / 803 / 804 / 805). Package MAJOR is the emit
+# Compiled tyhp/* packages (DIST_PACKAGES in packages/build-common.sh: core,
+# decimal, async, lambda, parallel, io) live under packages/tyhp/ and are tagged once per PHP
+# target (802 / 803 / 804 / 805). Package MAJOR is the emit
 # PHP. X.Y comes from that package's own composer.json (independent of the
 # compiler version). Libraries require 80N.X.* across PHP majors for a given
 # compiled package. See VERSIONING.md and packages/build-common.sh.
 #
 # tyhp/compiler is a single-version PHP shim (not a per-PHP dist tree). It is
-# built in-place under packages/compiler and tagged from that
+# built in-place under packages/tyhp/compiler and tagged from that
 # composer.json version (for example 805.0.0), same tag style as tyhpdef/*.
 #
 # Do not run this until after the compiler history wipe and the package repos are public.
@@ -57,6 +63,7 @@ readonly PROJECT_ROOT="$(cd "${PUBLISH_SCRIPT_DIR}/.." && pwd)"
 readonly PACKAGES_DIR="${PROJECT_ROOT}/packages"
 readonly GITHUB_ORG="tyhpproject-packages"
 readonly PACKAGIST_CREDENTIALS_FILE="${PROJECT_ROOT}/scripts/packagist.credentials"
+readonly GITHUB_REPO_CACHE_FILE="${PROJECT_ROOT}/.github-repo-cache"
 readonly PACKAGIST_USER_AGENT="tyhp-publish-runtime-packages (+https://github.com/tyhpproject/tyhp-runtime-src; mailto=email@tyhplang.com)"
 
 ALL_PACKAGES=()
@@ -68,9 +75,17 @@ GITHUB_CREATE_FAILED_REPOS=()
 # 1 after the first gh repo create in this run, so later creates wait.
 GITHUB_CREATE_STARTED=0
 readonly GITHUB_CREATE_INTER_DELAY=60
-readonly GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS=10
+readonly GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS=30
 readonly GITHUB_CREATE_RATE_LIMIT_INITIAL_SLEEP=60
-readonly GITHUB_CREATE_RATE_LIMIT_MAX_SLEEP=1800
+readonly GITHUB_CREATE_RATE_LIMIT_MAX_SLEEP=60
+# Short gap between GitHub reads, clones, and pushes. Repo creates keep the
+# longer GITHUB_CREATE_INTER_DELAY above.
+readonly GITHUB_REQUEST_DELAY=2
+readonly GITHUB_REQUEST_MAX_ATTEMPTS=6
+readonly GITHUB_REQUEST_RETRY_INITIAL_SLEEP=15
+readonly GITHUB_REQUEST_RETRY_MAX_SLEEP=120
+GITHUB_REQUEST_COUNT=0
+GITHUB_KNOWN_REPOS=()
 PACKAGIST_CREATED_NAMES=()
 PACKAGIST_EXISTED_NAMES=()
 PACKAGIST_WOULD_CREATE_NAMES=()
@@ -102,9 +117,9 @@ Options:
                                   print what would be published. Does not
                                   build, clone, tag, or push. Combine with the
                                   create flags to preview those actions too.
-  --package NAME                  Publish only this package. NAME is a path
-                                  relative to packages (php,
-                                  php-ext-bz2, compiler, psr-log/3.0.2) or a
+  --package NAME                  Publish only this package. NAME is a package
+                                  folder name (php, php-ext-bz2, core,
+                                  compiler, psr-log/3.0.2) or a
                                   Composer name (tyhpdef/php, tyhp/core,
                                   tyhp/compiler).
   --create-github-repos           If a tyhpproject-packages/<folder> repo is missing,
@@ -122,8 +137,8 @@ Options:
 
 Without --package, every discovered package with a GitHub repo is published.
 Without the create flags, missing GitHub repos are skipped and Packagist
-submit stays a separate human step. Compiled packages (core, async, decimal,
-lambda) still run base-build-all.sh so dist trees exist. tyhp/compiler is
+submit stays a separate human step. Compiled packages (core, decimal, async,
+lambda, parallel, io) still run base-build-all.sh so dist trees exist. tyhp/compiler is
 built in-place by that script and tagged from its composer.json version (not
 80N.X.Y). tyhpdef packages skip that build and tag the version in that
 package's composer.json. --list uses that same match set and skips the build
@@ -216,10 +231,13 @@ require_tool() {
 }
 
 is_compiled_package() {
-  case "$1" in
-    core|async|decimal|lambda) return 0 ;;
-    *) return 1 ;;
-  esac
+  local candidate
+  for candidate in "${DIST_PACKAGES[@]}"; do
+    if [[ "$candidate" == "$1" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 # True for the single-version tyhp/compiler PHP shim (not a per-PHP dist tree).
@@ -273,9 +291,11 @@ is_flat_package_name() {
   return 1
 }
 
-# Flat packages: packages/<name>/composer.json
-# Versioned Composer-libs: packages/<vendor>-<name>/<upstream>/composer.json
-# Stored as a path relative to PACKAGES_DIR (e.g. php-ext-bz2 or psr-log/3.0.2).
+# Compiled runtimes and the compiler: packages/tyhp/<name>/composer.json
+# Flat tyhpdef packages: packages/tyhpdef/<name>/composer.json
+# Versioned Composer-libs: packages/tyhpdef/<vendor>-<name>/<upstream>/composer.json
+# Stored as a logical name (e.g. core, php-ext-bz2, or psr-log/3.0.2); use
+# package_dir to resolve the directory.
 # Dies if the same <vendor>-<name> has both a flat composer.json and a versioned
 # tree — that ambiguous state would publish the same GitHub repo twice.
 discover_packages() {
@@ -287,7 +307,7 @@ discover_packages() {
 
   ALL_PACKAGES=()
 
-  for composer_json in "${PACKAGES_DIR}"/*/composer.json; do
+  for composer_json in "${PACKAGES_DIR}"/tyhp/*/composer.json "${PACKAGES_DIR}"/tyhpdef/*/composer.json; do
     if [[ ! -f "$composer_json" ]]; then
       continue
     fi
@@ -299,7 +319,7 @@ discover_packages() {
     flat_names+=("$pkg")
   done
 
-  for composer_json in "${PACKAGES_DIR}"/*/*/composer.json; do
+  for composer_json in "${PACKAGES_DIR}"/tyhpdef/*/*/composer.json; do
     if [[ ! -f "$composer_json" ]]; then
       continue
     fi
@@ -309,7 +329,7 @@ discover_packages() {
       continue
     fi
     if is_flat_package_name "$parent" "${flat_names[@]}"; then
-      echo "error: ${parent} has both a flat composer.json (${PACKAGES_DIR}/${parent}/composer.json)" >&2
+      echo "error: ${parent} has both a flat composer.json (${PACKAGES_DIR}/tyhpdef/${parent}/composer.json)" >&2
       echo "and a versioned tree (${composer_json}). Remove the leftover flat layout" >&2
       echo "before publishing; otherwise ${GITHUB_ORG}/${parent} would be published twice." >&2
       exit 1
@@ -318,7 +338,7 @@ discover_packages() {
   done
 
   if [[ ${#ALL_PACKAGES[@]} -eq 0 ]]; then
-    echo "No packages found in ${PACKAGES_DIR} (expected */composer.json or */*/composer.json)." >&2
+    echo "No packages found in ${PACKAGES_DIR} (expected tyhp/*/composer.json, tyhpdef/*/composer.json, or tyhpdef/*/*/composer.json)." >&2
     exit 1
   fi
 }
@@ -356,10 +376,22 @@ is_versioned_composer_lib() {
   [[ "$1" == */* ]]
 }
 
+# Directory of a discovered package: compiled runtimes and the compiler live under
+# packages/tyhp/<name>; every tyhpdef package (php, php-ext-*, Composer-lib
+# wrappers such as psr-log/3.0.2) lives under packages/tyhpdef/<name>.
+package_dir() {
+  local pkg="$1"
+  if is_compiled_package "$pkg" || is_compiler_package "$pkg"; then
+    printf '%s\n' "${PACKAGES_DIR}/tyhp/${pkg}"
+  else
+    printf '%s\n' "${PACKAGES_DIR}/tyhpdef/${pkg}"
+  fi
+}
+
 read_composer_name() {
   local pkg="$1"
   python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('name',''))" \
-    "${PACKAGES_DIR}/${pkg}/composer.json" 2>/dev/null || true
+    "$(package_dir "$pkg")/composer.json" 2>/dev/null || true
 }
 
 # Restrict ALL_PACKAGES to the single entry named by --package.
@@ -418,7 +450,7 @@ filter_to_requested_package() {
   fi
 
   echo "error: unknown package ${needle}." >&2
-  echo "Use a path relative to packages (php, php-ext-bz2, compiler, psr-log/3.0.2) or a Composer name (tyhpdef/php, tyhp/compiler)." >&2
+  echo "Use a package folder name (php, php-ext-bz2, core, compiler, psr-log/3.0.2) or a Composer name (tyhpdef/php, tyhp/compiler)." >&2
   exit 1
 }
 
@@ -450,29 +482,286 @@ list_contains() {
   return 1
 }
 
+# True for GitHub/network failures worth retrying. A missing repo is not one of these.
+github_failure_is_retryable() {
+  local output="$1"
+  if [[ -z "$output" ]]; then
+    return 0
+  fi
+  [[ "$output" == *"i/o timeout"* \
+    || "$output" == *"timed out"* \
+    || "$output" == *"timeout"* \
+    || "$output" == *"connection reset"* \
+    || "$output" == *"Connection reset"* \
+    || "$output" == *"TLS handshake"* \
+    || "$output" == *"temporary failure"* \
+    || "$output" == *"Temporary failure"* \
+    || "$output" == *"Could not resolve host"* \
+    || "$output" == *"network is unreachable"* \
+    || "$output" == *"connection refused"* \
+    || "$output" == *"Failed to connect"* \
+    || "$output" == *"dial tcp"* \
+    || "$output" == *"HTTP 429"* \
+    || "$output" == *"HTTP 502"* \
+    || "$output" == *"HTTP 503"* \
+    || "$output" == *"HTTP 504"* \
+    || "$output" == *"rate limit"* \
+    || "$output" == *"too many repositories, too quickly"* \
+    || "$output" == *"try again"* \
+    || "$output" == *"RPC failed"* \
+    || "$output" == *"early EOF"* \
+    || "$output" == *"unable to access"* \
+    || "$output" == *"The requested URL returned error: 5"* \
+    || "$output" == *"SSL"* \
+    || "$output" == *"recv failure"* ]]
+}
+
+# Wait between GitHub calls so a long pass does not hammer the API. The first
+# call in a run starts immediately.
+github_request_pause() {
+  local why="$1"
+  if [[ "$GITHUB_REQUEST_COUNT" -eq 0 ]]; then
+    GITHUB_REQUEST_COUNT=1
+    return 0
+  fi
+  echo "GitHub: waiting ${GITHUB_REQUEST_DELAY}s before ${why}"
+  sleep "$GITHUB_REQUEST_DELAY"
+  GITHUB_REQUEST_COUNT=$((GITHUB_REQUEST_COUNT + 1))
+}
+
+load_github_repo_cache() {
+  GITHUB_KNOWN_REPOS=()
+  [[ -f "$GITHUB_REPO_CACHE_FILE" ]] || return 0
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -n "$line" && "$line" != \#* ]] || continue
+    if [[ ${#GITHUB_KNOWN_REPOS[@]} -eq 0 ]] || ! list_contains "$line" "${GITHUB_KNOWN_REPOS[@]}"; then
+      GITHUB_KNOWN_REPOS+=("$line")
+    fi
+  done < "$GITHUB_REPO_CACHE_FILE"
+}
+
+github_repo_cached() {
+  local repo="$1"
+  [[ ${#GITHUB_KNOWN_REPOS[@]} -gt 0 ]] || return 1
+  list_contains "$repo" "${GITHUB_KNOWN_REPOS[@]}"
+}
+
+remember_github_repo() {
+  local repo="$1"
+  if github_repo_cached "$repo"; then
+    return 0
+  fi
+  GITHUB_KNOWN_REPOS+=("$repo")
+  printf '%s\n' "$repo" >> "$GITHUB_REPO_CACHE_FILE"
+}
+
+forget_github_repo() {
+  local repo="$1"
+  local kept=()
+  local candidate
+  [[ ${#GITHUB_KNOWN_REPOS[@]} -gt 0 ]] || return 0
+  for candidate in "${GITHUB_KNOWN_REPOS[@]}"; do
+    if [[ "$candidate" != "$repo" ]]; then
+      kept+=("$candidate")
+    fi
+  done
+  if [[ ${#kept[@]} -eq 0 ]]; then
+    GITHUB_KNOWN_REPOS=()
+    : > "$GITHUB_REPO_CACHE_FILE"
+  else
+    GITHUB_KNOWN_REPOS=("${kept[@]}")
+    printf '%s\n' "${GITHUB_KNOWN_REPOS[@]}" > "$GITHUB_REPO_CACHE_FILE"
+  fi
+}
+
+# One org listing fills the cache. Later runs trust the file and only ask
+# GitHub about repos that are not in it.
+seed_github_repo_cache_from_org() {
+  local output
+  local rc
+  local attempt=1
+  local sleep_secs="$GITHUB_REQUEST_RETRY_INITIAL_SLEEP"
+  local log
+
+  while true; do
+    github_request_pause "listing ${GITHUB_ORG} repos"
+    echo "GitHub: listing ${GITHUB_ORG} repositories into ${GITHUB_REPO_CACHE_FILE}"
+    log="$(mktemp "${TMPDIR:-/tmp}/tyhp-github.XXXXXX")"
+    local err
+    err="$(mktemp "${TMPDIR:-/tmp}/tyhp-github.XXXXXX")"
+    rc=0
+    gh repo list "$GITHUB_ORG" --limit 5000 --json name >"$log" 2>"$err" || rc=$?
+    if [[ -s "$err" ]]; then
+      cat "$err"
+    fi
+    output="$(cat "$err")"
+    rm -f "$err"
+    if [[ "$rc" -eq 0 ]]; then
+      if python3 - "$log" "$GITHUB_REPO_CACHE_FILE" <<'PY'
+import json, sys
+src, dest = sys.argv[1], sys.argv[2]
+data = json.load(open(src, encoding="utf-8"))
+names = []
+seen = set()
+for item in data:
+    if not isinstance(item, dict):
+        continue
+    name = str(item.get("name") or "").strip()
+    if name and name not in seen:
+        seen.add(name)
+        names.append(name)
+with open(dest, "w", encoding="utf-8") as out:
+    if names:
+        out.write("\n".join(names) + "\n")
+PY
+      then
+        rm -f "$log"
+        load_github_repo_cache
+        echo "GitHub: cached ${#GITHUB_KNOWN_REPOS[@]} existing repos"
+        return 0
+      fi
+      rm -f "$log"
+      echo "warning: could not read the ${GITHUB_ORG} repo list; each repo will be checked individually." >&2
+      return 1
+    fi
+    rm -f "$log"
+    if github_failure_is_retryable "$output" && [[ "$attempt" -lt "$GITHUB_REQUEST_MAX_ATTEMPTS" ]]; then
+      echo "GitHub: listing ${GITHUB_ORG} failed; waiting ${sleep_secs}s then retrying (attempt ${attempt}/$((GITHUB_REQUEST_MAX_ATTEMPTS - 1)))" >&2
+      echo "$output" >&2
+      sleep "$sleep_secs"
+      attempt=$((attempt + 1))
+      sleep_secs=$((sleep_secs * 2))
+      if [[ "$sleep_secs" -gt "$GITHUB_REQUEST_RETRY_MAX_SLEEP" ]]; then
+        sleep_secs="$GITHUB_REQUEST_RETRY_MAX_SLEEP"
+      fi
+      continue
+    fi
+    echo "$output" >&2
+    echo "warning: could not list ${GITHUB_ORG} repos; each repo will be checked individually." >&2
+    return 1
+  done
+}
+
+github_output_repo_missing() {
+  local output="$1"
+  [[ "$output" == *"Could not resolve to a Repository"* \
+    || "$output" == *"Repository not found"* \
+    || "$output" == *"repository not found"* \
+    || "$output" == *"HTTP 404"* \
+    || "$output" == *"Not Found"* ]]
+}
+
+# Run a git command that talks to GitHub. Output is shown as it happens.
+# Transient failures are retried. If the remote repo is missing, create it
+# once and retry the same command.
+# Usage: run_github_git "clone org/repo" repo-slug git clone ...
+run_github_git() {
+  local desc="$1"
+  local repo="$2"
+  local output
+  local rc
+  local attempt=1
+  local sleep_secs="$GITHUB_REQUEST_RETRY_INITIAL_SLEEP"
+  local log
+  local recreated=0
+  local repo_desc
+  shift 2
+
+  while true; do
+    if [[ "$attempt" -eq 1 ]]; then
+      github_request_pause "$desc"
+    fi
+    echo "GitHub: ${desc}"
+    log="$(mktemp "${TMPDIR:-/tmp}/tyhp-github.XXXXXX")"
+    rc=0
+    "$@" 2>&1 | tee "$log" || rc=$?
+    output="$(cat "$log")"
+    rm -f "$log"
+    if [[ "$rc" -eq 0 ]]; then
+      remember_github_repo "$repo"
+      return 0
+    fi
+    if [[ "$recreated" -eq 0 ]] && github_output_repo_missing "$output"; then
+      echo "GitHub: ${GITHUB_ORG}/${repo} is missing; creating it and retrying: ${desc}" >&2
+      echo "$output" >&2
+      forget_github_repo "$repo"
+      repo_desc="$(github_repo_description_for_slug "$repo")"
+      if create_empty_github_repo "$repo" "$repo_desc"; then
+        remember_github_repo "$repo"
+        recreated=1
+        attempt=1
+        continue
+      fi
+      echo "error: could not create ${GITHUB_ORG}/${repo} after ${desc} reported it missing" >&2
+      return 1
+    fi
+    if github_failure_is_retryable "$output" && [[ "$attempt" -lt "$GITHUB_REQUEST_MAX_ATTEMPTS" ]]; then
+      echo "GitHub: ${desc} failed; waiting ${sleep_secs}s then retrying (attempt ${attempt}/$((GITHUB_REQUEST_MAX_ATTEMPTS - 1)))" >&2
+      sleep "$sleep_secs"
+      attempt=$((attempt + 1))
+      sleep_secs=$((sleep_secs * 2))
+      if [[ "$sleep_secs" -gt "$GITHUB_REQUEST_RETRY_MAX_SLEEP" ]]; then
+        sleep_secs="$GITHUB_REQUEST_RETRY_MAX_SLEEP"
+      fi
+      continue
+    fi
+    echo "error: ${desc} failed" >&2
+    return "$rc"
+  done
+}
+
 # Return 0 if tyhpproject-packages/<repo> exists (including empty repos). Return 1 if GitHub
-# reports the repo is missing. Any other gh failure aborts the script.
+# reports the repo is missing. Timeouts and rate limits are retried. Any other gh failure aborts.
 github_repo_exists() {
   local repo="$1"
   local output
-  local rc=0
+  local rc
+  local attempt=1
+  local sleep_secs="$GITHUB_REQUEST_RETRY_INITIAL_SLEEP"
 
-  output="$(gh repo view "${GITHUB_ORG}/${repo}" --json name 2>&1)" || rc=$?
-  if [[ "$rc" -eq 0 ]]; then
+  if github_repo_cached "$repo"; then
+    echo "GitHub: ${GITHUB_ORG}/${repo} exists (cached)"
     return 0
   fi
-  if [[ "$output" == *"Could not resolve to a Repository"* || "$output" == *"Not Found"* || "$output" == *"HTTP 404"* ]]; then
-    return 1
-  fi
-  echo "$output" >&2
-  echo "Failed to check GitHub repo ${GITHUB_ORG}/${repo}." >&2
-  exit 1
+
+  while true; do
+    if [[ "$attempt" -eq 1 ]]; then
+      github_request_pause "checking ${GITHUB_ORG}/${repo}"
+    fi
+    echo "GitHub: [${GITHUB_REQUEST_COUNT}] checking ${GITHUB_ORG}/${repo}"
+    rc=0
+    output="$(gh repo view "${GITHUB_ORG}/${repo}" --json name 2>&1)" || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+      remember_github_repo "$repo"
+      echo "GitHub: [${GITHUB_REQUEST_COUNT}] ${GITHUB_ORG}/${repo} exists"
+      return 0
+    fi
+    if github_output_repo_missing "$output"; then
+      echo "GitHub: [${GITHUB_REQUEST_COUNT}] ${GITHUB_ORG}/${repo} does not exist"
+      return 1
+    fi
+    if github_failure_is_retryable "$output" && [[ "$attempt" -lt "$GITHUB_REQUEST_MAX_ATTEMPTS" ]]; then
+      echo "GitHub: check ${GITHUB_ORG}/${repo} failed; waiting ${sleep_secs}s then retrying (attempt ${attempt}/$((GITHUB_REQUEST_MAX_ATTEMPTS - 1)))" >&2
+      echo "$output" >&2
+      sleep "$sleep_secs"
+      attempt=$((attempt + 1))
+      sleep_secs=$((sleep_secs * 2))
+      if [[ "$sleep_secs" -gt "$GITHUB_REQUEST_RETRY_MAX_SLEEP" ]]; then
+        sleep_secs="$GITHUB_REQUEST_RETRY_MAX_SLEEP"
+      fi
+      continue
+    fi
+    echo "$output" >&2
+    echo "Failed to check GitHub repo ${GITHUB_ORG}/${repo}." >&2
+    exit 1
+  done
 }
 
 # GitHub About text: composer.json description (≤350 chars), else a short fallback.
 github_repo_description() {
   local pkg="$1"
-  python3 - "${PACKAGES_DIR}/${pkg}/composer.json" "$pkg" <<'PY'
+  python3 - "$(package_dir "$pkg")/composer.json" "$pkg" <<'PY'
 import json, sys
 
 path, pkg = sys.argv[1], sys.argv[2]
@@ -488,6 +777,22 @@ if len(desc) > 350:
     desc = desc[:347] + "..."
 print(desc)
 PY
+}
+
+# Description for a repo slug, including "<name>-impl". Falls back when no
+# package folder matches.
+github_repo_description_for_slug() {
+  local repo="$1"
+  local pkg
+  local base
+  for pkg in "${ALL_PACKAGES[@]}"; do
+    base="$(github_repo_for_package "$pkg")"
+    if [[ "$base" == "$repo" || "${base}-impl" == "$repo" ]]; then
+      github_repo_description "$pkg"
+      return 0
+    fi
+  done
+  printf 'Tyhp package %s\n' "$repo"
 }
 
 github_repo_create_rate_limited() {
@@ -515,14 +820,21 @@ create_empty_github_repo() {
       GH_PROMPT_DISABLED=1 gh repo create "${GITHUB_ORG}/${repo}" --public --description "$desc" 2>&1
     )" || rc=$?
     if [[ "$rc" -eq 0 ]]; then
+      remember_github_repo "$repo"
       return 0
     fi
     if [[ "$output" == *"already exists"* || "$output" == *"Name already exists"* ]]; then
       echo "GitHub: ${GITHUB_ORG}/${repo} already exists (skip create)"
+      remember_github_repo "$repo"
       return 0
     fi
-    if github_repo_create_rate_limited "$output" && [[ "$attempt" -lt "$GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS" ]]; then
-      echo "GitHub: rate limited creating ${GITHUB_ORG}/${repo}; waiting ${sleep_secs}s then retrying (attempt ${attempt}/$((GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS - 1)))" >&2
+    if [[ "$attempt" -lt "$GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS" ]] && { github_repo_create_rate_limited "$output" || github_failure_is_retryable "$output"; }; then
+      if github_repo_create_rate_limited "$output"; then
+        echo "GitHub: rate limited creating ${GITHUB_ORG}/${repo}; waiting ${sleep_secs}s then retrying (attempt ${attempt}/$((GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS - 1)))" >&2
+      else
+        echo "GitHub: create ${GITHUB_ORG}/${repo} failed; waiting ${sleep_secs}s then retrying (attempt ${attempt}/$((GITHUB_CREATE_RATE_LIMIT_MAX_ATTEMPTS - 1)))" >&2
+        echo "$output" >&2
+      fi
       sleep "$sleep_secs"
       attempt=$((attempt + 1))
       sleep_secs=$((sleep_secs * 2))
@@ -858,14 +1170,18 @@ ensure_missing_github_repos() {
   local repo
   [[ "$CREATE_GITHUB" -eq 1 ]] || return 0
   [[ "$LIST_ONLY" -eq 0 ]] || return 0
+  echo "Checking which GitHub repos still need to be created (${#ALL_PACKAGES[@]} packages)..."
   for pkg in "${ALL_PACKAGES[@]}"; do
     if ! is_publishable_package "$pkg"; then
       continue
     fi
-    while IFS= read -r repo; do
+    # Command substitution, not `done < <(...)`. macOS bash 3.2 leaks a file
+    # descriptor on each process substitution in a loop, and this runs once
+    # per package.
+    for repo in $(package_github_repos "$pkg"); do
       [[ -n "$repo" ]] || continue
       ensure_github_repo "$repo" "$pkg" || true
-    done < <(package_github_repos "$pkg")
+    done
   done
 }
 
@@ -880,6 +1196,7 @@ collect_publish_matches() {
   MATCHED_PACKAGES=()
   SKIPPED_PACKAGES=()
 
+  echo "Checking GitHub repos before publish (${#ALL_PACKAGES[@]} packages)..."
   for pkg in "${ALL_PACKAGES[@]}"; do
     if ! is_publishable_package "$pkg"; then
       echo "warning: skipping ${pkg} (not a compiled tyhp/* helper, tyhp/compiler, or tyhpdef/* package)." >&2
@@ -887,7 +1204,8 @@ collect_publish_matches() {
       continue
     fi
     local missing=0
-    while IFS= read -r repo; do
+    # Same as ensure_missing_github_repos: avoid process substitution here.
+    for repo in $(package_github_repos "$pkg"); do
       [[ -n "$repo" ]] || continue
       if ! ensure_github_repo "$repo" "$pkg"; then
         missing=1
@@ -897,7 +1215,7 @@ collect_publish_matches() {
           echo "warning: GitHub repo ${GITHUB_ORG}/${repo} does not exist; skipping ${pkg} (pass --create-github-repos to create it)." >&2
         fi
       fi
-    done < <(package_github_repos "$pkg")
+    done
     if [[ "$missing" -ne 0 ]]; then
       SKIPPED_PACKAGES+=("$pkg")
       continue
@@ -976,7 +1294,8 @@ sync_compile_dist() {
 sync_composer_lib_dist() {
   local pkg="$1"
   local dest="$2"
-  local src="${PACKAGES_DIR}/${pkg}"
+  local src
+  src="$(package_dir "$pkg")"
 
   wipe_published_tree "$dest"
 
@@ -1028,7 +1347,8 @@ PY
 sync_compiler_dist() {
   local pkg="$1"
   local dest="$2"
-  local src="${PACKAGES_DIR}/${pkg}"
+  local src
+  src="$(package_dir "$pkg")"
 
   if [[ ! -d "${src}/src/Tyhp/Compiler" ]]; then
     echo "Missing emitted PHP at ${src}/src. Did packages/base-build-all.sh succeed?" >&2
@@ -1062,7 +1382,8 @@ prepare_clone() {
   local pkg="$1"
   local dest="$2"
 
-  git clone "https://github.com/${GITHUB_ORG}/${pkg}.git" "$dest"
+  run_github_git "clone https://github.com/${GITHUB_ORG}/${pkg}.git" "$pkg" \
+    git clone "https://github.com/${GITHUB_ORG}/${pkg}.git" "$dest"
   cd "$dest"
 
   if git rev-parse --verify HEAD >/dev/null 2>&1; then
@@ -1159,8 +1480,8 @@ publish_public_meta_tag() {
     cp "${meta_dir}/LICENSE" "${public_dest}/LICENSE"
   fi
   commit_and_tag "$public_dest" "$upstream"
-  git -C "$public_dest" push -u origin main
-  git -C "$public_dest" push origin "$upstream"
+  run_github_git "push ${GITHUB_ORG}/${parent} main" "$parent" git -C "$public_dest" push -u origin main
+  run_github_git "push ${GITHUB_ORG}/${parent} tag ${upstream}" "$parent" git -C "$public_dest" push origin "$upstream"
 }
 
 # Public metapackage (upstream tag) plus impl (four-part tag) on tyhpproject-packages.
@@ -1173,7 +1494,7 @@ publish_composer_lib_pair() {
   local parent upstream impl_tag meta_dir gen_out public_dest impl_dest existing
   parent="${pkg%%/*}"
   upstream="${pkg#*/}"
-  impl_tag="$(read_tyhp_package_version "${PACKAGES_DIR}/${pkg}/composer.json")" || exit 1
+  impl_tag="$(read_tyhp_package_version "$(package_dir "$pkg")/composer.json")" || exit 1
   meta_dir="${dest}-public-meta"
   mkdir -p "$meta_dir"
 
@@ -1191,7 +1512,7 @@ publish_composer_lib_pair() {
   fi
   publish_public_meta_tag "$public_dest" "$upstream" "$parent" "$meta_dir" "$gen_out"
 
-  if ownership_is_handed_off "${PACKAGES_DIR}/${pkg}/composer.json"; then
+  if ownership_is_handed_off "$(package_dir "$pkg")/composer.json"; then
     echo "    ${pkg} is handed-off; impl tag ${impl_tag} is not published"
     cd "$PROJECT_ROOT"
     return 0
@@ -1206,10 +1527,10 @@ publish_composer_lib_pair() {
   fi
   echo "    impl ${parent}-impl tag ${impl_tag}"
   sync_composer_lib_dist "$pkg" "$impl_dest"
-  write_published_impl_composer "${PACKAGES_DIR}/${pkg}/composer.json" "${impl_dest}/composer.json"
+  write_published_impl_composer "$(package_dir "$pkg")/composer.json" "${impl_dest}/composer.json"
   commit_and_tag "$impl_dest" "$impl_tag"
-  git -C "$impl_dest" push -u origin main
-  git -C "$impl_dest" push origin "$impl_tag"
+  run_github_git "push ${GITHUB_ORG}/${parent}-impl main" "${parent}-impl" git -C "$impl_dest" push -u origin main
+  run_github_git "push ${GITHUB_ORG}/${parent}-impl tag ${impl_tag}" "${parent}-impl" git -C "$impl_dest" push origin "$impl_tag"
   cd "$PROJECT_ROOT"
 }
 
@@ -1225,7 +1546,7 @@ publish_tyhpdef_package() {
   fi
   local tag
   local composer_name
-  tag="$(read_tyhp_package_version "${PACKAGES_DIR}/${pkg}/composer.json")" || exit 1
+  tag="$(read_tyhp_package_version "$(package_dir "$pkg")/composer.json")" || exit 1
   composer_name="$(read_composer_name "$pkg")"
   if [[ -z "$composer_name" ]]; then
     composer_name="tyhpdef/${repo}"
@@ -1245,8 +1566,8 @@ publish_tyhpdef_package() {
   sync_composer_lib_dist "$pkg" "$dest"
   commit_and_tag "$dest" "$tag"
 
-  git -C "$dest" push -u origin main
-  git -C "$dest" push origin "$tag"
+  run_github_git "push ${GITHUB_ORG}/${repo} main" "$repo" git -C "$dest" push -u origin main
+  run_github_git "push ${GITHUB_ORG}/${repo} tag ${tag}" "$repo" git -C "$dest" push origin "$tag"
   cd "$PROJECT_ROOT"
 }
 
@@ -1258,7 +1579,7 @@ publish_compiler_package() {
   local repo="$3"
   local tag
   local composer_name
-  tag="$(read_tyhp_package_version "${PACKAGES_DIR}/${pkg}/composer.json")" || exit 1
+  tag="$(read_tyhp_package_version "$(package_dir "$pkg")/composer.json")" || exit 1
   composer_name="$(read_composer_name "$pkg")"
   if [[ -z "$composer_name" ]]; then
     composer_name="tyhp/${repo}"
@@ -1278,8 +1599,8 @@ publish_compiler_package() {
   sync_compiler_dist "$pkg" "$dest"
   commit_and_tag "$dest" "$tag"
 
-  git -C "$dest" push -u origin main
-  git -C "$dest" push origin "$tag"
+  run_github_git "push ${GITHUB_ORG}/${repo} main" "$repo" git -C "$dest" push -u origin main
+  run_github_git "push ${GITHUB_ORG}/${repo} tag ${tag}" "$repo" git -C "$dest" push origin "$tag"
   cd "$PROJECT_ROOT"
 }
 
@@ -1346,8 +1667,8 @@ publish_package() {
     commit_and_tag "$dest" "$dist_version"
   done
 
-  git -C "$dest" push -u origin main
-  git -C "$dest" push origin "${tags[@]}"
+  run_github_git "push ${GITHUB_ORG}/${pkg} main" "$pkg" git -C "$dest" push -u origin main
+  run_github_git "push ${GITHUB_ORG}/${pkg} tags ${tags[*]}" "$pkg" git -C "$dest" push origin "${tags[@]}"
   cd "$PROJECT_ROOT"
 }
 
@@ -1363,6 +1684,11 @@ main() {
 
   cd "$PROJECT_ROOT"
   discover_packages
+  load_github_repo_cache
+  if [[ ${#GITHUB_KNOWN_REPOS[@]} -eq 0 ]]; then
+    seed_github_repo_cache_from_org || true
+  fi
+  echo "GitHub: ${#GITHUB_KNOWN_REPOS[@]} repos in ${GITHUB_REPO_CACHE_FILE}"
 
   if [[ "$PACKAGE_FILTER_SET" -eq 1 ]]; then
     filter_to_requested_package "$ONLY_PACKAGE"
@@ -1414,7 +1740,7 @@ main() {
     local compiler_ver
     local compiler_repo
     for pkg in "${compiler_packages[@]}"; do
-      compiler_ver="$(read_tyhp_package_version "${PACKAGES_DIR}/${pkg}/composer.json")" || exit 1
+      compiler_ver="$(read_tyhp_package_version "$(package_dir "$pkg")/composer.json")" || exit 1
       compiler_repo="$(github_repo_for_package "$pkg")"
       echo "  ${pkg}: ${compiler_ver} → ${GITHUB_ORG}/${compiler_repo} tag ${compiler_ver}"
     done
@@ -1425,7 +1751,7 @@ main() {
     local def_ver
     local def_repo
     for pkg in "${tyhpdef_packages[@]}"; do
-      def_ver="$(read_tyhp_package_version "${PACKAGES_DIR}/${pkg}/composer.json")" || exit 1
+      def_ver="$(read_tyhp_package_version "$(package_dir "$pkg")/composer.json")" || exit 1
       def_repo="$(github_repo_for_package "$pkg")"
       echo "  ${pkg}: ${def_ver} → ${GITHUB_ORG}/${def_repo} tag ${def_ver}"
     done
@@ -1446,7 +1772,7 @@ main() {
     echo "Building tyhp/compiler..."
     "${PACKAGES_DIR}/base-build-all.sh" compiler
   else
-    echo "Skipping compiled-package build (no core/async/decimal/lambda/compiler in this run)."
+    echo "Skipping compiled-package build (no ${DIST_PACKAGES[*]} or compiler package in this run)."
   fi
 
   collect_publish_matches
@@ -1456,6 +1782,7 @@ main() {
 
   local published=()
   local dest_name
+  echo "Publishing ${#MATCHED_PACKAGES[@]} package(s)..."
   if [[ ${#MATCHED_PACKAGES[@]} -gt 0 ]]; then
     for pkg in "${MATCHED_PACKAGES[@]}"; do
       dest_name="${pkg//\//--}"

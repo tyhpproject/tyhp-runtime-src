@@ -1,0 +1,62 @@
+<?tyhp
+
+namespace Tyhp\Io\Db;
+
+use Tyhp\CancellationToken;
+use Tyhp\Io\Exceptions\DbException;
+use Tyhp\Io\Offload;
+
+/**
+ * Any PDO driver, with each call run through Offload.
+ *
+ * With tyhp/parallel available, statements run in a worker process that keeps
+ * one PDO connection per DSN and user, so the event loop stays free. Without
+ * it, they run in this process and block the loop. Placeholders are ?, bound
+ * in order. transactionAsync() runs the whole transaction in a single call;
+ * BEGIN and COMMIT sent through queryAsync() may run in different workers.
+ */
+final class PdoConnection implements DbConnection {
+    private AsyncLock $lock;
+
+    public function __construct(private readonly PdoOptions $options) {
+        if ($options->dsn === '') {
+            throw new \InvalidArgumentException('PdoOptions dsn is required.');
+        }
+        $this->lock = new AsyncLock();
+    }
+
+    async public function queryAsync(string $sql, array<int, DbValue> $params = [], ?CancellationToken $token = null): DbResult {
+        array<int, DbResult> $results = await $this->submit(
+            [new DbStatement() with [sql => $sql, params => $params]],
+            false,
+            $token
+        );
+        return $results[0];
+    }
+
+    async public function transactionAsync(array<int, DbStatement> $statements, ?CancellationToken $token = null): array<int, DbResult> {
+        return await $this->submit($statements, true, $token);
+    }
+
+    /**
+     * Closes this process's cached connection. Worker connections stay open for
+     * later calls with the same options.
+     */
+    public function close(): void {
+        PdoJob::forget($this->options);
+    }
+
+    async private function submit(array<int, DbStatement> $statements, bool $transaction, ?CancellationToken $token): array<int, DbResult> {
+        await $this->lock->acquire();
+        try {
+            PdoOutcome $outcome = await Offload::runAsync<PdoOutcome>(new PdoJob($this->options, $statements, $transaction), $token);
+            ?string $error = $outcome->error;
+            if ($error !== null) {
+                throw new DbException($error, $outcome->sqlState);
+            }
+            return $outcome->results;
+        } finally {
+            $this->lock->release();
+        }
+    }
+}

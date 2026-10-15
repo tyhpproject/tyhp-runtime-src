@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
-PACKAGES_DIR="$REPO_ROOT/packages"
+PACKAGES_DIR="$REPO_ROOT/packages/tyhpdef"
 COMPILER_ROOT="$(cd "$REPO_ROOT/../tyhp" 2>/dev/null && pwd || true)"
 TYHP_DLL="${TYHP_DLL:-${COMPILER_ROOT:+$COMPILER_ROOT/bin/Debug/net9.0/tyhp.dll}}"
 USER_AGENT="tyhp-verify-owner-tyhpdef (+https://github.com/tyhpproject/tyhp-runtime-src)"
@@ -130,7 +130,7 @@ def run_advisory_fail(upstream_ver, owner_composer):
     fail_dir = os.path.join(adv, "fail")
     os.makedirs(fail_dir, exist_ok=True)
     php_manifest = os.path.join(packages_dir, "php", "composer.json")
-    assert_py = os.path.join(packages_dir, "assert-tyhpdef-fail-expect.py")
+    assert_py = os.path.join(os.path.dirname(packages_dir), "assert-tyhpdef-fail-expect.py")
     for case in cases:
         shutil.copy(os.path.join(tests_fail, case), os.path.join(fail_dir, case))
         expect = os.path.join(tests_fail, case[: -len(".tyhp")] + ".expect.json")

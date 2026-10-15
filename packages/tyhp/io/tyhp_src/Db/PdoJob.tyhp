@@ -1,0 +1,102 @@
+<?tyhp
+
+namespace Tyhp\Io\Db;
+
+use Tyhp\Io\Exceptions\IoUnavailableException;
+use Tyhp\Io\OffloadJob;
+
+internal final class PdoJob implements OffloadJob<PdoOutcome> {
+    private static array<string, \PDO> $connections = [];
+
+    public function __construct(
+        private readonly PdoOptions $options,
+        private readonly array<int, DbStatement> $statements,
+        private readonly bool $transaction
+    ) {}
+
+    public function run(): PdoOutcome {
+        IoUnavailableException::requireExtension('pdo', 'PdoConnection');
+        try {
+            \PDO $pdo = self::connection($this->options);
+            if ($this->transaction) {
+                $pdo->beginTransaction();
+            }
+            array<int, DbResult> $results = [];
+            try {
+                foreach ($this->statements as $statement) {
+                    $results[] = self::execute($pdo, $statement);
+                }
+                if ($this->transaction) {
+                    $pdo->commit();
+                }
+            } catch (\Throwable $e) {
+                if ($this->transaction && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw $e;
+            }
+            return new PdoOutcome($results);
+        } catch (\PDOException $e) {
+            mixed $info = $e->errorInfo;
+            mixed $first = \is_array($info) ? ($info[0] ?? null) : null;
+            string $sqlState = \is_string($first) ? $first : (string) $e->getCode();
+            return new PdoOutcome([], $e->getMessage(), $sqlState);
+        }
+    }
+
+    public static function forget(PdoOptions $options): void {
+        unset(self::$connections[self::key($options)]);
+    }
+
+    private static function connection(PdoOptions $options): \PDO {
+        string $key = self::key($options);
+        ?\PDO $cached = self::$connections[$key] ?? null;
+        if ($cached !== null) {
+            return $cached;
+        }
+        array<int, int|string|bool> $attributes = $options->attributes;
+        $attributes[\PDO::ATTR_ERRMODE] = \PDO::ERRMODE_EXCEPTION;
+        \PDO $pdo = new \PDO($options->dsn, $options->username, $options->password, $attributes);
+        self::$connections[$key] = $pdo;
+        return $pdo;
+    }
+
+    private static function key(PdoOptions $options): string {
+        return \hash('sha256', $options->dsn . "\0" . ($options->username ?? '') . "\0" . ($options->password ?? ''));
+    }
+
+    private static function execute(\PDO $pdo, DbStatement $statement): DbResult {
+        \PDOStatement|false $prepared = $pdo->prepare($statement->sql);
+        if ($prepared === false) {
+            throw new \PDOException('PDO could not prepare the statement.');
+        }
+        int $position = 1;
+        foreach ($statement->params as $value) {
+            if ($value === null) {
+                $prepared->bindValue($position, null, \PDO::PARAM_NULL);
+            } else if (\is_bool($value)) {
+                $prepared->bindValue($position, $value, \PDO::PARAM_BOOL);
+            } else if (\is_int($value)) {
+                $prepared->bindValue($position, $value, \PDO::PARAM_INT);
+            } else {
+                $prepared->bindValue($position, (string) $value, \PDO::PARAM_STR);
+            }
+            $position++;
+        }
+        $prepared->execute();
+        if ($prepared->columnCount() > 0) {
+            array<int, array<string, mixed>> $rows = $prepared->fetchAll(\PDO::FETCH_ASSOC);
+            return new DbResult($rows, \count($rows));
+        }
+        ?string $lastInsertId = null;
+        try {
+            string|false $id = $pdo->lastInsertId();
+            if ($id !== false && $id !== '0' && $id !== '') {
+                $lastInsertId = $id;
+            }
+        } catch (\Throwable $e) {
+            (void) $e;
+        }
+        return new DbResult([], $prepared->rowCount(), $lastInsertId);
+    }
+}

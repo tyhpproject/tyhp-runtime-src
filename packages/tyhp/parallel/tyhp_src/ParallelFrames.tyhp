@@ -1,0 +1,196 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Exceptions\ParallelException;
+
+/**
+ * One message on a worker or service socket.
+ *
+ * Every field is a scalar, a string, or a ParallelRemoteError, so a frame
+ * unserializes with allowed_classes => false. Tasks and results travel as
+ * already-serialized strings in `payload`.
+ */
+internal type ParallelFrame = struct {
+    string $op = '';
+    int $id = 0;
+    bool $ok = false;
+    string $payload = '';
+    string $message = '';
+    ?ParallelRemoteError $error = null;
+};
+
+/** Frames decoded from one read, and whether the peer closed the socket. */
+internal type ParallelReceive = struct {
+    array<int, ParallelFrame> $frames = [];
+    bool $closed = false;
+};
+
+/**
+ * Length-prefixed frames: a 4-byte big-endian length, then a serialized ParallelFrame.
+ */
+internal final class ParallelFrames {
+    /** Largest serialized task or result. */
+    public const int MAX_DATA_BYTES = 16777216;
+
+    /** Largest frame on the wire: MAX_DATA_BYTES plus room for the envelope. */
+    public const int MAX_FRAME_BYTES = 16842752;
+
+    private const int MAX_MESSAGE_BYTES = 65536;
+    private const int MAX_TRACE_BYTES = 32768;
+
+    public static function run(int $id, string $payload): string {
+        self::checkData($payload, 'The task');
+        return self::encode(new ParallelFrame() with [
+            'op' => ParallelFrameOp::Run->value,
+            'id' => $id,
+            'payload' => $payload,
+        ]);
+    }
+
+    public static function cancel(int $id): string {
+        return self::encode(new ParallelFrame() with [
+            'op' => ParallelFrameOp::Cancel->value,
+            'id' => $id,
+        ]);
+    }
+
+    public static function success(int $id, string $payload): string {
+        self::checkData($payload, 'The task result');
+        return self::encode(new ParallelFrame() with [
+            'op' => ParallelFrameOp::Result->value,
+            'id' => $id,
+            'ok' => true,
+            'payload' => $payload,
+        ]);
+    }
+
+    /**
+     * A failed result. A ParallelException that came from a worker keeps its
+     * ParallelRemoteError. Any other error travels as its message only.
+     */
+    public static function failure(int $id, \Throwable $error): string {
+        ?ParallelRemoteError $remote = null;
+        if ($error instanceof ParallelException) {
+            $remote = $error->getRemoteError();
+        }
+        return self::encode(new ParallelFrame() with [
+            'op' => ParallelFrameOp::Result->value,
+            'id' => $id,
+            'message' => self::clip($error->getMessage(), self::MAX_MESSAGE_BYTES),
+            'error' => $remote,
+        ]);
+    }
+
+    /** The worker hit an error outside a task and is about to exit. */
+    public static function fatal(\Throwable $error): string {
+        return self::encode(new ParallelFrame() with [
+            'op' => ParallelFrameOp::Fatal->value,
+            'message' => self::clip($error->getMessage(), self::MAX_MESSAGE_BYTES),
+            'error' => self::describe($error),
+        ]);
+    }
+
+    public static function describe(\Throwable $error): ParallelRemoteError {
+        mixed $code = $error->getCode();
+        return new ParallelRemoteError() with [
+            'class' => \get_class($error),
+            'message' => self::clip($error->getMessage(), self::MAX_MESSAGE_BYTES),
+            'code' => ($code is int) ? $code : 0,
+            'file' => $error->getFile(),
+            'line' => $error->getLine(),
+            'trace' => self::clip($error->getTraceAsString(), self::MAX_TRACE_BYTES),
+        ];
+    }
+
+    /** The exception a caller sees for a Result or Fatal frame that is not ok. */
+    public static function exceptionOf(ParallelFrame $frame, string $fallback): ParallelException {
+        ?ParallelRemoteError $remote = $frame->error;
+        if ($remote !== null) {
+            return ParallelException::fromRemote($remote);
+        }
+        if ($frame->message !== '') {
+            return new ParallelException($frame->message);
+        }
+        return new ParallelException($fallback);
+    }
+
+    public static function op(ParallelFrame $frame): ParallelFrameOp {
+        return ParallelFrameOp::from($frame->op);
+    }
+
+    /** Throws ParallelException when serialized data is over MAX_DATA_BYTES. */
+    public static function checkData(string $payload, string $subject): void {
+        if (\strlen($payload) > self::MAX_DATA_BYTES) {
+            throw new ParallelException($subject . ' is larger than 16 MiB once serialized.');
+        }
+    }
+
+    public static function decode(string $bytes): ParallelFrame {
+        mixed $message = @\unserialize($bytes, ['allowed_classes' => false]);
+        if (!Type::isType<ParallelFrame>($message)) {
+            throw new ParallelException('Received a malformed parallel frame.');
+        }
+        if (ParallelFrameOp::tryFrom($message->op) === null) {
+            throw new ParallelException('Received a parallel frame with an unknown operation.');
+        }
+        return $message;
+    }
+
+    /**
+     * Removes one complete frame from the front of $buffer.
+     * Returns null when the buffer does not yet contain a whole frame.
+     */
+    public static function tryPop(string &$buffer): ?string {
+        if (\strlen($buffer) < 4) {
+            return null;
+        }
+
+        mixed $unpacked = \unpack('N', \substr($buffer, 0, 4));
+        if (!\is_array($unpacked) || !isset($unpacked[1])) {
+            throw new ParallelException('Parallel frame header is invalid.');
+        }
+        mixed $lengthRaw = $unpacked[1];
+        if (!($lengthRaw is int)) {
+            throw new ParallelException('Parallel frame header is invalid.');
+        }
+        int $length = $lengthRaw;
+        if ($length > self::MAX_FRAME_BYTES) {
+            throw new ParallelException('Parallel frame exceeds the size limit.');
+        }
+        if (\strlen($buffer) < 4 + $length) {
+            return null;
+        }
+
+        string $frame = \substr($buffer, 4, $length);
+        $buffer = \substr($buffer, 4 + $length);
+        return $frame;
+    }
+
+    /** Blocking write used inside a worker process. */
+    public static function writeAll(#[\Tyhp\PhpType('mixed')] resource $socket, string $bytes): void {
+        string $remaining = $bytes;
+        while ($remaining !== '') {
+            mixed $written = @\fwrite($socket, $remaining);
+            if (!($written is int) || $written === 0) {
+                throw new ParallelException('Failed to write a parallel frame.');
+            }
+            $remaining = \substr($remaining, $written);
+        }
+    }
+
+    private static function encode(ParallelFrame $frame): string {
+        string $body = \serialize($frame);
+        if (\strlen($body) > self::MAX_FRAME_BYTES) {
+            throw new ParallelException('Parallel frame exceeds the size limit.');
+        }
+        return \pack('N', \strlen($body)) . $body;
+    }
+
+    private static function clip(string $text, int $limit): string {
+        if (\strlen($text) <= $limit) {
+            return $text;
+        }
+        return \substr($text, 0, $limit);
+    }
+}

@@ -249,11 +249,9 @@ def source_xy(composer_json: Path) -> str:
 def iter_php_files(dist_root: Path) -> list[tuple[Path, Path]]:
     pairs: list[tuple[Path, Path]] = []
     packages_root = dist_root.parent
-    for composer_json in sorted(packages_root.glob("*/composer.json")):
+    for composer_json in sorted((packages_root / "tyhp").glob("*/composer.json")):
         package_dir = composer_json.parent
         pkg_name = package_dir.name
-        if pkg_name == "php":
-            continue
         xy = source_xy(composer_json)
         for src_dir in sorted(dist_root.glob(f"tyhp-{pkg_name}/*.{xy}/src")):
             if not src_dir.is_dir():

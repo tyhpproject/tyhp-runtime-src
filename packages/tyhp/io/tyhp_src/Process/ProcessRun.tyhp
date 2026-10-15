@@ -1,0 +1,193 @@
+<?tyhp
+
+namespace Tyhp\Io\Process;
+
+use Tyhp\CancellationToken;
+use Tyhp\EventLoop;
+use Tyhp\Exceptions\TimeoutException;
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Io\IoPending;
+
+internal final class ProcessRun {
+    private const int CHUNK_BYTES = 65536;
+    private const int STATUS_POLL_MS = 5;
+
+    private mixed $process = null;
+    private array<int, mixed> $pipes = [];
+    private array<int, string> $output = [1 => '', 2 => ''];
+    private int $inputOffset = 0;
+    private ?string $statusTimer = null;
+    private ?string $timeoutTimer = null;
+    private ?EventLoop $loop = null;
+
+    public function __construct(
+        private readonly array<int, string> $command,
+        private readonly ProcessOptions $options,
+        private readonly IoPending<ProcessResult> $pending
+    ) {}
+
+    public function start(?CancellationToken $token): void {
+        array<int, array<int, string>> $spec = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        array<int, mixed> $pipes = [];
+        mixed $process = @\proc_open($this->command, $spec, $pipes, $this->options->cwd, $this->options->env);
+        if (!\is_resource($process)) {
+            ?array $error = \error_get_last();
+            throw new IoException(
+                'Could not start "' . $this->command[0] . '": ' . (string) ($error['message'] ?? 'proc_open() failed.')
+            );
+        }
+        $this->process = $process;
+        $this->pipes = $pipes;
+        foreach ($this->pipes as $pipe) {
+            if (\is_resource($pipe)) {
+                \stream_set_blocking($pipe, false);
+            }
+        }
+
+        EventLoop $loop = EventLoop::getInstance();
+        $this->loop = $loop;
+        if ($this->options->input === '') {
+            $this->closePipe(0);
+        } else {
+            $loop->addWriteStream($this->pipes[0], function (mixed $stream): void {
+                $this->writeInput();
+            });
+        }
+        foreach ([1, 2] as $fd) {
+            $loop->addReadStream($this->pipes[$fd], function (mixed $stream) use ($fd): void {
+                $this->readChunk($fd);
+            });
+        }
+        $this->statusTimer = $loop->interval(self::STATUS_POLL_MS, function (): void {
+            $this->checkStatus();
+        });
+        if ($this->options->timeoutMs > 0) {
+            int $timeoutMs = $this->options->timeoutMs;
+            $this->timeoutTimer = $loop->delay($timeoutMs, function () use ($timeoutMs): void {
+                $this->kill();
+                $this->pending->reject(new TimeoutException(
+                    'The command "' . $this->command[0] . '" timed out after ' . $timeoutMs . 'ms.',
+                    $timeoutMs
+                ));
+            });
+        }
+        $this->pending->cancelWith($token, function (): void {
+            $this->kill();
+        });
+    }
+
+    private function writeInput(): void {
+        mixed $pipe = $this->pipes[0] ?? null;
+        if (!\is_resource($pipe)) {
+            return;
+        }
+        string $input = $this->options->input;
+        int|false $written = @\fwrite($pipe, \substr($input, $this->inputOffset, self::CHUNK_BYTES));
+        if ($written === false) {
+            $this->closePipe(0);
+            return;
+        }
+        $this->inputOffset += $written;
+        if ($this->inputOffset >= \strlen($input)) {
+            $this->closePipe(0);
+        }
+    }
+
+    private function readChunk(int $fd): void {
+        mixed $pipe = $this->pipes[$fd] ?? null;
+        if (!\is_resource($pipe)) {
+            return;
+        }
+        string|false $chunk = @\fread($pipe, self::CHUNK_BYTES);
+        if ($chunk === false || ($chunk === '' && \feof($pipe))) {
+            $this->closePipe($fd);
+            return;
+        }
+        $this->output[$fd] .= $chunk;
+    }
+
+    private function drain(int $fd): void {
+        mixed $pipe = $this->pipes[$fd] ?? null;
+        if (!\is_resource($pipe)) {
+            return;
+        }
+        bool $more = true;
+        while ($more) {
+            string|false $chunk = @\fread($pipe, self::CHUNK_BYTES);
+            if ($chunk === false || $chunk === '') {
+                $more = false;
+            } else {
+                $this->output[$fd] .= $chunk;
+            }
+        }
+        $this->closePipe($fd);
+    }
+
+    private function checkStatus(): void {
+        mixed $process = $this->process;
+        if (!\is_resource($process)) {
+            return;
+        }
+        array $status = \proc_get_status($process);
+        if ((bool) $status['running']) {
+            return;
+        }
+        int $signal = (bool) $status['signaled'] ? (int) $status['termsig'] : 0;
+        int $exitCode = $signal > 0 ? 128 + $signal : (int) $status['exitcode'];
+        $this->drain(1);
+        $this->drain(2);
+        $this->release();
+        $this->pending->resolve(new ProcessResult() with [
+            command => $this->command,
+            exitCode => $exitCode,
+            signal => $signal,
+            stdout => $this->output[1],
+            stderr => $this->output[2],
+        ]);
+    }
+
+    private function kill(): void {
+        mixed $process = $this->process;
+        if (\is_resource($process)) {
+            \proc_terminate($process, 9);
+        }
+        $this->release();
+    }
+
+    private function release(): void {
+        EventLoop $loop = $this->loop ?? EventLoop::getInstance();
+        if ($this->statusTimer !== null) {
+            $loop->cancelTimer($this->statusTimer);
+            $this->statusTimer = null;
+        }
+        if ($this->timeoutTimer !== null) {
+            $loop->cancelTimer($this->timeoutTimer);
+            $this->timeoutTimer = null;
+        }
+        foreach (\array_keys($this->pipes) as $fd) {
+            $this->closePipe($fd);
+        }
+        mixed $process = $this->process;
+        $this->process = null;
+        if (\is_resource($process)) {
+            \proc_close($process);
+        }
+    }
+
+    private function closePipe(int $fd): void {
+        mixed $pipe = $this->pipes[$fd] ?? null;
+        if ($pipe === null) {
+            return;
+        }
+        unset($this->pipes[$fd]);
+        EventLoop $loop = $this->loop ?? EventLoop::getInstance();
+        if ($fd === 0) {
+            $loop->removeWriteStream($pipe);
+        } else {
+            $loop->removeReadStream($pipe);
+        }
+        if (\is_resource($pipe)) {
+            \fclose($pipe);
+        }
+    }
+}

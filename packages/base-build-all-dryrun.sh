@@ -1,6 +1,6 @@
 #!/bin/bash
 # Dry-run every first-party dist package (all PHP versions) plus single-version packages.
-# Pass a package name to dry-run only that one: core, decimal, async, lambda, or compiler.
+# Pass a package name to dry-run only that one: core, decimal, async, lambda, parallel, io, or compiler.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -29,9 +29,9 @@ build_package_target() {
   echo "==> Building (DRY RUN) $pkg ($label)"
   set +e
   if [[ -n "$php_version" ]]; then
-    (cd "$SCRIPT_DIR/$pkg" && dotnet "$TYHP_DLL" build --dry-run --output:phpVersion="$php_version")
+    (cd "$TYHP_PKG_DIR/$pkg" && dotnet "$TYHP_DLL" build --dry-run --output:phpVersion="$php_version")
   else
-    (cd "$SCRIPT_DIR/$pkg" && dotnet "$TYHP_DLL" build --dry-run)
+    (cd "$TYHP_PKG_DIR/$pkg" && dotnet "$TYHP_DLL" build --dry-run)
   fi
   code=$?
   set -e

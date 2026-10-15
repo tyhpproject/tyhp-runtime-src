@@ -1,0 +1,486 @@
+<?tyhpdef
+/**
+ * AUTO-GENERATED, DO NOT EDIT
+ * Compiler: 805.1.0.0
+ * Generated: 2026-10-14T20:52:16.0474290Z
+ */
+/**
+* Runs `$fn` on the event loop and returns its Promise.
+*
+* PHP spelling of {@see \Tyhp\Promise::_async()}. The callable's return type is the
+* settled type: `async(fn(): int => 1)` is `Promise<int>`.
+*
+* Skipped when a global `async` already exists.
+*/
+#[\Tyhp\GenericRuntime(erased: false, binder: "_async__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+function _async<T extends void|mixed>(callable(): T $fn): \Tyhp\Promise<__Awaited<T>>;
+/**
+* Suspends the current fiber until `$promise` settles.
+*
+* PHP spelling of {@see \Tyhp\Promise::_await()}. Returns the fulfilled value, or
+* throws the rejection. Must run inside an async fiber.
+*
+* Skipped when a global `await` already exists.
+*/
+#[\Tyhp\GenericRuntime(erased: false, binder: "_await__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+function _await<T extends __Awaited<void|mixed>>(\Tyhp\Promise<T> $promise): __Awaited<T>;
+/**
+* Enters async code from synchronous PHP and blocks until `$fn` settles.
+*
+* PHP spelling of {@see \Tyhp\Promise::run()}. Drives the event loop for this
+* call, then returns the settled value or throws the rejection. `await` runs
+* inside the fiber this starts.
+*
+* Skipped when a global `asyncMain` already exists.
+*/
+#[\Tyhp\GenericRuntime(erased: false, binder: "_asyncMain__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+function _asyncMain<T extends void|mixed>(callable(): T $fn, ?\Tyhp\CancellationToken $token = null): __Awaited<T>;
+namespace Tyhp {
+    enum PromiseState: string {
+        case Pending = 'pending';
+        case Fulfilled = 'fulfilled';
+        case Rejected = 'rejected';
+    }
+    /**
+    * One settled outcome from {@see Promise::allSettled}, matching JavaScript's
+    * `Promise.allSettled` result objects: `{status, value}` or `{status, reason}`.
+    *
+    * `status` is `'fulfilled'` or `'rejected'`. Fulfilled outcomes set `value`;
+    * rejected outcomes set `reason`.
+    */
+    #[\Tyhp\GenericRuntime(erased: false, factory: "new_Tyhp_PromiseSettledResult__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+    final class PromiseSettledResult<T extends void|mixed = mixed> {
+        public string $status;
+        public ?T $value ?? null;
+        public ?\Throwable $reason ?? null;
+        public function __construct(string $status, ?T $value = null, ?\Throwable $reason = null): void;
+    }
+    /**
+    * Core Promise implementation built on PHP Fibers.
+    *
+    * Combines JavaScript's then/catch/finally API with C#'s Task-style patterns.
+    * Each Promise wraps a dedicated Fiber that executes an async operation.
+    * The Fiber can be suspended via _await() and resumed when the awaited
+    * Promise settles.
+    *
+    * The default TReturn must be `mixed` so PHP users that do not specify generics
+    * will get it is `Promise<mixed>`
+    */
+    #[\Tyhp\GenericRuntime(erased: false, factory: "new_Tyhp_Promise__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+    final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
+        /**
+        * Creates a new Promise that wraps the given executor in a Fiber.
+        * The Fiber is scheduled with the event loop, not started immediately.
+        */
+        public function __construct(callable(): TReturn|\Tyhp\Promise<TReturn> $executor, bool $immediateResolve = false): void;
+        /**
+        * Wraps a callable in a Promise.
+        * The `async` keyword desugars to this internally.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "_async__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function _async<T extends void|mixed>(callable(): T $fn): self<__Awaited<T>>;
+        /**
+        * Suspends the current Fiber until the given Promise settles.
+        * The `await` keyword desugars to this internally.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "_await__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function _await<T extends __Awaited<void|mixed>>(\Tyhp\Promise<T> $promise): __Awaited<T>;
+        /**
+        * Cooperatively yields to other Promise Fibers already queued on the EventLoop.
+        *
+        * Returns an already-scheduled no-op Promise. Awaiting it suspends the current
+        * Fiber so the loop can drain other pending Fiber starts/resumes before
+        * continuing. Prefer this in tight async loops when you only need to share
+        * the CPU with sibling tasks (similar to `await Promise.resolve()` in JS).
+        *
+        * Does not wait for timers or I/O — use yieldTick() or delay() for that.
+        *
+        * @example `await Promise::yield();`
+        */
+        public static function yield(): self<void>;
+        /**
+        * Cooperatively yields until after the EventLoop's timer phase.
+        *
+        * Equivalent to delay(0): schedules a 0ms timer and settles when it fires,
+        * so awaiting this lets queued Fibers run and also advances past the current
+        * microtask/Fiber drain into timer processing (a "macrotask" deferral).
+        * Use when yield() is not enough — e.g. you need other delay()/timer work
+        * to run before resuming, or you want a full loop turn of deferral.
+        *
+        * @example `await Promise::yieldTick();`
+        */
+        public static function yieldTick(): self<void>;
+        /**
+        * Registers fulfillment and/or rejection handlers, returning a new Promise.
+        */
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        async public function then(null $onFulfilled = null, null $onRejected = null): TReturn;
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        async public function then(null $onFulfilled, callable(\Throwable): TReturn $onRejected): TReturn;
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        async public function then<TThenReturn>(callable(TReturn): TThenReturn $onFulfilled, ?callable(\Throwable): TThenReturn $onRejected = null): TThenReturn;
+        /**
+        * Registers a rejection handler.
+        */
+        public function catch(callable(\Throwable): TReturn $onRejected): self<TReturn>;
+        /**
+        * Registers a handler that runs when this Promise settles, regardless of outcome.
+        * The original value or error propagates through unchanged.
+        *
+        * We do not use a `} finally {` block because we only execute the finally callback
+        * when the promise settles (finishes or throws), and not under other conditions.
+        */
+        async public function finally(callable(): void|mixed $onFinally): TReturn;
+        /**
+        * Registers a continuation that receives both the result and error (C# style).
+        */
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        async public function continueWith<TContinueReturn>(callable(?TReturn, ?\Throwable): TContinueReturn $continuation): TContinueReturn;
+        /**
+        * JS Promise.resolve: adopt an existing Promise, or return an already-fulfilled
+        * Promise for a plain value (no Fiber).
+        *
+        * Passing a Promise returns that same instance — even if it is still pending. That is
+        * flatten/adopt, not "force fulfilled". Use resolved() when you need a new
+        * immediately-fulfilled Promise and do not want to unwrap.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "resolve__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function resolve<T extends __Awaited<void|mixed>>(null|T|\Tyhp\Promise<T> $value = null): self<T>;
+        /**
+        * JS Promise.reject: an already-rejected Promise (no Fiber).
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "reject__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function reject<T extends __Awaited<void|mixed> = void>(\Throwable $reason): self<T>;
+        /**
+        * Creates a new Promise fulfilled with the given value, without scheduling a Fiber.
+        * When `$value` is omitted or null, uses `default(T)`.
+        *
+        * Always returns a new Promise; `resolve()` returns an existing Promise unchanged.
+        * When `$value` is a Promise, the new Promise adopts it and settles when that Promise
+        * settles, whatever `T` is. The result type is `Promise<__Awaited<T>>`, so
+        * `resolved<Promise<int>>($p)` is a `Promise<int>`, never a promise of a promise.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "resolved__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function resolved<T extends void|mixed = void>(?T $value = null): self<__Awaited<T>>;
+        /**
+        * Creates an already-rejected Promise with the given error.
+        * Rejects immediately without scheduling a Fiber. `reject()` is an alias.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "rejected__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function rejected<T extends void|mixed = void>(\Throwable $error): self<__Awaited<T>>;
+        /**
+        * Creates a pending Promise that is settled from outside.
+        * Returns a Deferred: call `getPromise()` for the Promise, then `resolve()` or `reject()`
+        * to settle it. A Deferred settles only once; a second call throws.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "withResolvers__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function withResolvers<T extends void|mixed>(): \Tyhp\Deferred<__Awaited<T>>;
+        /**
+        * Blocks the current thread until this Promise settles or the timeout expires.
+        * Runs the event loop until settlement.
+        */
+        public function wait(int $timeoutMs = -1): mixed;
+        /**
+        * Gets the resolved value or throws the rejection reason.
+        */
+        public function getResult(): TReturn;
+        public function getState(): \Tyhp\PromiseState;
+        public function isCompleted(): bool;
+        public function isFulfilled(): bool;
+        public function isFaulted(): bool;
+        public function getError(): ?\Throwable;
+        /**
+        * Entry point for async code from synchronous PHP.
+        *
+        * Runs `$fn` in a new Fiber, drives the event loop until that work settles, and returns
+        * the value. `$fn` may be a plain callable, an `async` closure or arrow function, or any
+        * callable that returns a Promise; a returned Promise is awaited. If `$fn` throws, or the
+        * Promise it returns rejects, the exception is rethrown here. Throws `\LogicException`
+        * when the loop is already running.
+        *
+        * With a `$token`, an already-cancelled token throws `OperationCancelledException` before
+        * `$fn` is called. Otherwise the event loop checks the token once per iteration, and if it is
+        * cancelled while the work is still pending, the whole loop is shut down and `run` throws
+        * `OperationCancelledException`; work that has settled by then keeps its own result or error.
+        * Shutting down cancels every timer, interval, and stream watcher, drops queued work, and
+        * unwinds every fiber suspended on a pending Promise (see `EventLoop::run()`).
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "run__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function run<T extends void|mixed>(callable(): T $fn, ?\Tyhp\CancellationToken $token = null): __Awaited<T>;
+        /**
+        * Creates a Promise that resolves after the specified delay.
+        * Supports CancellationToken for cooperative cancellation.
+        */
+        async public static function delay(int $ms, ?\Tyhp\CancellationToken $token = null): void;
+        /**
+        * Waits for all Promises to resolve and returns their results.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "all__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function all<T extends __Awaited<void|mixed> = mixed>(array<\Tyhp\Promise<T>> $promises, ?\Tyhp\CancellationToken $token = null): array<T>;
+        /**
+        * C# Task.WhenAll-style alias for all().
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "whenAll__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function whenAll<T extends __Awaited<void|mixed> = mixed>(\Tyhp\Promise<T> ...$promises): self<array<int|string, T>>;
+        /**
+        * Waits for all Promises to settle and returns a JS-style outcome object for each.
+        * Never rejects itself. Input keys are preserved.
+        *
+        * Each outcome has `status` `'fulfilled'` or `'rejected'`. Fulfilled outcomes carry
+        * `value`; rejected outcomes carry `reason` (a Throwable).
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "allSettled__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function allSettled<T extends __Awaited<void|mixed> = mixed, TKey extends int|string = int|string>(array<TKey, \Tyhp\Promise<T>> $promises): array<TKey, \Tyhp\PromiseSettledResult<T>>;
+        /**
+        * Resolves or rejects with the first Promise to settle.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "race__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function race<T extends __Awaited<void|mixed>>(array<\Tyhp\Promise<T>> $promises, ?\Tyhp\CancellationToken $token = null): __Awaited<T>;
+        /**
+        * C# Task.WhenAny-style alias for race().
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "whenAny__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function whenAny<T extends __Awaited<void|mixed>>(\Tyhp\Promise<T> ...$promises): self<__Awaited<T>>;
+        /**
+        * Resolves with the first fulfilled Promise; rejects if all reject.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "any__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function any<T extends __Awaited<void|mixed>>(array<\Tyhp\Promise<T>> $promises, ?\Tyhp\CancellationToken $token = null): __Awaited<T>;
+        /**
+        * Rejects with TimeoutException if the Promise does not settle within the deadline.
+        * Implemented as a race between the original Promise and a delay.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "timeout__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function timeout<T extends __Awaited<void|mixed>>(\Tyhp\Promise<T> $promise, int $ms, ?\Tyhp\CancellationToken $token = null): self<__Awaited<T>>;
+        /**
+        * Processes items through a callable with bounded concurrency.
+        * Results are returned in the original input order.
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "batch__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        async public static function batch<TItem, TBatchReturn extends __Awaited<void|mixed>>(array<TItem> $items, callable(TItem): \Tyhp\Promise<TBatchReturn> $processor, int $concurrency = 5, ?\Tyhp\CancellationToken $token = null): array<int, TBatchReturn>;
+        /**
+        * Adapts a Generator (coroutine-style) into a Promise.
+        * Each yield $promise suspends the generator and awaits the Promise.
+        *
+        * // TODO: need generics for generator to get return type, for now this is typed as mixed
+        */
+        async public static function fromGenerator(\Generator $generator): mixed;
+    }
+    /**
+    * Typed timer queue entry for {@see EventLoop}.
+    * Keeps SplPriorityQueue's mixed top/extract values out of type-specific operations.
+    */
+    final class EventLoopTimerItem {
+        public string $id;
+        public callable(): void $callback;
+        public int $interval;
+        public int $fireAt;
+        public function __construct(string $id, callable(): void $callback, int $interval, int $fireAt): void;
+    }
+    /**
+    * Typed fiber start/resume/throw queue entry for {@see EventLoop}.
+    * Keeps SplQueue's mixed dequeue values out of type-specific operations.
+    */
+    final class EventLoopFiberItem {
+        public \Fiber<mixed, callable(): void>|\Fiber<mixed, callable> $fiber;
+        public string $action;
+        public mixed $value ?? null;
+        public ?\Throwable $error ?? null;
+        public function __construct(\Fiber<mixed, callable(): void>|\Fiber<mixed, callable> $fiber, string $action, mixed $value = null, ?\Throwable $error = null): void;
+    }
+    /**
+    * Singleton event loop that drives all async operations.
+    *
+    * Provides cooperative Fiber scheduling, timer management, and real I/O
+    * via stream_select(). Follows a tick-based model inspired by Node.js's
+    * libuv and ReactPHP's event loop.
+    *
+    * Tick order:
+    *  1. Process microtask queue (Fiber resumes, deferred callbacks)
+    *  2. Process timer queue (expired delay/interval callbacks)
+    *  3. Poll I/O via stream_select (non-blocking read/write on streams)
+    *  4. Process I/O callbacks (handlers for ready streams)
+    *  5. Check for completion (all queues empty + root settled?)
+    */
+    final class EventLoop {
+        public static function getInstance(): \Tyhp\EventLoop;
+        /**
+        * Discards the shared loop so the next {@see getInstance()} starts a fresh one. Call it in a
+        * forked child that must not inherit the parent's timers, fibers, or streams, and between tests.
+        */
+        public static function resetInstance(): void;
+        /**
+        * Schedules a Fiber to be started on the next microtask drain.
+        */
+        public function scheduleFiber(\Fiber<mixed, callable(): void> $fiber): void;
+        /**
+        * Schedules a suspended Fiber to be resumed with a value.
+        */
+        public function scheduleFiberResume(\Fiber<mixed, callable> $fiber, mixed $value = null): void;
+        /**
+        * Schedules a suspended Fiber to be resumed with a thrown exception.
+        */
+        public function scheduleFiberThrow(\Fiber<mixed, callable> $fiber, \Throwable $error): void;
+        /**
+        * Schedules a one-shot callback to fire after the given delay.
+        * Uses hrtime(true) (nanosecond monotonic clock) for timing precision.
+        */
+        public function delay(int $ms, callable(): void $callback): string;
+        /**
+        * Cancels a previously scheduled timer.
+        * Cancelled timers are lazily removed from the priority queue on extraction.
+        */
+        public function cancelTimer(string $id): void;
+        /**
+        * Schedules a recurring callback to fire at the given interval.
+        */
+        public function interval(int $ms, callable(): void $callback): string;
+        public function addReadStream(mixed $stream, callable(resource): void $callback): void;
+        public function addWriteStream(mixed $stream, callable(resource): void $callback): void;
+        public function removeReadStream(mixed $stream): void;
+        public function removeWriteStream(mixed $stream): void;
+        /**
+        * Alias of `queueMicrotask()`: queues the callback on the microtask queue.
+        */
+        public function defer(callable(): void $callback): void;
+        /**
+        * Queues a microtask to run before timers and I/O.
+        * Microtasks are drained completely before moving to the next phase.
+        */
+        public function queueMicrotask(callable(): void $callback): void;
+        /**
+        * Runs the event loop until the root Promise has settled and no work is immediately runnable.
+        * Timers that are not yet due and stream watchers do not keep it running.
+        * Blocks until the Promise resolves (returning the value) or rejects (throwing).
+        *
+        * When `$token` is given, cancellation is checked once per loop iteration, after the
+        * microtask, timer, and I/O phases. If it has been requested while the root Promise is still
+        * pending, the loop is shut down without waiting for I/O again and `run` throws
+        * `OperationCancelledException`. If the root Promise settled in the same iteration, its own
+        * result or error is returned or thrown instead and nothing is torn down.
+        *
+        * Shutting down stops all of the loop's work, not only the root's:
+        *  - queued microtasks and queued fiber starts are dropped; the Promise of a fiber that never
+        *    started is rejected with `OperationCancelledException`;
+        *  - every timer and interval is cancelled and every stream watcher is removed (the streams
+        *    themselves are not closed);
+        *  - every fiber suspended on a pending Promise is unwound by throwing
+        *    `OperationCancelledException` into it, so its `finally` blocks run (and unregister their
+        *    cancellation callbacks), and its own Promise is rejected with that exception. A fiber that
+        *    catches the exception and suspends again is rejected and abandoned instead. No fiber the loop
+        *    gave up on is ever started or resumed again, even if the Promise it awaited settles later;
+        *  - an error thrown by that cleanup code is attached as the `previous` exception of the one
+        *    thrown from `run`.
+        *
+        * The loop is reusable afterwards. Cancellation is noticed at the next iteration, so a single
+        * callback that never returns control to the loop is not interrupted. An already-cancelled
+        * token is rejected by `Promise::run()` before the loop starts.
+        */
+        #[\Tyhp\GenericRuntime(erased: true, layouts: [1], compiler: "805.1.0.0")]
+        public function run<T extends __Awaited<void|mixed> = mixed>(\Tyhp\Promise<T> $rootPromise, ?\Tyhp\CancellationToken $token = null): T;
+        /**
+        * Runs the event loop until the given Promise settles or timeout expires.
+        * Used by Promise::wait() to block synchronous callers.
+        */
+        public function runUntilSettled(\Tyhp\Promise $promise, int $timeoutMs = -1): mixed;
+        /**
+        * Performs a single tick of the event loop.
+        * Returns true if there is still pending work to do.
+        */
+        public function tick(): bool;
+        public function stop(): void;
+        public function isRunning(): bool;
+    }
+    final class DisposableScope implements \Tyhp\Contracts\IsDisposable {
+        public static function create(): \Tyhp\DisposableScope;
+        /**
+        * Registers a disposable resource with this scope.
+        * Resources are disposed in reverse registration order (LIFO)
+        * when this scope exits via __destruct() or explicit dispose().
+        */
+        public function using(\Tyhp\Contracts\IsDisposable|\Tyhp\Contracts\AsyncIsDisposable $resource): mixed;
+        public function __destruct(): void;
+        public function dispose(): void;
+        /**
+        * Releases a resource from this scope so it will not be disposed on scope exit.
+        * Call this after manually disposing a resource to prevent double-disposal.
+        */
+        public function release(\Tyhp\Contracts\IsDisposable|\Tyhp\Contracts\AsyncIsDisposable $resource): void;
+    }
+    final class DisposableHelper {
+        /**
+        * Disposes one or more disposable resources asynchronously.
+        * Resources are disposed in reverse order (LIFO).
+        */
+        async public static function dispose(\Tyhp\Contracts\IsDisposable|\Tyhp\Contracts\AsyncIsDisposable ...$disposables): void;
+    }
+    #[\Tyhp\GenericRuntime(erased: false, factory: "new_Tyhp_Deferred__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+    final class Deferred<T extends __Awaited<void|mixed> = void> {
+        /**
+        * Creates a new Deferred with a pending Promise.
+        * The Promise's executor suspends immediately via Fiber::suspend(),
+        * waiting for external resolution through resolve() or reject().
+        */
+        public function __construct(): void;
+        public function getPromise(): \Tyhp\Promise<T>;
+        public function resolve(?T $value = null): void;
+        public function reject(\Throwable $reason): void;
+    }
+    final class CancellationTokenSource implements \Tyhp\Contracts\IsDisposable {
+        public function __construct(?int $cancelAfterMs = null): void;
+        public function getToken(): \Tyhp\CancellationToken;
+        public function cancel(): void;
+        /**
+        * Schedules automatic cancellation after the specified delay.
+        * Replaces any previously scheduled auto-cancel timer.
+        */
+        public function cancelAfter(int $ms): void;
+        public function isCancellationRequested(): bool;
+        public function dispose(): void;
+    }
+    final class CancellationToken {
+        public function __construct(): void;
+        public function isCancellationRequested(): bool;
+        public function throwIfCancellationRequested(): void;
+        /**
+        * Registers a callback to be invoked when cancellation is requested.
+        * If already cancelled, the callback fires immediately.
+        * Returns a closure that deregisters the callback when called.
+        */
+        public function register(callable(): void $callback): \Closure;
+        /**
+        * Returns a singleton token that is never cancelled.
+        */
+        public static function none(): \Tyhp\CancellationToken;
+    }
+}
+namespace Tyhp\Contracts {
+    interface AsyncKeyValueIterator<TKey extends __Awaited<void|mixed>, TValue extends __Awaited<void|mixed>> extends \Tyhp\Contracts\AsyncIterator<TValue> {
+        public function currentKey(): \Tyhp\Promise<TKey>;
+        public function currentValue(): \Tyhp\Promise<TValue>;
+    }
+    interface AsyncIterator<T extends __Awaited<void|mixed>> {
+        public function next(): \Tyhp\Promise<bool>;
+        public function current(): \Tyhp\Promise<T>;
+    }
+    interface AsyncIterable<T extends __Awaited<void|mixed>> {
+        public function getAsyncIterator(): \Tyhp\Contracts\AsyncIterator<T>;
+    }
+    interface AsyncIsDisposable {
+        public function disposeAsync(): \Tyhp\Promise<void>;
+    }
+}
+namespace Tyhp\Exceptions {
+    final class TimeoutException extends \RuntimeException {
+        public function __construct(string $message = 'The operation timed out', int $timeoutMs = 0, ?\Throwable $previous = null): void;
+        public function getTimeoutMs(): int;
+    }
+    final class OperationCancelledException extends \RuntimeException {
+        public function __construct(\Tyhp\CancellationToken $token, string $message = 'The operation was cancelled', ?\Throwable $previous = null): void;
+        public function getToken(): \Tyhp\CancellationToken;
+    }
+    final class InvalidPromiseStateException extends \LogicException {
+    }
+    final class AsyncContextException extends \RuntimeException {
+    }
+}

@@ -84,7 +84,7 @@ Options:
   --limit N                  Process only the first N candidates after filters
   --only vendor/package      Only this Packagist name (repeatable). Explicit
                              --only includes an already-have package.
-  --skip-existing            Skip local scaffold if packages/<vendor>-<name>
+  --skip-existing            Skip local scaffold if packages/tyhpdef/<vendor>-<name>
                              already exists (GitHub ensure still runs unless
                              --skip-github)
   --skip-github              Do not check or create GitHub repos
@@ -492,7 +492,7 @@ except OSError as exc:
     print(f"error: cannot read parsed list: {exc}", file=sys.stderr)
     sys.exit(1)
 
-# Existing versioned composer-libs: packages/<vendor>-<name>/<upstream>/
+# Existing versioned composer-libs: packages/tyhpdef/<vendor>-<name>/<upstream>/
 local_best = {}
 if os.path.isdir(packages_dir):
     for parent in sorted(os.listdir(packages_dir)):
@@ -785,7 +785,7 @@ process_one() {
   local tyhp_map
 
   dir_name="$(dir_name_for "$pkg")"
-  parent="$SCRIPT_DIR/$dir_name"
+  parent="$SCRIPT_DIR/tyhpdef/$dir_name"
 
   if [[ "$SKIP_EXISTING" -eq 1 && -e "$parent" ]]; then
     echo "skip existing local package: $parent"
@@ -971,7 +971,7 @@ cleanup() {
 trap cleanup EXIT
 
 parse_proposed_list "$LIST_PATH" > "$PARSED_TSV"
-build_wrapper_catalog "$PARSED_TSV" "$SCRIPT_DIR" "$WRAPPER_CATALOG_JSON" || die "failed to build tyhp wrapper catalog"
+build_wrapper_catalog "$PARSED_TSV" "$SCRIPT_DIR/tyhpdef" "$WRAPPER_CATALOG_JSON" || die "failed to build tyhp wrapper catalog"
 
 CANDIDATES_RANK=()
 CANDIDATES_PKG=()

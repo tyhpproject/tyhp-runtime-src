@@ -16,7 +16,8 @@
 # codes, not in-source comments). An empty or missing fail/ directory is a
 # skip, not a failure.
 #
-# Skips tyhp/core, tyhp/async, tyhp/lambda, tyhp/decimal, and tyhp/compiler.
+# Only packages/tyhpdef/ is scanned; the compiled tyhp/* runtime packages
+# (packages/tyhp/) are not tested here.
 # Versioned Composer-lib trees (psr-log/3.0.2, monolog-monolog/3.10.0) are
 # tested per version folder. cwd is always tests/ so the compiler loads that
 # tyhp.json. Parallel jobs give each package its own lint cache directory so
@@ -34,7 +35,8 @@ COMPILER_ROOT=""
 if [[ -d "$REPO_ROOT/../tyhp" ]]; then
   COMPILER_ROOT="$(cd "$REPO_ROOT/../tyhp" && pwd)"
 fi
-PACKAGES_DIR="$SCRIPT_DIR"
+# Only packages/tyhpdef/ is discovered; packages/tyhp/ and packages/dist/ are never tested here.
+PACKAGES_DIR="$SCRIPT_DIR/tyhpdef"
 TYHP_CSPROJ=""
 if [[ -n "$COMPILER_ROOT" ]]; then
   TYHP_CSPROJ="$COMPILER_ROOT/tyhp.csproj"
@@ -55,7 +57,7 @@ JOBS=""
 # Every lint of one package/version.
 TIMEOUT_SECONDS=""
 # Empty means every discovered package. Entries are paths relative to
-# packages (php-ext-curl, monolog-monolog/3.10.0).
+# packages/tyhpdef (php-ext-curl, monolog-monolog/3.10.0).
 PACKAGE_FILTERS=()
 LINT_ARGS=()
 # Set per parallel job so concurrent lints do not write one shared AST cache.
@@ -84,7 +86,8 @@ Run tyhpdef-package tests in each runtime package's tests/ directory (so that
 folder's tyhp.json is used). Equivalent to `./tyhp.sh lint` from tests/, plus
 per-file fail/ cases with sidecar .expect.json.
 
-Skipped packages: core, async, lambda, decimal, compiler.
+Only packages under packages/tyhpdef/ are tested; the compiled tyhp/* runtime
+packages (packages/tyhp/) are not.
 
 Packages are discovered by tests/tyhp.json: flat trees (php, php-ext-*) and
 versioned Composer-lib trees (psr-log/<ver>, monolog-monolog/<ver>).
@@ -118,7 +121,7 @@ Options:
                           fail cases together) take longer than SECONDS
                           (default 90). The package fails.
   --package NAME          Run only this package (repeatable). NAME is the path
-                          under packages, as printed by a full run
+                          under packages/tyhpdef, as printed by a full run
                           (php-ext-curl, monolog-monolog/3.10.0). A name with
                           no version runs every version folder of that package.
                           Default: every discovered package.
@@ -168,14 +171,6 @@ is_skipped_dir_name() {
   esac
 }
 
-# First-party dist runtime packages built by base-build-all.sh — not tested here.
-is_skipped_runtime_package() {
-  case "$1" in
-    core|async|lambda|decimal|compiler) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 default_job_count() {
   local n
   n="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
@@ -186,7 +181,7 @@ default_job_count() {
   fi
 }
 
-# TARGETS entries are paths relative to PACKAGES_DIR (php-ext-curl, psr-log/3.0.2).
+# TARGETS entries are paths relative to PACKAGES_DIR = packages/tyhpdef (php-ext-curl, psr-log/3.0.2).
 discover_targets() {
   TARGETS=()
   local dir
@@ -200,7 +195,7 @@ discover_targets() {
       continue
     fi
     name="$(basename "$dir")"
-    if is_skipped_dir_name "$name" || is_skipped_runtime_package "$name"; then
+    if is_skipped_dir_name "$name"; then
       continue
     fi
 
@@ -258,7 +253,7 @@ apply_package_filters() {
   done
   if [[ ${#missing[@]} -gt 0 ]]; then
     die "no testable package matching: ${missing[*]}
-Paths look like php-ext-curl or monolog-monolog/3.10.0 (relative to packages)."
+Paths look like php-ext-curl or monolog-monolog/3.10.0 (relative to packages/tyhpdef)."
   fi
   if [[ ${#kept[@]} -eq 0 ]]; then
     return 0
@@ -641,7 +636,6 @@ else
   echo "Jobs:          ${JOBS} (one package/version per job)"
 fi
 echo "Timeout:       ${TIMEOUT_SECONDS}s per package/version (lint)"
-echo "Skipped:       core, async, lambda, decimal, compiler"
 if [[ ${#LINT_ARGS[@]} -gt 0 ]]; then
   echo "Lint args:     ${LINT_ARGS[*]}"
 fi
