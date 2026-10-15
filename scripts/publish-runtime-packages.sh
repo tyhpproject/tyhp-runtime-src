@@ -33,8 +33,10 @@
 # packages/tyhpdef/<vendor>-<name>/<upstream>/. A handed-off folder does not retag a
 # public version that already exists and does not publish an impl tag. A
 # public version that has never been tagged is published once from the
-# handed-off metapackage (no impl require). First-party php, php-ext-*, and
-# compiled tyhp/* stay one repository each.
+# handed-off metapackage (no impl require). When a tag already exists, the
+# script compares it to the tree the source would publish and prints a red
+# warning when they differ (a change without a version bump). First-party
+# php, php-ext-*, and compiled tyhp/* stay one repository each.
 #
 # tyhpdef/* packages (php, php-ext-*, Composer-lib wrappers) use that
 # composer.json version as the Packagist / git tag (for example 1.0.0 or 0.1).
@@ -1393,6 +1395,30 @@ prepare_clone() {
   fi
 }
 
+say_red() {
+  if [[ -t 1 ]]; then
+    printf '\033[31m%s\033[0m\n' "$*"
+  else
+    printf '%s\n' "$*"
+  fi
+}
+
+# dest's worktree is the tree this run would publish. Compare it to an
+# existing tag. A mismatch is a source change that did not get a new version.
+report_tag_source_drift() {
+  local dest="$1"
+  local tag="$2"
+  local what="$3"
+
+  git -C "$dest" add -A
+  if git -C "$dest" diff --cached --quiet "$tag"; then
+    git -C "$dest" reset -q
+    return 0
+  fi
+  say_red "    CHANGE WITHOUT VERSION BUMP: ${what} tag ${tag} differs from the source tree"
+  git -C "$dest" reset -q
+}
+
 commit_and_tag() {
   local dest="$1"
   local tag="$2"
@@ -1464,6 +1490,18 @@ publish_public_meta_tag() {
   fi
   if git -C "$public_dest" rev-parse "${upstream}" >/dev/null 2>&1; then
     echo "    public tag ${upstream} already exists; not retagging"
+    if [[ ! -f "${meta_dir}/composer.json" ]]; then
+      "$PROJECT_ROOT/generate-meta-package.sh" --out "$meta_dir" "${parent}/${upstream}" >/dev/null
+    fi
+    wipe_published_tree "$public_dest"
+    cp "${meta_dir}/composer.json" "${public_dest}/composer.json"
+    if [[ -f "${meta_dir}/README.md" ]]; then
+      cp "${meta_dir}/README.md" "${public_dest}/README.md"
+    fi
+    if [[ -f "${meta_dir}/LICENSE" ]]; then
+      cp "${meta_dir}/LICENSE" "${public_dest}/LICENSE"
+    fi
+    report_tag_source_drift "$public_dest" "$upstream" "public ${parent}"
     return 0
   fi
   if [[ ! -f "${meta_dir}/composer.json" ]]; then
@@ -1522,6 +1560,9 @@ publish_composer_lib_pair() {
   prepare_clone "${parent}-impl" "$impl_dest"
   if git -C "$impl_dest" rev-parse "${impl_tag}" >/dev/null 2>&1; then
     echo "    impl already tagged ${impl_tag}; skipping"
+    sync_composer_lib_dist "$pkg" "$impl_dest"
+    write_published_impl_composer "$(package_dir "$pkg")/composer.json" "${impl_dest}/composer.json"
+    report_tag_source_drift "$impl_dest" "$impl_tag" "impl ${parent}-impl"
     cd "$PROJECT_ROOT"
     return 0
   fi
@@ -1558,6 +1599,8 @@ publish_tyhpdef_package() {
 
   if git -C "$dest" rev-parse "${tag}" >/dev/null 2>&1; then
     echo "    already tagged ${tag}; skipping"
+    sync_composer_lib_dist "$pkg" "$dest"
+    report_tag_source_drift "$dest" "$tag" "$pkg"
     cd "$PROJECT_ROOT"
     return 0
   fi
@@ -1591,6 +1634,8 @@ publish_compiler_package() {
 
   if git -C "$dest" rev-parse "${tag}" >/dev/null 2>&1; then
     echo "    already tagged ${tag}; skipping"
+    sync_compiler_dist "$pkg" "$dest"
+    report_tag_source_drift "$dest" "$tag" "$pkg"
     cd "$PROJECT_ROOT"
     return 0
   fi
@@ -1648,10 +1693,24 @@ publish_package() {
   done
   if [[ "$existing" -eq "$needed" ]]; then
     echo "    already tagged ${needed} PHP targets; skipping"
+    for entry in "${DIST_BUILDS[@]}"; do
+      php_major="${entry%%:*}"
+      dist_version="$(package_version "$php_major")"
+      sync_compile_dist "$pkg" "$dest" "$dist_version"
+      report_tag_source_drift "$dest" "$dist_version" "$pkg"
+    done
     cd "$PROJECT_ROOT"
     return 0
   fi
   if [[ "$existing" -gt 0 ]]; then
+    for entry in "${DIST_BUILDS[@]}"; do
+      php_major="${entry%%:*}"
+      dist_version="$(package_version "$php_major")"
+      if git -C "$dest" rev-parse "${dist_version}" >/dev/null 2>&1; then
+        sync_compile_dist "$pkg" "$dest" "$dist_version"
+        report_tag_source_drift "$dest" "$dist_version" "$pkg"
+      fi
+    done
     echo "Partial publish in ${GITHUB_ORG}/${pkg}: ${existing}/${needed} tags already exist." >&2
     echo "Finish or delete the incomplete tags, then re-run." >&2
     exit 1

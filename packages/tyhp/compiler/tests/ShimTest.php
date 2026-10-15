@@ -114,8 +114,8 @@ final class ShimTest extends TestCase
         $payload = "bad\n";
         $asset = 'tyhp-osx-arm64';
         $http = new RecordingHttpClient([
-            'releases/tags/v805.1.0-beta.1' => \json_encode([
-                'tag_name' => 'v805.1.0-beta.1',
+            'releases/tags/v805.1.0-beta.2' => \json_encode([
+                'tag_name' => 'v805.1.0-beta.2',
                 'assets' => [
                     [
                         'name' => $asset,
@@ -146,8 +146,8 @@ final class ShimTest extends TestCase
         $asset = 'tyhp-osx-arm64';
         $hash = \hash('sha256', $payload);
         $http = new RecordingHttpClient([
-            'releases/tags/v805.1.0-beta.1' => \json_encode([
-                'tag_name' => 'v805.1.0-beta.1',
+            'releases/tags/v805.1.0-beta.2' => \json_encode([
+                'tag_name' => 'v805.1.0-beta.2',
                 'assets' => [
                     [
                         'name' => $asset,
@@ -202,7 +202,7 @@ final class ShimTest extends TestCase
             $http,
             new Platform('osx', 'arm64'),
             false,
-            '805.1.0-beta.1',
+            '805.1.0-beta.2',
         );
 
         return new Shim($installer, $this->stderr);
@@ -215,7 +215,7 @@ final class ShimTest extends TestCase
         $path = $dir . '/tyhp';
         \file_put_contents($path, $this->fakeNativeSource($argvFile));
         \chmod($path, 0755);
-        \file_put_contents($dir . '/version', "v805.1.0-beta.1\n");
+        \file_put_contents($dir . '/version', "v805.1.0-beta.2\n");
     }
 
     private function fakeNativeSource(string $argvFile): string

@@ -35,8 +35,8 @@ final class InstallerTest extends TestCase
 
     public function testNormalizeReleaseTagPinsCompilerVersion(): void
     {
-        self::assertSame('v805.1.0-beta.1', Installer::normalizeReleaseTag('805.1.0-beta.1'));
-        self::assertSame('v805.1.0-beta.1', Installer::normalizeReleaseTag('v805.1.0-beta.1'));
+        self::assertSame('v805.1.0-beta.2', Installer::normalizeReleaseTag('805.1.0-beta.2'));
+        self::assertSame('v805.1.0-beta.2', Installer::normalizeReleaseTag('v805.1.0-beta.2'));
     }
 
     public function testParseChecksumFileReadsGnuSha256sumLines(): void
@@ -62,14 +62,14 @@ final class InstallerTest extends TestCase
         self::assertFileExists($path);
         self::assertSame($payload, \file_get_contents($path));
         self::assertTrue(\is_executable($path));
-        self::assertSame("v805.1.0-beta.1\n", \file_get_contents($installer->nativeDir() . '/version'));
+        self::assertSame("v805.1.0-beta.2\n", \file_get_contents($installer->nativeDir() . '/version'));
         self::assertTrue($installer->isNativeBinaryAvailable());
     }
 
     public function testInstallBinaryIsIdempotentWhenMatchingBinaryPresent(): void
     {
         $payload = "already-there\n";
-        $this->writeNative($payload, 'v805.1.0-beta.1');
+        $this->writeNative($payload, 'v805.1.0-beta.2');
         $http = new RecordingHttpClient(forbid: true);
         $installer = $this->installer($http, new Platform('osx', 'arm64'), hasDotNet9: false);
 
@@ -105,7 +105,7 @@ final class InstallerTest extends TestCase
         $asset = 'tyhp-osx-arm64';
         $release = $this->releaseJson($asset, includeChecksums: false);
         $http = new RecordingHttpClient([
-            'releases/tags/v805.1.0-beta.1' => $release,
+            'releases/tags/v805.1.0-beta.2' => $release,
         ]);
         $installer = $this->installer($http, new Platform('osx', 'arm64'), hasDotNet9: false);
 
@@ -171,7 +171,7 @@ final class InstallerTest extends TestCase
     {
         \file_put_contents($this->packageRoot . '/composer.json', \json_encode([
             'name' => 'tyhp/compiler',
-            'version' => '805.1.0-beta.1',
+            'version' => '805.1.0-beta.2',
         ], \JSON_THROW_ON_ERROR));
         $installer = new Installer(
             $this->packageRoot,
@@ -179,7 +179,7 @@ final class InstallerTest extends TestCase
             new Platform('osx', 'arm64'),
             false,
         );
-        self::assertSame('v805.1.0-beta.1', $installer->expectedReleaseTag());
+        self::assertSame('v805.1.0-beta.2', $installer->expectedReleaseTag());
     }
 
     public function testInvalidComposerJsonThrowsParseError(): void
@@ -224,7 +224,7 @@ final class InstallerTest extends TestCase
     public function testInvalidGithubReleaseJsonThrowsParseError(): void
     {
         $http = new RecordingHttpClient([
-            'releases/tags/v805.1.0-beta.1' => '{not-json',
+            'releases/tags/v805.1.0-beta.2' => '{not-json',
         ]);
         $installer = $this->installer($http, new Platform('osx', 'arm64'), hasDotNet9: false);
 
@@ -242,7 +242,7 @@ final class InstallerTest extends TestCase
     public function testGithubApiErrorBodyIsReportedAsMissingTag(): void
     {
         $http = new RecordingHttpClient([
-            'releases/tags/v805.1.0-beta.1' => \json_encode([
+            'releases/tags/v805.1.0-beta.2' => \json_encode([
                 'message' => 'Not Found',
                 'documentation_url' => 'https://docs.github.com/rest',
             ], \JSON_THROW_ON_ERROR),
@@ -280,7 +280,7 @@ final class InstallerTest extends TestCase
             self::fail('Expected missing GitHub release to throw.');
         } catch (\RuntimeException $e) {
             self::assertNotInstanceOf(HttpStatusException::class, $e);
-            self::assertStringContainsString('GitHub release tag `v805.1.0-beta.1` was not found', $e->getMessage());
+            self::assertStringContainsString('GitHub release tag `v805.1.0-beta.2` was not found', $e->getMessage());
             self::assertStringContainsString('Not Found', $e->getMessage());
         }
     }
@@ -344,7 +344,7 @@ final class InstallerTest extends TestCase
             $http,
             $platform,
             $hasDotNet9,
-            '805.1.0-beta.1',
+            '805.1.0-beta.2',
         );
     }
 
@@ -353,7 +353,7 @@ final class InstallerTest extends TestCase
         $hash ??= \hash('sha256', $payload);
 
         return new RecordingHttpClient([
-            'releases/tags/v805.1.0-beta.1' => $this->releaseJson($assetName, includeChecksums: true),
+            'releases/tags/v805.1.0-beta.2' => $this->releaseJson($assetName, includeChecksums: true),
             'checksums.txt' => $hash . '  ' . $assetName . "\n",
             $assetName => $payload,
         ]);
@@ -377,7 +377,7 @@ final class InstallerTest extends TestCase
         }
 
         return \json_encode([
-            'tag_name' => 'v805.1.0-beta.1',
+            'tag_name' => 'v805.1.0-beta.2',
             'draft' => false,
             'assets' => $assets,
         ], \JSON_THROW_ON_ERROR);
