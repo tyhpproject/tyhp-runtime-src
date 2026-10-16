@@ -82,12 +82,13 @@ readonly GITHUB_CREATE_RATE_LIMIT_INITIAL_SLEEP=60
 readonly GITHUB_CREATE_RATE_LIMIT_MAX_SLEEP=60
 # Short gap between GitHub reads, clones, and pushes. Repo creates keep the
 # longer GITHUB_CREATE_INTER_DELAY above.
-readonly GITHUB_REQUEST_DELAY=2
+readonly GITHUB_REQUEST_DELAY=1
 readonly GITHUB_REQUEST_MAX_ATTEMPTS=6
 readonly GITHUB_REQUEST_RETRY_INITIAL_SLEEP=15
 readonly GITHUB_REQUEST_RETRY_MAX_SLEEP=120
 GITHUB_REQUEST_COUNT=0
 GITHUB_KNOWN_REPOS=()
+VERSION_BUMP_NEEDED=()
 PACKAGIST_CREATED_NAMES=()
 PACKAGIST_EXISTED_NAMES=()
 PACKAGIST_WOULD_CREATE_NAMES=()
@@ -1403,6 +1404,45 @@ say_red() {
   fi
 }
 
+# A rebuild rewrites " * Generated: <timestamp>" in package.tyhpdef. Copy the
+# tag's stamp onto the worktree so that line alone is not a version-bump diff.
+normalize_generated_timestamps() {
+  local dest="$1"
+  local tag="$2"
+  python3 - "$dest" "$tag" <<'PY'
+import os, subprocess, sys
+dest, tag = sys.argv[1], sys.argv[2]
+prefix = " * Generated:"
+for root, dirs, files in os.walk(dest):
+    if ".git" in dirs:
+        dirs.remove(".git")
+    for name in files:
+        path = os.path.join(root, name)
+        rel = os.path.relpath(path, dest)
+        try:
+            text = open(path, encoding="utf-8").read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        if prefix not in text:
+            continue
+        show = subprocess.run(
+            ["git", "-C", dest, "show", f"{tag}:{rel}"],
+            capture_output=True, text=True)
+        if show.returncode != 0 or prefix not in show.stdout:
+            continue
+        tag_line = next(line for line in show.stdout.splitlines() if line.startswith(prefix))
+        lines = text.splitlines(keepends=True)
+        for i, line in enumerate(lines):
+            raw = line.rstrip("\r\n")
+            if raw.startswith(prefix):
+                newline = line[len(raw):]
+                if raw != tag_line:
+                    lines[i] = tag_line + newline
+                    open(path, "w", encoding="utf-8").write("".join(lines))
+                break
+PY
+}
+
 # dest's worktree is the tree this run would publish. Compare it to an
 # existing tag. A mismatch is a source change that did not get a new version.
 report_tag_source_drift() {
@@ -1410,12 +1450,23 @@ report_tag_source_drift() {
   local tag="$2"
   local what="$3"
 
+  normalize_generated_timestamps "$dest" "$tag"
   git -C "$dest" add -A
   if git -C "$dest" diff --cached --quiet "$tag"; then
     git -C "$dest" reset -q
     return 0
   fi
-  say_red "    CHANGE WITHOUT VERSION BUMP: ${what} tag ${tag} differs from the source tree"
+  local entry="${what} tag ${tag}"
+  local i
+  for ((i = 0; i < ${#VERSION_BUMP_NEEDED[@]}; i++)); do
+    if [[ "${VERSION_BUMP_NEEDED[$i]}" == "$entry" ]]; then
+      say_red "    CHANGE WITHOUT VERSION BUMP: ${entry} differs from the source tree"
+      git -C "$dest" reset -q
+      return 0
+    fi
+  done
+  VERSION_BUMP_NEEDED+=("$entry")
+  say_red "    CHANGE WITHOUT VERSION BUMP: ${entry} differs from the source tree"
   git -C "$dest" reset -q
 }
 
@@ -1858,6 +1909,13 @@ main() {
   else
     echo "No packages published."
   fi
+  if [[ ${#VERSION_BUMP_NEEDED[@]} -gt 0 ]]; then
+    say_red "Version bump needed (${#VERSION_BUMP_NEEDED[@]}):"
+    local bump
+    for bump in "${VERSION_BUMP_NEEDED[@]}"; do
+      say_red "  ${bump}"
+    done
+  fi
   if [[ ${#GITHUB_CREATED_REPOS[@]} -gt 0 ]]; then
     echo "Created GitHub repos: ${GITHUB_CREATED_REPOS[*]}"
   fi
@@ -1885,4 +1943,6 @@ main() {
   fi
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
