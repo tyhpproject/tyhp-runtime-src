@@ -13,6 +13,32 @@ use Tyhp\Expression\ParameterExpression;
 
 class ExpressionTest extends TestCase
 {
+    public function testLambdaReadsTheReturnTypeFromTheClosure(): void
+    {
+        $param = new ParameterExpression('value', 'int', 0);
+        $expression = Expression::lambda(
+            new ConstantExpression(1, 'int'),
+            [$param],
+            fn(int $value): int => $value + 1,
+        );
+
+        self::assertSame('int', $expression->returnType);
+        self::assertSame(43, $expression(42));
+    }
+
+    public function testLambdaReadsTheReturnTypeFromTheBodyWhenTheClosureOmitsIt(): void
+    {
+        $param = new ParameterExpression('n', 'int', 0);
+        $expression = Expression::lambda(
+            new BinaryExpression($param, '>', new ConstantExpression(0, '0'), 'bool'),
+            [$param],
+            fn(int $n) => $n > 0,
+        );
+
+        self::assertSame('bool', $expression->returnType);
+        self::assertTrue($expression(1));
+    }
+
     public function testInvokeEvaluatesCallable(): void
     {
         $param = new ParameterExpression('value', 'int', 0);

@@ -2,7 +2,7 @@
 /**
  * AUTO-GENERATED, DO NOT EDIT
  * Compiler: 805.1.0.0
- * Generated: 2026-10-16T13:39:58.3866590Z
+ * Generated: 2026-10-22T15:31:46.4038550Z
  */
 namespace Tyhp {
     /**
@@ -40,7 +40,7 @@ namespace Tyhp {
         * @param array<string> $path
         * @param array<bool> $nullSafeFlags Per-segment null-safe flags aligned with {@see PropertyPath::$path}.
         */
-        public function __construct(string $sourceType, array<string> $path = [], array<bool> $nullSafeFlags = []): void;
+        public function __construct(string $sourceType, array<string> $path = [], array<bool> $nullSafeFlags = [], bool $nextIsNullSafe = false): void;
         /**
         * Start a fluent property path (and optionally seed segments).
         *
@@ -75,6 +75,21 @@ namespace Tyhp {
         * @psalm-return PropertyPathBuilder<T>&T
         */
         public function prop(string $name, bool $nullSafe = false): \Tyhp\PropertyPathBuilder<T>;
+        /**
+        * The next property is read with `?->`.
+        *
+        * @return PropertyPathBuilder<T>&T
+        */
+        public function nullSafe(): \Tyhp\PropertyPathBuilder<T>;
+        /**
+        * Store the native closure and use its return type as the path result.
+        *
+        * @template TCallable of callable
+        * @param \Closure<TCallable> $callable
+        * @return PropertyPath<TCallable>
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "backedBy__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public function backedBy<TCallable extends callable>(\Closure<TCallable> $callable): \Tyhp\PropertyPath<TCallable>;
         /**
         * Append a property segment via `->$name` sugar.
         *
@@ -135,7 +150,7 @@ namespace Tyhp {
         */
         public function lte(mixed $value): \Tyhp\ExpressionBuilder<T>;
         /**
-        * Loose equality (`==`).
+        * Strict equality (`===`).
         *
         * @return ExpressionBuilder<T>
         * @phpstan-return ExpressionBuilder<T>
@@ -143,7 +158,7 @@ namespace Tyhp {
         */
         public function eq(mixed $value): \Tyhp\ExpressionBuilder<T>;
         /**
-        * Loose inequality (`!=`).
+        * Strict inequality (`!==`).
         *
         * @return ExpressionBuilder<T>
         * @phpstan-return ExpressionBuilder<T>
@@ -193,10 +208,52 @@ namespace Tyhp {
         * @param bool $allowEmpty When true, an empty path is allowed (identity / builder root).
         * @param array<bool> $nullSafeFlags Per-segment `?->` flags aligned with $path; missing entries are false.
         */
-        public function __construct(string $sourceType, string $resultType, array<string> $path, \Closure<TCallableShape> $callable, bool $allowEmpty = false, array<bool> $nullSafeFlags = []): void;
+        public function __construct(string $sourceType, string $resultType, array<string> $path, ?\Closure<TCallableShape> $callable = null, bool $allowEmpty = false, array<bool> $nullSafeFlags = []): void;
+        /**
+        * Build a property path from the source class, the property names, and the closure that reads them.
+        *
+        * The callable shape is taken from `$callable`. When that closure declares a return type,
+        * it is used. Otherwise the type is read from the properties named in `$path` on
+        * `$sourceType`, including `?` when a segment is null-safe or the property allows null.
+        * Callers do not pass a type string or a generic argument.
+        *
+        * @template TCallable of callable
+        * @param class-string|string $sourceType Source object class (for example `User::class`).
+        * @param array<string> $path Property names in access order.
+        * @param array<bool> $nullSafeFlags Per-segment `?->` flags aligned with `$path`. Missing entries are false.
+        *
+        * @phpstan-template TCallable of callable
+        * @phpstan-param class-string|string $sourceType
+        * @phpstan-param array<string> $path
+        * @phpstan-param array<bool> $nullSafeFlags
+        * @phpstan-return PropertyPath<TCallable>
+        *
+        * @psalm-template TCallable of callable
+        * @psalm-param class-string|string $sourceType
+        * @psalm-param list<string> $path
+        * @psalm-param list<bool> $nullSafeFlags
+        * @psalm-return PropertyPath<TCallable>
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "from__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function from<TCallable extends callable>(string $sourceType, array<string> $path, \Closure<TCallable> $callable, array<bool> $nullSafeFlags = []): \Tyhp\PropertyPath<TCallable>;
+        /**
+        * PHP return type of `$callable`, or null when it is absent or `mixed`.
+        */
+        protected static function callableReturnTypeName(\Closure $callable): ?string;
         public function getPropertyName(): string;
         public function getPath(): string;
         public function getSegments(): array<string>;
+        /**
+        * Start a fluent property path. `__get` records each segment.
+        * `nullSafe()` marks only the next segment. `backedBy()` stores the closure
+        * whose return type is the path result.
+        *
+        * @template T of object
+        * @param class-string<T> $sourceType
+        * @return PropertyPathBuilder<T>
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "on__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function on<T extends object>(__ClassName<T> $sourceType): \Tyhp\PropertyPathBuilder<T>;
         public function getValue(mixed $source): __CallableReturnType<TCallableShape>;
     }
     /**
@@ -231,7 +288,7 @@ namespace Tyhp {
         * @param array<string> $path RHS property segments while continuing after and()/or().
         * @param array<bool> $nullSafeFlags
         */
-        public function __construct(string $sourceType, \Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, \Closure $callable, string $returnType = 'bool', array<string> $path = [], array<bool> $nullSafeFlags = [], ?\Tyhp\Expression $pendingLeft = null, ?string $pendingCombinator = null): void;
+        public function __construct(string $sourceType, \Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, ?\Closure $callable, string $returnType = 'bool', array<string> $path = [], array<bool> $nullSafeFlags = [], ?\Tyhp\Expression $pendingLeft = null, ?string $pendingCombinator = null): void;
         /**
         * @param class-string<TSource>|string $sourceType
         * @param array<ParameterExpression> $parameters
@@ -241,7 +298,7 @@ namespace Tyhp {
         * @psalm-return ExpressionBuilder<TSource>
         */
         #[\Tyhp\GenericRuntime(erased: false, binder: "fromComparison__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
-        public static function fromComparison<TSource extends object>(string $sourceType, \Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, \Closure $callable): \Tyhp\ExpressionBuilder<TSource>;
+        public static function fromComparison<TSource extends object>(string $sourceType, \Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, ?\Closure $callable): \Tyhp\ExpressionBuilder<TSource>;
         /**
         * Continue a fluent chain from an existing expression (`and()` / `or()` with no RHS yet).
         *
@@ -384,11 +441,48 @@ namespace Tyhp {
         readonly public array<\Tyhp\Expression\ParameterExpression> $parameters;
         public mixed $lastResult ?? null;
         readonly public \Tyhp\Expression\ExpressionNode $body;
-        readonly public \Closure<TCallableShape> $callable;
+        readonly public ?\Closure<TCallableShape> $callable;
         readonly public string $returnType;
-        public function __construct(\Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, \Closure<TCallableShape> $callable, string $returnType): void;
+        public function __construct(\Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, ?\Closure<TCallableShape> $callable, string $returnType): void;
         public function __invoke(__CallableParametersRest<TCallableShape> ...$args): __CallableReturnType<TCallableShape>;
         public function compile(): \Closure<TCallableShape>;
+        /**
+        * Closure stored on this expression, or one compiled from {@see $body} and cached.
+        * Null when the tree cannot be compiled and must be walked.
+        */
+        protected function nativeClosure(): ?\Closure;
+        /**
+        * Build an expression from its tree and its parameters.
+        *
+        * Pass the closure a Tyhp `fn` would become when you have one: invoke and compile call
+        * that closure. Omit `$callable`, or pass null, to compile a closure from `$body` when
+        * every name and value in the tree can be represented safely, or to walk `$body` otherwise.
+        * The callable shape is taken from `$callable` when it is passed. The return type is
+        * read from that closure's return type, then from `$body`'s type, so the call does not
+        * pass a type string or a generic argument.
+        *
+        * @template TCallable of callable
+        * @param array<Expression\ParameterExpression> $parameters
+        *
+        * @phpstan-template TCallable of callable
+        * @phpstan-param array<Expression\ParameterExpression> $parameters
+        * @phpstan-return Expression<TCallable>
+        *
+        * @psalm-template TCallable of callable
+        * @psalm-param array<Expression\ParameterExpression> $parameters
+        * @psalm-return Expression<TCallable>
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "lambda__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public static function lambda<TCallable extends callable = callable>(\Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, ?\Closure<TCallable> $callable = null): \Tyhp\Expression<TCallable>;
+        /**
+        * Return type string for {@see Expression::lambda()}: the closure's declared return
+        * type when a closure was passed and declares one, otherwise the type stored on the tree body.
+        */
+        protected static function inferReturnType(?\Closure $callable, \Tyhp\Expression\ExpressionNode $body): string;
+        /**
+        * PHP return type of `$callable`, or null when it is absent or `mixed`.
+        */
+        protected static function callableReturnTypeName(\Closure $callable): ?string;
         /**
         * Structural equality of two expression trees (parameters, return type, and body).
         * Closures are ignored — two independently compiled fns with the same shape compare equal.
@@ -457,6 +551,152 @@ namespace Tyhp {
         */
         public static function orAll(\Tyhp\Expression<callable(mixed): bool> $first, \Tyhp\Expression<callable(mixed): bool> $second, \Tyhp\Expression<callable(mixed): bool> ...$rest): \Tyhp\Expression<callable(mixed): bool>;
     }
+    /**
+    * Fluent expression builder.
+    *
+    * Start from {@see Expr::param()} and chain property hops and operators.
+    * `and()` / `or()` / `then()` / `else()` / `coalesce()` with no arguments
+    * continue from the original parameter. Each of those seals the left side
+    * first, so `a->and()->b->or()->c` is `(a && b) || c`.
+    *
+    * `nullSafe()` applies only to the next property. `expr()` turns a nested
+    * chain into one value so the next call applies to that whole result.
+    * `backedBy()` stores the native closure used by invoke. Omit it and invoke
+    * compiles a closure from the tree when every name and value can be represented
+    * safely, and walks the tree otherwise.
+    *
+    * @extends Expression<callable>
+    */
+    class Expr extends \Tyhp\Expression<callable> {
+        /**
+        * @param array<ParameterExpression> $parameters
+        * @param array<ParameterExpression> $roots
+        * @param array<TernaryFrame> $ternaryStack
+        */
+        public function __construct(\Tyhp\Expression\ExpressionNode $body, array<\Tyhp\Expression\ParameterExpression> $parameters, ?\Closure $callable, string $returnType, array<\Tyhp\Expression\ParameterExpression> $roots, \Tyhp\Expression\ExpressionNode $cursor, bool $pendingNullSafe, ?\Tyhp\Expression\ExpressionNode $pendingLeft, ?string $pendingOp, bool $branchStarted, array<\Tyhp\Expression\TernaryFrame> $ternaryStack): void;
+        /**
+        * Parameter the chain reads. `$index` is the argument position at invoke.
+        */
+        public static function param(string $name, string $type, int $index = 0): self;
+        /**
+        * Several parameters. Property hops start at the first one; group closures
+        * receive one builder per parameter.
+        *
+        * @param self ...$parameters Each value is a {@see param()} builder.
+        */
+        public static function params(self ...$parameters): self;
+        /**
+        * A chain whose value is `$value` and which has no parameters.
+        */
+        public static function literal(mixed $value): self;
+        public static function isChainMethod(string $name): bool;
+        /**
+        * Property hop. Use this when the name is a builder method (`eq`, `and`, …).
+        */
+        public function prop(string $name): self;
+        public function __get(string $name): self;
+        /**
+        * The next property is read with `?->`. A builder method before that property is an error.
+        */
+        public function nullSafe(): self;
+        /**
+        * Nested chain. The closure is called now with a builder for each original
+        * parameter and must return a builder. The next call applies to that result.
+        */
+        public function expr(mixed $group): self;
+        /**
+        * Store the native closure. Invoke and compile call it and do not walk the tree.
+        *
+        * @template TCallable of callable
+        * @param \Closure<TCallable> $callable
+        * @return Expression<TCallable>
+        */
+        #[\Tyhp\GenericRuntime(erased: false, binder: "backedBy__tyhpGeneric", layouts: [1], compiler: "805.1.0.0")]
+        public function backedBy<TCallable extends callable>(\Closure<TCallable> $callable): \Tyhp\Expression<TCallable>;
+        /**
+        * Replace the current value with a constant, keeping the parameters.
+        */
+        public function value(mixed $value): self;
+        public function gt(mixed $value): self;
+        public function gte(mixed $value): self;
+        public function lt(mixed $value): self;
+        public function lte(mixed $value): self;
+        /**
+        * Strict equality (`===`).
+        */
+        public function eq(mixed $value): self;
+        /**
+        * Strict inequality (`!==`).
+        */
+        public function neq(mixed $value): self;
+        /**
+        * Loose equality (`==`).
+        */
+        public function looseEq(mixed $value): self;
+        /**
+        * Loose inequality (`!=`).
+        */
+        public function looseNeq(mixed $value): self;
+        public function same(mixed $value): self;
+        public function notSame(mixed $value): self;
+        public function isNull(): self;
+        public function isNotNull(): self;
+        public function spaceship(mixed $value): self;
+        public function plus(mixed $value): self;
+        public function minus(mixed $value): self;
+        public function times(mixed $value): self;
+        public function dividedBy(mixed $value): self;
+        public function mod(mixed $value): self;
+        public function pow(mixed $value): self;
+        public function concat(mixed $value): self;
+        public function bitAnd(mixed $value): self;
+        public function bitOr(mixed $value): self;
+        public function bitXor(mixed $value): self;
+        public function shiftLeft(mixed $value): self;
+        public function shiftRight(mixed $value): self;
+        public function not(): self;
+        public function neg(): self;
+        public function pos(): self;
+        public function bitNot(): self;
+        /**
+        * `&&`. With no argument, the next hops start again at the original parameter.
+        * A builder or closure is the whole right-hand side (parentheses).
+        */
+        public function and(mixed $other = null): self;
+        /**
+        * `||`. Same argument rules as {@see and()}.
+        */
+        public function or(mixed $other = null): self;
+        /**
+        * Boolean xor. Both sides are evaluated.
+        */
+        public function xor(mixed $other = null): self;
+        /**
+        * `??`. The right-hand side, including a closure, uses the original parameter,
+        * not the left value.
+        */
+        public function coalesce(mixed $other = null): self;
+        /**
+        * Open the true branch of a ternary. With no argument, the next hops start
+        * at the original parameter. A builder or closure is the whole true branch.
+        */
+        public function then(mixed $branch = null): self;
+        /**
+        * Close the true branch. `else($value)` / `else(fn)` / `else($builder)` finishes
+        * the ternary. `else()` with no argument makes the rest of the chain the false
+        * branch, starting again at the original parameter.
+        */
+        public function else(mixed $branch = null): self;
+        /**
+        * `instanceof` / `is`. `$type` is a class name or a builtin name such as `int`.
+        */
+        public function is(mixed $type): self;
+        public function cast(string $type): self;
+        public function at(mixed $index): self;
+        public function call(string $method, mixed ...$args): self;
+        public function staticCall(string $class, string $method, mixed ...$args): self;
+        public function make(string $class, mixed ...$args): self;
+    }
 }
 namespace Tyhp\Expression {
     final class UnaryExpression extends \Tyhp\Expression\ExpressionNode {
@@ -465,6 +705,18 @@ namespace Tyhp\Expression {
         readonly public bool $isPrefix;
         public function __construct(string $operator, \Tyhp\Expression\ExpressionNode $operand, bool $isPrefix, string $type = 'mixed'): void;
         public function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
+    }
+    /**
+    * One open `then` / `else` while a fluent chain is still being built.
+    */
+    final class TernaryFrame {
+        readonly public \Tyhp\Expression\ExpressionNode $condition;
+        readonly public ?\Tyhp\Expression\ExpressionNode $ifTrue;
+        readonly public string $phase;
+        /**
+        * @param 'true'|'false' $phase
+        */
+        public function __construct(\Tyhp\Expression\ExpressionNode $condition, ?\Tyhp\Expression\ExpressionNode $ifTrue, string $phase): void;
     }
     final class TernaryExpression extends \Tyhp\Expression\ExpressionNode {
         readonly public \Tyhp\Expression\ExpressionNode $condition;
@@ -612,6 +864,19 @@ namespace Tyhp\Expression {
         readonly public string $nodeType;
         public function __construct(string $type, string $nodeType): void;
         public abstract function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
+    }
+    /**
+    * Evaluates an expression tree when no native closure was stored.
+    *
+    * `&&` / `||`, `??`, and `?->` stop as soon as PHP would. Property reads are
+    * public `->` / `?->` on objects. A node this walker cannot run the way PHP
+    * would throws, rather than guessing.
+    */
+    final class ExpressionInterpreter {
+        /**
+        * @param array<ParameterExpression> $parameters
+        */
+        public static function evaluate(\Tyhp\Expression\ExpressionNode $node, array<\Tyhp\Expression\ParameterExpression> $parameters, mixed ...$args): mixed;
     }
     final class ConstantExpression extends \Tyhp\Expression\ExpressionNode {
         readonly public mixed $value;

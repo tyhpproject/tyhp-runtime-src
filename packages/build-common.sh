@@ -96,19 +96,7 @@ assert_selected_dist_package_versions() {
 # Parse source version into dist X.Y[-prerelease] parts.
 # A.B → X=A Y=B. MAJOR.MINOR.PATCH[-pre] → X=MINOR Y=PATCH (PHP encoding is dist MAJOR).
 _parse_package_source_version() {
-  python3 - "$1" <<'PY'
-import json, re, sys
-path = sys.argv[1]
-raw = str(json.load(open(path)).get("version", ""))
-match = re.fullmatch(r"(\d+)\.(\d+)(?:\.(\d+)(?:-([0-9A-Za-z.-]+))?)?", raw)
-if not match:
-    print(f"Invalid version in {path}: {raw!r} (expected X.Y or MAJOR.MINOR.PATCH[-prerelease])", file=sys.stderr)
-    sys.exit(1)
-if match.group(3) is None:
-    print(f"{match.group(1)}|{match.group(2)}||{raw}")
-else:
-    print(f"{match.group(2)}|{match.group(3)}|{match.group(4) or ''}|{raw}")
-PY
+  php "$SCRIPT_DIR/build-helpers.php" source-version-parts "$1"
 }
 
 # Read version from packages/tyhp/<pkg>/composer.json into
@@ -140,71 +128,24 @@ load_package_release_version() {
 # composer.json. The source manifest is the single source of truth for the dist stamp so the
 # two cannot drift; Tyhp's InteropContractSurfaceTests pin it to InteropContract.CurrentVersion.
 read_package_interop_contract_version() {
-  local composer_json="$1"
-  python3 - "$composer_json" <<'PY'
-import json, sys
-path = sys.argv[1]
-version = json.load(open(path)).get("extra", {}).get("tyhp", {}).get("interopContractVersion")
-if not isinstance(version, int):
-    print(f"Missing/invalid extra.tyhp.interopContractVersion in {path}: {version!r}", file=sys.stderr)
-    sys.exit(1)
-print(version)
-PY
+  php "$SCRIPT_DIR/build-helpers.php" interop-contract-version "$1"
 }
 
 # Read extra.tyhp.require (Story 21.10 ambient tyhpdefs) from a package composer.json.
 # Omitted or null becomes {}. Dist stamps this object so published packages match source.
 read_package_tyhp_require() {
-  local composer_json="$1"
-  python3 - "$composer_json" <<'PY'
-import json, sys
-path = sys.argv[1]
-require = json.load(open(path)).get("extra", {}).get("tyhp", {}).get("require", {})
-if require is None:
-    require = {}
-if not isinstance(require, dict):
-    print(f"Missing/invalid extra.tyhp.require in {path}: {require!r}", file=sys.stderr)
-    sys.exit(1)
-for name, constraint in require.items():
-    if not isinstance(name, str) or not isinstance(constraint, str):
-        print(f"Invalid extra.tyhp.require entry in {path}: {name!r} -> {constraint!r}", file=sys.stderr)
-        sys.exit(1)
-print(json.dumps(require, separators=(", ", ": ")))
-PY
+  php "$SCRIPT_DIR/build-helpers.php" tyhp-require "$1"
 }
 
 # Read extra.tyhp.package (tyhpdef load spec) from a package composer.json.
 # Dist stamps this object so published packages load tyhpdefs from composer.json.
 read_package_tyhp_package() {
-  local composer_json="$1"
-  python3 - "$composer_json" <<'PY'
-import json, sys
-path = sys.argv[1]
-package = json.load(open(path)).get("extra", {}).get("tyhp", {}).get("package")
-if not isinstance(package, dict):
-    print(f"Missing/invalid extra.tyhp.package in {path}: {package!r}", file=sys.stderr)
-    sys.exit(1)
-text = json.dumps(package, indent=4)
-lines = text.splitlines()
-out = [lines[0]]
-for line in lines[1:]:
-    out.append(("            " + line) if line else line)
-print("\n".join(out))
-PY
+  php "$SCRIPT_DIR/build-helpers.php" tyhp-package "$1"
 }
 
 # Read the raw source version string from a package composer.json.
 read_package_source_version() {
-  local composer_json="$1"
-  python3 - "$composer_json" <<'PY'
-import json, re, sys
-path = sys.argv[1]
-raw = str(json.load(open(path)).get("version", ""))
-if not re.fullmatch(r"\d+\.\d+(?:\.\d+(?:-[0-9A-Za-z.-]+)?)?", raw):
-    print(f"Invalid version in {path}: {raw!r} (expected X.Y or MAJOR.MINOR.PATCH[-prerelease])", file=sys.stderr)
-    sys.exit(1)
-print(raw)
-PY
+  php "$SCRIPT_DIR/build-helpers.php" source-version "$1"
 }
 
 # Matching-X constraint across PHP majors for a dependency package (usually core).
@@ -460,7 +401,10 @@ EOF
     "autoload": {
         "psr-4": {
             "Tyhp\\\\": "src/Tyhp/"
-        }
+        },
+        "classmap": [
+            "php/EvalClosure.php"
+        ]
     }
 }
 EOF
@@ -656,6 +600,26 @@ copy_dist_cli() {
   chmod +x "$out_dir/bin/tyhp-parallel"
 }
 
+# Hand-written PHP that compiles a lambda closure. Not emitted from Tyhp.
+copy_dist_eval_closure() {
+  local pkg="$1"
+  local php_major="$2"
+  local out_dir
+  local src
+
+  [[ "$pkg" == "lambda" ]] || return 0
+
+  src="$TYHP_PKG_DIR/lambda/php/EvalClosure.php"
+  if [[ ! -f "$src" ]]; then
+    echo "missing eval closure: $src" >&2
+    return 1
+  fi
+
+  out_dir="$(dist_package_dir "$pkg" "$php_major")"
+  mkdir -p "$out_dir/php"
+  cp "$src" "$out_dir/php/EvalClosure.php"
+}
+
 # Point dist/tyhp-<pkg>/<php_major>.latest at the version just built, so other packages
 # can depend on a stable path (e.g. ../../dist/tyhp-core/805.latest) across version bumps.
 # The link target is relative, keeping the dist tree relocatable.
@@ -696,6 +660,7 @@ finalize_dist_package() {
   copy_dist_tyhpdefs "$pkg" "$php_major"
   copy_dist_plugin "$pkg" "$php_major"
   copy_dist_cli "$pkg" "$php_major"
+  copy_dist_eval_closure "$pkg" "$php_major"
   cleanup_dist_build_artifacts "$pkg" "$php_major"
   link_dist_latest_major "$pkg" "$php_major"
 }

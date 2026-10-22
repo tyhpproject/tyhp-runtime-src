@@ -81,9 +81,58 @@ class PropertyPathTest extends TestCase
         self::assertSame('', $path->getPropertyName());
     }
 
+    public function testLambdaInfersPropertyTypeWithoutAReturnTypeOnTheClosure(): void
+    {
+        $path = PropertyPath::from(
+            PropertyPathSample::class,
+            ['age'],
+            fn(PropertyPathSample $person) => $person->age,
+        );
+
+        self::assertSame('int', $path->returnType);
+        self::assertSame(['age'], $path->getSegments());
+        self::assertSame(36, $path->getValue(new PropertyPathSample('Ada', 36, 'Paris')));
+    }
+
+    public function testLambdaUsesTheClosureReturnTypeWhenPresent(): void
+    {
+        $path = PropertyPath::from(
+            PropertyPathSample::class,
+            ['city'],
+            fn(PropertyPathSample $person): string => $person->city,
+        );
+
+        self::assertSame('string', $path->returnType);
+        self::assertSame('Paris', $path->getValue(new PropertyPathSample('Ada', 36, 'Paris')));
+    }
+
+    public function testLambdaNullSafeFlagMakesTheResultNullable(): void
+    {
+        $path = PropertyPath::from(
+            PropertyPathSample::class,
+            ['nickname'],
+            fn(PropertyPathSample $person) => $person->nickname,
+            [true],
+        );
+
+        self::assertSame('?string', $path->returnType);
+        self::assertNull($path->getValue(new PropertyPathSample('Ada', 36, 'Paris')));
+    }
+
     public function testEmptyPathThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         new PropertyPath('object', 'mixed', [], fn(): mixed => null);
+    }
+}
+
+class PropertyPathSample
+{
+    public function __construct(
+        public string $name,
+        public int $age,
+        public string $city,
+        public ?string $nickname = null,
+    ) {
     }
 }

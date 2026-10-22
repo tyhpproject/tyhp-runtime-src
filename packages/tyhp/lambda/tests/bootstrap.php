@@ -5,6 +5,8 @@ declare(strict_types=1);
 // The package's own composer.json points at src/Tyhp, which only exists in the built
 // dist tree. Register the built lambda and core sources directly instead of going
 // through vendor/autoload.php.
+require_once \dirname(__DIR__) . '/php/EvalClosure.php';
+
 $packagesRoot = \dirname(__DIR__, 3);
 $sourceRoots = [
     $packagesRoot . '/dist/tyhp-lambda/802.latest/src/Tyhp',

@@ -67,15 +67,15 @@ else
   echo "All packages built successfully."
 fi
 
-echo "Verifying source maps..."
-python3 "$SCRIPT_DIR/verify-sourcemaps.py"
-
-echo "Checking PER-CS 3.0 (PHP-CS-Fixer @PER-CS3x0)..."
+echo "Applying PER-CS 3.0 (PHP-CS-Fixer @PER-CS3x0)..."
 if command -v php-cs-fixer >/dev/null 2>&1; then
-  php-cs-fixer fix --dry-run --diff --config="$SCRIPT_DIR/.php-cs-fixer.php"
+  php-cs-fixer fix --config="$SCRIPT_DIR/.php-cs-fixer.php"
 elif [[ -x "$SCRIPT_DIR/vendor/bin/php-cs-fixer" ]]; then
-  "$SCRIPT_DIR/vendor/bin/php-cs-fixer" fix --dry-run --diff --config="$SCRIPT_DIR/.php-cs-fixer.php"
+  "$SCRIPT_DIR/vendor/bin/php-cs-fixer" fix --config="$SCRIPT_DIR/.php-cs-fixer.php"
 else
-  echo "php-cs-fixer not found. Install friendsofphp/php-cs-fixer to run the PER-CS 3.0 gate." >&2
+  echo "php-cs-fixer not found. Install friendsofphp/php-cs-fixer to format emitted PHP." >&2
   exit 1
 fi
+
+echo "Verifying source maps..."
+php "$SCRIPT_DIR/verify-sourcemaps.php"

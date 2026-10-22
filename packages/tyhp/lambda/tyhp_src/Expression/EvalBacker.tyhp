@@ -1,0 +1,521 @@
+<?tyhp
+
+namespace Tyhp\Expression;
+
+/**
+ * Compiles an expression tree into a closure.
+ *
+ * The source contains only the tree's shape. Runtime values are passed in a
+ * bound array and are not written into the source. Names must be UTF-8 PHP
+ * identifiers, class names are those segments joined by a backslash, and
+ * operators come from a fixed set. A tree that cannot be compiled this way
+ * returns null so the caller walks it.
+ */
+internal final class EvalBacker {
+    /** @var array<int, mixed> */
+    private array<int, mixed> $bound = [];
+
+    /** @var array<int, string> */
+    private array<int, string> $parameterNames = [];
+
+    /**
+     * @param array<ParameterExpression> $parameters
+     */
+    public static function tryCompile(
+        ExpressionNode $body,
+        array<ParameterExpression> $parameters,
+    ): ?\Closure {
+        EvalBacker $backer = new EvalBacker();
+        ?string $signature = $backer->signature($parameters);
+        if ($signature === null) {
+            return null;
+        }
+
+        ?string $expression = $backer->emit($body);
+        if ($expression === null) {
+            return null;
+        }
+
+        string $source = 'return function (' . $signature . ') use ($__bound) {' . "\n"
+            . '    $__r = ' . $expression . ';' . "\n"
+            . '    return $__r;' . "\n"
+            . '};';
+        return EvalClosure::compile($source, $backer->bound);
+    }
+
+    /**
+     * @param array<ParameterExpression> $parameters
+     */
+    private function signature(array<ParameterExpression> $parameters): ?string {
+        if ($parameters === []) {
+            $this->parameterNames = [];
+            return '';
+        }
+
+        int $count = \count($parameters);
+        array<int, string> $names = [];
+        for (int $i = 0; $i < $count; $i++) {
+            $names[$i] = '';
+        }
+
+        array<string, bool> $seen = [];
+        foreach ($parameters as $parameter) {
+            if ($parameter->index < 0 || $parameter->index >= $count) {
+                return null;
+            }
+            if ($names[$parameter->index] !== '') {
+                return null;
+            }
+            if (!self::isIdentifier($parameter->name) || self::isReservedName($parameter->name)) {
+                return null;
+            }
+            if (\array_key_exists($parameter->name, $seen)) {
+                return null;
+            }
+            $seen[$parameter->name] = true;
+            $names[$parameter->index] = $parameter->name;
+        }
+
+        for (int $i = 0; $i < $count; $i++) {
+            if ($names[$i] === '') {
+                return null;
+            }
+        }
+
+        $this->parameterNames = $names;
+        array<int, string> $rendered = [];
+        foreach ($names as $name) {
+            $rendered[] = '$' . $name;
+        }
+        return \implode(', ', $rendered);
+    }
+
+    private function emit(ExpressionNode $node): ?string {
+        if ($node instanceof ParameterExpression) {
+            return $this->emitParameter($node);
+        }
+        if ($node instanceof ConstantExpression) {
+            return $this->emitConstant($node);
+        }
+        if ($node instanceof PropertyAccessExpression) {
+            return $this->emitProperty($node->object, $node->property, false);
+        }
+        if ($node instanceof NullSafeAccessExpression) {
+            return $this->emitProperty($node->object, $node->property, true);
+        }
+        if ($node instanceof BinaryExpression) {
+            return $this->emitBinary($node);
+        }
+        if ($node instanceof UnaryExpression) {
+            return $this->emitUnary($node);
+        }
+        if ($node instanceof TernaryExpression) {
+            return $this->emitTernary($node);
+        }
+        if ($node instanceof CoalesceExpression) {
+            return $this->emitCoalesce($node);
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            return $this->emitArrayAccess($node);
+        }
+        if ($node instanceof CastExpression) {
+            return $this->emitCast($node);
+        }
+        if ($node instanceof MethodCallExpression) {
+            return $this->emitMethod($node);
+        }
+        if ($node instanceof StaticMethodCallExpression) {
+            return $this->emitStatic($node);
+        }
+        if ($node instanceof NewExpression) {
+            return $this->emitNew($node);
+        }
+        if ($node instanceof InstanceofExpression) {
+            return $this->emitInstanceof($node);
+        }
+        return null;
+    }
+
+    private function emitParameter(ParameterExpression $node): ?string {
+        if ($node->index < 0 || $node->index >= \count($this->parameterNames)) {
+            return null;
+        }
+        if ($this->parameterNames[$node->index] !== $node->name) {
+            return null;
+        }
+        return '$' . $node->name;
+    }
+
+    private function emitConstant(ConstantExpression $node): ?string {
+        if (!self::isLiteral($node->value)) {
+            return null;
+        }
+        int $index = \count($this->bound);
+        $this->bound[] = $node->value;
+        return '($__bound[' . (string)$index . '])';
+    }
+
+    private function emitProperty(ExpressionNode $object, string $name, bool $nullSafe): ?string {
+        if (!self::isIdentifier($name)) {
+            return null;
+        }
+        ?string $target = $this->emit($object);
+        if ($target === null) {
+            return null;
+        }
+        string $operator = $nullSafe ? '?->' : '->';
+        return '(' . $target . $operator . $name . ')';
+    }
+
+    private function emitBinary(BinaryExpression $node): ?string {
+        ?string $operator = self::binaryOperator($node->operator);
+        if ($operator === null) {
+            return null;
+        }
+        ?string $left = $this->emit($node->left);
+        if ($left === null) {
+            return null;
+        }
+        ?string $right = $this->emit($node->right);
+        if ($right === null) {
+            return null;
+        }
+        return '(' . $left . ' ' . $operator . ' ' . $right . ')';
+    }
+
+    private function emitUnary(UnaryExpression $node): ?string {
+        if (!$node->isPrefix) {
+            return null;
+        }
+        ?string $operator = self::unaryOperator($node->operator);
+        if ($operator === null) {
+            return null;
+        }
+        ?string $operand = $this->emit($node->operand);
+        if ($operand === null) {
+            return null;
+        }
+        return '(' . $operator . $operand . ')';
+    }
+
+    private function emitTernary(TernaryExpression $node): ?string {
+        ?string $condition = $this->emit($node->condition);
+        if ($condition === null) {
+            return null;
+        }
+        ?string $ifFalse = $this->emit($node->ifFalse);
+        if ($ifFalse === null) {
+            return null;
+        }
+        if ($node->ifTrue === null) {
+            return '(' . $condition . ' ?: ' . $ifFalse . ')';
+        }
+        ?string $ifTrue = $this->emit($node->ifTrue);
+        if ($ifTrue === null) {
+            return null;
+        }
+        return '(' . $condition . ' ? ' . $ifTrue . ' : ' . $ifFalse . ')';
+    }
+
+    private function emitCoalesce(CoalesceExpression $node): ?string {
+        ?string $left = $this->emit($node->left);
+        if ($left === null) {
+            return null;
+        }
+        ?string $right = $this->emit($node->right);
+        if ($right === null) {
+            return null;
+        }
+        return '(' . $left . ' ?? ' . $right . ')';
+    }
+
+    private function emitArrayAccess(ArrayAccessExpression $node): ?string {
+        ?string $array = $this->emit($node->array);
+        if ($array === null) {
+            return null;
+        }
+        ?string $index = $this->emit($node->index);
+        if ($index === null) {
+            return null;
+        }
+        return '(' . $array . '[' . $index . '])';
+    }
+
+    private function emitCast(CastExpression $node): ?string {
+        ?string $cast = self::castOperator($node->targetType);
+        if ($cast === null) {
+            return null;
+        }
+        ?string $operand = $this->emit($node->operand);
+        if ($operand === null) {
+            return null;
+        }
+        return '(' . $cast . $operand . ')';
+    }
+
+    private function emitMethod(MethodCallExpression $node): ?string {
+        if (!self::isIdentifier($node->method)) {
+            return null;
+        }
+        ?string $object = $this->emit($node->object);
+        if ($object === null) {
+            return null;
+        }
+        ?string $arguments = $this->emitArguments($node->arguments);
+        if ($arguments === null) {
+            return null;
+        }
+        return '(' . $object . '->' . $node->method . '(' . $arguments . '))';
+    }
+
+    private function emitStatic(StaticMethodCallExpression $node): ?string {
+        if (!self::isIdentifier($node->method)) {
+            return null;
+        }
+        ?string $class = self::classReference($node->class);
+        if ($class === null) {
+            return null;
+        }
+        ?string $arguments = $this->emitArguments($node->arguments);
+        if ($arguments === null) {
+            return null;
+        }
+        return '(' . $class . '::' . $node->method . '(' . $arguments . '))';
+    }
+
+    private function emitNew(NewExpression $node): ?string {
+        ?string $class = self::classReference($node->class);
+        if ($class === null) {
+            return null;
+        }
+        ?string $arguments = $this->emitArguments($node->arguments);
+        if ($arguments === null) {
+            return null;
+        }
+        return '(new ' . $class . '(' . $arguments . '))';
+    }
+
+    private function emitInstanceof(InstanceofExpression $node): ?string {
+        ?string $operand = $this->emit($node->operand);
+        if ($operand === null) {
+            return null;
+        }
+
+        string $name = \ltrim($node->targetType, '\\');
+        bool $nullable = false;
+        if (\str_starts_with($name, '?')) {
+            $nullable = true;
+            string|false $stripped = \substr($name, 1);
+            if (!($stripped is string)) {
+                return null;
+            }
+            $name = \ltrim($stripped, '\\');
+        }
+
+        if ($nullable) {
+            ?string $test = self::typeTest('$__tyhpType', $name);
+            if ($test === null) {
+                return null;
+            }
+            return '((($__tyhpType = ' . $operand . ') === null) || ' . $test . ')';
+        }
+
+        return self::typeTest($operand, $name);
+    }
+
+    /**
+     * @param array<ExpressionNode> $arguments
+     */
+    private function emitArguments(array<ExpressionNode> $arguments): ?string {
+        array<int, string> $rendered = [];
+        foreach ($arguments as $argument) {
+            ?string $piece = $this->emit($argument);
+            if ($piece === null) {
+                return null;
+            }
+            $rendered[] = $piece;
+        }
+        return \implode(', ', $rendered);
+    }
+
+    private static function typeTest(string $operand, string $name): ?string {
+        if ($name === '' || \str_contains($name, '|') || \str_contains($name, '&')) {
+            return null;
+        }
+        if ($name === 'self' || $name === 'parent' || $name === 'static') {
+            return null;
+        }
+        if (!\str_contains($name, '\\')) {
+            ?string $builtin = self::builtinTypeTest($operand, \strtolower($name));
+            if ($builtin !== null) {
+                return $builtin;
+            }
+        }
+        ?string $class = self::classReference($name);
+        if ($class === null) {
+            return null;
+        }
+        return '(' . $operand . ' instanceof ' . $class . ')';
+    }
+
+    private static function builtinTypeTest(string $operand, string $name): ?string {
+        if ($name === 'string' || $name === 'binary') {
+            return '(\is_string(' . $operand . '))';
+        }
+        if ($name === 'int' || $name === 'integer') {
+            return '(\is_int(' . $operand . '))';
+        }
+        if ($name === 'float' || $name === 'double' || $name === 'real') {
+            return '(\is_float(' . $operand . '))';
+        }
+        if ($name === 'bool' || $name === 'boolean') {
+            return '(\is_bool(' . $operand . '))';
+        }
+        if ($name === 'array') {
+            return '(\is_array(' . $operand . '))';
+        }
+        if ($name === 'object') {
+            return '(\is_object(' . $operand . '))';
+        }
+        if ($name === 'callable') {
+            return '(\is_callable(' . $operand . '))';
+        }
+        if ($name === 'iterable') {
+            return '(\is_iterable(' . $operand . '))';
+        }
+        if ($name === 'resource') {
+            return '(\is_resource(' . $operand . '))';
+        }
+        if ($name === 'null') {
+            return '(' . $operand . ' === null)';
+        }
+        if ($name === 'true') {
+            return '(' . $operand . ' === true)';
+        }
+        if ($name === 'false') {
+            return '(' . $operand . ' === false)';
+        }
+        return null;
+    }
+
+    private static function classReference(string $name): ?string {
+        if (!self::isClassName($name)) {
+            return null;
+        }
+        if (\str_starts_with($name, '\\')) {
+            string|false $stripped = \substr($name, 1);
+            if (!($stripped is string)) {
+                return null;
+            }
+            $name = $stripped;
+        }
+        return '\\' . $name;
+    }
+
+    private static function binaryOperator(string $operator): ?string {
+        return match ($operator) {
+            '&&', 'and' => '&&',
+            '||', 'or' => '||',
+            'xor' => 'xor',
+            '??' => '??',
+            '===' => '===',
+            '!==' => '!==',
+            '==' => '==',
+            '!=' => '!=',
+            '<>' => '<>',
+            '<' => '<',
+            '>' => '>',
+            '<=' => '<=',
+            '>=' => '>=',
+            '<=>' => '<=>',
+            '+' => '+',
+            '-' => '-',
+            '*' => '*',
+            '/' => '/',
+            '%' => '%',
+            '**' => '**',
+            '.' => '.',
+            '&' => '&',
+            '|' => '|',
+            '^' => '^',
+            '<<' => '<<',
+            '>>' => '>>',
+            default => null,
+        };
+    }
+
+    private static function unaryOperator(string $operator): ?string {
+        return match ($operator) {
+            '!' => '!',
+            '+' => '+',
+            '-' => '-',
+            '~' => '~',
+            default => null,
+        };
+    }
+
+    private static function castOperator(string $type): ?string {
+        string $name = \strtolower(\ltrim($type, '\\'));
+        return match ($name) {
+            'int', 'integer' => '(int)',
+            'bool', 'boolean' => '(bool)',
+            'string', 'binary' => '(string)',
+            'float', 'double', 'real' => '(float)',
+            'array' => '(array)',
+            'object' => '(object)',
+            default => null,
+        };
+    }
+
+    private static function isLiteral(mixed $value): bool {
+        if (\is_array($value)) {
+            foreach ($value as $key => $item) {
+                if (!($key is int) && !($key is string)) {
+                    return false;
+                }
+                if (!self::isLiteral($item)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if ($value is string || $value is int || $value is bool || $value === null) {
+            return true;
+        }
+        if ($value is float) {
+            return !\is_nan($value);
+        }
+        return false;
+    }
+
+    private static function isIdentifier(string $name): bool {
+        if ($name === '' || \preg_match('//u', $name) !== 1) {
+            return false;
+        }
+        return \preg_match('/\A[A-Za-z_\x80-\xFF][A-Za-z0-9_\x80-\xFF]*\z/', $name) === 1;
+    }
+
+    private static function isClassName(string $name): bool {
+        if (\str_starts_with($name, '\\')) {
+            string|false $stripped = \substr($name, 1);
+            if (!($stripped is string)) {
+                return false;
+            }
+            $name = $stripped;
+        }
+        if ($name === '' || \str_contains($name, '\\\\')) {
+            return false;
+        }
+        array<int, string> $parts = \explode('\\', $name);
+        foreach ($parts as $part) {
+            if (!self::isIdentifier($part)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static function isReservedName(string $name): bool {
+        return $name === '__bound' || $name === '__r' || $name === '__tyhpType';
+    }
+}

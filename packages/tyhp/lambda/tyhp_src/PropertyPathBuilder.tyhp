@@ -45,11 +45,12 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
         private string $sourceType,
         array<string> $path = [],
         private array<bool> $nullSafeFlags = [],
+        private bool $nextIsNullSafe = false,
     ): parent(
         $sourceType,
         'mixed',
         $path,
-        FluentSupport::synthesizePathCallable($path, $nullSafeFlags),
+        null,
         allowEmpty: true,
         nullSafeFlags: $nullSafeFlags,
     ) {}
@@ -94,9 +95,41 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
         $path[] = $name;
 
         array<bool> $flags = $this->nullSafeFlags;
-        $flags[] = $nullSafe;
+        $flags[] = $nullSafe || $this->nextIsNullSafe;
 
-        return new PropertyPathBuilder<T>($this->sourceType, $path, $flags);
+        return new PropertyPathBuilder<T>($this->sourceType, $path, $flags, false);
+    }
+
+    /**
+     * The next property is read with `?->`.
+     *
+     * @return PropertyPathBuilder<T>&T
+     */
+    public function nullSafe(): PropertyPathBuilder<T> {
+        if ($this->nextIsNullSafe) {
+            throw new \LogicException('nullSafe() must be followed by a property.');
+        }
+        return new PropertyPathBuilder<T>($this->sourceType, $this->path, $this->nullSafeFlags, true);
+    }
+
+    /**
+     * Store the native closure and use its return type as the path result.
+     *
+     * @template TCallable of callable
+     * @param \Closure<TCallable> $callable
+     * @return PropertyPath<TCallable>
+     */
+    public function backedBy<TCallable extends callable>(\Closure<TCallable> $callable): PropertyPath<TCallable> {
+        $this->guardNullSafe('backedBy');
+        if ($this->path === []) {
+            throw new \LogicException('Add a property before backedBy().');
+        }
+        return PropertyPath::from<TCallable>(
+            $this->sourceType,
+            $this->path,
+            $callable,
+            $this->nullSafeFlags,
+        );
     }
 
     /**
@@ -112,6 +145,11 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return PropertyPathBuilder<T>&T
      */
     public function __get(string $name): PropertyPathBuilder<T> {
+        if (Expr::isChainMethod($name)) {
+            throw new \LogicException(
+                'Property "' . $name . '" matches a builder method. Use prop(\'' . $name . '\').',
+            );
+        }
         return $this->prop($name);
     }
 
@@ -155,6 +193,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function gt(mixed $value): ExpressionBuilder<T> {
+        $this->guardNullSafe('gt');
         return $this->compare('>', $value);
     }
 
@@ -164,6 +203,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function gte(mixed $value): ExpressionBuilder<T> {
+        $this->guardNullSafe('gte');
         return $this->compare('>=', $value);
     }
 
@@ -173,6 +213,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function lt(mixed $value): ExpressionBuilder<T> {
+        $this->guardNullSafe('lt');
         return $this->compare('<', $value);
     }
 
@@ -182,29 +223,32 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function lte(mixed $value): ExpressionBuilder<T> {
+        $this->guardNullSafe('lte');
         return $this->compare('<=', $value);
     }
 
     /**
-     * Loose equality (`==`).
+     * Strict equality (`===`).
      *
      * @return ExpressionBuilder<T>
      * @phpstan-return ExpressionBuilder<T>
      * @psalm-return ExpressionBuilder<T>
      */
     public function eq(mixed $value): ExpressionBuilder<T> {
-        return $this->compare('==', $value);
+        $this->guardNullSafe('eq');
+        return $this->compare('===', $value);
     }
 
     /**
-     * Loose inequality (`!=`).
+     * Strict inequality (`!==`).
      *
      * @return ExpressionBuilder<T>
      * @phpstan-return ExpressionBuilder<T>
      * @psalm-return ExpressionBuilder<T>
      */
     public function neq(mixed $value): ExpressionBuilder<T> {
-        return $this->compare('!=', $value);
+        $this->guardNullSafe('neq');
+        return $this->compare('!==', $value);
     }
 
     /**
@@ -215,6 +259,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function same(mixed $value): ExpressionBuilder<T> {
+        $this->guardNullSafe('same');
         return $this->compare('===', $value);
     }
 
@@ -226,6 +271,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function notSame(mixed $value): ExpressionBuilder<T> {
+        $this->guardNullSafe('notSame');
         return $this->compare('!==', $value);
     }
 
@@ -235,6 +281,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function isNull(): ExpressionBuilder<T> {
+        $this->guardNullSafe('isNull');
         return $this->compare('===', null);
     }
 
@@ -244,6 +291,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
      * @psalm-return ExpressionBuilder<T>
      */
     public function isNotNull(): ExpressionBuilder<T> {
+        $this->guardNullSafe('isNotNull');
         return $this->compare('!==', null);
     }
 
@@ -267,7 +315,7 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
         Expression\ExpressionNode $leftBody = $pathNodes->body;
 
         BinaryExpression $body = new BinaryExpression($leftBody, $operator, new ConstantExpression($value), 'bool');
-        \Closure $pathCallable = $this->callable;
+        \Closure $pathCallable = FluentSupport::synthesizePathCallable($this->path, $this->nullSafeFlags);
         \Closure $callable = static function (mixed $source) use ($pathCallable, $operator, $value): bool {
             return FluentSupport::evaluateBinary($pathCallable($source), $operator, $value);
         };
@@ -278,5 +326,13 @@ class PropertyPathBuilder<T extends object> extends PropertyPath<callable(T): mi
             $this->parameters,
             $callable,
         );
+    }
+
+    private function guardNullSafe(string $method): void {
+        if ($this->nextIsNullSafe) {
+            throw new \LogicException(
+                'nullSafe() must be followed by a property, not ' . $method . '().',
+            );
+        }
     }
 }

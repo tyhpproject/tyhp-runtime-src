@@ -7,10 +7,11 @@ use PhpCsFixer\Finder;
 use PhpCsFixer\Runner\Parallel\ParallelConfigFactory;
 
 /**
- * PER-CS 3.0 style gate for Tyhp-emitted PHP and handwritten plugin PHP under dist/.
+ * PER-CS 3.0 formatting for Tyhp-emitted PHP and handwritten plugin PHP under dist/.
+ * The package build scripts apply these fixes after emit, then check source maps.
  *
  * PHP_CodeSniffer does not ship a complete PER-CS 3.0 ruleset (PSR-12 is PER-CS 1.0).
- * PHP-CS-Fixer @PER-CS3x0 is the authoritative check. Tyhp-generated names (__tyhp*,
+ * PHP-CS-Fixer @PER-CS3x0 is the ruleset that gets applied. Tyhp-generated names (__tyhp*,
  * generic factories, Promise::_async / ::_await) are left as emitted — this ruleset
  * does not rename them. Property-hook files that a given fixer version cannot parse
  * should be added to Finder exclusions until the tokenizer understands PHP 8.4 hooks

@@ -6,46 +6,111 @@ class Type implements \Stringable
 {
     private static array<string, self> $singletons = [];
 
+    private static array<string, \Closure> $registry = [];
+
+    private static array<string, array<int, self>> $cachedTypes = [];
+
+    private static array<string, array<int, array<int, self>>> $cachedGenerics = [];
+
+    private bool $immutable = false;
+
+    private ?self $forward = null;
+
+    private bool $placeholder = false;
+
+    private bool $resolving = false;
+
+    private ?self $lazyInner = null;
+
+    private string $lazyOp = '';
+
+    private ?string $lazyName = null;
+
     protected function __construct(
-        private readonly string $kind,
-        private readonly ?string $name = null,
-        private readonly array<self|NamedType> $typeArgs = [],
-        private readonly bool $isReadOnly = false,
-        private readonly bool $isNullable = false,
-        private readonly array<int|string, self> $structFields = [],
-        private readonly array<int, int|string> $structRequiredKeys = [],
-        private readonly array<int, string> $objectShapeMethods = [],
-        private readonly array<int, string> $objectShapeProperties = [],
+        private string $kind,
+        private ?string $name = null,
+        private array<self|NamedType> $typeArgs = [],
+        private bool $isReadOnly = false,
+        private bool $isNullable = false,
+        private array<int|string, self> $structFields = [],
+        private array<int, int|string> $structRequiredKeys = [],
+        private array<int, string> $objectShapeMethods = [],
+        private array<int, string> $objectShapeProperties = [],
+        private ?string $declaredName = null,
+        private array<string, bool> $objectShapeMethodSigned = [],
+        private array<string, array<int, string>> $objectShapeParamNames = [],
+        private array<string, array<int, self>> $objectShapeParamTypes = [],
+        private array<string, array<int, bool>> $objectShapeParamOptional = [],
+        private array<string, array<int, bool>> $objectShapeParamVariadic = [],
+        private array<string, self> $objectShapeReturns = [],
+        private array<string, bool> $objectShapeHasReturn = [],
+        /// Builder cursor for param() / returns(). Not part of type identity.
+        private ?string $objectShapeOpenMethod = null,
     ): void {}
 
-    public static fn string(): self => self::$singletons['string'] ??= new self('scalar', 'string');
+    /**
+     * Scalar factories and {@see nullable()} are dispatched here so an instance
+     * call such as `union()->int()` or `->nullable()` is not the static method.
+     * PHP uses one method slot for both forms.
+     */
+    public static function __callStatic(string $name, array<int, mixed> $arguments): self
+    {
+        if ($name === 'nullable') {
+            mixed $argument = $arguments[0] ?? null;
+            if (\count($arguments) !== 1 || !($argument instanceof self)) {
+                throw new Exceptions\InvalidTypeException(
+                    'nullable() requires one Type argument.',
+                );
+            }
 
-    public static fn int(): self => self::$singletons['int'] ??= new self('scalar', 'int');
+            return $argument->asNullable();
+        }
 
-    public static fn float(): self => self::$singletons['float'] ??= new self('scalar', 'float');
+        if (\count($arguments) !== 0) {
+            throw new Exceptions\InvalidTypeException(
+                'Type factory "' . $name . '" does not take arguments.',
+            );
+        }
 
-    public static fn bool(): self => self::$singletons['bool'] ??= new self('scalar', 'bool');
+        return self::scalar($name);
+    }
 
-    public static fn null(): self => self::$singletons['null'] ??= new self('scalar', 'null', isNullable: true);
+    private static function scalar(string $name): self
+    {
+        if (\array_key_exists($name, self::$singletons)) {
+            return self::$singletons[$name];
+        }
 
-    public static fn void(): self => self::$singletons['void'] ??= new self('scalar', 'void');
+        self $created = match ($name) {
+            'string' => new self('scalar', 'string'),
+            'int' => new self('scalar', 'int'),
+            'float' => new self('scalar', 'float'),
+            'bool' => new self('scalar', 'bool'),
+            'null' => new self('scalar', 'null', isNullable: true),
+            'void' => new self('scalar', 'void'),
+            'mixed' => new self('scalar', 'mixed'),
+            'never' => new self('scalar', 'never'),
+            'array' => new self('scalar', 'array'),
+            'object' => new self('scalar', 'object'),
+            'callable' => new self('scalar', 'callable'),
+            'iterable' => new self('scalar', 'iterable'),
+            'resource' => new self('scalar', 'resource'),
+            default => throw new Exceptions\InvalidTypeException(
+                'Unknown type factory "' . $name . '".',
+            ),
+        };
 
-    public static fn mixed(): self => self::$singletons['mixed'] ??= new self('scalar', 'mixed');
+        self::$singletons[$name] = $created->immutable();
 
-    public static fn never(): self => self::$singletons['never'] ??= new self('scalar', 'never');
-
-    public static fn array(): self => self::$singletons['array'] ??= new self('scalar', 'array');
-
-    public static fn object(): self => self::$singletons['object'] ??= new self('scalar', 'object');
-
-    public static fn callable(): self => self::$singletons['callable'] ??= new self('scalar', 'callable');
-
-    public static fn iterable(): self => self::$singletons['iterable'] ??= new self('scalar', 'iterable');
-
-    public static fn resource(): self => self::$singletons['resource'] ??= new self('scalar', 'resource');
+        return self::$singletons[$name];
+    }
 
     public static function union(self ...$types): self
     {
+        if (\count($types) === 0) {
+            return new self('union');
+        }
+
         array<self|NamedType> $flattened = [];
         foreach ($types as $type) {
             if ($type->kind === 'union') {
@@ -78,6 +143,10 @@ class Type implements \Stringable
 
     public static function intersection(self ...$types): self
     {
+        if (\count($types) === 0) {
+            return new self('intersection');
+        }
+
         array<self|NamedType> $flattened = [];
         foreach ($types as $type) {
             if ($type->kind === 'intersection') {
@@ -108,29 +177,6 @@ class Type implements \Stringable
         return new self('intersection', null, $unique);
     }
 
-    public static function nullable(self $type): self
-    {
-        if ($type->isNullable) {
-            return $type;
-        }
-
-        if ($type->kind === 'scalar' && ($type->name === 'null' || $type->name === 'mixed')) {
-            return $type;
-        }
-
-        return new self(
-            $type->kind,
-            $type->name,
-            $type->typeArgs,
-            $type->isReadOnly,
-            true,
-            $type->structFields,
-            $type->structRequiredKeys,
-            $type->objectShapeMethods,
-            $type->objectShapeProperties,
-        );
-    }
-
     /**
      * The runtime form of `__Awaited<T>`: the type a value has once every `\Tyhp\Promise`
      * layer has settled. A promise of `X` becomes the awaited type of `X`; a bare `Promise`
@@ -144,12 +190,16 @@ class Type implements \Stringable
             return self::awaited($type->getUnderlyingType());
         }
 
+        if ($type->forward !== null || $type->lazyInner !== null) {
+            return self::awaited($type->follow());
+        }
+
         if ($type->kind === 'scalar') {
             return $type;
         }
 
         if ($type->isNullable) {
-            return self::nullable(self::awaited(new self(
+            return self::awaited(new self(
                 $type->kind,
                 $type->name,
                 $type->typeArgs,
@@ -159,7 +209,16 @@ class Type implements \Stringable
                 $type->structRequiredKeys,
                 $type->objectShapeMethods,
                 $type->objectShapeProperties,
-            )));
+                $type->declaredName,
+                $type->objectShapeMethodSigned,
+                $type->objectShapeParamNames,
+                $type->objectShapeParamTypes,
+                $type->objectShapeParamOptional,
+                $type->objectShapeParamVariadic,
+                $type->objectShapeReturns,
+                $type->objectShapeHasReturn,
+                $type->objectShapeOpenMethod,
+            ))->asNullable();
         }
 
         if ($type->kind === 'union') {
@@ -201,17 +260,19 @@ class Type implements \Stringable
      * Extra keys on a value are ignored.
      */
     public static function struct(
-        string $name,
-        array<int|string, self> $fields,
+        ?string $name = null,
+        array<int|string, self> $fields = [],
         array<int, int|string> $requiredKeys = [],
     ): self {
         return new self('struct', $name, [], false, false, $fields, $requiredKeys);
     }
 
     /**
-     * A Tyhp object shape: an instance type matched by public member existence (v1).
-     * `$methods` / `$properties` are required public names. Extra members on a value
-     * are ignored. `__construct` is constructability-only and must not be listed.
+     * A Tyhp object shape matched by public member names.
+     * `$methods` / `$properties` are required public names with no signature.
+     * Use {@see shape()}, {@see method()}, {@see param()}, and {@see returns()}
+     * to record parameter and return types. Extra members on a value are ignored.
+     * `__construct` is constructability-only and must not be listed.
      * This descriptor is for guards / matching; it does not construct instances.
      */
     public static function objectShape(
@@ -238,12 +299,289 @@ class Type implements \Stringable
      * forms are ignored. Signatures are not compared — `\is_callable` is enough.
      * This descriptor is for `is` guards / matching; it does not construct values.
      */
-    public static function callableShape(string $name): self
+    public static function callableShape(?string $name = null): self
     {
         return new self('callableShape', $name);
     }
 
-    public static fn fromClassName(string $className): self => self::$singletons["class:$className"] ??= new self('class', $className);
+    public static fn fromClassName(string $className): self => self::$singletons["class:$className"] ??= (new self('class', $className))->immutable();
+
+    /**
+     * Record a declaration without running `$factory`. The first {@see ref()} of that name
+     * runs the closure, then stamps `$refName` with {@see name()}.
+     * Registering the same name again throws {@see Exceptions\InvalidTypeException}
+     * and leaves the first factory in place.
+     */
+    public static function register(string $name, \Closure $factory): void
+    {
+        if (\array_key_exists($name, self::$registry)) {
+            throw new Exceptions\InvalidTypeException(
+                'Type declaration "' . $name . '" is already registered.',
+            );
+        }
+
+        self::$registry[$name] = $factory;
+        unset(self::$cachedTypes[$name], self::$cachedGenerics[$name]);
+    }
+
+    /**
+     * The type registered under `$refName`. Unknown names throw.
+     * Cached by declaration name plus the structure of `$generics`.
+     * A placeholder is cached before the closure runs so a nested ref of the same
+     * declaration does not recurse forever.
+     */
+    public static function ref(string $refName, self ...$generics): self
+    {
+        if (!\array_key_exists($refName, self::$registry)) {
+            throw new Exceptions\InvalidTypeException(
+                'Unknown type declaration "' . $refName . '".',
+            );
+        }
+
+        ?self $cached = self::findCached($refName, $generics);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        self $placeholder = new self('ref', $refName, declaredName: $refName);
+        $placeholder->placeholder = true;
+        self::storeCache($refName, $generics, $placeholder);
+
+        \Closure $factory = self::$registry[$refName];
+        mixed $raw = $factory(...$generics);
+        if (!$raw instanceof self) {
+            throw new Exceptions\InvalidTypeException(
+                'Type declaration "' . $refName . '" did not return a Type.',
+            );
+        }
+
+        self $result = $raw->name($refName);
+        $result = $result->immutable();
+        $placeholder->linkForward($result);
+        self::replaceCache($refName, $generics, $result);
+
+        return $result;
+    }
+
+    public static function listOf(self $value): self
+    {
+        return self::generic('array', new NamedType('TValue', $value));
+    }
+
+    public static function mapOf(self $key, self $value): self
+    {
+        return self::generic('array', new NamedType('TKey', $key), new NamedType('TValue', $value));
+    }
+
+    public static function shape(?string $name = null): self
+    {
+        return new self('objectShape', $name);
+    }
+
+    public static function closure(): self
+    {
+        return self::generic(
+            \Closure::class,
+            new NamedType('TCallableShape', self::callableShape('callable')),
+        );
+    }
+
+    /**
+     * Mark this instance immutable and return it. The flag cannot be cleared.
+     * Later fluent changes copy this instance; the copy is not immutable.
+     */
+    public function immutable(): self
+    {
+        $this->immutable = true;
+
+        return $this;
+    }
+
+    public fn isImmutable(): bool => $this->immutable;
+
+    /**
+     * A new type whose declaration name is `$name`. Scalar, class, and generic
+     * discriminants stay in place so `is()` still matches. An immutable receiver
+     * is copied; the original is unchanged.
+     */
+    public function name(string $name): self
+    {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->name($name);
+        }
+
+        if ($this->placeholder) {
+            self $wrapper = new self('lazy', $name, declaredName: $name);
+            $wrapper->lazyInner = $this;
+            $wrapper->lazyOp = 'name';
+            $wrapper->lazyName = $name;
+
+            return $wrapper;
+        }
+
+        self $target = $this->edited();
+        $target->declaredName = $name;
+        if (!$target->keepsDiscriminant()) {
+            $target->name = $name;
+        }
+
+        return $target;
+    }
+
+    public function field(int|string $name, self $type): self
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'struct') {
+            throw new Exceptions\InvalidTypeException('field() requires a struct type.');
+        }
+
+        return $current->putStructField($name, $type, true);
+    }
+
+    public function optional(int|string $name, self $type): self
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'struct') {
+            throw new Exceptions\InvalidTypeException('optional() requires a struct type.');
+        }
+
+        return $current->putStructField($name, $type, false);
+    }
+
+    public function param(string $name, self $type, bool $optional = false, bool $variadic = false): self
+    {
+        self $current = $this->ready();
+        if ($current->kind === 'objectShape') {
+            return $current->putObjectShapeParam($name, $type, $optional, $variadic);
+        }
+
+        if ($optional || $variadic) {
+            throw new Exceptions\InvalidTypeException(
+                'param() optional and variadic flags require an object shape.',
+            );
+        }
+
+        if ($current->kind !== 'generic') {
+            throw new Exceptions\InvalidTypeException(
+                'param() requires a generic type or an object shape.',
+            );
+        }
+
+        self $target = $current->edited();
+        array<self|NamedType> $args = $target->typeArgs;
+        $args[] = new NamedType($name, $type);
+        $target->typeArgs = $args;
+
+        return $target;
+    }
+
+    public function class(string $className): self
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'union' && $current->kind !== 'intersection') {
+            throw new Exceptions\InvalidTypeException('class() requires a union or intersection type.');
+        }
+
+        self $target = $current->edited();
+        $target->appendMember(self::fromClassName($className));
+
+        return $target;
+    }
+
+    /**
+     * Start a method on this object shape. Later {@see param()} and {@see returns()}
+     * calls attach to it until the next method(). An immutable receiver is copied.
+     */
+    public function method(string $name): self
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'objectShape') {
+            throw new Exceptions\InvalidTypeException('method() requires an object shape.');
+        }
+
+        self $target = $current->edited();
+        if (!\in_array($name, $target->objectShapeMethods, true)) {
+            array<int, string> $methods = $target->objectShapeMethods;
+            $methods[] = $name;
+            $target->objectShapeMethods = $methods;
+        }
+
+        $target->objectShapeOpenMethod = $name;
+
+        return $target;
+    }
+
+    /**
+     * Record the return type of the method started by {@see method()}.
+     * An immutable receiver is copied.
+     */
+    public function returns(self $type): self
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'objectShape') {
+            throw new Exceptions\InvalidTypeException('returns() requires an object shape.');
+        }
+
+        return $current->putObjectShapeReturn($type);
+    }
+
+    public function property(string $name): self
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'objectShape') {
+            throw new Exceptions\InvalidTypeException('property() requires an object shape.');
+        }
+
+        self $target = $current->edited();
+        if (!\in_array($name, $target->objectShapeProperties, true)) {
+            array<int, string> $properties = $target->objectShapeProperties;
+            $properties[] = $name;
+            $target->objectShapeProperties = $properties;
+        }
+
+        return $target;
+    }
+
+    public function __call(string $name, array<int, mixed> $arguments): self
+    {
+        if ($name === 'nullable') {
+            if (\count($arguments) !== 0) {
+                throw new Exceptions\InvalidTypeException(
+                    'Type fluent method "nullable" does not take arguments.',
+                );
+            }
+
+            return $this->asNullable();
+        }
+
+        if (\count($arguments) !== 0) {
+            throw new Exceptions\InvalidTypeException(
+                'Type fluent method "' . $name . '" does not take arguments.',
+            );
+        }
+
+        ?self $member = match ($name) {
+            'string', 'int', 'float', 'bool', 'null', 'void', 'mixed', 'never', 'array', 'object', 'callable', 'iterable', 'resource' => self::scalar($name),
+            default => null,
+        };
+        if ($member === null) {
+            throw new Exceptions\InvalidTypeException(
+                'Unknown type fluent method "' . $name . '".',
+            );
+        }
+
+        self $current = $this->ready();
+        if ($current->kind !== 'union') {
+            throw new Exceptions\InvalidTypeException(
+                'Fluent ' . $name . '() requires a union type.',
+            );
+        }
+
+        self $target = $current->edited();
+        $target->appendMember($member);
+
+        return $target;
+    }
 
     /**
      * Build a Type from a callable's reflected return type, or null when the callable has no
@@ -338,7 +676,7 @@ class Type implements \Stringable
                 \count($members) === 1 => $members[0],
                 default => self::union(...$members),
             };
-            return $nullable ? self::nullable($combined) : $combined;
+            return $nullable ? $combined->asNullable() : $combined;
         }
 
         if ($type instanceof \ReflectionIntersectionType) {
@@ -393,7 +731,7 @@ class Type implements \Stringable
         };
 
         if ($type->allowsNull() && $name !== 'mixed' && $name !== 'null') {
-            return self::nullable($result);
+            return $result->asNullable();
         }
 
         return $result;
@@ -531,6 +869,10 @@ class Type implements \Stringable
             return self::is($value, $type->getUnderlyingType());
         }
 
+        if ($type->forward !== null || $type->lazyInner !== null) {
+            return self::is($value, $type->follow());
+        }
+
         if ($type->isNullable && $value === null) {
             return true;
         }
@@ -565,6 +907,10 @@ class Type implements \Stringable
      */
     public function defaultValue(): mixed
     {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->defaultValue();
+        }
+
         if ($this->isNullable) {
             return null;
         }
@@ -720,8 +1066,10 @@ class Type implements \Stringable
     }
 
     /**
-     * Existence-only v1: the value is an object that declares each listed public
-     * method and property. Signatures are not compared. Extra members are ignored.
+     * The value is an object that declares each listed public method and property.
+     * Constructors are ignored. Extra members are ignored.
+     * A method with a recorded signature also compares parameter count, parameter
+     * types, optional and variadic flags, and the return type when one was recorded.
      */
     private static function isObjectShape(mixed $value, self $type): bool
     {
@@ -737,7 +1085,7 @@ class Type implements \Stringable
         }
 
         foreach ($type->objectShapeMethods as $methodName) {
-            if (!self::objectHasPublicMethod($ref, $methodName)) {
+            if (!self::objectShapeMethodMatches($ref, $methodName, $type)) {
                 return false;
             }
         }
@@ -772,6 +1120,143 @@ class Type implements \Stringable
         return $method->isPublic() && !$method->isConstructor();
     }
 
+    private static function objectShapeMethodMatches(\ReflectionObject $ref, string $name, self $type): bool
+    {
+        if (!self::objectHasPublicMethod($ref, $name)) {
+            return false;
+        }
+
+        if (!($type->objectShapeMethodSigned[$name] ?? false)) {
+            return true;
+        }
+
+        try {
+            \ReflectionMethod $method = $ref->getMethod($name);
+        } catch (\Throwable $e) {
+            (void)$e;
+            return false;
+        }
+
+        if (!self::objectShapeParametersMatch($method, $type, $name)) {
+            return false;
+        }
+
+        if (!($type->objectShapeHasReturn[$name] ?? false)) {
+            return true;
+        }
+
+        ?self $expected = $type->objectShapeReturns[$name] ?? null;
+        if ($expected === null) {
+            return false;
+        }
+
+        return self::signatureTypeAccepts($expected, self::reflectionMethodReturnType($method));
+    }
+
+    private static function objectShapeParametersMatch(\ReflectionMethod $method, self $type, string $name): bool
+    {
+        array<int, string> $names = $type->objectShapeParamNames[$name] ?? [];
+        array<int, self> $types = $type->objectShapeParamTypes[$name] ?? [];
+        array<int, bool> $optional = $type->objectShapeParamOptional[$name] ?? [];
+        array<int, bool> $variadic = $type->objectShapeParamVariadic[$name] ?? [];
+        if (\count($names) !== \count($types)
+            || \count($names) !== \count($optional)
+            || \count($names) !== \count($variadic)) {
+            return false;
+        }
+
+        array<int, \ReflectionParameter> $parameters = [];
+        foreach ($method->getParameters() as $parameter) {
+            $parameters[] = $parameter;
+        }
+
+        while (\count($parameters) > \count($names)) {
+            \ReflectionParameter $last = $parameters[\count($parameters) - 1];
+            if (!$last->isOptional()) {
+                break;
+            }
+
+            (void)\array_pop($parameters);
+        }
+
+        if (\count($parameters) !== \count($names)) {
+            return false;
+        }
+
+        foreach ($names as $index => $paramName) {
+            (void)$paramName;
+            \ReflectionParameter $parameter = $parameters[$index];
+            bool $shapeVariadic = $variadic[$index] ?? false;
+            bool $shapeOptional = $optional[$index] ?? false;
+            if ($shapeVariadic && !$parameter->isVariadic()) {
+                return false;
+            }
+
+            if ($shapeOptional && !$parameter->isOptional()) {
+                return false;
+            }
+
+            self $shapeType = $types[$index] ?? self::mixed();
+            self $methodType = self::reflectionParameterType($parameter, $method);
+            if (!self::signatureTypeAccepts($methodType, $shapeType)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function reflectionMethodReturnType(\ReflectionMethod $method): self
+    {
+        ?\ReflectionType $returnType = $method->getReturnType();
+        if ($returnType === null) {
+            return self::mixed();
+        }
+
+        return self::fromReflectionType($returnType, $method->getDeclaringClass()->getName());
+    }
+
+    private static function reflectionParameterType(\ReflectionParameter $parameter, \ReflectionMethod $method): self
+    {
+        ?\ReflectionType $parameterType = $parameter->getType();
+        if ($parameterType === null) {
+            return self::mixed();
+        }
+
+        return self::fromReflectionType($parameterType, $method->getDeclaringClass()->getName());
+    }
+
+    /**
+     * `$narrow` is acceptable where `$broad` is expected.
+     * {@see compatible()} covers inheritance, nullable, and union types.
+     * `int` satisfies `float`, and `object` satisfies class types, matching callable assignability.
+     */
+    private static function signatureTypeAccepts(self $broad, self $narrow): bool
+    {
+        self $broadType = self::unwrapNamed($broad)->ready();
+        self $narrowType = self::unwrapNamed($narrow)->ready();
+        if (self::compatible($broadType, $narrowType)) {
+            return true;
+        }
+
+        if ($narrowType->isNullable && !$broadType->isNullable) {
+            return false;
+        }
+
+        if ($broadType->kind === 'scalar' && $broadType->name === 'object') {
+            return $narrowType->kind === 'class'
+                || $narrowType->kind === 'generic'
+                || $narrowType->kind === 'objectShape'
+                || $narrowType->kind === 'intersection'
+                || ($narrowType->kind === 'scalar' && $narrowType->name === 'object');
+        }
+
+        return $broadType->kind === 'scalar'
+            && $broadType->name === 'float'
+            && $narrowType->kind === 'scalar'
+            && $narrowType->name === 'int';
+    }
+
     private static function objectHasPublicProperty(\ReflectionObject $ref, string $name): bool
     {
         try {
@@ -797,6 +1282,14 @@ class Type implements \Stringable
 
         if ($narrow instanceof NamedType) {
             $narrow = $narrow->getUnderlyingType();
+        }
+
+        if ($broad->forward !== null || $broad->lazyInner !== null) {
+            $broad = $broad->follow();
+        }
+
+        if ($narrow->forward !== null || $narrow->lazyInner !== null) {
+            $narrow = $narrow->follow();
         }
 
         if ($broad->kind === 'scalar' && $broad->name === 'mixed') {
@@ -912,46 +1405,86 @@ class Type implements \Stringable
 
     public function asReadOnly(): self
     {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->asReadOnly();
+        }
+
+        if ($this->placeholder) {
+            self $wrapper = new self('lazy', $this->name, declaredName: $this->declaredName);
+            $wrapper->lazyInner = $this;
+            $wrapper->lazyOp = 'readonly';
+
+            return $wrapper;
+        }
+
         if ($this->isReadOnly) {
             return $this;
         }
 
-        return new self(
-            $this->kind,
-            $this->name,
-            $this->typeArgs,
-            true,
-            $this->isNullable,
-            $this->structFields,
-            $this->structRequiredKeys,
-            $this->objectShapeMethods,
-            $this->objectShapeProperties,
-        );
+        self $target = $this->edited();
+        $target->isReadOnly = true;
+
+        return $target;
     }
 
-    public fn asNullable(): self => self::nullable($this);
+    public function asNullable(): self
+    {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->asNullable();
+        }
+
+        if ($this->placeholder) {
+            self $wrapper = new self('lazy', $this->name, declaredName: $this->declaredName);
+            $wrapper->lazyInner = $this;
+            $wrapper->lazyOp = 'nullable';
+
+            return $wrapper;
+        }
+
+        if ($this->isNullable) {
+            return $this;
+        }
+
+        if ($this->kind === 'scalar' && ($this->name === 'null' || $this->name === 'mixed')) {
+            return $this;
+        }
+
+        self $target = $this->edited();
+        $target->isNullable = true;
+
+        return $target;
+    }
 
     public function asNonNullable(): self
     {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->asNonNullable();
+        }
+
+        if ($this->placeholder) {
+            self $wrapper = new self('lazy', $this->name, declaredName: $this->declaredName);
+            $wrapper->lazyInner = $this;
+            $wrapper->lazyOp = 'nonNullable';
+
+            return $wrapper;
+        }
+
         if (!$this->isNullable) {
             return $this;
         }
 
-        return new self(
-            $this->kind,
-            $this->name,
-            $this->typeArgs,
-            $this->isReadOnly,
-            false,
-            $this->structFields,
-            $this->structRequiredKeys,
-            $this->objectShapeMethods,
-            $this->objectShapeProperties,
-        );
+        self $target = $this->edited();
+        $target->isNullable = false;
+
+        return $target;
     }
 
     public function genericParameter(string $name): ?NamedType
     {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->genericParameter($name);
+        }
+
         foreach ($this->typeArgs as $arg) {
             if ($arg instanceof NamedType && $arg->getParameterName() === $name) {
                 return $arg;
@@ -961,16 +1494,48 @@ class Type implements \Stringable
         return null;
     }
 
-    fn getKind(): string => $this->kind;
+    public function getKind(): string
+    {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->getKind();
+        }
 
-    fn getName(): ?string => $this->name;
+        return $this->kind;
+    }
 
-    fn isNullable(): bool => $this->isNullable;
+    public function getName(): ?string
+    {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->getName();
+        }
 
-    fn isReadOnly(): bool => $this->isReadOnly;
+        return $this->declaredName ?? $this->name;
+    }
+
+    public function isNullable(): bool
+    {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->isNullable();
+        }
+
+        return $this->isNullable;
+    }
+
+    public function isReadOnly(): bool
+    {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow()->isReadOnly();
+        }
+
+        return $this->isReadOnly;
+    }
 
     public function __toString(): string
     {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return (string) $this->follow();
+        }
+
         string $str = match ($this->kind) {
             'scalar' => $this->name ?? 'unknown',
             'class' => $this->name ?? 'object',
@@ -993,5 +1558,408 @@ class Type implements \Stringable
         }
 
         return $str;
+    }
+
+    private function ready(): self
+    {
+        if ($this->forward !== null || $this->lazyInner !== null) {
+            return $this->follow();
+        }
+
+        return $this;
+    }
+
+    private function edited(): self
+    {
+        if ($this->immutable) {
+            return $this->duplicate();
+        }
+
+        $this->modifyInPlace();
+
+        return $this;
+    }
+
+    private function duplicate(): self
+    {
+        return new self(
+            $this->kind,
+            $this->name,
+            $this->typeArgs,
+            $this->isReadOnly,
+            $this->isNullable,
+            $this->structFields,
+            $this->structRequiredKeys,
+            $this->objectShapeMethods,
+            $this->objectShapeProperties,
+            $this->declaredName,
+            $this->objectShapeMethodSigned,
+            $this->objectShapeParamNames,
+            $this->objectShapeParamTypes,
+            $this->objectShapeParamOptional,
+            $this->objectShapeParamVariadic,
+            $this->objectShapeReturns,
+            $this->objectShapeHasReturn,
+            $this->objectShapeOpenMethod,
+        );
+    }
+
+    private function keepsDiscriminant(): bool
+    {
+        return $this->kind === 'scalar'
+            || $this->kind === 'class'
+            || $this->kind === 'generic';
+    }
+
+    /**
+     * In-place change that does not return a replacement. Immutable instances throw.
+     */
+    private function modifyInPlace(): void
+    {
+        if ($this->immutable) {
+            throw new Exceptions\InvalidTypeException('Cannot modify an immutable type.');
+        }
+    }
+
+    private function linkForward(self $resolved): void
+    {
+        $this->modifyInPlace();
+        $this->forward = $resolved;
+    }
+
+    private function follow(): self
+    {
+        if ($this->resolving) {
+            return $this;
+        }
+
+        if ($this->forward !== null) {
+            $this->resolving = true;
+            self $next = $this->forward;
+            $this->resolving = false;
+            if ($next === $this) {
+                return $this;
+            }
+
+            return $next->follow();
+        }
+
+        if ($this->lazyInner !== null) {
+            $this->resolving = true;
+            self $inner = $this->lazyInner->follow();
+            self $applied = match ($this->lazyOp) {
+                'nullable' => $inner->asNullable(),
+                'readonly' => $inner->asReadOnly(),
+                'nonNullable' => $inner->asNonNullable(),
+                'name' => $inner->name($this->lazyName ?? ''),
+                default => $inner,
+            };
+            $this->forward = $applied;
+            $this->resolving = false;
+
+            return $applied;
+        }
+
+        return $this;
+    }
+
+    private function putStructField(int|string $name, self $type, bool $required): self
+    {
+        self $target = $this->edited();
+        array<int|string, self> $fields = $target->structFields;
+        $fields[$name] = $type;
+        $target->structFields = $fields;
+
+        array<int, int|string> $keys = [];
+        foreach ($target->structRequiredKeys as $key) {
+            if ($key !== $name) {
+                $keys[] = $key;
+            }
+        }
+        if ($required) {
+            $keys[] = $name;
+        }
+        $target->structRequiredKeys = $keys;
+
+        return $target;
+    }
+
+    private function appendMember(self $member): void
+    {
+        $this->modifyInPlace();
+        foreach ($this->typeArgs as $existing) {
+            if ($existing === $member) {
+                return;
+            }
+        }
+
+        array<self|NamedType> $args = $this->typeArgs;
+        $args[] = $member;
+        $this->typeArgs = $args;
+    }
+
+    private static function findCached(string $name, array<int, self> $generics): ?self
+    {
+        if (!\array_key_exists($name, self::$cachedTypes)) {
+            return null;
+        }
+
+        foreach (self::$cachedTypes[$name] as $index => $type) {
+            array<int, self> $cachedArgs = self::$cachedGenerics[$name][$index] ?? [];
+            if (self::sameGenericList($cachedArgs, $generics)) {
+                return $type;
+            }
+        }
+
+        return null;
+    }
+
+    private static function storeCache(string $name, array<int, self> $generics, self $type): void
+    {
+        if (!\array_key_exists($name, self::$cachedTypes)) {
+            self::$cachedTypes[$name] = [];
+            self::$cachedGenerics[$name] = [];
+        }
+
+        self::$cachedTypes[$name][] = $type;
+        self::$cachedGenerics[$name][] = $generics;
+    }
+
+    private static function replaceCache(string $name, array<int, self> $generics, self $type): void
+    {
+        if (!\array_key_exists($name, self::$cachedTypes)) {
+            self::storeCache($name, $generics, $type);
+
+            return;
+        }
+
+        foreach (self::$cachedTypes[$name] as $index => $cached) {
+            (void) $cached;
+            array<int, self> $cachedArgs = self::$cachedGenerics[$name][$index] ?? [];
+            if (self::sameGenericList($cachedArgs, $generics)) {
+                self::$cachedTypes[$name][$index] = $type;
+
+                return;
+            }
+        }
+
+        self::storeCache($name, $generics, $type);
+    }
+
+    private static function sameGenericList(array<int, self> $left, array<int, self> $right): bool
+    {
+        if (\count($left) !== \count($right)) {
+            return false;
+        }
+
+        foreach ($left as $index => $type) {
+            ?self $other = $right[$index] ?? null;
+            if ($other === null || !$type->sameStructure($other)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function sameStructure(self $other, int $depth = 0): bool
+    {
+        if ($depth > 32) {
+            return $this->ready() === $other->ready();
+        }
+
+        self $left = $this->ready();
+        self $right = $other->ready();
+        if ($left === $right) {
+            return true;
+        }
+
+        if ($left instanceof NamedType || $right instanceof NamedType) {
+            if (!$left instanceof NamedType || !$right instanceof NamedType) {
+                return false;
+            }
+
+            return $left->getParameterName() === $right->getParameterName()
+                && $left->getUnderlyingType()->sameStructure($right->getUnderlyingType(), $depth + 1);
+        }
+
+        if ($left->kind !== $right->kind || $left->name !== $right->name) {
+            return false;
+        }
+
+        if ($left->isNullable !== $right->isNullable || $left->isReadOnly !== $right->isReadOnly) {
+            return false;
+        }
+
+        if ($left->declaredName !== $right->declaredName) {
+            return false;
+        }
+
+        if (\count($left->typeArgs) !== \count($right->typeArgs)) {
+            return false;
+        }
+
+        foreach ($left->typeArgs as $index => $arg) {
+            ?self $otherArg = $right->typeArgs[$index] ?? null;
+            if (!$arg instanceof self || $otherArg === null || !$arg->sameStructure($otherArg, $depth + 1)) {
+                return false;
+            }
+        }
+
+        if (\count($left->structFields) !== \count($right->structFields)) {
+            return false;
+        }
+
+        foreach ($left->structFields as $key => $fieldType) {
+            if (!\array_key_exists($key, $right->structFields)) {
+                return false;
+            }
+
+            if (!$fieldType->sameStructure($right->structFields[$key], $depth + 1)) {
+                return false;
+            }
+        }
+
+        if (\count($left->structRequiredKeys) !== \count($right->structRequiredKeys)) {
+            return false;
+        }
+
+        foreach ($left->structRequiredKeys as $key) {
+            if (!\in_array($key, $right->structRequiredKeys, true)) {
+                return false;
+            }
+        }
+
+        return $left->objectShapeMethods === $right->objectShapeMethods
+            && $left->objectShapeProperties === $right->objectShapeProperties
+            && $left->sameMethodSignatures($right, $depth);
+    }
+
+    private function sameMethodSignatures(self $other, int $depth): bool
+    {
+        if (\count($this->objectShapeMethodSigned) !== \count($other->objectShapeMethodSigned)) {
+            return false;
+        }
+
+        foreach ($this->objectShapeMethodSigned as $name => $signed) {
+            if (!\array_key_exists($name, $other->objectShapeMethodSigned)
+                || $other->objectShapeMethodSigned[$name] !== $signed) {
+                return false;
+            }
+
+            array<int, string> $leftNames = $this->objectShapeParamNames[$name] ?? [];
+            array<int, string> $rightNames = $other->objectShapeParamNames[$name] ?? [];
+            if ($leftNames !== $rightNames) {
+                return false;
+            }
+
+            array<int, bool> $leftOptional = $this->objectShapeParamOptional[$name] ?? [];
+            array<int, bool> $rightOptional = $other->objectShapeParamOptional[$name] ?? [];
+            if ($leftOptional !== $rightOptional) {
+                return false;
+            }
+
+            array<int, bool> $leftVariadic = $this->objectShapeParamVariadic[$name] ?? [];
+            array<int, bool> $rightVariadic = $other->objectShapeParamVariadic[$name] ?? [];
+            if ($leftVariadic !== $rightVariadic) {
+                return false;
+            }
+
+            bool $leftHasReturn = $this->objectShapeHasReturn[$name] ?? false;
+            bool $rightHasReturn = $other->objectShapeHasReturn[$name] ?? false;
+            if ($leftHasReturn !== $rightHasReturn) {
+                return false;
+            }
+
+            if ($leftHasReturn) {
+                ?self $leftReturn = $this->objectShapeReturns[$name] ?? null;
+                ?self $rightReturn = $other->objectShapeReturns[$name] ?? null;
+                if ($leftReturn === null || $rightReturn === null
+                    || !$leftReturn->sameStructure($rightReturn, $depth + 1)) {
+                    return false;
+                }
+            }
+
+            array<int, self> $leftTypes = $this->objectShapeParamTypes[$name] ?? [];
+            array<int, self> $rightTypes = $other->objectShapeParamTypes[$name] ?? [];
+            if (\count($leftTypes) !== \count($rightTypes)) {
+                return false;
+            }
+
+            foreach ($leftTypes as $index => $leftType) {
+                ?self $rightType = $rightTypes[$index] ?? null;
+                if ($rightType === null || !$leftType->sameStructure($rightType, $depth + 1)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function putObjectShapeParam(string $name, self $type, bool $optional, bool $variadic): self
+    {
+        self $target = $this->edited();
+        string $method = $target->openShapeMethodName();
+
+        array<string, array<int, string>> $names = $target->objectShapeParamNames;
+        array<int, string> $methodNames = $names[$method] ?? [];
+        $methodNames[] = $name;
+        $names[$method] = $methodNames;
+        $target->objectShapeParamNames = $names;
+
+        array<string, array<int, self>> $types = $target->objectShapeParamTypes;
+        array<int, self> $methodTypes = $types[$method] ?? [];
+        $methodTypes[] = $type;
+        $types[$method] = $methodTypes;
+        $target->objectShapeParamTypes = $types;
+
+        array<string, array<int, bool>> $optionalFlags = $target->objectShapeParamOptional;
+        array<int, bool> $methodOptional = $optionalFlags[$method] ?? [];
+        $methodOptional[] = $optional;
+        $optionalFlags[$method] = $methodOptional;
+        $target->objectShapeParamOptional = $optionalFlags;
+
+        array<string, array<int, bool>> $variadicFlags = $target->objectShapeParamVariadic;
+        array<int, bool> $methodVariadic = $variadicFlags[$method] ?? [];
+        $methodVariadic[] = $variadic;
+        $variadicFlags[$method] = $methodVariadic;
+        $target->objectShapeParamVariadic = $variadicFlags;
+
+        return $target;
+    }
+
+    private function putObjectShapeReturn(self $type): self
+    {
+        self $target = $this->edited();
+        string $method = $target->openShapeMethodName();
+
+        array<string, self> $returns = $target->objectShapeReturns;
+        $returns[$method] = $type;
+        $target->objectShapeReturns = $returns;
+
+        array<string, bool> $hasReturn = $target->objectShapeHasReturn;
+        $hasReturn[$method] = true;
+        $target->objectShapeHasReturn = $hasReturn;
+
+        return $target;
+    }
+
+    private function openShapeMethodName(): string
+    {
+        ?string $name = $this->objectShapeOpenMethod;
+        if ($name === null || $name === '') {
+            throw new Exceptions\InvalidTypeException(
+                'param() and returns() require method() on this object shape.',
+            );
+        }
+
+        if (!($this->objectShapeMethodSigned[$name] ?? false)) {
+            array<string, bool> $signed = $this->objectShapeMethodSigned;
+            $signed[$name] = true;
+            $this->objectShapeMethodSigned = $signed;
+        }
+
+        return $name;
     }
 }

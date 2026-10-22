@@ -202,7 +202,7 @@ final class Installer
             throw $e;
         }
         try {
-            $release = \Tyhp\Generic::bind(\Tyhp\Json::decode(...), \Tyhp\Type::struct('Tyhp\\Compiler\\GitHubRelease', ['tag_name' => \Tyhp\Type::string(), 'assets' => \Tyhp\Type::generic('array', new \Tyhp\NamedType('TValue', \Tyhp\Type::struct('Tyhp\\Compiler\\GitHubReleaseAsset', ['name' => \Tyhp\Type::string(), 'browser_download_url' => \Tyhp\Type::string()], ['name', 'browser_download_url'])))], ['tag_name', 'assets']))($body);
+            $release = \Tyhp\Generic::bind(\Tyhp\Json::decode(...), \Tyhp\Type::ref('Tyhp\\Compiler\\GitHubRelease'))($body);
             if ($release['tag_name'] === '') {
                 throw new \RuntimeException(("GitHub release tag `$tag` was not found on " . self::RELEASE_REPO) . '.');
             }
@@ -217,7 +217,7 @@ final class Installer
     {
         $error = ['message' => ''];
         $apiMessage = null;
-        if (\Tyhp\Generic::bind(\Tyhp\Json::tryDecode(...), \Tyhp\Type::struct('Tyhp\\Compiler\\GitHubApiError', ['message' => \Tyhp\Type::string()], ['message']))($body, $error) && ($error['message'] !== '')) {
+        if (\Tyhp\Generic::bind(\Tyhp\Json::tryDecode(...), \Tyhp\Type::ref('Tyhp\\Compiler\\GitHubApiError'))($body, $error) && ($error['message'] !== '')) {
             $apiMessage = $error['message'];
         }
         return new \RuntimeException((("GitHub release tag `$tag` was not found on " . self::RELEASE_REPO) . (($apiMessage !== null) ? " ($apiMessage)" : '')) . '.');
@@ -251,7 +251,7 @@ final class Installer
             throw new \RuntimeException("composer.json not found at $path; cannot pin the compiler release tag.");
         }
         try {
-            $manifest = \Tyhp\Generic::bind(\Tyhp\Json::decode(...), \Tyhp\Type::struct('Tyhp\\Compiler\\ComposerManifest', ['version' => \Tyhp\Type::string()], ['version']))((string) \file_get_contents($path));
+            $manifest = \Tyhp\Generic::bind(\Tyhp\Json::decode(...), \Tyhp\Type::ref('Tyhp\\Compiler\\ComposerManifest'))((string) \file_get_contents($path));
             if (\trim($manifest['version']) === '') {
                 throw new \RuntimeException("composer.json at $path has no version; cannot pin the compiler release tag.");
             }

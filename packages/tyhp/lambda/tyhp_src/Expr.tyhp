@@ -1,0 +1,956 @@
+<?tyhp
+
+namespace Tyhp;
+
+use Tyhp\Expression\BinaryExpression;
+use Tyhp\Expression\CoalesceExpression;
+use Tyhp\Expression\ConstantExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\InstanceofExpression;
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\NewExpression;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\ParameterExpression;
+use Tyhp\Expression\PropertyAccessExpression;
+use Tyhp\Expression\ResolvedOperand;
+use Tyhp\Expression\StaticMethodCallExpression;
+use Tyhp\Expression\TernaryExpression;
+use Tyhp\Expression\TernaryFrame;
+use Tyhp\Expression\UnaryExpression;
+use Tyhp\Expression\ArgumentList;
+use Tyhp\Expression\ArrayAccessExpression;
+use Tyhp\Expression\CastExpression;
+
+/**
+ * Fluent expression builder.
+ *
+ * Start from {@see Expr::param()} and chain property hops and operators.
+ * `and()` / `or()` / `then()` / `else()` / `coalesce()` with no arguments
+ * continue from the original parameter. Each of those seals the left side
+ * first, so `a->and()->b->or()->c` is `(a && b) || c`.
+ *
+ * `nullSafe()` applies only to the next property. `expr()` turns a nested
+ * chain into one value so the next call applies to that whole result.
+ * `backedBy()` stores the native closure used by invoke. Omit it and invoke
+ * compiles a closure from the tree when every name and value can be represented
+ * safely, and walks the tree otherwise.
+ *
+ * @extends Expression<callable>
+ */
+class Expr extends Expression<callable> {
+    /**
+     * @param array<ParameterExpression> $parameters
+     * @param array<ParameterExpression> $roots
+     * @param array<TernaryFrame> $ternaryStack
+     */
+    public function __construct(
+        ExpressionNode $body,
+        array<ParameterExpression> $parameters,
+        ?\Closure $callable,
+        string $returnType,
+        private array<ParameterExpression> $roots,
+        private ExpressionNode $cursor,
+        private bool $pendingNullSafe,
+        private ?ExpressionNode $pendingLeft,
+        private ?string $pendingOp,
+        private bool $branchStarted,
+        private array<TernaryFrame> $ternaryStack,
+    ): parent($body, $parameters, $callable, $returnType) {}
+
+    /**
+     * Parameter the chain reads. `$index` is the argument position at invoke.
+     */
+    public static function param(string $name, string $type, int $index = 0): self {
+        ParameterExpression $parameter = new ParameterExpression($name, $type, $index);
+        return new self(
+            $parameter,
+            [$parameter],
+            null,
+            $type !== '' ? $type : 'mixed',
+            [$parameter],
+            $parameter,
+            false,
+            null,
+            null,
+            false,
+            [],
+        );
+    }
+
+    /**
+     * Several parameters. Property hops start at the first one; group closures
+     * receive one builder per parameter.
+     *
+     * @param self ...$parameters Each value is a {@see param()} builder.
+     */
+    public static function params(self ...$parameters): self {
+        if ($parameters === []) {
+            throw new \InvalidArgumentException('params() needs at least one parameter.');
+        }
+
+        array<ParameterExpression> $roots = [];
+        array<ParameterExpression> $all = [];
+        foreach ($parameters as $parameter) {
+            foreach ($parameter->roots as $root) {
+                $roots[] = $root;
+            }
+            $all = self::unionParams($all, $parameter->parameters);
+        }
+
+        ParameterExpression $first = $roots[0];
+        return new self(
+            $first,
+            $all,
+            null,
+            $first->type,
+            $roots,
+            $first,
+            false,
+            null,
+            null,
+            false,
+            [],
+        );
+    }
+
+    /**
+     * A chain whose value is `$value` and which has no parameters.
+     */
+    public static function literal(mixed $value): self {
+        ConstantExpression $node = new ConstantExpression($value, self::constantType($value));
+        return new self($node, [], null, $node->type, [], $node, false, null, null, true, []);
+    }
+
+    public static function isChainMethod(string $name): bool {
+        return \in_array(\strtolower($name), self::CHAIN_METHODS, true);
+    }
+
+    /**
+     * Property hop. Use this when the name is a builder method (`eq`, `and`, …).
+     */
+    public function prop(string $name): self {
+        bool $nullSafe = $this->pendingNullSafe;
+        ExpressionNode $object = $this->tip();
+        ExpressionNode $next = $nullSafe
+            ? new NullSafeAccessExpression($object, $name, 'mixed')
+            : new PropertyAccessExpression($object, $name, 'mixed');
+        return $this->derive($next, true, false, $this->pendingLeft, $this->pendingOp, $this->ternaryStack);
+    }
+
+    public function __get(string $name): self {
+        if (self::isChainMethod($name)) {
+            throw new \LogicException(
+                'Property "' . $name . '" matches a builder method. Use prop(\'' . $name . '\').',
+            );
+        }
+        return $this->prop($name);
+    }
+
+    /**
+     * The next property is read with `?->`. A builder method before that property is an error.
+     */
+    public function nullSafe(): self {
+        $this->guardNullSafe('nullSafe');
+        return $this->derive(
+            $this->cursor,
+            $this->branchStarted,
+            true,
+            $this->pendingLeft,
+            $this->pendingOp,
+            $this->ternaryStack,
+        );
+    }
+
+    /**
+     * Nested chain. The closure is called now with a builder for each original
+     * parameter and must return a builder. The next call applies to that result.
+     */
+    public function expr(mixed $group): self {
+        $this->guardNullSafe('expr');
+        ResolvedOperand $resolved = $this->resolveGroup($group);
+        if ($this->pendingOp !== null && !$this->branchStarted) {
+            return $this->derive(
+                $resolved->node,
+                true,
+                false,
+                $this->pendingLeft,
+                $this->pendingOp,
+                $this->ternaryStack,
+                $resolved->parameters,
+                $resolved->roots,
+            );
+        }
+        return $this->derive(
+            $resolved->node,
+            true,
+            false,
+            null,
+            null,
+            $this->ternaryStack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    /**
+     * Store the native closure. Invoke and compile call it and do not walk the tree.
+     *
+     * @template TCallable of callable
+     * @param \Closure<TCallable> $callable
+     * @return Expression<TCallable>
+     */
+    public function backedBy<TCallable extends callable>(\Closure<TCallable> $callable): Expression<TCallable> {
+        $this->guardNullSafe('backedBy');
+        $this->guardClosed('backedBy');
+        ExpressionNode $body = $this->materialize();
+        return new Expression<TCallable>(
+            $body,
+            self::unionParams([], $this->parameters),
+            $callable,
+            self::inferReturnType($callable, $body),
+        );
+    }
+
+    /**
+     * Replace the current value with a constant, keeping the parameters.
+     */
+    public function value(mixed $value): self {
+        $this->guardNullSafe('value');
+        ConstantExpression $node = new ConstantExpression($value, self::constantType($value));
+        return $this->derive($node, true, false, $this->pendingLeft, $this->pendingOp, $this->ternaryStack);
+    }
+
+    public function gt(mixed $value): self {
+        return $this->binary('>', $value, 'bool');
+    }
+
+    public function gte(mixed $value): self {
+        return $this->binary('>=', $value, 'bool');
+    }
+
+    public function lt(mixed $value): self {
+        return $this->binary('<', $value, 'bool');
+    }
+
+    public function lte(mixed $value): self {
+        return $this->binary('<=', $value, 'bool');
+    }
+
+    /**
+     * Strict equality (`===`).
+     */
+    public function eq(mixed $value): self {
+        return $this->binary('===', $value, 'bool');
+    }
+
+    /**
+     * Strict inequality (`!==`).
+     */
+    public function neq(mixed $value): self {
+        return $this->binary('!==', $value, 'bool');
+    }
+
+    /**
+     * Loose equality (`==`).
+     */
+    public function looseEq(mixed $value): self {
+        return $this->binary('==', $value, 'bool');
+    }
+
+    /**
+     * Loose inequality (`!=`).
+     */
+    public function looseNeq(mixed $value): self {
+        return $this->binary('!=', $value, 'bool');
+    }
+
+    public function same(mixed $value): self {
+        return $this->eq($value);
+    }
+
+    public function notSame(mixed $value): self {
+        return $this->neq($value);
+    }
+
+    public function isNull(): self {
+        return $this->eq(null);
+    }
+
+    public function isNotNull(): self {
+        return $this->neq(null);
+    }
+
+    public function spaceship(mixed $value): self {
+        return $this->binary('<=>', $value, 'int');
+    }
+
+    public function plus(mixed $value): self {
+        return $this->binary('+', $value, 'mixed');
+    }
+
+    public function minus(mixed $value): self {
+        return $this->binary('-', $value, 'mixed');
+    }
+
+    public function times(mixed $value): self {
+        return $this->binary('*', $value, 'mixed');
+    }
+
+    public function dividedBy(mixed $value): self {
+        return $this->binary('/', $value, 'mixed');
+    }
+
+    public function mod(mixed $value): self {
+        return $this->binary('%', $value, 'int');
+    }
+
+    public function pow(mixed $value): self {
+        return $this->binary('**', $value, 'mixed');
+    }
+
+    public function concat(mixed $value): self {
+        return $this->binary('.', $value, 'string');
+    }
+
+    public function bitAnd(mixed $value): self {
+        return $this->binary('&', $value, 'int');
+    }
+
+    public function bitOr(mixed $value): self {
+        return $this->binary('|', $value, 'int');
+    }
+
+    public function bitXor(mixed $value): self {
+        return $this->binary('^', $value, 'int');
+    }
+
+    public function shiftLeft(mixed $value): self {
+        return $this->binary('<<', $value, 'int');
+    }
+
+    public function shiftRight(mixed $value): self {
+        return $this->binary('>>', $value, 'int');
+    }
+
+    public function not(): self {
+        return $this->unary('!', 'bool');
+    }
+
+    public function neg(): self {
+        return $this->unary('-', 'mixed');
+    }
+
+    public function pos(): self {
+        return $this->unary('+', 'mixed');
+    }
+
+    public function bitNot(): self {
+        return $this->unary('~', 'int');
+    }
+
+    /**
+     * `&&`. With no argument, the next hops start again at the original parameter.
+     * A builder or closure is the whole right-hand side (parentheses).
+     */
+    public function and(mixed $other = null): self {
+        $this->guardNullSafe('and');
+        if (\func_num_args() === 0) {
+            return $this->jump('&&');
+        }
+        return $this->combineWith('&&', $other);
+    }
+
+    /**
+     * `||`. Same argument rules as {@see and()}.
+     */
+    public function or(mixed $other = null): self {
+        $this->guardNullSafe('or');
+        if (\func_num_args() === 0) {
+            return $this->jump('||');
+        }
+        return $this->combineWith('||', $other);
+    }
+
+    /**
+     * Boolean xor. Both sides are evaluated.
+     */
+    public function xor(mixed $other = null): self {
+        $this->guardNullSafe('xor');
+        if (\func_num_args() === 0) {
+            return $this->jump('xor');
+        }
+        return $this->combineWith('xor', $other);
+    }
+
+    /**
+     * `??`. The right-hand side, including a closure, uses the original parameter,
+     * not the left value.
+     */
+    public function coalesce(mixed $other = null): self {
+        $this->guardNullSafe('coalesce');
+        if (\func_num_args() === 0) {
+            return $this->jump('??');
+        }
+        return $this->combineWith('??', $other);
+    }
+
+    /**
+     * Open the true branch of a ternary. With no argument, the next hops start
+     * at the original parameter. A builder or closure is the whole true branch.
+     */
+    public function then(mixed $branch = null): self {
+        $this->guardNullSafe('then');
+        if (!$this->branchStarted && $this->pendingOp === null && $this->topPhase() === 'true') {
+            throw new \LogicException('Finish the true branch before another then().');
+        }
+
+        ExpressionNode $condition = $this->localNode();
+        array<TernaryFrame> $stack = $this->ternaryStack;
+        if (\func_num_args() === 0) {
+            $stack[] = new TernaryFrame($condition, null, 'true');
+            return $this->derive($this->rootCursor(), false, false, null, null, $stack);
+        }
+
+        ResolvedOperand $resolved = $this->resolve($branch, $this->parameters, $this->roots);
+        $stack[] = new TernaryFrame($condition, null, 'true');
+        return $this->derive(
+            $resolved->node,
+            true,
+            false,
+            null,
+            null,
+            $stack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    /**
+     * Close the true branch. `else($value)` / `else(fn)` / `else($builder)` finishes
+     * the ternary. `else()` with no argument makes the rest of the chain the false
+     * branch, starting again at the original parameter.
+     */
+    public function else(mixed $branch = null): self {
+        $this->guardNullSafe('else');
+        if ($this->ternaryStack === []) {
+            throw new \LogicException('else() needs a matching then().');
+        }
+
+        int $last = \count($this->ternaryStack) - 1;
+        TernaryFrame $frame = $this->ternaryStack[$last];
+        array<TernaryFrame> $parent = [];
+        for (int $i = 0; $i < $last; $i++) {
+            $parent[] = $this->ternaryStack[$i];
+        }
+
+        if ($frame->phase !== 'true') {
+            throw new \LogicException('else() is already building the false branch.');
+        }
+        if (!$this->branchStarted && $this->pendingOp === null) {
+            throw new \LogicException('then() needs a true branch before else().');
+        }
+
+        ExpressionNode $ifTrue = $this->localNode();
+        if (\func_num_args() === 0) {
+            $parent[] = new TernaryFrame($frame->condition, $ifTrue, 'false');
+            return $this->derive($this->rootCursor(), false, false, null, null, $parent);
+        }
+
+        ResolvedOperand $resolved = $this->resolve($branch, $this->parameters, $this->roots);
+        TernaryExpression $ternary = new TernaryExpression(
+            $frame->condition,
+            $ifTrue,
+            $resolved->node,
+            'mixed',
+        );
+        return $this->derive(
+            $ternary,
+            true,
+            false,
+            null,
+            null,
+            $parent,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    /**
+     * `instanceof` / `is`. `$type` is a class name or a builtin name such as `int`.
+     */
+    public function is(mixed $type): self {
+        $this->guardNullSafe('is');
+        if (!($type is string) || $type === '') {
+            throw new \InvalidArgumentException('is() expects a class name or builtin type name.');
+        }
+        InstanceofExpression $node = new InstanceofExpression($this->tip(), $type, 'bool');
+        return $this->derive($node, true, false, $this->pendingLeft, $this->pendingOp, $this->ternaryStack);
+    }
+
+    public function cast(string $type): self {
+        $this->guardNullSafe('cast');
+        CastExpression $node = new CastExpression($type, $this->tip());
+        return $this->derive($node, true, false, $this->pendingLeft, $this->pendingOp, $this->ternaryStack);
+    }
+
+    public function at(mixed $index): self {
+        $this->guardNullSafe('at');
+        ResolvedOperand $resolved = $this->resolve($index, $this->parameters, $this->roots);
+        ArrayAccessExpression $node = new ArrayAccessExpression($this->tip(), $resolved->node, 'mixed');
+        return $this->derive(
+            $node,
+            true,
+            false,
+            $this->pendingLeft,
+            $this->pendingOp,
+            $this->ternaryStack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    public function call(string $method, mixed ...$args): self {
+        $this->guardNullSafe('call');
+        ArgumentList $resolved = $this->resolveList($args);
+        MethodCallExpression $node = new MethodCallExpression($this->tip(), $method, $resolved->arguments, 'mixed');
+        return $this->derive(
+            $node,
+            true,
+            false,
+            $this->pendingLeft,
+            $this->pendingOp,
+            $this->ternaryStack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    public function staticCall(string $class, string $method, mixed ...$args): self {
+        $this->guardNullSafe('staticCall');
+        ArgumentList $resolved = $this->resolveList($args);
+        StaticMethodCallExpression $node = new StaticMethodCallExpression(
+            $class,
+            $method,
+            $resolved->arguments,
+            'mixed',
+        );
+        return $this->derive(
+            $node,
+            true,
+            false,
+            $this->pendingLeft,
+            $this->pendingOp,
+            $this->ternaryStack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    public function make(string $class, mixed ...$args): self {
+        $this->guardNullSafe('make');
+        ArgumentList $resolved = $this->resolveList($args);
+        NewExpression $node = new NewExpression($class, $resolved->arguments);
+        return $this->derive(
+            $node,
+            true,
+            false,
+            $this->pendingLeft,
+            $this->pendingOp,
+            $this->ternaryStack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    /**
+     * @param array<ParameterExpression> $parameters
+     * @param array<ParameterExpression> $roots
+     * @param array<TernaryFrame> $stack
+     */
+    private function derive(
+        ExpressionNode $cursor,
+        bool $branchStarted,
+        bool $pendingNullSafe,
+        ?ExpressionNode $pendingLeft,
+        ?string $pendingOp,
+        array<TernaryFrame> $stack,
+        ?array<ParameterExpression> $parameters = null,
+        ?array<ParameterExpression> $roots = null,
+    ): self {
+        array<ParameterExpression> $parameterList = $parameters ?? $this->parameters;
+        array<ParameterExpression> $rootList = $roots ?? $this->roots;
+        ExpressionNode $body = self::renderedBody($cursor, $branchStarted, $pendingLeft, $pendingOp, $stack);
+        return new self(
+            $body,
+            $parameterList,
+            null,
+            $body->type !== '' ? $body->type : 'mixed',
+            $rootList,
+            $cursor,
+            $pendingNullSafe,
+            $pendingLeft,
+            $pendingOp,
+            $branchStarted,
+            $stack,
+        );
+    }
+
+    private function binary(string $operator, mixed $right, string $type): self {
+        $this->guardNullSafe($operator);
+        ResolvedOperand $resolved = $this->resolve($right, $this->parameters, $this->roots);
+        BinaryExpression $node = new BinaryExpression($this->tip(), $operator, $resolved->node, $type);
+        return $this->derive(
+            $node,
+            true,
+            false,
+            $this->pendingLeft,
+            $this->pendingOp,
+            $this->ternaryStack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    private function unary(string $operator, string $type): self {
+        $this->guardNullSafe($operator);
+        UnaryExpression $node = new UnaryExpression($operator, $this->tip(), true, $type);
+        return $this->derive($node, true, false, $this->pendingLeft, $this->pendingOp, $this->ternaryStack);
+    }
+
+    /**
+     * Seal the value so far and continue from the original parameter.
+     * `a->and()->b->or()->c` is `(a && b) || c`.
+     */
+    private function jump(string $operator): self {
+        return $this->derive(
+            $this->rootCursor(),
+            false,
+            false,
+            $this->localNode(),
+            $operator,
+            $this->ternaryStack,
+        );
+    }
+
+    private function combineWith(string $operator, mixed $other): self {
+        ResolvedOperand $resolved = $this->resolve($other, $this->parameters, $this->roots);
+        ExpressionNode $node = self::fold($this->localNode(), $operator, $resolved->node);
+        return $this->derive(
+            $node,
+            true,
+            false,
+            null,
+            null,
+            $this->ternaryStack,
+            $resolved->parameters,
+            $resolved->roots,
+        );
+    }
+
+    private function tip(): ExpressionNode {
+        if (!$this->branchStarted && ($this->pendingOp !== null || $this->topPhase() !== null)) {
+            return $this->rootCursor();
+        }
+        return $this->cursor;
+    }
+
+    private function localNode(): ExpressionNode {
+        if ($this->pendingLeft !== null && $this->pendingOp !== null && $this->branchStarted) {
+            return self::fold($this->pendingLeft, $this->pendingOp, $this->cursor);
+        }
+        if ($this->pendingLeft !== null && $this->pendingOp !== null) {
+            return $this->pendingLeft;
+        }
+        return $this->cursor;
+    }
+
+    private function materialize(): ExpressionNode {
+        return self::renderedBody(
+            $this->cursor,
+            $this->branchStarted,
+            $this->pendingLeft,
+            $this->pendingOp,
+            $this->ternaryStack,
+        );
+    }
+
+    /**
+     * @param array<TernaryFrame> $stack
+     */
+    private static function renderedBody(
+        ExpressionNode $cursor,
+        bool $branchStarted,
+        ?ExpressionNode $pendingLeft,
+        ?string $pendingOp,
+        array<TernaryFrame> $stack,
+    ): ExpressionNode {
+        ExpressionNode $node = $cursor;
+        if ($pendingLeft !== null && $pendingOp !== null && $branchStarted) {
+            $node = self::fold($pendingLeft, $pendingOp, $cursor);
+        } elseif ($pendingLeft !== null && $pendingOp !== null) {
+            $node = $pendingLeft;
+        }
+
+        int $count = \count($stack);
+        for (int $i = $count - 1; $i >= 0; $i--) {
+            TernaryFrame $frame = $stack[$i];
+            if ($frame->phase !== 'false') {
+                break;
+            }
+            if ($i === $count - 1 && !$branchStarted && $pendingOp === null) {
+                break;
+            }
+            if ($frame->ifTrue === null) {
+                throw new \LogicException('else() is missing the true branch.');
+            }
+            $node = new TernaryExpression($frame->condition, $frame->ifTrue, $node, 'mixed');
+        }
+        return $node;
+    }
+
+    private static function fold(ExpressionNode $left, string $operator, ExpressionNode $right): ExpressionNode {
+        if ($operator === '??') {
+            return new CoalesceExpression($left, $right, 'mixed');
+        }
+        string $type = (
+            $operator === '&&'
+            || $operator === '||'
+            || $operator === 'xor'
+            || $operator === 'and'
+            || $operator === 'or'
+        ) ? 'bool' : 'mixed';
+        return new BinaryExpression($left, $operator, $right, $type);
+    }
+
+    /**
+     * @param array<ParameterExpression> $parameters
+     * @param array<ParameterExpression> $roots
+     */
+    private function resolve(
+        mixed $value,
+        array<ParameterExpression> $parameters,
+        array<ParameterExpression> $roots,
+    ): ResolvedOperand {
+        if ($value instanceof \Closure) {
+            self $built = $this->invokeGroup($value);
+            return new ResolvedOperand(
+                $built->materialize(),
+                self::unionParams($parameters, $built->parameters),
+                self::unionParams($roots, $built->roots),
+            );
+        }
+        if ($value instanceof self) {
+            return new ResolvedOperand(
+                $value->materialize(),
+                self::unionParams($parameters, $value->parameters),
+                self::unionParams($roots, $value->roots),
+            );
+        }
+        if ($value instanceof Expression) {
+            return new ResolvedOperand(
+                $value->body,
+                self::unionParams($parameters, $value->parameters),
+                $roots,
+            );
+        }
+        return new ResolvedOperand(
+            new ConstantExpression($value, self::constantType($value)),
+            $parameters,
+            $roots,
+        );
+    }
+
+    private function resolveGroup(mixed $group): ResolvedOperand {
+        if ($group instanceof \Closure || $group instanceof self) {
+            return $this->resolve($group, $this->parameters, $this->roots);
+        }
+        throw new \InvalidArgumentException('expr() expects a builder or a closure.');
+    }
+
+    /**
+     * @param array<int|string, mixed> $args
+     */
+    private function resolveList(array<int|string, mixed> $args): ArgumentList {
+        array<ParameterExpression> $parameters = $this->parameters;
+        array<ParameterExpression> $roots = $this->roots;
+        array<ExpressionNode> $nodes = [];
+        foreach ($args as $arg) {
+            ResolvedOperand $resolved = $this->resolve($arg, $parameters, $roots);
+            $nodes[] = $resolved->node;
+            $parameters = $resolved->parameters;
+            $roots = $resolved->roots;
+        }
+        return new ArgumentList($nodes, $parameters, $roots);
+    }
+
+    private function invokeGroup(\Closure $closure): self {
+        if ($this->roots === []) {
+            throw new \InvalidArgumentException('This expression has no parameter to pass into the closure.');
+        }
+        array<self> $builders = [];
+        foreach ($this->roots as $root) {
+            $builders[] = self::fromRoot($root);
+        }
+        mixed $returned = $closure(...$builders);
+        if (!($returned instanceof self)) {
+            throw new \InvalidArgumentException('Expression closure must return a builder.');
+        }
+        return $returned;
+    }
+
+    private static function fromRoot(ParameterExpression $parameter): self {
+        return new self(
+            $parameter,
+            [$parameter],
+            null,
+            $parameter->type !== '' ? $parameter->type : 'mixed',
+            [$parameter],
+            $parameter,
+            false,
+            null,
+            null,
+            false,
+            [],
+        );
+    }
+
+    private function rootCursor(): ExpressionNode {
+        if ($this->roots === []) {
+            throw new \LogicException(
+                'There is no parameter to continue from. Pass the right-hand side to and(), or(), then(), else(), or coalesce().',
+            );
+        }
+        return $this->roots[0];
+    }
+
+    private function topPhase(): ?string {
+        if ($this->ternaryStack === []) {
+            return null;
+        }
+        return $this->ternaryStack[\count($this->ternaryStack) - 1]->phase;
+    }
+
+    private function guardNullSafe(string $method): void {
+        if ($this->pendingNullSafe) {
+            throw new \LogicException(
+                'nullSafe() must be followed by a property, not ' . $method . '().',
+            );
+        }
+    }
+
+    private function guardClosed(string $method): void {
+        if ($this->pendingOp !== null && !$this->branchStarted) {
+            throw new \LogicException('Finish the right-hand side before ' . $method . '().');
+        }
+        string|null $phase = $this->topPhase();
+        if ($phase === 'true' && !$this->branchStarted && $this->pendingOp === null) {
+            throw new \LogicException('Finish the true branch before ' . $method . '().');
+        }
+        if ($phase === 'false' && !$this->branchStarted && $this->pendingOp === null) {
+            throw new \LogicException('Finish the false branch before ' . $method . '().');
+        }
+    }
+
+    /**
+     * @param array<ParameterExpression> $left
+     * @param array<ParameterExpression> $right
+     * @return array<ParameterExpression>
+     */
+    private static function unionParams(
+        array<ParameterExpression> $left,
+        array<ParameterExpression> $right,
+    ): array<ParameterExpression> {
+        array<int, ParameterExpression> $byIndex = [];
+        foreach ($left as $parameter) {
+            $byIndex[$parameter->index] = $parameter;
+        }
+        foreach ($right as $parameter) {
+            if (!\array_key_exists($parameter->index, $byIndex)) {
+                $byIndex[$parameter->index] = $parameter;
+            }
+        }
+        \ksort($byIndex);
+        array<ParameterExpression> $result = [];
+        foreach ($byIndex as $parameter) {
+            $result[] = $parameter;
+        }
+        return $result;
+    }
+
+    private static function constantType(mixed $value): string {
+        if ($value === null) {
+            return 'null';
+        }
+        if ($value === true) {
+            return 'true';
+        }
+        if ($value === false) {
+            return 'false';
+        }
+        if ($value is int) {
+            return (string)$value;
+        }
+        if ($value is float) {
+            return (string)$value;
+        }
+        if ($value is string) {
+            return 'string';
+        }
+        if (\is_array($value)) {
+            return 'array';
+        }
+        if (\is_object($value)) {
+            return $value::class;
+        }
+        return 'mixed';
+    }
+
+    private const array<string> CHAIN_METHODS = [
+        'and',
+        'or',
+        'xor',
+        'then',
+        'else',
+        'nullsafe',
+        'expr',
+        'prop',
+        'gte',
+        'gt',
+        'lte',
+        'lt',
+        'eq',
+        'neq',
+        'looseeq',
+        'looseneq',
+        'same',
+        'notsame',
+        'isnull',
+        'isnotnull',
+        'coalesce',
+        'call',
+        'staticcall',
+        'backedby',
+        'plus',
+        'minus',
+        'times',
+        'dividedby',
+        'mod',
+        'pow',
+        'concat',
+        'spaceship',
+        'bitand',
+        'bitor',
+        'bitxor',
+        'shiftleft',
+        'shiftright',
+        'not',
+        'neg',
+        'pos',
+        'bitnot',
+        'value',
+        'is',
+        'at',
+        'cast',
+        'make',
+    ];
+}

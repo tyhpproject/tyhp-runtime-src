@@ -1,0 +1,506 @@
+<?tyhp
+
+namespace Tyhp\Expression;
+
+use Tyhp\Type;
+
+/**
+ * Evaluates an expression tree when no native closure was stored.
+ *
+ * `&&` / `||`, `??`, and `?->` stop as soon as PHP would. Property reads are
+ * public `->` / `?->` on objects. A node this walker cannot run the way PHP
+ * would throws, rather than guessing.
+ */
+final class ExpressionInterpreter {
+    /**
+     * @param array<ParameterExpression> $parameters
+     */
+    public static function evaluate(
+        ExpressionNode $node,
+        array<ParameterExpression> $parameters,
+        mixed ...$args,
+    ): mixed {
+        (void)$parameters;
+        return self::evalNode($node, $args);
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private static function evalNode(ExpressionNode $node, array<int, mixed> $args): mixed {
+        if ($node instanceof ParameterExpression) {
+            if (!\array_key_exists($node->index, $args)) {
+                throw new \ArgumentCountError(
+                    'Expression parameter $' . $node->name . ' at index ' . (string)$node->index . ' was not passed.',
+                );
+            }
+            return $args[$node->index];
+        }
+
+        if ($node instanceof ConstantExpression) {
+            return $node->value;
+        }
+
+        if ($node instanceof PropertyAccessExpression) {
+            return self::readProperty(self::evalNode($node->object, $args), $node->property, false);
+        }
+
+        if ($node instanceof NullSafeAccessExpression) {
+            mixed $object = self::evalNode($node->object, $args);
+            if ($object === null) {
+                return null;
+            }
+            return self::readProperty($object, $node->property, true);
+        }
+
+        if ($node instanceof BinaryExpression) {
+            return self::evalBinary($node, $args);
+        }
+
+        if ($node instanceof UnaryExpression) {
+            return self::evalUnary($node, $args);
+        }
+
+        if ($node instanceof TernaryExpression) {
+            mixed $condition = self::evalNode($node->condition, $args);
+            if ((bool)$condition) {
+                if ($node->ifTrue === null) {
+                    return $condition;
+                }
+                return self::evalNode($node->ifTrue, $args);
+            }
+            return self::evalNode($node->ifFalse, $args);
+        }
+
+        if ($node instanceof CoalesceExpression) {
+            mixed $left = self::evalNode($node->left, $args);
+            if ($left !== null) {
+                return $left;
+            }
+            return self::evalNode($node->right, $args);
+        }
+
+        if ($node instanceof ArrayAccessExpression) {
+            return self::readIndex(
+                self::evalNode($node->array, $args),
+                self::evalNode($node->index, $args),
+            );
+        }
+
+        if ($node instanceof CastExpression) {
+            return self::castValue($node->targetType, self::evalNode($node->operand, $args));
+        }
+
+        if ($node instanceof MethodCallExpression) {
+            mixed $object = self::evalNode($node->object, $args);
+            array<mixed> $methodArgs = [];
+            foreach ($node->arguments as $argument) {
+                $methodArgs[] = self::evalNode($argument, $args);
+            }
+            return self::callMethod($object, $node->method, $methodArgs);
+        }
+
+        if ($node instanceof StaticMethodCallExpression) {
+            array<mixed> $methodArgs = [];
+            foreach ($node->arguments as $argument) {
+                $methodArgs[] = self::evalNode($argument, $args);
+            }
+            return self::callStatic($node->class, $node->method, $methodArgs);
+        }
+
+        if ($node instanceof NewExpression) {
+            array<mixed> $ctorArgs = [];
+            foreach ($node->arguments as $argument) {
+                $ctorArgs[] = self::evalNode($argument, $args);
+            }
+            return self::construct($node->class, $ctorArgs);
+        }
+
+        if ($node instanceof InstanceofExpression) {
+            return self::valueIsType(self::evalNode($node->operand, $args), $node->targetType);
+        }
+
+        throw new \RuntimeException(
+            'Cannot evaluate expression node "' . $node->nodeType . '".',
+        );
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private static function evalBinary(BinaryExpression $node, array<int, mixed> $args): mixed {
+        string $operator = $node->operator;
+
+        if ($operator === '&&' || $operator === 'and') {
+            mixed $left = self::evalNode($node->left, $args);
+            if (!((bool)$left)) {
+                return false;
+            }
+            return (bool)self::evalNode($node->right, $args);
+        }
+
+        if ($operator === '||' || $operator === 'or') {
+            mixed $left = self::evalNode($node->left, $args);
+            if ((bool)$left) {
+                return true;
+            }
+            return (bool)self::evalNode($node->right, $args);
+        }
+
+        if ($operator === '??') {
+            mixed $left = self::evalNode($node->left, $args);
+            if ($left !== null) {
+                return $left;
+            }
+            return self::evalNode($node->right, $args);
+        }
+
+        mixed $left = self::evalNode($node->left, $args);
+        mixed $right = self::evalNode($node->right, $args);
+
+        if ($operator === 'xor') {
+            return ((bool)$left) !== ((bool)$right);
+        }
+
+        if (
+            $operator === '>'
+            || $operator === '>='
+            || $operator === '<'
+            || $operator === '<='
+            || $operator === '=='
+            || $operator === '!='
+            || $operator === '<>'
+            || $operator === '==='
+            || $operator === '!=='
+        ) {
+            string $compareOp = $operator === '<>' ? '!=' : $operator;
+            return FluentSupport::evaluateBinary($left, $compareOp, $right);
+        }
+
+        if ($operator === '<=>') {
+            return self::spaceship($left, $right);
+        }
+
+        return match ($operator) {
+            '+' => self::add($left, $right),
+            '-' => self::subtract($left, $right),
+            '*' => self::multiply($left, $right),
+            '/' => self::divide($left, $right),
+            '%' => self::modulo($left, $right),
+            '**' => self::power($left, $right),
+            '.' => self::concat($left, $right),
+            '&' => self::bitAnd($left, $right),
+            '|' => self::bitOr($left, $right),
+            '^' => self::bitXor($left, $right),
+            '<<' => self::shiftLeft($left, $right),
+            '>>' => self::shiftRight($left, $right),
+            default => throw new \RuntimeException(
+                'Cannot evaluate binary operator "' . $operator . '".',
+            ),
+        };
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private static function evalUnary(UnaryExpression $node, array<int, mixed> $args): mixed {
+        if (!$node->isPrefix) {
+            throw new \RuntimeException(
+                'Cannot evaluate postfix operator "' . $node->operator . '".',
+            );
+        }
+
+        mixed $value = self::evalNode($node->operand, $args);
+        return match ($node->operator) {
+            '!' => !((bool)$value),
+            '+' => self::positive($value),
+            '-' => self::negative($value),
+            '~' => self::bitNot($value),
+            default => throw new \RuntimeException(
+                'Cannot evaluate unary operator "' . $node->operator . '".',
+            ),
+        };
+    }
+
+    private static function readProperty(mixed $object, string $property, bool $nullSafe): mixed {
+        if ($object === null) {
+            if ($nullSafe) {
+                return null;
+            }
+            throw new \Error('Cannot read property "' . $property . '" on null.');
+        }
+        if (!\is_object($object)) {
+            throw new \Error(
+                'Cannot read property "' . $property . '" on ' . \get_debug_type($object) . '.',
+            );
+        }
+        return $object->{$property};
+    }
+
+    private static function readIndex(mixed $array, mixed $index): mixed {
+        if ($index is int) {
+            return self::readKeyed($array, $index);
+        }
+        if ($index is string) {
+            return self::readKeyed($array, $index);
+        }
+        if ($index === null) {
+            return self::readKeyed($array, '');
+        }
+        if ($index is bool) {
+            return self::readKeyed($array, $index ? 1 : 0);
+        }
+        if ($index is float) {
+            return self::readKeyed($array, (int)$index);
+        }
+        throw new \TypeError(
+            'Cannot use ' . \get_debug_type($index) . ' as an array key.',
+        );
+    }
+
+    private static function readKeyed(mixed $array, int|string $index): mixed {
+        if ($array instanceof \ArrayAccess) {
+            return $array[$index];
+        }
+        if (!\is_array($array)) {
+            throw new \Error(
+                'Cannot use ' . \get_debug_type($array) . ' as an array.',
+            );
+        }
+        return $array[$index];
+    }
+
+    /**
+     * @param array<mixed> $args
+     */
+    private static function callMethod(mixed $object, string $method, array<mixed> $args): mixed {
+        if (!\is_object($object)) {
+            throw new \Error(
+                'Cannot call method ' . $method . ' on ' . \get_debug_type($object) . '.',
+            );
+        }
+        return $object->{$method}(...$args);
+    }
+
+    /**
+     * @param array<mixed> $args
+     */
+    private static function callStatic(string $class, string $method, array<mixed> $args): mixed {
+        return $class::$method(...$args);
+    }
+
+    /**
+     * @param array<mixed> $args
+     */
+    private static function construct(string $class, array<mixed> $args): object {
+        $reflection = new \ReflectionClass($class);
+        return $reflection->newInstanceArgs($args);
+    }
+
+    private static function valueIsType(mixed $value, string $targetType): bool {
+        string $name = \ltrim($targetType, '\\');
+        bool $nullable = false;
+        if (\str_starts_with($name, '?')) {
+            $nullable = true;
+            $name = \ltrim(\substr($name, 1), '\\');
+        }
+        if ($nullable && $value === null) {
+            return true;
+        }
+        if (\str_contains($name, '|') || \str_contains($name, '&')) {
+            throw new \RuntimeException(
+                'Cannot evaluate instanceof against "' . $targetType . '".',
+            );
+        }
+        if ($name === 'true') {
+            return $value === true;
+        }
+        if ($name === 'false') {
+            return $value === false;
+        }
+        if ($name !== '' && (\class_exists($name) || \interface_exists($name) || \enum_exists($name))) {
+            return \is_object($value) && $value instanceof $name;
+        }
+
+        Type $type = self::builtinType($name);
+        if ($nullable) {
+            $type = Type::nullable($type);
+        }
+        return Type::is($value, $type);
+    }
+
+    private static function builtinType(string $name): Type {
+        return match (\strtolower($name)) {
+            'string' => Type::string(),
+            'int', 'integer' => Type::int(),
+            'float', 'double', 'real' => Type::float(),
+            'bool', 'boolean' => Type::bool(),
+            'null' => Type::null(),
+            'array' => Type::array(),
+            'object' => Type::object(),
+            'callable' => Type::callable(),
+            'iterable' => Type::iterable(),
+            'mixed' => Type::mixed(),
+            'void' => Type::void(),
+            'never' => Type::never(),
+            'resource' => Type::resource(),
+            default => Type::fromClassName($name),
+        };
+    }
+
+    private static function castValue(string $type, mixed $value): mixed {
+        string $name = \strtolower(\ltrim($type, '\\'));
+        return match ($name) {
+            'int', 'integer' => (int)$value,
+            'bool', 'boolean' => (bool)$value,
+            'string', 'binary' => (string)$value,
+            'float', 'double', 'real' => (float)$value,
+            'array' => (array)$value,
+            'object' => (object)$value,
+            default => throw new \RuntimeException(
+                'Cannot evaluate cast to "' . $type . '".',
+            ),
+        };
+    }
+
+    private static function spaceship(mixed $left, mixed $right): int {
+        if (FluentSupport::evaluateBinary($left, '===', $right) || FluentSupport::evaluateBinary($left, '==', $right)) {
+            if (!FluentSupport::evaluateBinary($left, '<', $right) && !FluentSupport::evaluateBinary($left, '>', $right)) {
+                return 0;
+            }
+        }
+        if (FluentSupport::evaluateBinary($left, '<', $right)) {
+            return -1;
+        }
+        if (FluentSupport::evaluateBinary($left, '>', $right)) {
+            return 1;
+        }
+        throw new \RuntimeException('Cannot evaluate <=> for these values.');
+    }
+
+    private static function add(mixed $left, mixed $right): mixed {
+        if (\is_array($left) && \is_array($right)) {
+            return $left + $right;
+        }
+        int|float $ln = self::number($left, '+');
+        int|float $rn = self::number($right, '+');
+        return $ln + $rn;
+    }
+
+    private static function subtract(mixed $left, mixed $right): int|float {
+        return self::number($left, '-') - self::number($right, '-');
+    }
+
+    private static function multiply(mixed $left, mixed $right): int|float {
+        return self::number($left, '*') * self::number($right, '*');
+    }
+
+    private static function divide(mixed $left, mixed $right): int|float {
+        return self::number($left, '/') / self::number($right, '/');
+    }
+
+    private static function modulo(mixed $left, mixed $right): int {
+        return self::asInt($left, '%') % self::asInt($right, '%');
+    }
+
+    private static function power(mixed $left, mixed $right): int|float {
+        return self::number($left, '**') ** self::number($right, '**');
+    }
+
+    private static function concat(mixed $left, mixed $right): string {
+        return self::stringify($left) . self::stringify($right);
+    }
+
+    private static function bitAnd(mixed $left, mixed $right): int {
+        return self::asInt($left, '&') & self::asInt($right, '&');
+    }
+
+    private static function bitOr(mixed $left, mixed $right): int {
+        return self::asInt($left, '|') | self::asInt($right, '|');
+    }
+
+    private static function bitXor(mixed $left, mixed $right): int {
+        return self::asInt($left, '^') ^ self::asInt($right, '^');
+    }
+
+    private static function shiftLeft(mixed $left, mixed $right): int {
+        return self::asInt($left, '<<') << self::asInt($right, '<<');
+    }
+
+    private static function shiftRight(mixed $left, mixed $right): int {
+        return self::asInt($left, '>>') >> self::asInt($right, '>>');
+    }
+
+    private static function positive(mixed $value): int|float {
+        return self::number($value, '+');
+    }
+
+    private static function negative(mixed $value): int|float {
+        return -self::number($value, '-');
+    }
+
+    private static function bitNot(mixed $value): int {
+        return ~self::asInt($value, '~');
+    }
+
+    private static function number(mixed $value, string $operator): int|float {
+        if ($value is int) {
+            return $value;
+        }
+        if ($value is float) {
+            return $value;
+        }
+        if ($value === null) {
+            return 0;
+        }
+        if ($value === true) {
+            return 1;
+        }
+        if ($value === false) {
+            return 0;
+        }
+        if ($value is string) {
+            if (!\is_numeric($value)) {
+                throw new \TypeError(
+                    'Cannot apply ' . $operator . ' to a non-numeric string.',
+                );
+            }
+            if (\str_contains($value, '.') || \str_contains($value, 'e') || \str_contains($value, 'E')) {
+                return (float)$value;
+            }
+            return (int)$value;
+        }
+        throw new \TypeError(
+            'Cannot apply ' . $operator . ' to ' . \get_debug_type($value) . '.',
+        );
+    }
+
+    private static function asInt(mixed $value, string $operator): int {
+        int|float $number = self::number($value, $operator);
+        return (int)$number;
+    }
+
+    private static function stringify(mixed $value): string {
+        if ($value is string) {
+            return $value;
+        }
+        if ($value === null || $value === false) {
+            return '';
+        }
+        if ($value === true) {
+            return '1';
+        }
+        if ($value is int) {
+            return (string)$value;
+        }
+        if ($value is float) {
+            return (string)$value;
+        }
+        if (\is_object($value) && $value instanceof \Stringable) {
+            return (string)$value;
+        }
+        throw new \TypeError(
+            'Cannot concatenate ' . \get_debug_type($value) . '.',
+        );
+    }
+}

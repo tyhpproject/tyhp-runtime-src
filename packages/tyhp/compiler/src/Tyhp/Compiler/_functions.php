@@ -8,4 +8,11 @@ declare(strict_types=1);
 
 namespace Tyhp\Compiler;
 
+\Tyhp\Type::register('Tyhp\\Compiler\\GitHubReleaseAsset', fn () => \Tyhp\Type::struct()->field('name', \Tyhp\Type::string())->field('browser_download_url', \Tyhp\Type::string()));
+
+\Tyhp\Type::register('Tyhp\\Compiler\\GitHubRelease', fn () => \Tyhp\Type::struct()->field('tag_name', \Tyhp\Type::string())->field('assets', \Tyhp\Type::listOf(\Tyhp\Type::ref('Tyhp\\Compiler\\GitHubReleaseAsset'))));
+
+\Tyhp\Type::register('Tyhp\\Compiler\\GitHubApiError', fn () => \Tyhp\Type::struct()->field('message', \Tyhp\Type::string()));
+
+\Tyhp\Type::register('Tyhp\\Compiler\\ComposerManifest', fn () => \Tyhp\Type::struct()->field('version', \Tyhp\Type::string()));
 //# sourceMappingURL=_functions.php.map

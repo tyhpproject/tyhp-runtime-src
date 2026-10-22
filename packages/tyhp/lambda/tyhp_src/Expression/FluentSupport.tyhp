@@ -201,14 +201,17 @@ final class FluentSupport {
         }
 
         ExpressionNode $body = new BinaryExpression($left->body, $operator, $right->body, 'bool');
-        \Closure $leftCallable = $left->callable;
-        \Closure $rightCallable = $right->callable;
-        \Closure $callable = static function (mixed ...$args) use ($leftCallable, $rightCallable, $operator): bool {
-            if ($operator === '&&') {
-                return (bool) $leftCallable(...$args) && (bool) $rightCallable(...$args);
-            }
-            return (bool) $leftCallable(...$args) || (bool) $rightCallable(...$args);
-        };
+        ?\Closure $leftCallable = $left->callable;
+        ?\Closure $rightCallable = $right->callable;
+        ?\Closure $callable = null;
+        if ($leftCallable !== null && $rightCallable !== null) {
+            $callable = static function (mixed ...$args) use ($leftCallable, $rightCallable, $operator): bool {
+                if ($operator === '&&') {
+                    return (bool) $leftCallable(...$args) && (bool) $rightCallable(...$args);
+                }
+                return (bool) $leftCallable(...$args) || (bool) $rightCallable(...$args);
+            };
+        }
 
         return new Expression<callable(mixed): bool>($body, $left->parameters, $callable, 'bool');
     }

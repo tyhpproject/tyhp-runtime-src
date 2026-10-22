@@ -65,6 +65,7 @@ readonly PROJECT_ROOT="$(cd "${PUBLISH_SCRIPT_DIR}/.." && pwd)"
 readonly PACKAGES_DIR="${PROJECT_ROOT}/packages"
 readonly GITHUB_ORG="tyhpproject-packages"
 readonly PACKAGIST_CREDENTIALS_FILE="${PROJECT_ROOT}/scripts/packagist.credentials"
+readonly PUBLISH_HELPERS="${PUBLISH_SCRIPT_DIR}/publish-helpers.php"
 readonly GITHUB_REPO_CACHE_FILE="${PROJECT_ROOT}/.github-repo-cache"
 readonly PACKAGIST_USER_AGENT="tyhp-publish-runtime-packages (+https://github.com/tyhpproject/tyhp-runtime-src; mailto=email@tyhplang.com)"
 
@@ -365,14 +366,7 @@ package_github_repos() {
 }
 
 ownership_is_handed_off() {
-  python3 - "$1" <<'PY'
-import json, sys
-doc = json.load(open(sys.argv[1], encoding="utf-8"))
-extra = doc.get("extra") if isinstance(doc.get("extra"), dict) else {}
-tyhp = extra.get("tyhp") if isinstance(extra.get("tyhp"), dict) else {}
-ownership = tyhp.get("ownership") if isinstance(tyhp.get("ownership"), dict) else {}
-sys.exit(0 if ownership.get("status") == "handed-off" else 1)
-PY
+  php "$PUBLISH_HELPERS" handed-off "$1"
 }
 
 is_versioned_composer_lib() {
@@ -393,8 +387,7 @@ package_dir() {
 
 read_composer_name() {
   local pkg="$1"
-  python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('name',''))" \
-    "$(package_dir "$pkg")/composer.json" 2>/dev/null || true
+  php "$PUBLISH_HELPERS" composer-name "$(package_dir "$pkg")/composer.json" 2>/dev/null || true
 }
 
 # Restrict ALL_PACKAGES to the single entry named by --package.
@@ -458,16 +451,7 @@ filter_to_requested_package() {
 }
 
 read_tyhp_package_version() {
-  local composer_json="$1"
-  python3 - "$composer_json" <<'PY'
-import json, sys
-path = sys.argv[1]
-raw = str(json.load(open(path)).get("version", "")).strip()
-if not raw:
-    print(f"Missing version in {path}", file=sys.stderr)
-    sys.exit(1)
-print(raw)
-PY
+  php "$PUBLISH_HELPERS" composer-version "$1"
 }
 
 # Return 0 if needle is one of the remaining arguments. Safe with set -u when
@@ -594,31 +578,14 @@ seed_github_repo_cache_from_org() {
     local err
     err="$(mktemp "${TMPDIR:-/tmp}/tyhp-github.XXXXXX")"
     rc=0
-    gh repo list "$GITHUB_ORG" --limit 5000 --json name >"$log" 2>"$err" || rc=$?
+    gh repo list "$GITHUB_ORG" --limit 5000 --json name --jq '.[].name' >"$log" 2>"$err" || rc=$?
     if [[ -s "$err" ]]; then
       cat "$err"
     fi
     output="$(cat "$err")"
     rm -f "$err"
     if [[ "$rc" -eq 0 ]]; then
-      if python3 - "$log" "$GITHUB_REPO_CACHE_FILE" <<'PY'
-import json, sys
-src, dest = sys.argv[1], sys.argv[2]
-data = json.load(open(src, encoding="utf-8"))
-names = []
-seen = set()
-for item in data:
-    if not isinstance(item, dict):
-        continue
-    name = str(item.get("name") or "").strip()
-    if name and name not in seen:
-        seen.add(name)
-        names.append(name)
-with open(dest, "w", encoding="utf-8") as out:
-    if names:
-        out.write("\n".join(names) + "\n")
-PY
-      then
+      if awk 'NF && !seen[$0]++' "$log" > "$GITHUB_REPO_CACHE_FILE"; then
         rm -f "$log"
         load_github_repo_cache
         echo "GitHub: cached ${#GITHUB_KNOWN_REPOS[@]} existing repos"
@@ -764,22 +731,7 @@ github_repo_exists() {
 # GitHub About text: composer.json description (≤350 chars), else a short fallback.
 github_repo_description() {
   local pkg="$1"
-  python3 - "$(package_dir "$pkg")/composer.json" "$pkg" <<'PY'
-import json, sys
-
-path, pkg = sys.argv[1], sys.argv[2]
-try:
-    data = json.load(open(path, encoding="utf-8"))
-except (OSError, json.JSONDecodeError):
-    data = {}
-desc = " ".join(str(data.get("description") or "").split())
-if not desc:
-    name = str(data.get("name") or "").strip() or pkg
-    desc = f"Tyhp package {name}"
-if len(desc) > 350:
-    desc = desc[:347] + "..."
-print(desc)
-PY
+  php "$PUBLISH_HELPERS" repo-description "$(package_dir "$pkg")/composer.json" "$pkg"
 }
 
 # Description for a repo slug, including "<name>-impl". Falls back when no
@@ -924,67 +876,11 @@ github_https_url() {
 # 0 = on Packagist, 1 = missing, 2 = unexpected HTTP error.
 packagist_package_exists() {
   local name="$1"
-  python3 - "$name" "$PACKAGIST_USER_AGENT" <<'PY'
-import sys
-import urllib.error
-import urllib.parse
-import urllib.request
-
-name, ua = sys.argv[1], sys.argv[2]
-vendor, _, proj = name.partition("/")
-if not vendor or not proj:
-    print(f"error: invalid Composer name {name!r}", file=sys.stderr)
-    sys.exit(2)
-url = "https://packagist.org/packages/{}/{}.json".format(
-    urllib.parse.quote(vendor, safe=""),
-    urllib.parse.quote(proj, safe=""),
-)
-req = urllib.request.Request(url, headers={"User-Agent": ua})
-try:
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        sys.exit(0 if 200 <= resp.getcode() < 300 else 2)
-except urllib.error.HTTPError as err:
-    if err.code == 404:
-        sys.exit(1)
-    print(f"error: Packagist lookup {name} failed: HTTP {err.code}", file=sys.stderr)
-    sys.exit(2)
-except urllib.error.URLError as err:
-    print(f"error: Packagist lookup {name} failed: {err}", file=sys.stderr)
-    sys.exit(2)
-PY
+  php "$PUBLISH_HELPERS" packagist-exists "$name" "$PACKAGIST_USER_AGENT"
 }
 
 load_packagist_credentials() {
-  python3 - "$PACKAGIST_CREDENTIALS_FILE" <<'PY'
-import sys
-
-path = sys.argv[1]
-username = None
-token = None
-try:
-    lines = open(path, encoding="utf-8").read().splitlines()
-except OSError as err:
-    print(f"error: cannot read {path}: {err}", file=sys.stderr)
-    sys.exit(1)
-for raw in lines:
-    line = raw.strip()
-    if not line or line.startswith("#") or "=" not in line:
-        continue
-    key, _, val = line.partition("=")
-    key = key.strip()
-    val = val.strip().strip("'").strip('"')
-    if key == "PACKAGIST_USERNAME":
-        username = val
-    elif key == "PACKAGIST_API_TOKEN":
-        token = val
-if not username:
-    print(f"error: PACKAGIST_USERNAME is empty in {path}", file=sys.stderr)
-    sys.exit(1)
-if not token:
-    print(f"error: PACKAGIST_API_TOKEN is empty in {path}", file=sys.stderr)
-    sys.exit(1)
-print(username)
-PY
+  php "$PUBLISH_HELPERS" packagist-username "$PACKAGIST_CREDENTIALS_FILE"
 }
 
 validate_packagist_credentials() {
@@ -998,81 +894,11 @@ validate_packagist_credentials() {
   echo "Packagist credentials loaded for ${username} from ${PACKAGIST_CREDENTIALS_FILE}"
 }
 
-# POST /api/create-package. Python reads the gitignored credentials file so the
-# MAIN token is not interpolated into the process argv.
+# POST /api/create-package. The helper reads the gitignored credentials file so
+# the MAIN token is not interpolated into the process argv.
 create_packagist_package() {
   local repo_url="$1"
-  python3 - "$PACKAGIST_CREDENTIALS_FILE" "$repo_url" "$PACKAGIST_USER_AGENT" <<'PY'
-import json
-import sys
-import urllib.error
-import urllib.request
-
-path, repo_url, ua = sys.argv[1], sys.argv[2], sys.argv[3]
-username = None
-token = None
-try:
-    lines = open(path, encoding="utf-8").read().splitlines()
-except OSError as err:
-    print(f"error: cannot read {path}: {err}", file=sys.stderr)
-    sys.exit(1)
-for raw in lines:
-    line = raw.strip()
-    if not line or line.startswith("#") or "=" not in line:
-        continue
-    key, _, val = line.partition("=")
-    key = key.strip()
-    val = val.strip().strip("'").strip('"')
-    if key == "PACKAGIST_USERNAME":
-        username = val
-    elif key == "PACKAGIST_API_TOKEN":
-        token = val
-if not username or not token:
-    print(f"error: PACKAGIST_USERNAME / PACKAGIST_API_TOKEN missing in {path}", file=sys.stderr)
-    sys.exit(1)
-
-body = json.dumps({"repository": repo_url}).encode("utf-8")
-req = urllib.request.Request(
-    "https://packagist.org/api/create-package",
-    data=body,
-    headers={
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {username}:{token}",
-        "User-Agent": ua,
-    },
-    method="POST",
-)
-try:
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        raw = resp.read().decode("utf-8", errors="replace")
-        status = resp.getcode()
-except urllib.error.HTTPError as err:
-    raw = err.read().decode("utf-8", errors="replace")
-    lowered = raw.lower()
-    if err.code in (400, 409) and ("already" in lowered or "exists" in lowered):
-        print(raw)
-        sys.exit(0)
-    print(f"error: Packagist create-package HTTP {err.code} for {repo_url}", file=sys.stderr)
-    if raw:
-        print(raw, file=sys.stderr)
-    sys.exit(1)
-except urllib.error.URLError as err:
-    print(f"error: Packagist create-package failed for {repo_url}: {err}", file=sys.stderr)
-    sys.exit(1)
-
-try:
-    payload = json.loads(raw) if raw else {}
-except json.JSONDecodeError:
-    payload = {}
-msg = str(payload.get("status") or "").lower()
-if 200 <= status < 300 and msg in ("", "success"):
-    sys.exit(0)
-text = str(payload.get("message") or raw or "").lower()
-if "already" in text or "exists" in text:
-    sys.exit(0)
-print(f"error: Packagist create-package rejected {repo_url}: {raw}", file=sys.stderr)
-sys.exit(1)
-PY
+  php "$PUBLISH_HELPERS" packagist-create "$PACKAGIST_CREDENTIALS_FILE" "$repo_url" "$PACKAGIST_USER_AGENT"
 }
 
 packagist_name_already_recorded() {
@@ -1332,17 +1158,7 @@ sync_composer_lib_dist() {
 # Copy composer.json without in-tree path repositories (those URLs are invalid
 # in the published GitHub tree).
 write_published_composer_json() {
-  local src="$1"
-  local dest="$2"
-  python3 - "$src" "$dest" <<'PY'
-import json, sys
-src, dest = sys.argv[1], sys.argv[2]
-data = json.load(open(src, encoding="utf-8"))
-data.pop("repositories", None)
-with open(dest, "w", encoding="utf-8") as out:
-    json.dump(data, out, indent=4)
-    out.write("\n")
-PY
+  php "$PUBLISH_HELPERS" published-composer "$1" "$2"
 }
 
 # Copy the in-place tyhp/compiler tree (emitted src/, bin/tyhp, README, LICENSE).
@@ -1407,40 +1223,7 @@ say_red() {
 # A rebuild rewrites " * Generated: <timestamp>" in package.tyhpdef. Copy the
 # tag's stamp onto the worktree so that line alone is not a version-bump diff.
 normalize_generated_timestamps() {
-  local dest="$1"
-  local tag="$2"
-  python3 - "$dest" "$tag" <<'PY'
-import os, subprocess, sys
-dest, tag = sys.argv[1], sys.argv[2]
-prefix = " * Generated:"
-for root, dirs, files in os.walk(dest):
-    if ".git" in dirs:
-        dirs.remove(".git")
-    for name in files:
-        path = os.path.join(root, name)
-        rel = os.path.relpath(path, dest)
-        try:
-            text = open(path, encoding="utf-8").read()
-        except (OSError, UnicodeDecodeError):
-            continue
-        if prefix not in text:
-            continue
-        show = subprocess.run(
-            ["git", "-C", dest, "show", f"{tag}:{rel}"],
-            capture_output=True, text=True)
-        if show.returncode != 0 or prefix not in show.stdout:
-            continue
-        tag_line = next(line for line in show.stdout.splitlines() if line.startswith(prefix))
-        lines = text.splitlines(keepends=True)
-        for i, line in enumerate(lines):
-            raw = line.rstrip("\r\n")
-            if raw.startswith(prefix):
-                newline = line[len(raw):]
-                if raw != tag_line:
-                    lines[i] = tag_line + newline
-                    open(path, "w", encoding="utf-8").write("".join(lines))
-                break
-PY
+  php "$PUBLISH_HELPERS" normalize-generated "$1" "$2"
 }
 
 # dest's worktree is the tree this run would publish. Compare it to an
@@ -1491,38 +1274,7 @@ commit_and_tag() {
 # Published impl composer.json: canonical -impl name and extra.tyhp.public,
 # path repositories removed. Source globs and upstream pin are kept.
 write_published_impl_composer() {
-  local src="$1"
-  local dest="$2"
-  python3 - "$src" "$dest" <<'PY'
-import json, sys
-src, dest = sys.argv[1], sys.argv[2]
-data = json.load(open(src, encoding="utf-8"))
-data.pop("repositories", None)
-name = str(data.get("name") or "")
-extra = data.setdefault("extra", {})
-tyhp = extra.setdefault("tyhp", {})
-if name.endswith("-impl"):
-    public = str(tyhp.get("public") or name[: -len("-impl")])
-    impl = name
-else:
-    public = str(tyhp.get("public") or name)
-    impl = public + "-impl"
-data["name"] = impl
-tyhp["public"] = public
-desc = str(data.get("description") or "")
-if "Implementation package" not in desc:
-    data["description"] = f"Implementation package for {public}. Require {public}, not this package."
-keywords = data.get("keywords")
-if not isinstance(keywords, list):
-    keywords = ["dev", "static analysis"]
-if "internal" not in keywords:
-    keywords.append("internal")
-data["keywords"] = keywords
-data["type"] = "library"
-with open(dest, "w", encoding="utf-8") as out:
-    json.dump(data, out, indent=4)
-    out.write("\n")
-PY
+  php "$PUBLISH_HELPERS" published-impl-composer "$1" "$2"
 }
 
 # Publish one public tag when that upstream version has never been tagged.
@@ -1785,7 +1537,7 @@ publish_package() {
 main() {
   parse_args "$@"
 
-  require_tool python3
+  require_tool php
   require_tool gh
   if [[ "$LIST_ONLY" -eq 0 ]]; then
     require_tool git
@@ -1872,12 +1624,10 @@ main() {
   fi
 
   if [[ "$needs_compiled_build" -eq 1 ]]; then
-    require_tool php
     require_tool dotnet
     echo "Building runtime packages for PHP 8.2–8.5..."
     "${PACKAGES_DIR}/base-build-all.sh"
   elif [[ "$needs_compiler_build" -eq 1 ]]; then
-    require_tool php
     require_tool dotnet
     echo "Building tyhp/compiler..."
     "${PACKAGES_DIR}/base-build-all.sh" compiler

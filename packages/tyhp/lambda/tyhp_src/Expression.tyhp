@@ -2,6 +2,8 @@
 
 namespace Tyhp;
 
+use Tyhp\Expression\EvalBacker;
+use Tyhp\Expression\ExpressionInterpreter;
 use Tyhp\Expression\FluentSupport;
 use Tyhp\Expression\ExpressionSerializer;
 
@@ -18,17 +20,29 @@ class Expression<TCallableShape extends callable> {
     public readonly array<Expression\ParameterExpression> $parameters;
     public mixed $lastResult = null;
 
+    /**
+     * Closure compiled from {@see $body} when no closure was stored.
+     * Null after a failed attempt means later calls walk the tree.
+     */
+    private ?\Closure $compiledClosure = null;
+    private bool $compiledClosureKnown = false;
+
     public function __construct(
         public readonly Expression\ExpressionNode $body,
         array<Expression\ParameterExpression> $parameters,
-        public readonly \Closure<TCallableShape> $callable,
+        public readonly ?\Closure<TCallableShape> $callable,
         public readonly string $returnType,
     ) {
         $this->parameters = $parameters;
     }
 
     public function __invoke(__CallableParametersRest<TCallableShape> ...$args): __CallableReturnType<TCallableShape> {
-        mixed $result = ($this->callable)(...$args);
+        // A stored closure is used as given. Otherwise a closure compiled from the tree
+        // is cached, and the tree is walked when that compilation is not possible.
+        ?\Closure $native = $this->nativeClosure();
+        mixed $result = $native !== null
+            ? $native(...$args)
+            : ExpressionInterpreter::evaluate($this->body, $this->parameters, ...$args);
         // Always stash first so callers who catch can inspect the mismatched value.
         $this->lastResult = $result;
         if ($result is __CallableReturnType<TCallableShape>) {
@@ -43,7 +57,112 @@ class Expression<TCallableShape extends callable> {
     }
 
     public function compile(): \Closure<TCallableShape> {
-        return $this->callable;
+        ?\Closure $native = $this->nativeClosure();
+        if ($native !== null) {
+            return $native;
+        }
+
+        return $this->walkerClosure();
+    }
+
+    /**
+     * Closure stored on this expression, or one compiled from {@see $body} and cached.
+     * Null when the tree cannot be compiled and must be walked.
+     */
+    protected function nativeClosure(): ?\Closure {
+        ?\Closure<TCallableShape> $stored = $this->callable;
+        if ($stored !== null) {
+            return $stored;
+        }
+        if ($this->compiledClosureKnown) {
+            return $this->compiledClosure;
+        }
+
+        $this->compiledClosure = EvalBacker::tryCompile($this->body, $this->parameters);
+        $this->compiledClosureKnown = true;
+        return $this->compiledClosure;
+    }
+
+    /**
+     * Closure that walks {@see $body}. Used when no closure was stored and the tree
+     * cannot be compiled.
+     */
+    private function walkerClosure(): \Closure {
+        Expression\ExpressionNode $body = $this->body;
+        array<Expression\ParameterExpression> $parameters = $this->parameters;
+        return static function (mixed ...$args) use ($body, $parameters): mixed {
+            return ExpressionInterpreter::evaluate($body, $parameters, ...$args);
+        };
+    }
+
+    /**
+     * Build an expression from its tree and its parameters.
+     *
+     * Pass the closure a Tyhp `fn` would become when you have one: invoke and compile call
+     * that closure. Omit `$callable`, or pass null, to compile a closure from `$body` when
+     * every name and value in the tree can be represented safely, or to walk `$body` otherwise.
+     * The callable shape is taken from `$callable` when it is passed. The return type is
+     * read from that closure's return type, then from `$body`'s type, so the call does not
+     * pass a type string or a generic argument.
+     *
+     * @template TCallable of callable
+     * @param array<Expression\ParameterExpression> $parameters
+     *
+     * @phpstan-template TCallable of callable
+     * @phpstan-param array<Expression\ParameterExpression> $parameters
+     * @phpstan-return Expression<TCallable>
+     *
+     * @psalm-template TCallable of callable
+     * @psalm-param array<Expression\ParameterExpression> $parameters
+     * @psalm-return Expression<TCallable>
+     */
+    public static function lambda<TCallable extends callable = callable>(
+        Expression\ExpressionNode $body,
+        array<Expression\ParameterExpression> $parameters,
+        ?\Closure<TCallable> $callable = null,
+    ): Expression<TCallable> {
+        return new Expression<TCallable>(
+            $body,
+            $parameters,
+            $callable,
+            self::inferReturnType($callable, $body),
+        );
+    }
+
+    /**
+     * Return type string for {@see Expression::lambda()}: the closure's declared return
+     * type when a closure was passed and declares one, otherwise the type stored on the tree body.
+     */
+    protected static function inferReturnType(?\Closure $callable, Expression\ExpressionNode $body): string {
+        if ($callable !== null) {
+            ?string $fromCallable = self::callableReturnTypeName($callable);
+            if ($fromCallable !== null) {
+                return $fromCallable;
+            }
+        }
+
+        if ($body->type !== '' && $body->type !== 'mixed') {
+            return $body->type;
+        }
+
+        return 'mixed';
+    }
+
+    /**
+     * PHP return type of `$callable`, or null when it is absent or `mixed`.
+     */
+    protected static function callableReturnTypeName(\Closure $callable): ?string {
+        ?Type $type = Type::fromCallableReturn($callable);
+        if ($type === null) {
+            return null;
+        }
+
+        string $name = (string)$type;
+        if ($name === '' || $name === 'mixed') {
+            return null;
+        }
+
+        return $name;
     }
 
     /**

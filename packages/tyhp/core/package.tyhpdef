@@ -2,7 +2,7 @@
 /**
  * AUTO-GENERATED, DO NOT EDIT
  * Compiler: 805.1.0.0
- * Generated: 2026-10-16T13:42:34.6385620Z
+ * Generated: 2026-10-22T15:29:43.0371160Z
  */
 global use extension \Tyhp\ArrayExtensions;
 global use extension \Tyhp\ArrayExtensionsVersioned;
@@ -26,23 +26,15 @@ global use extension \Tyhp\StringExtensionsVersioned;
 function _gnrc(mixed $target, ?\Tyhp\Type ...$typeArguments): mixed;
 namespace Tyhp {
     class \Tyhp\Type implements \Stringable {
-        protected function __construct(string $kind, ?string $name = null, array<self|\Tyhp\NamedType> $typeArgs = [], bool $isReadOnly = false, bool $isNullable = false, array<int|string, self> $structFields = [], array<int, int|string> $structRequiredKeys = [], array<int, string> $objectShapeMethods = [], array<int, string> $objectShapeProperties = []): void;
-        public static function string(): self;
-        public static function int(): self;
-        public static function float(): self;
-        public static function bool(): self;
-        public static function null(): self;
-        public static function void(): self;
-        public static function mixed(): self;
-        public static function never(): self;
-        public static function array(): self;
-        public static function object(): self;
-        public static function callable(): self;
-        public static function iterable(): self;
-        public static function resource(): self;
+        protected function __construct(string $kind, ?string $name = null, array<self|\Tyhp\NamedType> $typeArgs = [], bool $isReadOnly = false, bool $isNullable = false, array<int|string, self> $structFields = [], array<int, int|string> $structRequiredKeys = [], array<int, string> $objectShapeMethods = [], array<int, string> $objectShapeProperties = [], ?string $declaredName = null, array<string, bool> $objectShapeMethodSigned = [], array<string, array<int, string>> $objectShapeParamNames = [], array<string, array<int, self>> $objectShapeParamTypes = [], array<string, array<int, bool>> $objectShapeParamOptional = [], array<string, array<int, bool>> $objectShapeParamVariadic = [], array<string, self> $objectShapeReturns = [], array<string, bool> $objectShapeHasReturn = [], ?string $objectShapeOpenMethod = null): void;
+        /**
+        * Scalar factories and {@see nullable()} are dispatched here so an instance
+        * call such as `union()->int()` or `->nullable()` is not the static method.
+        * PHP uses one method slot for both forms.
+        */
+        public static function __callStatic(string $name, array<int, mixed> $arguments): self;
         public static function union(self ...$types): self;
         public static function intersection(self ...$types): self;
-        public static function nullable(self $type): self;
         /**
         * The runtime form of `__Awaited<T>`: the type a value has once every `\Tyhp\Promise`
         * layer has settled. A promise of `X` becomes the awaited type of `X`; a bare `Promise`
@@ -57,11 +49,13 @@ namespace Tyhp {
         * `$fields` is PHP-key → field type. `$requiredKeys` must all be present on a value.
         * Extra keys on a value are ignored.
         */
-        public static function struct(string $name, array<int|string, self> $fields, array<int, int|string> $requiredKeys = []): self;
+        public static function struct(?string $name = null, array<int|string, self> $fields = [], array<int, int|string> $requiredKeys = []): self;
         /**
-        * A Tyhp object shape: an instance type matched by public member existence (v1).
-        * `$methods` / `$properties` are required public names. Extra members on a value
-        * are ignored. `__construct` is constructability-only and must not be listed.
+        * A Tyhp object shape matched by public member names.
+        * `$methods` / `$properties` are required public names with no signature.
+        * Use {@see shape()}, {@see method()}, {@see param()}, and {@see returns()}
+        * to record parameter and return types. Extra members on a value are ignored.
+        * `__construct` is constructability-only and must not be listed.
         * This descriptor is for guards / matching; it does not construct instances.
         */
         public static function objectShape(string $name, array<int, string> $methods = [], array<int, string> $properties = []): self;
@@ -71,8 +65,54 @@ namespace Tyhp {
         * forms are ignored. Signatures are not compared — `\is_callable` is enough.
         * This descriptor is for `is` guards / matching; it does not construct values.
         */
-        public static function callableShape(string $name): self;
+        public static function callableShape(?string $name = null): self;
         public static function fromClassName(string $className): self;
+        /**
+        * Record a declaration without running `$factory`. The first {@see ref()} of that name
+        * runs the closure, then stamps `$refName` with {@see name()}.
+        * Registering the same name again throws {@see Exceptions\InvalidTypeException}
+        * and leaves the first factory in place.
+        */
+        public static function register(string $name, \Closure $factory): void;
+        /**
+        * The type registered under `$refName`. Unknown names throw.
+        * Cached by declaration name plus the structure of `$generics`.
+        * A placeholder is cached before the closure runs so a nested ref of the same
+        * declaration does not recurse forever.
+        */
+        public static function ref(string $refName, self ...$generics): self;
+        public static function listOf(self $value): self;
+        public static function mapOf(self $key, self $value): self;
+        public static function shape(?string $name = null): self;
+        public static function closure(): self;
+        /**
+        * Mark this instance immutable and return it. The flag cannot be cleared.
+        * Later fluent changes copy this instance; the copy is not immutable.
+        */
+        public function immutable(): self;
+        public function isImmutable(): bool;
+        /**
+        * A new type whose declaration name is `$name`. Scalar, class, and generic
+        * discriminants stay in place so `is()` still matches. An immutable receiver
+        * is copied; the original is unchanged.
+        */
+        public function name(string $name): self;
+        public function field(int|string $name, self $type): self;
+        public function optional(int|string $name, self $type): self;
+        public function param(string $name, self $type, bool $optional = false, bool $variadic = false): self;
+        public function class(string $className): self;
+        /**
+        * Start a method on this object shape. Later {@see param()} and {@see returns()}
+        * calls attach to it until the next method(). An immutable receiver is copied.
+        */
+        public function method(string $name): self;
+        /**
+        * Record the return type of the method started by {@see method()}.
+        * An immutable receiver is copied.
+        */
+        public function returns(self $type): self;
+        public function property(string $name): self;
+        public function __call(string $name, array<int, mixed> $arguments): self;
         /**
         * Build a Type from a callable's reflected return type, or null when the callable has no
         * return type (or cannot be reflected). Used by Mechanism D wrappers to infer a method
@@ -124,6 +164,12 @@ namespace Tyhp {
         public static function ucWords(string $string): string;
         public static function convertEncoding(string $string, string $toEncoding, array|string|null $fromEncoding = null): string|false;
         public static function detectEncoding(string $string): string|false;
+        #[\Tyhp\Php(">=8.3")]
+        public static function strPad(string $string, int $length, string $padString = ' ', int $padType = \STR_PAD_RIGHT): string;
+        #[\Tyhp\Php(">=8.4")]
+        public static function ucFirst(string $string): string;
+        #[\Tyhp\Php(">=8.4")]
+        public static function lcFirst(string $string): string;
     }
     class StringExtensions as StringExtensions__tyhpExtensionBacker {
         public static function match(string $this_, string $pattern, int $flags = 0, int $offset = 0): \PregMatchSetNullable|\PregMatchSetOffset|\PregMatchSetOffsetNullable|null;
@@ -279,15 +325,15 @@ namespace Tyhp {
     }
     extension StringExtensionsVersioned extends string {
         #[\Tyhp\Optimize\Pure]
-        fn pad(int $length, string $padString = ' ', int $padType = \STR_PAD_RIGHT): string => \str_pad($this, $length, $padString, $padType);
+        fn pad(int $length, string $padString = ' ', int $padType = \STR_PAD_RIGHT): string => \Tyhp\StringHelper::strPad($this, $length, $padString, $padType);
         #[\Tyhp\Optimize\Pure]
-        fn padLeft(int $length, string $padString = ' '): string => \str_pad($this, $length, $padString, \STR_PAD_LEFT);
+        fn padLeft(int $length, string $padString = ' '): string => \Tyhp\StringHelper::strPad($this, $length, $padString, \STR_PAD_LEFT);
         #[\Tyhp\Optimize\Pure]
-        fn padRight(int $length, string $padString = ' '): string => \str_pad($this, $length, $padString, \STR_PAD_RIGHT);
+        fn padRight(int $length, string $padString = ' '): string => \Tyhp\StringHelper::strPad($this, $length, $padString, \STR_PAD_RIGHT);
         #[\Tyhp\Optimize\Pure]
-        fn ucFirst(): string => \Tyhp\StringHelper::strtoupper(\Tyhp\StringHelper::substr($this, 0, 1)) . \Tyhp\StringHelper::substr($this, 1);
+        fn ucFirst(): string => \Tyhp\StringHelper::ucFirst($this);
         #[\Tyhp\Optimize\Pure]
-        fn lcFirst(): string => \Tyhp\StringHelper::strtolower(\Tyhp\StringHelper::substr($this, 0, 1)) . \Tyhp\StringHelper::substr($this, 1);
+        fn lcFirst(): string => \Tyhp\StringHelper::lcFirst($this);
     }
     /**
     * Single physical storage cell for one hooked property on one object.
@@ -944,33 +990,19 @@ namespace Tyhp {
             fn countValues(): array<TValue, int> => \array_count_values($this);
         }
     }
-    class ArrayExtensionsVersioned as ArrayExtensionsVersioned__tyhpExtensionBacker {
-        #[\Tyhp\Optimize\Pure]
-        public static function first<TKey extends int|string, TValue>(array<TKey, TValue> $this_): ?TValue;
-        #[\Tyhp\Optimize\Pure]
-        public static function last<TKey extends int|string, TValue>(array<TKey, TValue> $this_): ?TValue;
-        #[\Tyhp\Optimize\Pure]
-        public static function find<TKey extends int|string, TValue>(array<TKey, TValue> $this_, callable(TValue, TKey): bool $callback): ?TValue;
-        #[\Tyhp\Optimize\Pure]
-        public static function findKey<TKey extends int|string, TValue>(array<TKey, TValue> $this_, callable(TValue, TKey): bool $callback): ?TKey;
-        #[\Tyhp\Optimize\Pure]
-        public static function any<TKey extends int|string, TValue>(array<TKey, TValue> $this_, callable(TValue, TKey): bool $callback): bool;
-        #[\Tyhp\Optimize\Pure]
-        public static function all<TKey extends int|string, TValue>(array<TKey, TValue> $this_, callable(TValue, TKey): bool $callback): bool;
-    }
     extension ArrayExtensionsVersioned<TKey extends int|string, TValue> extends array<TKey, TValue> {
         #[\Tyhp\Optimize\Pure]
-        fn first(): ?TValue => ArrayExtensionsVersioned__tyhpExtensionBacker::first($this);
+        fn first(): ?TValue => \array_first($this);
         #[\Tyhp\Optimize\Pure]
-        fn last(): ?TValue => ArrayExtensionsVersioned__tyhpExtensionBacker::last($this);
+        fn last(): ?TValue => \array_last($this);
         #[\Tyhp\Optimize\Pure]
-        fn find(callable(TValue, TKey): bool $callback): ?TValue => ArrayExtensionsVersioned__tyhpExtensionBacker::find($this, $callback);
+        fn find(callable(TValue, TKey): bool $callback): ?TValue => \array_find($this, $callback);
         #[\Tyhp\Optimize\Pure]
-        fn findKey(callable(TValue, TKey): bool $callback): ?TKey => ArrayExtensionsVersioned__tyhpExtensionBacker::findKey($this, $callback);
+        fn findKey(callable(TValue, TKey): bool $callback): ?TKey => \array_find_key($this, $callback);
         #[\Tyhp\Optimize\Pure]
-        fn any(callable(TValue, TKey): bool $callback): bool => ArrayExtensionsVersioned__tyhpExtensionBacker::any($this, $callback);
+        fn any(callable(TValue, TKey): bool $callback): bool => \array_any($this, $callback);
         #[\Tyhp\Optimize\Pure]
-        fn all(callable(TValue, TKey): bool $callback): bool => ArrayExtensionsVersioned__tyhpExtensionBacker::all($this, $callback);
+        fn all(callable(TValue, TKey): bool $callback): bool => \array_all($this, $callback);
     }
     /**
     * Opt-in: allow `unset($this->prop)` on a typed instance property (Prop-init #8).

@@ -471,4 +471,428 @@ class TypeTest extends TestCase
             Type::awaited(new NamedType('T', self::promiseOf(Type::int()))),
         );
     }
+
+    public function testScalarFactoriesAreImmutable(): void
+    {
+        foreach ([
+            Type::string(), Type::int(), Type::float(), Type::bool(), Type::null(),
+            Type::void(), Type::mixed(), Type::never(), Type::array(), Type::object(),
+            Type::callable(), Type::iterable(), Type::resource(),
+            Type::fromClassName(\stdClass::class),
+        ] as $type) {
+            self::assertTrue($type->isImmutable());
+            self::assertSame($type, $type->immutable());
+        }
+    }
+
+    public function testNameCopiesAnImmutableSingleton(): void
+    {
+        $named = Type::string()->name('UserId');
+
+        self::assertNotSame(Type::string(), $named);
+        self::assertFalse($named->isImmutable());
+        self::assertSame('UserId', $named->getName());
+        self::assertSame('string', Type::string()->getName());
+        self::assertTrue(Type::string()->isImmutable());
+        self::assertTrue(Type::is('hi', $named));
+        self::assertTrue(Type::is('hi', Type::string()));
+    }
+
+    public function testImmutableStructFieldCopies(): void
+    {
+        $struct = Type::struct()->field('a', Type::int());
+        self::assertSame($struct, $struct->field('a', Type::int()));
+        self::assertFalse($struct->isImmutable());
+
+        self::assertSame($struct, $struct->immutable());
+        self::assertTrue($struct->isImmutable());
+
+        $copy = $struct->field('b', Type::string());
+        self::assertNotSame($struct, $copy);
+        self::assertFalse($copy->isImmutable());
+        self::assertTrue($struct->isImmutable());
+        self::assertTrue(Type::is(['a' => 1], $struct));
+        self::assertFalse(Type::is(['a' => 1], $copy));
+        self::assertTrue(Type::is(['a' => 1, 'b' => 'x'], $copy));
+    }
+
+    public function testModifyInPlaceThrowsWhenImmutable(): void
+    {
+        $method = new \ReflectionMethod(Type::class, 'modifyInPlace');
+
+        $this->expectException(InvalidTypeException::class);
+        $method->invoke(Type::string());
+    }
+
+    public function testRegisterDoesNotRunTheClosureUntilRef(): void
+    {
+        $ran = false;
+        Type::register('DeferredRun', function () use (&$ran): Type {
+            $ran = true;
+
+            return Type::int();
+        });
+
+        self::assertFalse($ran);
+        $type = Type::ref('DeferredRun');
+        self::assertTrue($ran);
+        self::assertSame('DeferredRun', $type->getName());
+        self::assertTrue($type->isImmutable());
+        self::assertTrue(Type::is(1, $type));
+        self::assertSame($type, Type::ref('DeferredRun'));
+    }
+
+    public function testRegisteringTheSameNameTwiceThrowsAndKeepsTheFirstFactory(): void
+    {
+        Type::register('DupRegister', fn (): Type => Type::int());
+
+        $secondRan = false;
+        try {
+            Type::register('DupRegister', function () use (&$secondRan): Type {
+                $secondRan = true;
+
+                return Type::string();
+            });
+            self::fail('A second register of the same name must throw.');
+        } catch (\Throwable $e) {
+            self::assertInstanceOf(InvalidTypeException::class, $e);
+            self::assertSame(
+                'Type declaration "DupRegister" is already registered.',
+                $e->getMessage(),
+            );
+        }
+
+        self::assertFalse($secondRan);
+        $type = Type::ref('DupRegister');
+        self::assertSame('DupRegister', $type->getName());
+        self::assertTrue(Type::is(1, $type));
+        self::assertFalse(Type::is('kept', $type));
+        self::assertFalse($secondRan);
+    }
+
+    public function testRefOfStringAliasDoesNotRenameTheSingleton(): void
+    {
+        Type::register('UserIdAlias', fn () => Type::string());
+        $named = Type::ref('UserIdAlias');
+
+        self::assertSame('string', Type::string()->getName());
+        self::assertTrue(Type::string()->isImmutable());
+        self::assertNotSame(Type::string(), $named);
+        self::assertSame('UserIdAlias', $named->getName());
+        self::assertTrue($named->isImmutable());
+        self::assertTrue(Type::is('hi', $named));
+        self::assertSame($named, Type::ref('UserIdAlias'));
+    }
+
+    public function testUnknownRefThrows(): void
+    {
+        $this->expectException(InvalidTypeException::class);
+        Type::ref('NoSuchDeclaration');
+    }
+
+    public function testRefCachesByNameAndGenericStructure(): void
+    {
+        Type::register('BoxCache', fn (Type $T) => Type::struct()->field('value', $T));
+
+        $strings = Type::ref('BoxCache', Type::string());
+        $stringsAgain = Type::ref('BoxCache', Type::string());
+        $list = Type::ref('BoxCache', Type::listOf(Type::string()));
+        $listAgain = Type::ref('BoxCache', Type::listOf(Type::string()));
+        $ints = Type::ref('BoxCache', Type::listOf(Type::int()));
+
+        self::assertSame($strings, $stringsAgain);
+        self::assertSame($list, $listAgain);
+        self::assertNotSame($list, $ints);
+        self::assertNotSame($strings, $list);
+        self::assertTrue(Type::is(['value' => 'a'], $strings));
+        self::assertTrue(Type::is(['value' => ['a']], $list));
+        self::assertFalse(Type::is(['value' => [1]], $list));
+    }
+
+    public function testRecursiveRefUsesAPlaceholder(): void
+    {
+        Type::register('NodeRec', fn () => Type::struct()
+            ->field('value', Type::int())
+            ->optional('next', Type::ref('NodeRec')->nullable()));
+
+        $node = Type::ref('NodeRec');
+        self::assertTrue(Type::is(['value' => 1], $node));
+        self::assertTrue(Type::is(['value' => 1, 'next' => null], $node));
+        self::assertTrue(Type::is(['value' => 1, 'next' => ['value' => 2]], $node));
+        self::assertFalse(Type::is(['next' => ['value' => 2]], $node));
+        self::assertSame($node, Type::ref('NodeRec'));
+    }
+
+    public function testDeclarationsMayRegisterInAnyOrder(): void
+    {
+        Type::register('OrderRight', fn () => Type::struct()->field('left', Type::ref('OrderLeft')));
+        Type::register('OrderLeft', fn () => Type::struct()->field('n', Type::int()));
+
+        $right = Type::ref('OrderRight');
+        self::assertTrue(Type::is(['left' => ['n' => 3]], $right));
+        self::assertFalse(Type::is(['left' => []], $right));
+    }
+
+    public function testFieldOptionalAndNullable(): void
+    {
+        $shape = Type::struct()
+            ->field('name', Type::string())
+            ->optional('age', Type::int())
+            ->optional('nick', Type::string()->nullable());
+
+        self::assertTrue(Type::is(['name' => 'a'], $shape));
+        self::assertFalse(Type::is([], $shape));
+        self::assertTrue(Type::is(['name' => 'a', 'age' => 1], $shape));
+        self::assertFalse(Type::is(['name' => 'a', 'age' => null], $shape));
+        self::assertTrue(Type::is(['name' => 'a', 'nick' => null], $shape));
+        self::assertTrue(Type::is(['name' => 'a', 'nick' => 'n'], $shape));
+        self::assertFalse(Type::string()->isNullable());
+    }
+
+    public function testListOfAndMapOf(): void
+    {
+        self::assertTrue(Type::is(['a', 'b'], Type::listOf(Type::string())));
+        self::assertFalse(Type::is(['a', 1], Type::listOf(Type::string())));
+        self::assertTrue(Type::is(['a' => 1], Type::mapOf(Type::string(), Type::int())));
+        self::assertFalse(Type::is(['a' => 'b'], Type::mapOf(Type::string(), Type::int())));
+    }
+
+    public function testUnionIntersectionShapeGenericAndClosure(): void
+    {
+        $union = Type::union()->int()->string();
+        self::assertTrue(Type::is(1, $union));
+        self::assertTrue(Type::is('a', $union));
+        self::assertFalse(Type::is(1.5, $union));
+
+        $both = Type::intersection()->class(\ArrayAccess::class)->class(\Countable::class);
+        self::assertTrue(Type::is(new \ArrayObject(), $both));
+        self::assertFalse(Type::is(new \stdClass(), $both));
+
+        $shape = Type::shape()->method('now')->property('tz');
+        $clock = new class {
+            public string $tz = 'UTC';
+
+            public function now(): int
+            {
+                return 1;
+            }
+        };
+        self::assertTrue(Type::is($clock, $shape));
+        self::assertFalse(Type::is(new \stdClass(), $shape));
+
+        $generic = Type::generic(\ArrayObject::class)->param('TValue', Type::string());
+        self::assertSame('ArrayObject<string>', (string) $generic);
+
+        $closure = Type::closure();
+        self::assertFalse($closure->isNullable());
+        $nullable = $closure->nullable();
+        self::assertTrue($nullable->isNullable());
+        self::assertSame($closure, $nullable);
+        self::assertFalse(Type::closure()->isNullable());
+    }
+
+    public function testObjectShapeMethodReturnType(): void
+    {
+        $base = Type::shape()->immutable();
+        $clock = $base->method('now')->returns(Type::fromClassName(\DateTimeImmutable::class));
+        $nameOnly = Type::shape()->method('now');
+
+        $matching = new class {
+            public function now(): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable('2020-01-02T03:04:05+00:00');
+            }
+        };
+        $stringReturn = new class {
+            public function now(): string
+            {
+                return 'now';
+            }
+        };
+        $extraRequired = new class {
+            public function now(string $zone): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable($zone);
+            }
+        };
+        $extraOptional = new class {
+            public function now(string $zone = 'UTC'): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable('2020-01-02T03:04:05+00:00');
+            }
+        };
+
+        self::assertTrue(Type::is($matching, $clock));
+        self::assertFalse(Type::is($stringReturn, $clock));
+        self::assertFalse(Type::is($extraRequired, $clock));
+        self::assertTrue(Type::is($extraOptional, $clock));
+        self::assertTrue(Type::is($stringReturn, $nameOnly));
+        self::assertTrue(Type::is($stringReturn, $base));
+        self::assertTrue($base->isImmutable());
+        self::assertFalse($clock->isImmutable());
+        self::assertSame(Type::string(), Type::string());
+    }
+
+    public function testObjectShapeNullableAndUnionReturns(): void
+    {
+        $nullable = Type::shape()->method('now')->returns(
+            Type::nullable(Type::fromClassName(\DateTimeImmutable::class)),
+        );
+        $strict = Type::shape()->method('now')->returns(Type::fromClassName(\DateTimeImmutable::class));
+        $union = Type::shape()->method('id')->returns(Type::union(Type::string(), Type::int()));
+        $asFloat = Type::shape()->method('n')->returns(Type::float());
+
+        $plain = new class {
+            public function now(): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable('2020-01-02T03:04:05+00:00');
+            }
+        };
+        $nullish = new class {
+            public function now(): ?\DateTimeImmutable
+            {
+                return null;
+            }
+        };
+        $intId = new class {
+            public function id(): int
+            {
+                return 1;
+            }
+        };
+        $boolId = new class {
+            public function id(): bool
+            {
+                return true;
+            }
+        };
+        $both = new class {
+            public function id(): string|int
+            {
+                return 1;
+            }
+        };
+        $ints = new class {
+            public function n(): int
+            {
+                return 1;
+            }
+        };
+        $subtype = new class {
+            public function fail(): \RuntimeException
+            {
+                return new \RuntimeException('x');
+            }
+        };
+        $supertype = new class {
+            public function fail(): \Exception
+            {
+                return new \Exception('x');
+            }
+        };
+        $exceptionShape = Type::shape()->method('fail')->returns(Type::fromClassName(\Exception::class));
+        $runtimeShape = Type::shape()->method('fail')->returns(Type::fromClassName(\RuntimeException::class));
+
+        self::assertTrue(Type::is($plain, $nullable));
+        self::assertTrue(Type::is($nullish, $nullable));
+        self::assertTrue(Type::is($plain, $strict));
+        self::assertFalse(Type::is($nullish, $strict));
+        self::assertTrue(Type::is($intId, $union));
+        self::assertTrue(Type::is($both, $union));
+        self::assertFalse(Type::is($boolId, $union));
+        self::assertTrue(Type::is($ints, $asFloat));
+        self::assertTrue(Type::is($subtype, $exceptionShape));
+        self::assertFalse(Type::is($supertype, $runtimeShape));
+    }
+
+    public function testObjectShapeMethodParameters(): void
+    {
+        $shape = Type::shape()
+            ->method('format')
+            ->param('instant', Type::fromClassName(\DateTimeImmutable::class))
+            ->returns(Type::string());
+        $optionalZone = Type::shape()
+            ->method('format')
+            ->param('instant', Type::fromClassName(\DateTimeImmutable::class))
+            ->param('zone', Type::string(), optional: true)
+            ->returns(Type::string());
+        $variadic = Type::shape()
+            ->method('join')
+            ->param('parts', Type::string(), variadic: true)
+            ->returns(Type::string());
+
+        $matching = new class {
+            public function format(\DateTimeImmutable $instant): string
+            {
+                return $instant->format('c');
+            }
+        };
+        $wider = new class {
+            public function format(object $instant): string
+            {
+                return 'x';
+            }
+        };
+        $narrower = new class {
+            public function format(string $instant): string
+            {
+                return $instant;
+            }
+        };
+        $parentParam = new class {
+            public function format(\Exception $instant): string
+            {
+                return $instant->getMessage();
+            }
+        };
+        $childParam = new class {
+            public function format(\RuntimeException $instant): string
+            {
+                return $instant->getMessage();
+            }
+        };
+        $zoneRequired = new class {
+            public function format(\DateTimeImmutable $instant, string $zone): string
+            {
+                return $zone;
+            }
+        };
+        $zoneOptional = new class {
+            public function format(\DateTimeImmutable $instant, string $zone = 'UTC'): string
+            {
+                return $zone;
+            }
+        };
+        $join = new class {
+            public function join(string ...$parts): string
+            {
+                return \implode('', $parts);
+            }
+        };
+        $notVariadic = new class {
+            public function join(string $parts): string
+            {
+                return $parts;
+            }
+        };
+        $exceptionShape = Type::shape()
+            ->method('format')
+            ->param('instant', Type::fromClassName(\RuntimeException::class))
+            ->returns(Type::string());
+        $broadExceptionShape = Type::shape()
+            ->method('format')
+            ->param('instant', Type::fromClassName(\Exception::class))
+            ->returns(Type::string());
+
+        self::assertTrue(Type::is($matching, $shape));
+        self::assertTrue(Type::is($wider, $shape));
+        self::assertFalse(Type::is($narrower, $shape));
+        self::assertTrue(Type::is($parentParam, $exceptionShape));
+        self::assertFalse(Type::is($childParam, $broadExceptionShape));
+        self::assertFalse(Type::is($zoneRequired, $optionalZone));
+        self::assertTrue(Type::is($zoneOptional, $optionalZone));
+        self::assertTrue(Type::is($join, $variadic));
+        self::assertFalse(Type::is($notVariadic, $variadic));
+        self::assertSame(Type::string(), Type::string());
+    }
 }
