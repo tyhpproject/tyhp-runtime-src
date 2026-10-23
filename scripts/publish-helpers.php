@@ -12,6 +12,11 @@
 //   packagist-exists <name> <user-agent>              exit 0 = on Packagist, 1 = missing, 2 = lookup failed
 //   packagist-username <credentials>                  validate credentials, print the username
 //   packagist-create <credentials> <repo-url> <user-agent>
+//   packagist-update <credentials> <repo-url> <user-agent>
+//                                                     POST /api/update-package (the Update button)
+//   packagist-missing-tags <name> <user-agent>        stdin: git ls-remote --tags output
+//                                                     stdout: tags Packagist has not crawled
+//                                                     exit 0 = lookup ok, 1 = package missing, 2 = lookup failed
 // The Packagist token is read from the credentials file here, so it never appears in a process argv.
 // check-version-bumps.php includes this file for published_composer_text() and
 // published_impl_composer_text().
@@ -316,6 +321,171 @@ function mentions_existing(string $text): bool
     return \str_contains($lowered, 'already') || \str_contains($lowered, 'exists');
 }
 
+function packagist_name_parts(string $name): ?array
+{
+    $parts = \explode('/', $name, 2);
+    if (\count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+        \fwrite(\STDERR, 'error: invalid Composer name ' . \json_encode($name) . "\n");
+        return null;
+    }
+    return $parts;
+}
+
+/** @return array{int, array<string, true>} status, version set (empty unless status is 0) */
+function packagist_release_index(string $name, string $userAgent): array
+{
+    $parts = packagist_name_parts($name);
+    if ($parts === null) {
+        return [2, ''];
+    }
+    $url = 'https://repo.packagist.org/p2/' . \rawurlencode($parts[0]) . '/' . \rawurlencode($parts[1]) . '.json';
+    [$status, $body] = http_request($url, $userAgent);
+    if ($status === 404) {
+        return [1, []];
+    }
+    if ($status < 200 || $status >= 300) {
+        $reason = $status === 0 ? $body : "HTTP {$status}";
+        \fwrite(\STDERR, "error: Packagist metadata {$name} failed: {$reason}\n");
+        return [2, []];
+    }
+    try {
+        $doc = \json_decode($body, true, 512, \JSON_THROW_ON_ERROR);
+    } catch (\Throwable $e) {
+        \fwrite(\STDERR, "error: Packagist metadata {$name} is not JSON: {$e->getMessage()}\n");
+        return [2, []];
+    }
+    $items = \is_array($doc) ? ($doc['packages'][$name] ?? null) : null;
+    if (!\is_array($items)) {
+        \fwrite(\STDERR, "error: Packagist metadata {$name} has no package list\n");
+        return [2, []];
+    }
+    $versions = [];
+    foreach ($items as $item) {
+        if (!\is_array($item) || !isset($item['version']) || !\is_string($item['version'])) {
+            continue;
+        }
+        $versions[$item['version']] = true;
+        $stripped = \ltrim($item['version'], 'vV');
+        if ($stripped !== $item['version']) {
+            $versions[$stripped] = true;
+        }
+    }
+    if ($items !== [] && $versions === []) {
+        \fwrite(\STDERR, "error: Packagist metadata {$name} has no version field\n");
+        return [2, []];
+    }
+    return [0, $versions];
+}
+
+function tag_from_ls_remote_line(string $line): string
+{
+    $line = \trim($line);
+    if ($line === '' || \str_contains($line, '^{}')) {
+        return '';
+    }
+    if (\str_contains($line, 'refs/tags/')) {
+        $line = \substr($line, \strrpos($line, 'refs/tags/') + \strlen('refs/tags/'));
+    }
+    if (\str_starts_with($line, 'v') || \str_starts_with($line, 'V')) {
+        $bare = \substr($line, 1);
+        if ($bare !== '' && \preg_match('/^[0-9]/', $bare) === 1) {
+            return $bare;
+        }
+    }
+    return $line;
+}
+
+/** Exit 0 and print tags Packagist has not crawled. Exit 1 when the package is missing. */
+function packagist_missing_tags(string $name, string $userAgent): int
+{
+    [$status, $versions] = packagist_release_index($name, $userAgent);
+    if ($status !== 0) {
+        return $status;
+    }
+    $stdin = \stream_get_contents(\STDIN);
+    if (!\is_string($stdin)) {
+        \fwrite(\STDERR, "error: cannot read git tags for {$name}\n");
+        return 2;
+    }
+    $missing = [];
+    foreach (\preg_split('/\r\n|\n|\r/', $stdin) ?: [] as $line) {
+        $tag = tag_from_ls_remote_line($line);
+        if ($tag === '' || isset($versions[$tag]) || isset($missing[$tag])) {
+            continue;
+        }
+        $missing[$tag] = true;
+    }
+    if ($missing !== []) {
+        echo \implode("\n", \array_keys($missing)), "\n";
+    }
+    return 0;
+}
+
+function packagist_update(string $credentials, string $repoUrl, string $userAgent): int
+{
+    [$username, $token] = packagist_credentials($credentials);
+    $attempt = 0;
+    $sleepFor = 15;
+    while (true) {
+        $attempt++;
+        [$status, $raw] = http_request(
+            'https://packagist.org/api/update-package',
+            $userAgent,
+            (string) \json_encode(['repository' => $repoUrl], \JSON_UNESCAPED_SLASHES),
+            ['Content-Type: application/json', "Authorization: Bearer {$username}:{$token}"],
+        );
+        if ($status === 429 || $status === 503) {
+            if ($attempt >= 5) {
+                \fwrite(\STDERR, "error: Packagist update-package HTTP {$status} for {$repoUrl}\n");
+                if ($raw !== '') {
+                    \fwrite(\STDERR, $raw . "\n");
+                }
+                return 1;
+            }
+            \fwrite(\STDERR, "Packagist update-package HTTP {$status} for {$repoUrl}; retrying in {$sleepFor}s\n");
+            \sleep($sleepFor);
+            $sleepFor = \min($sleepFor * 2, 120);
+            continue;
+        }
+        break;
+    }
+    if ($status === 0) {
+        \fwrite(\STDERR, "error: Packagist update-package failed for {$repoUrl}: {$raw}\n");
+        return 1;
+    }
+    if ($status === 404) {
+        \fwrite(\STDERR, "error: Packagist has no package for {$repoUrl}\n");
+        return 2;
+    }
+    if ($status < 200 || $status >= 300) {
+        \fwrite(\STDERR, "error: Packagist update-package HTTP {$status} for {$repoUrl}\n");
+        if ($raw !== '') {
+            \fwrite(\STDERR, $raw . "\n");
+        }
+        return 1;
+    }
+    $payload = \json_decode($raw, true);
+    $payload = \is_array($payload) ? $payload : [];
+    $state = \strtolower(text($payload['status'] ?? null));
+    if ($state !== '' && $state !== 'success') {
+        \fwrite(\STDERR, "error: Packagist update-package rejected {$repoUrl}: {$raw}\n");
+        return 1;
+    }
+    $jobs = $payload['jobs'] ?? [];
+    if (\is_array($jobs) && $jobs !== []) {
+        $ids = [];
+        foreach ($jobs as $job) {
+            if (\is_scalar($job)) {
+                $ids[] = (string) $job;
+            }
+        }
+        if ($ids !== []) {
+            echo 'queued ' . \implode(' ', $ids), "\n";
+        }
+    }
+    return 0;
+}
+
 function packagist_create(string $credentials, string $repoUrl, string $userAgent): int
 {
     [$username, $token] = packagist_credentials($credentials);
@@ -420,6 +590,14 @@ function publish_helpers_main(array $argv): never
         case 'packagist-create':
             [$path, $repoUrl, $userAgent] = args($argv, 3, 'packagist-create <credentials> <repo-url> <user-agent>');
             exit(packagist_create($path, $repoUrl, $userAgent));
+
+        case 'packagist-update':
+            [$path, $repoUrl, $userAgent] = args($argv, 3, 'packagist-update <credentials> <repo-url> <user-agent>');
+            exit(packagist_update($path, $repoUrl, $userAgent));
+
+        case 'packagist-missing-tags':
+            [$name, $userAgent] = args($argv, 2, 'packagist-missing-tags <name> <user-agent>');
+            exit(packagist_missing_tags($name, $userAgent));
 
         default:
             fail("usage: php publish-helpers.php <command> [args...] (unknown command: {$command})", 2);

@@ -67,10 +67,13 @@ Composer-lib companions are an implementation package
 (`tyhpdef/<vendor>-<name>`, the upstream version). The process for handing
 types to the PHP package maintainer is [TYHPDEF_OWNERSHIP.md](TYHPDEF_OWNERSHIP.md).
 
-Packagist credentials for `scripts/publish-runtime-packages.sh
---create-packagist-packages` stay in gitignored
-`scripts/packagist.credentials`. See
-`scripts/packagist.credentials.example`.
+Packagist credentials stay in gitignored `scripts/packagist.credentials`.
+See `scripts/packagist.credentials.example`. When that file is present,
+`scripts/publish-runtime-packages.sh` queues a Packagist update for each
+published repo that has git tags Packagist has not crawled yet.
+`--create-packagist-packages` registers packages that are not on Packagist.
+`scripts/update-packagist-packages.sh` runs that same update without building
+or pushing.
 
 ## Versioning
 

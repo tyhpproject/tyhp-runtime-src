@@ -6,7 +6,7 @@ versions relate to PHP and to upstream Composer libraries.
 
 ## Runtime Composer packages
 
-The compiler version (for example `805.1.0-beta.3`) means the compiler can emit
+The compiler version (for example `805.1.1-beta.3`) means the compiler can emit
 for PHP up through 8.5. It still emits for 8.2, 8.3, and 8.4 when
 `output.phpVersion` says so. That number is not the runtime package version.
 

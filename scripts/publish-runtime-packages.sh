@@ -33,9 +33,12 @@
 # packages/tyhpdef/<vendor>-<name>/<upstream>/. A handed-off folder does not retag a
 # public version that already exists and does not publish an impl tag. A
 # public version that has never been tagged is published once from the
-# handed-off metapackage (no impl require). When a tag already exists, the
-# script compares it to the tree the source would publish and prints a red
-# warning when they differ (a change without a version bump). First-party
+# handed-off metapackage (no impl require). Before cloning, the script runs
+# the same tag-tree comparison as scripts/check-version-bumps.sh (batched
+# GitHub requests, no checkout). A tag that already exists is not cloned; a
+# red warning is printed when that tree differs from the source (a change
+# without a version bump). A repo is cloned only to publish a tag that does
+# not exist yet, and then only with a shallow clone. First-party
 # php, php-ext-*, and compiled tyhp/* stay one repository each.
 #
 # tyhpdef/* packages (php, php-ext-*, Composer-lib wrappers) use that
@@ -54,9 +57,12 @@
 # composer.json version (for example 805.0.0), same tag style as tyhpdef/*.
 #
 # Do not run this until after the compiler history wipe and the package repos are public.
-# Packagist submit is a separate HUMAN step after this push unless
-# --create-packagist-packages is passed (reads scripts/packagist.credentials).
-# Git remotes use HTTPS (not SSH).
+# When scripts/packagist.credentials exists, each published GitHub repo whose
+# tags Packagist has not crawled yet is refreshed with POST /api/update-package
+# (the same action as the Update button). --create-packagist-packages still
+# creates packages that are not registered yet. Without the credentials file,
+# that refresh stays a separate step: scripts/update-packagist-packages.sh, or
+# the Update button. Git remotes use HTTPS (not SSH).
 
 set -euo pipefail
 
@@ -94,6 +100,15 @@ PACKAGIST_CREATED_NAMES=()
 PACKAGIST_EXISTED_NAMES=()
 PACKAGIST_WOULD_CREATE_NAMES=()
 PACKAGIST_FAILED_NAMES=()
+PACKAGIST_UPDATED_NAMES=()
+PACKAGIST_UPDATE_FAILED_NAMES=()
+PACKAGIST_UNREGISTERED_NAMES=()
+PACKAGIST_CURRENT_NAMES=()
+PACKAGIST_UPDATE_SEEN_URLS=()
+PACKAGIST_CREDENTIALS_READY=0
+PACKAGIST_UPDATE_DRY_RUN=0
+# Gap between Packagist update-package calls.
+readonly PACKAGIST_UPDATE_DELAY=1
 ONLY_PACKAGE=""
 PACKAGE_FILTER_SET=0
 LIST_ONLY=0
@@ -138,10 +153,15 @@ Options:
                                   scripts/packagist.credentials (gitignored)
                                   with PACKAGIST_USERNAME and PACKAGIST_API_TOKEN
                                   (MAIN token). No-op when the package exists.
+                                  The same credentials file also refreshes
+                                  packages Packagist has not crawled yet.
 
 Without --package, every discovered package with a GitHub repo is published.
-Without the create flags, missing GitHub repos are skipped and Packagist
-submit stays a separate human step. Compiled packages (core, decimal, async,
+Without the create flags, missing GitHub repos are skipped. When
+scripts/packagist.credentials exists, published repos with tags Packagist has
+not crawled are refreshed via POST /api/update-package. Without that file,
+run scripts/update-packagist-packages.sh or use the Update button.
+Compiled packages (core, decimal, async,
 lambda, parallel, io) still run base-build-all.sh so dist trees exist. tyhp/compiler is
 built in-place by that script and tagged from its composer.json version (not
 80N.X.Y). tyhpdef packages skip that build and tag the version in that
@@ -981,6 +1001,104 @@ ensure_one_packagist_package() {
   return 0
 }
 
+# name|https://github.com/org/repo lines for the Packagist packages this publish owns.
+packagist_targets_for_package() {
+  local pkg="$1"
+  local base
+  if is_versioned_composer_lib "$pkg"; then
+    base="$(github_repo_for_package "$pkg")"
+    printf 'tyhpdef/%s|%s\n' "$base" "$(github_https_url "$base")"
+    printf 'tyhpdef/%s-impl|%s\n' "$base" "$(github_https_url "${base}-impl")"
+    return 0
+  fi
+  printf '%s|%s\n' "$(composer_name_for_package "$pkg")" "$(github_https_url "$(github_repo_for_package "$pkg")")"
+}
+
+# update-packagist-packages.sh replaces this so its status line is cleared
+# before a message that should stay on screen.
+packagist_progress_break() {
+  :
+}
+
+# POST /api/update-package when a git tag is missing from Packagist's release list.
+# Same crawl the Update button queues. Shared with update-packagist-packages.sh.
+refresh_one_packagist_repo() {
+  local name="$1"
+  local repo_url="$2"
+  local tags=""
+  local missing=""
+  local shown=""
+  local rc=0
+
+  if [[ ${#PACKAGIST_UPDATE_SEEN_URLS[@]} -gt 0 ]] && list_contains "$repo_url" "${PACKAGIST_UPDATE_SEEN_URLS[@]}"; then
+    return 0
+  fi
+  PACKAGIST_UPDATE_SEEN_URLS+=("$repo_url")
+
+  tags="$(git ls-remote --tags "$repo_url" 2>&1)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    packagist_progress_break
+    echo "warning: cannot list tags for ${repo_url}; skipping Packagist update" >&2
+    return 0
+  fi
+
+  rc=0
+  missing="$(printf '%s\n' "$tags" | php "$PUBLISH_HELPERS" packagist-missing-tags "$name" "$PACKAGIST_USER_AGENT")" || rc=$?
+  if [[ "$rc" -eq 1 ]]; then
+    packagist_progress_break
+    echo "Packagist: ${name} is not registered"
+    PACKAGIST_UNREGISTERED_NAMES+=("$name")
+    return 0
+  fi
+  if [[ "$rc" -ne 0 ]]; then
+    PACKAGIST_UPDATE_FAILED_NAMES+=("$name")
+    return 0
+  fi
+  if [[ -z "$missing" ]]; then
+    PACKAGIST_CURRENT_NAMES+=("$name")
+    return 0
+  fi
+
+  shown="${missing//$'\n'/, }"
+  packagist_progress_break
+  echo "Packagist: ${name} is missing ${shown}"
+  if [[ "$PACKAGIST_UPDATE_DRY_RUN" -eq 1 ]]; then
+    echo "would update Packagist ${name} from ${repo_url}"
+    PACKAGIST_UPDATED_NAMES+=("$name")
+    return 0
+  fi
+
+  echo "Packagist: updating ${name} from ${repo_url}"
+  rc=0
+  php "$PUBLISH_HELPERS" packagist-update "$PACKAGIST_CREDENTIALS_FILE" "$repo_url" "$PACKAGIST_USER_AGENT" || rc=$?
+  if [[ "$rc" -eq 2 ]]; then
+    packagist_progress_break
+    echo "Packagist: ${name} is not registered"
+    PACKAGIST_UNREGISTERED_NAMES+=("$name")
+    return 0
+  fi
+  if [[ "$rc" -ne 0 ]]; then
+    PACKAGIST_UPDATE_FAILED_NAMES+=("$name")
+    return 0
+  fi
+  PACKAGIST_UPDATED_NAMES+=("$name")
+  sleep "$PACKAGIST_UPDATE_DELAY"
+}
+
+refresh_packagist_package() {
+  local pkg="$1"
+  local target
+  local name
+  local repo_url
+
+  [[ "$PACKAGIST_CREDENTIALS_READY" -eq 1 ]] || return 0
+  for target in $(packagist_targets_for_package "$pkg"); do
+    name="${target%%|*}"
+    repo_url="${target#*|}"
+    refresh_one_packagist_repo "$name" "$repo_url"
+  done
+}
+
 preview_packagist_creates() {
   local pkg
   [[ "$CREATE_PACKAGIST" -eq 1 ]] || return 0
@@ -1198,11 +1316,20 @@ sync_compiler_dist() {
 }
 
 prepare_clone() {
-  local pkg="$1"
+  local repo="$1"
   local dest="$2"
+  local url="https://github.com/${GITHUB_ORG}/${repo}.git"
 
-  run_github_git "clone https://github.com/${GITHUB_ORG}/${pkg}.git" "$pkg" \
-    git clone "https://github.com/${GITHUB_ORG}/${pkg}.git" "$dest"
+  # One commit on main is enough to add a release commit. Empty repositories
+  # have no branch for --depth 1, so fall back to a full clone.
+  github_request_pause "clone --depth 1 ${GITHUB_ORG}/${repo}"
+  echo "GitHub: clone --depth 1 ${GITHUB_ORG}/${repo}"
+  if git clone --depth 1 --single-branch --branch main "$url" "$dest"; then
+    remember_github_repo "$repo"
+  else
+    rm -rf "$dest"
+    run_github_git "clone ${url}" "$repo" git clone "$url" "$dest"
+  fi
   cd "$dest"
 
   if git rev-parse --verify HEAD >/dev/null 2>&1; then
@@ -1220,37 +1347,106 @@ say_red() {
   fi
 }
 
-# A rebuild rewrites " * Generated: <timestamp>" in package.tyhpdef. Copy the
-# tag's stamp onto the worktree so that line alone is not a version-bump diff.
-normalize_generated_timestamps() {
-  php "$PUBLISH_HELPERS" normalize-generated "$1" "$2"
+# Fill PUBLISH_PLAN from the same comparison as scripts/check-version-bumps.sh.
+# One row per tag: result, package, kind, repo, tag, detail.
+load_publish_plan() {
+  local list="${PUBLISH_WORKDIR}/matched-packages.txt"
+  local majors=""
+  local entry
+  printf '%s\n' "${MATCHED_PACKAGES[@]}" > "$list"
+  for entry in "${DIST_BUILDS[@]}"; do
+    majors+="${entry%%:*} "
+  done
+  PUBLISH_PLAN="${PUBLISH_WORKDIR}/plan.tsv"
+  echo "Comparing publish trees with GitHub tags..."
+  CHECK_DIST_PACKAGES="${DIST_PACKAGES[*]}" CHECK_PHP_MAJORS="$majors" \
+    php "${PROJECT_ROOT}/scripts/check-version-bumps.php" \
+      --format=tsv --only-file "$list" > "$PUBLISH_PLAN"
 }
 
-# dest's worktree is the tree this run would publish. Compare it to an
-# existing tag. A mismatch is a source change that did not get a new version.
-report_tag_source_drift() {
-  local dest="$1"
-  local tag="$2"
-  local what="$3"
-
-  normalize_generated_timestamps "$dest" "$tag"
-  git -C "$dest" add -A
-  if git -C "$dest" diff --cached --quiet "$tag"; then
-    git -C "$dest" reset -q
-    return 0
-  fi
-  local entry="${what} tag ${tag}"
-  local i
-  for ((i = 0; i < ${#VERSION_BUMP_NEEDED[@]}; i++)); do
-    if [[ "${VERSION_BUMP_NEEDED[$i]}" == "$entry" ]]; then
-      say_red "    CHANGE WITHOUT VERSION BUMP: ${entry} differs from the source tree"
-      git -C "$dest" reset -q
-      return 0
+# Read every plan row for one package into PLAN_*.
+read_publish_plan() {
+  local pkg="$1"
+  local result
+  local row_pkg
+  local kind
+  local repo
+  local tag
+  local detail
+  local entry
+  PLAN_NEW=0
+  PLAN_TAGGED=0
+  PLAN_SEEN=0
+  PLAN_ERRORS=()
+  PLAN_BUMPS=()
+  PLAN_PUBLIC="absent"
+  PLAN_IMPL="absent"
+  PLAN_PUBLIC_TAG=""
+  PLAN_IMPL_TAG=""
+  while IFS=$'\t' read -r result row_pkg kind repo tag detail; do
+    [[ "$row_pkg" == "$pkg" ]] || continue
+    PLAN_SEEN=1
+    case "$result" in
+      new) PLAN_NEW=$((PLAN_NEW + 1)) ;;
+      ok) PLAN_TAGGED=$((PLAN_TAGGED + 1)) ;;
+      bump)
+        PLAN_TAGGED=$((PLAN_TAGGED + 1))
+        case "$kind" in
+          public) entry="public ${repo} tag ${tag}" ;;
+          impl) entry="impl ${repo} tag ${tag}" ;;
+          *) entry="${pkg} tag ${tag}" ;;
+        esac
+        PLAN_BUMPS+=("$entry")
+        ;;
+      norepo|error)
+        PLAN_ERRORS+=("${pkg} (${kind} ${repo} tag ${tag}): ${detail:-$result}")
+        ;;
+      *)
+        PLAN_ERRORS+=("${pkg}: unexpected plan result ${result}")
+        ;;
+    esac
+    if [[ "$kind" == "public" ]]; then
+      PLAN_PUBLIC="$result"
+      PLAN_PUBLIC_TAG="$tag"
+    elif [[ "$kind" == "impl" ]]; then
+      PLAN_IMPL="$result"
+      PLAN_IMPL_TAG="$tag"
     fi
+  done < "$PUBLISH_PLAN"
+}
+
+require_publish_plan() {
+  local pkg="$1"
+  if [[ "$PLAN_SEEN" -eq 0 ]]; then
+    echo "error: no publish plan for ${pkg}" >&2
+    exit 1
+  fi
+  if [[ ${#PLAN_ERRORS[@]} -gt 0 ]]; then
+    printf '%s\n' "${PLAN_ERRORS[@]}" >&2
+    exit 1
+  fi
+}
+
+note_plan_bumps() {
+  local entry
+  local i
+  local found
+  [[ ${#PLAN_BUMPS[@]} -gt 0 ]] || return 0
+  for entry in "${PLAN_BUMPS[@]}"; do
+    found=0
+    if [[ ${#VERSION_BUMP_NEEDED[@]} -gt 0 ]]; then
+      for ((i = 0; i < ${#VERSION_BUMP_NEEDED[@]}; i++)); do
+        if [[ "${VERSION_BUMP_NEEDED[$i]}" == "$entry" ]]; then
+          found=1
+          break
+        fi
+      done
+    fi
+    if [[ "$found" -eq 0 ]]; then
+      VERSION_BUMP_NEEDED+=("$entry")
+    fi
+    say_red "    CHANGE WITHOUT VERSION BUMP: ${entry} differs from the source tree"
   done
-  VERSION_BUMP_NEEDED+=("$entry")
-  say_red "    CHANGE WITHOUT VERSION BUMP: ${entry} differs from the source tree"
-  git -C "$dest" reset -q
 }
 
 commit_and_tag() {
@@ -1293,18 +1489,6 @@ publish_public_meta_tag() {
   fi
   if git -C "$public_dest" rev-parse "${upstream}" >/dev/null 2>&1; then
     echo "    public tag ${upstream} already exists; not retagging"
-    if [[ ! -f "${meta_dir}/composer.json" ]]; then
-      "$PROJECT_ROOT/generate-meta-package.sh" --out "$meta_dir" "${parent}/${upstream}" >/dev/null
-    fi
-    wipe_published_tree "$public_dest"
-    cp "${meta_dir}/composer.json" "${public_dest}/composer.json"
-    if [[ -f "${meta_dir}/README.md" ]]; then
-      cp "${meta_dir}/README.md" "${public_dest}/README.md"
-    fi
-    if [[ -f "${meta_dir}/LICENSE" ]]; then
-      cp "${meta_dir}/LICENSE" "${public_dest}/LICENSE"
-    fi
-    report_tag_source_drift "$public_dest" "$upstream" "public ${parent}"
     return 0
   fi
   if [[ ! -f "${meta_dir}/composer.json" ]]; then
@@ -1332,49 +1516,62 @@ publish_public_meta_tag() {
 publish_composer_lib_pair() {
   local pkg="$1"
   local dest="$2"
-  local parent upstream impl_tag meta_dir gen_out public_dest impl_dest existing
+  local parent upstream impl_tag meta_dir gen_out public_dest impl_dest
+  local publish_public=0
+  local publish_impl=0
   parent="${pkg%%/*}"
   upstream="${pkg#*/}"
   impl_tag="$(read_tyhp_package_version "$(package_dir "$pkg")/composer.json")" || exit 1
+  read_publish_plan "$pkg"
+  require_publish_plan "$pkg"
+
+  if [[ "$PLAN_PUBLIC" == "new" ]]; then
+    publish_public=1
+  elif [[ "$PLAN_PUBLIC" == "ok" || "$PLAN_PUBLIC" == "bump" ]]; then
+    echo "    public tag ${upstream} already exists; not retagging"
+  else
+    echo "error: unexpected public plan ${PLAN_PUBLIC} for ${pkg}" >&2
+    exit 1
+  fi
+  if [[ "$PLAN_IMPL" == "new" ]]; then
+    publish_impl=1
+  elif [[ "$PLAN_IMPL" == "ok" || "$PLAN_IMPL" == "bump" ]]; then
+    echo "    impl already tagged ${PLAN_IMPL_TAG}; skipping"
+  elif [[ "$PLAN_IMPL" == "absent" ]]; then
+    if ownership_is_handed_off "$(package_dir "$pkg")/composer.json"; then
+      echo "    ${pkg} is handed-off; impl tag ${impl_tag} is not published"
+    else
+      echo "error: publish plan has no impl row for ${pkg}" >&2
+      exit 1
+    fi
+  else
+    echo "error: unexpected impl plan ${PLAN_IMPL} for ${pkg}" >&2
+    exit 1
+  fi
+  note_plan_bumps
+  if [[ "$publish_public" -eq 0 && "$publish_impl" -eq 0 ]]; then
+    cd "$PROJECT_ROOT"
+    return 0
+  fi
+
   meta_dir="${dest}-public-meta"
   mkdir -p "$meta_dir"
-
-  public_dest="${dest}-public"
-  prepare_clone "$parent" "$public_dest"
-  existing=""
-  if git -C "$public_dest" rev-parse "${upstream}" >/dev/null 2>&1; then
-    existing="${meta_dir}/existing-public.json"
-    git -C "$public_dest" show "${upstream}:composer.json" > "$existing"
-  fi
-  if [[ -n "$existing" ]]; then
-    gen_out="$("$PROJECT_ROOT/generate-meta-package.sh" --out "$meta_dir" --existing-public "$existing" "$pkg")"
-  else
+  if [[ "$publish_public" -eq 1 ]]; then
+    public_dest="${dest}-public"
+    prepare_clone "$parent" "$public_dest"
     gen_out="$("$PROJECT_ROOT/generate-meta-package.sh" --out "$meta_dir" "$pkg")"
+    publish_public_meta_tag "$public_dest" "$upstream" "$parent" "$meta_dir" "$gen_out"
   fi
-  publish_public_meta_tag "$public_dest" "$upstream" "$parent" "$meta_dir" "$gen_out"
-
-  if ownership_is_handed_off "$(package_dir "$pkg")/composer.json"; then
-    echo "    ${pkg} is handed-off; impl tag ${impl_tag} is not published"
-    cd "$PROJECT_ROOT"
-    return 0
-  fi
-
-  impl_dest="${dest}-impl"
-  prepare_clone "${parent}-impl" "$impl_dest"
-  if git -C "$impl_dest" rev-parse "${impl_tag}" >/dev/null 2>&1; then
-    echo "    impl already tagged ${impl_tag}; skipping"
+  if [[ "$publish_impl" -eq 1 ]]; then
+    impl_dest="${dest}-impl"
+    prepare_clone "${parent}-impl" "$impl_dest"
+    echo "    impl ${parent}-impl tag ${impl_tag}"
     sync_composer_lib_dist "$pkg" "$impl_dest"
     write_published_impl_composer "$(package_dir "$pkg")/composer.json" "${impl_dest}/composer.json"
-    report_tag_source_drift "$impl_dest" "$impl_tag" "impl ${parent}-impl"
-    cd "$PROJECT_ROOT"
-    return 0
+    commit_and_tag "$impl_dest" "$impl_tag"
+    run_github_git "push ${GITHUB_ORG}/${parent}-impl main" "${parent}-impl" git -C "$impl_dest" push -u origin main
+    run_github_git "push ${GITHUB_ORG}/${parent}-impl tag ${impl_tag}" "${parent}-impl" git -C "$impl_dest" push origin "$impl_tag"
   fi
-  echo "    impl ${parent}-impl tag ${impl_tag}"
-  sync_composer_lib_dist "$pkg" "$impl_dest"
-  write_published_impl_composer "$(package_dir "$pkg")/composer.json" "${impl_dest}/composer.json"
-  commit_and_tag "$impl_dest" "$impl_tag"
-  run_github_git "push ${GITHUB_ORG}/${parent}-impl main" "${parent}-impl" git -C "$impl_dest" push -u origin main
-  run_github_git "push ${GITHUB_ORG}/${parent}-impl tag ${impl_tag}" "${parent}-impl" git -C "$impl_dest" push origin "$impl_tag"
   cd "$PROJECT_ROOT"
 }
 
@@ -1398,17 +1595,17 @@ publish_tyhpdef_package() {
 
   echo "==> Publishing ${composer_name} ${tag} from ${pkg} to ${GITHUB_ORG}/${repo}"
 
-  prepare_clone "$repo" "$dest"
-
-  if git -C "$dest" rev-parse "${tag}" >/dev/null 2>&1; then
+  read_publish_plan "$pkg"
+  require_publish_plan "$pkg"
+  if [[ "$PLAN_NEW" -eq 0 ]]; then
     echo "    already tagged ${tag}; skipping"
-    sync_composer_lib_dist "$pkg" "$dest"
-    report_tag_source_drift "$dest" "$tag" "$pkg"
+    note_plan_bumps
     cd "$PROJECT_ROOT"
     return 0
   fi
 
   echo "    ${pkg} ${tag}"
+  prepare_clone "$repo" "$dest"
   sync_composer_lib_dist "$pkg" "$dest"
   commit_and_tag "$dest" "$tag"
 
@@ -1433,17 +1630,17 @@ publish_compiler_package() {
 
   echo "==> Publishing ${composer_name} ${tag} from ${pkg} to ${GITHUB_ORG}/${repo}"
 
-  prepare_clone "$repo" "$dest"
-
-  if git -C "$dest" rev-parse "${tag}" >/dev/null 2>&1; then
+  read_publish_plan "$pkg"
+  require_publish_plan "$pkg"
+  if [[ "$PLAN_NEW" -eq 0 ]]; then
     echo "    already tagged ${tag}; skipping"
-    sync_compiler_dist "$pkg" "$dest"
-    report_tag_source_drift "$dest" "$tag" "$pkg"
+    note_plan_bumps
     cd "$PROJECT_ROOT"
     return 0
   fi
 
   echo "    ${pkg} ${tag}"
+  prepare_clone "$repo" "$dest"
   sync_compiler_dist "$pkg" "$dest"
   commit_and_tag "$dest" "$tag"
 
@@ -1482,42 +1679,22 @@ publish_package() {
   echo "==> Publishing ${composer_name} to ${GITHUB_ORG}/${pkg} (PHP 8.2–8.5)"
 
   load_package_release_version "$pkg" || exit 1
-  prepare_clone "$pkg" "$dest"
-
-  local existing=0
-  local needed=0
-  for entry in "${DIST_BUILDS[@]}"; do
-    php_major="${entry%%:*}"
-    dist_version="$(package_version "$php_major")"
-    needed=$((needed + 1))
-    if git -C "$dest" rev-parse "${dist_version}" >/dev/null 2>&1; then
-      existing=$((existing + 1))
-    fi
-  done
-  if [[ "$existing" -eq "$needed" ]]; then
-    echo "    already tagged ${needed} PHP targets; skipping"
-    for entry in "${DIST_BUILDS[@]}"; do
-      php_major="${entry%%:*}"
-      dist_version="$(package_version "$php_major")"
-      sync_compile_dist "$pkg" "$dest" "$dist_version"
-      report_tag_source_drift "$dest" "$dist_version" "$pkg"
-    done
+  read_publish_plan "$pkg"
+  require_publish_plan "$pkg"
+  if [[ "$PLAN_NEW" -eq 0 ]]; then
+    echo "    already tagged ${PLAN_TAGGED} PHP targets; skipping"
+    note_plan_bumps
     cd "$PROJECT_ROOT"
     return 0
   fi
-  if [[ "$existing" -gt 0 ]]; then
-    for entry in "${DIST_BUILDS[@]}"; do
-      php_major="${entry%%:*}"
-      dist_version="$(package_version "$php_major")"
-      if git -C "$dest" rev-parse "${dist_version}" >/dev/null 2>&1; then
-        sync_compile_dist "$pkg" "$dest" "$dist_version"
-        report_tag_source_drift "$dest" "$dist_version" "$pkg"
-      fi
-    done
-    echo "Partial publish in ${GITHUB_ORG}/${pkg}: ${existing}/${needed} tags already exist." >&2
+  if [[ "$PLAN_TAGGED" -gt 0 ]]; then
+    note_plan_bumps
+    echo "Partial publish in ${GITHUB_ORG}/${pkg}: ${PLAN_TAGGED}/$((PLAN_TAGGED + PLAN_NEW)) tags already exist." >&2
     echo "Finish or delete the incomplete tags, then re-run." >&2
     exit 1
   fi
+
+  prepare_clone "$pkg" "$dest"
 
   for entry in "${DIST_BUILDS[@]}"; do
     php_major="${entry%%:*}"
@@ -1570,7 +1747,10 @@ main() {
     return 0
   fi
 
-  if [[ "$CREATE_PACKAGIST" -eq 1 ]]; then
+  if [[ -f "$PACKAGIST_CREDENTIALS_FILE" ]]; then
+    validate_packagist_credentials
+    PACKAGIST_CREDENTIALS_READY=1
+  elif [[ "$CREATE_PACKAGIST" -eq 1 ]]; then
     validate_packagist_credentials
   fi
 
@@ -1640,6 +1820,10 @@ main() {
   PUBLISH_WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/tyhp-pkg-publish.XXXXXX")"
   trap cleanup_publish_workdir EXIT
 
+  if [[ ${#MATCHED_PACKAGES[@]} -gt 0 ]]; then
+    load_publish_plan
+  fi
+
   local published=()
   local dest_name
   echo "Publishing ${#MATCHED_PACKAGES[@]} package(s)..."
@@ -1651,6 +1835,7 @@ main() {
       if [[ "$CREATE_PACKAGIST" -eq 1 ]]; then
         ensure_packagist_package "$pkg" || true
       fi
+      refresh_packagist_package "$pkg" || true
     done
   fi
 
@@ -1685,10 +1870,25 @@ main() {
     if [[ ${#PACKAGIST_FAILED_NAMES[@]} -gt 0 ]]; then
       echo "Failed Packagist creates: ${PACKAGIST_FAILED_NAMES[*]}" >&2
     fi
-  else
-    echo "Next HUMAN step: submit each https://github.com/${GITHUB_ORG}/{package} URL on Packagist."
   fi
-  if [[ ${#GITHUB_CREATE_FAILED_REPOS[@]} -gt 0 || ${#PACKAGIST_FAILED_NAMES[@]} -gt 0 ]]; then
+  if [[ ${#PACKAGIST_UPDATED_NAMES[@]} -gt 0 ]]; then
+    echo "Packagist update queued: ${PACKAGIST_UPDATED_NAMES[*]}"
+  fi
+  if [[ ${#PACKAGIST_CURRENT_NAMES[@]} -gt 0 ]]; then
+    echo "Packagist already current: ${#PACKAGIST_CURRENT_NAMES[@]} package(s)"
+  fi
+  if [[ ${#PACKAGIST_UNREGISTERED_NAMES[@]} -gt 0 ]]; then
+    echo "Not on Packagist: ${PACKAGIST_UNREGISTERED_NAMES[*]}" >&2
+    echo "Pass --create-packagist-packages to register them." >&2
+  fi
+  if [[ ${#PACKAGIST_UPDATE_FAILED_NAMES[@]} -gt 0 ]]; then
+    echo "Failed Packagist updates: ${PACKAGIST_UPDATE_FAILED_NAMES[*]}" >&2
+  fi
+  if [[ "$PACKAGIST_CREDENTIALS_READY" -eq 0 && "$CREATE_PACKAGIST" -eq 0 ]]; then
+    echo "Next HUMAN step: submit each https://github.com/${GITHUB_ORG}/{package} URL on Packagist."
+    echo "Or add ${PACKAGIST_CREDENTIALS_FILE} and run scripts/update-packagist-packages.sh."
+  fi
+  if [[ ${#GITHUB_CREATE_FAILED_REPOS[@]} -gt 0 || ${#PACKAGIST_FAILED_NAMES[@]} -gt 0 || ${#PACKAGIST_UPDATE_FAILED_NAMES[@]} -gt 0 ]]; then
     return 1
   fi
 }

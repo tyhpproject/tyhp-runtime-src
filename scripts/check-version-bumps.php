@@ -50,9 +50,12 @@ function check_usage(): string
         compiler changed since the last build.
 
         Options:
-          -h, --help        Show this help
-          --package NAME    Check one package (same names as publish --package)
-          --jobs N          Parallel GitHub requests (default 8)
+          -h, --help           Show this help
+          --package NAME       Check one package (same names as publish --package)
+          --only-file PATH     Check only the package names listed in PATH
+          --jobs N             Parallel GitHub requests (default 8)
+          --format text|tsv    text is the report below; tsv is one row per tag
+                               (result, package, kind, repo, tag, detail)
 
         Exit status:
           0  nothing needs a version bump
@@ -70,11 +73,13 @@ function usage_error(string $message): never
     exit(2);
 }
 
-/** @return array{string, int} package filter, jobs */
+/** @return array{string, int, string, string} package filter, jobs, format, only-file */
 function check_args(array $argv): array
 {
     $package = '';
     $jobs = 8;
+    $format = 'text';
+    $onlyFile = '';
     $args = \array_slice($argv, 1);
     while ($args !== []) {
         $arg = \array_shift($args);
@@ -82,25 +87,54 @@ function check_args(array $argv): array
             echo check_usage();
             exit(0);
         }
-        if ($arg === '--package' || $arg === '--jobs') {
+        if ($arg === '--package' || $arg === '--jobs' || $arg === '--format' || $arg === '--only-file') {
             if ($args === []) {
                 usage_error("{$arg} requires a value.");
             }
             $value = \array_shift($args);
-        } elseif (\str_starts_with($arg, '--package=') || \str_starts_with($arg, '--jobs=')) {
+        } elseif (
+            \str_starts_with($arg, '--package=')
+            || \str_starts_with($arg, '--jobs=')
+            || \str_starts_with($arg, '--format=')
+            || \str_starts_with($arg, '--only-file=')
+        ) {
             [$arg, $value] = \explode('=', $arg, 2);
         } else {
             usage_error("unknown argument: {$arg} (see --help)");
         }
         if ($arg === '--package') {
             $package = $value;
+        } elseif ($arg === '--format') {
+            if ($value !== 'text' && $value !== 'tsv') {
+                usage_error('--format must be text or tsv.');
+            }
+            $format = $value;
+        } elseif ($arg === '--only-file') {
+            $onlyFile = $value;
         } elseif (\preg_match('/^[1-9]\d*$/', $value) === 1) {
             $jobs = (int) $value;
         } else {
             usage_error('--jobs must be a positive number.');
         }
     }
-    return [$package, $jobs];
+    return [$package, $jobs, $format, $onlyFile];
+}
+
+/** @return list<string> */
+function wanted_packages(string $path): array
+{
+    $text = @\file_get_contents($path);
+    if ($text === false) {
+        usage_error("cannot read {$path}");
+    }
+    $names = [];
+    foreach (\preg_split('/\r\n|\n|\r/', $text) ?: [] as $line) {
+        $line = \trim($line);
+        if ($line !== '' && !\str_starts_with($line, '#')) {
+            $names[] = $line;
+        }
+    }
+    return $names;
 }
 
 function words(string $list): array
@@ -499,9 +533,26 @@ function remove_tree(string $dir): void
     @\rmdir($dir);
 }
 
+function check_progress(string $format, string $line): void
+{
+    if ($format === 'tsv') {
+        \fwrite(\STDERR, $line . "\n");
+        return;
+    }
+    echo $line, "\n";
+}
+
+function write_plan_tsv(array $rows): void
+{
+    foreach ($rows as $row) {
+        $detail = \str_replace(["\t", "\n", "\r"], ' ', $row->detail);
+        echo $row->result, "\t", $row->pkg, "\t", $row->kind, "\t", $row->repo, "\t", $row->tag, "\t", $detail, "\n";
+    }
+}
+
 function check_main(array $argv): int
 {
-    [$filter, $jobs] = check_args($argv);
+    [$filter, $jobs, $format, $onlyFile] = check_args($argv);
     $repoRoot = \dirname(__DIR__);
     $distPackages = words((string) \getenv('CHECK_DIST_PACKAGES'));
     $phpMajors = words((string) \getenv('CHECK_PHP_MAJORS'));
@@ -513,6 +564,10 @@ function check_main(array $argv): int
     if ($filter !== '') {
         $rows = filter_rows($rows, $filter);
     }
+    if ($onlyFile !== '') {
+        $wanted = \array_fill_keys(wanted_packages($onlyFile), true);
+        $rows = \array_values(\array_filter($rows, static fn (Row $row): bool => isset($wanted[$row->pkg])));
+    }
     foreach ($rows as $row) {
         if ($row->tag === '') {
             throw new \RuntimeException("missing version for {$row->pkg}");
@@ -523,14 +578,19 @@ function check_main(array $argv): int
     \mkdir($work, 0700, true);
     try {
         $batches = \array_chunk($rows, CHECK_BATCH_SIZE);
-        echo 'Fetching ' . \count($rows) . ' tags from ' . CHECK_ORG . ' (' . \count($batches) . " GitHub requests)...\n";
+        check_progress($format, 'Fetching ' . \count($rows) . ' tags from ' . CHECK_ORG . ' (' . \count($batches) . ' GitHub requests)...');
         fetch_tags($batches, $work, $jobs);
-        echo "Comparing with the trees publish would push...\n";
+        check_progress($format, 'Comparing with the trees publish would push...');
         foreach ($rows as $row) {
             check_row($row, $repoRoot, $work);
         }
     } finally {
         remove_tree($work);
+    }
+
+    if ($format === 'tsv') {
+        write_plan_tsv($rows);
+        return 0;
     }
 
     $byResult = ['ok' => [], 'new' => [], 'bump' => [], 'norepo' => [], 'error' => []];
