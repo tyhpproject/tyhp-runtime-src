@@ -132,12 +132,14 @@ class Expression<TCallableShape extends callable> {
     /**
      * Return type string for {@see Expression::lambda()}: the closure's declared return
      * type when a closure was passed and declares one, otherwise the type stored on the tree body.
+     * When the body type is the full Tyhp form of the closure's PHP type (`array<App\Post>` for
+     * `array`), the body type is kept.
      */
     protected static function inferReturnType(?\Closure $callable, Expression\ExpressionNode $body): string {
         if ($callable !== null) {
             ?string $fromCallable = self::callableReturnTypeName($callable);
             if ($fromCallable !== null) {
-                return $fromCallable;
+                return self::refinedType($body->type, $fromCallable);
             }
         }
 
@@ -146,6 +148,25 @@ class Expression<TCallableShape extends callable> {
         }
 
         return 'mixed';
+    }
+
+    /**
+     * `$full` when it erases to `$declared` (same PHP type, more detail), otherwise `$declared`.
+     */
+    protected static function refinedType(string $full, string $declared): string {
+        if ($full === '' || $full === 'mixed' || $full === $declared) {
+            return $declared;
+        }
+
+        try {
+            if ((string)Type::parse($full)->erased() === (string)Type::parse($declared)->erased()) {
+                return $full;
+            }
+        } catch (\Throwable $e) {
+            (void)$e;
+        }
+
+        return $declared;
     }
 
     /**

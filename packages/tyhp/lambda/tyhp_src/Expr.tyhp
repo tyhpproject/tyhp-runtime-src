@@ -19,7 +19,11 @@ use Tyhp\Expression\TernaryFrame;
 use Tyhp\Expression\UnaryExpression;
 use Tyhp\Expression\ArgumentList;
 use Tyhp\Expression\ArrayAccessExpression;
+use Tyhp\Expression\ArrayExpression;
+use Tyhp\Expression\ArrayItem;
 use Tyhp\Expression\CastExpression;
+use Tyhp\Expression\LambdaExpression;
+use Tyhp\Expression\NullSafeMethodCallExpression;
 
 /**
  * Fluent expression builder.
@@ -29,8 +33,10 @@ use Tyhp\Expression\CastExpression;
  * continue from the original parameter. Each of those seals the left side
  * first, so `a->and()->b->or()->c` is `(a && b) || c`.
  *
- * `nullSafe()` applies only to the next property. `expr()` turns a nested
+ * `nullSafe()` applies only to the next property or `call()`. `expr()` turns a nested
  * chain into one value so the next call applies to that whole result.
+ * `closure()` builds a nested `fn` and `arrayOf()` an array literal; both are
+ * values to pass to other calls, such as `call()` arguments.
  * `backedBy()` stores the native closure used by invoke. Omit it and invoke
  * compiles a closure from the tree when every name and value can be represented
  * safely, and walks the tree otherwise.
@@ -121,6 +127,112 @@ class Expr extends Expression<callable> {
         return new self($node, [], null, $node->type, [], $node, false, null, null, true, []);
     }
 
+    /**
+     * A nested `fn` used as a value, such as a method argument:
+     * `Expr::param('b', Blog::class)->posts->call('any', Expr::closure([Expr::param('p', Post::class)], fn ($p) => $p->rating->gt(3)))`.
+     *
+     * Each parameter is a {@see param()} builder whose index is its position in the nested
+     * `fn`. `$body` is a builder, an {@see Expression}, a closure that receives one builder per
+     * parameter and returns a builder, or a plain value. A parameter in the body that the nested
+     * `fn` does not declare refers to the enclosing expression's parameter of that name.
+     * `$returnType` defaults to the body's type.
+     *
+     * @param array<self> $parameters
+     */
+    public static function closure(array<self> $parameters, mixed $body, string $returnType = ''): self {
+        array<ParameterExpression> $declared = [];
+        array<string> $declaredNames = [];
+        foreach ($parameters as $parameter) {
+            ExpressionNode $cursor = $parameter->cursor;
+            if (!($cursor instanceof ParameterExpression) || $parameter->roots === []) {
+                throw new \InvalidArgumentException('closure() parameters must be Expr::param() builders.');
+            }
+            $declared[] = $cursor;
+            $declaredNames[] = $cursor->name;
+        }
+
+        ExpressionNode $bodyNode;
+        array<ParameterExpression> $bodyParameters = [];
+        if ($body instanceof \Closure) {
+            mixed $returned = $body(...$parameters);
+            if (!($returned instanceof self)) {
+                throw new \InvalidArgumentException('closure() body closure must return a builder.');
+            }
+            $bodyNode = $returned->materialize();
+            $bodyParameters = $returned->parameters;
+        } elseif ($body instanceof self) {
+            $bodyNode = $body->materialize();
+            $bodyParameters = $body->parameters;
+        } elseif ($body instanceof Expression) {
+            $bodyNode = $body->body;
+            $bodyParameters = $body->parameters;
+        } else {
+            $bodyNode = new ConstantExpression($body, self::constantType($body));
+        }
+
+        array<ParameterExpression> $outer = [];
+        foreach ($bodyParameters as $bodyParameter) {
+            if (!\in_array($bodyParameter->name, $declaredNames, true)) {
+                $outer[] = $bodyParameter;
+            }
+        }
+
+        string $lambdaReturn = $returnType !== ''
+            ? $returnType
+            : ($bodyNode->type !== '' ? $bodyNode->type : 'mixed');
+        LambdaExpression $node = new LambdaExpression($declared, $bodyNode, $lambdaReturn);
+        return new self($node, $outer, null, $node->type, [], $node, false, null, null, true, []);
+    }
+
+    /**
+     * An array literal. `$values` are the items in order. `$keys` maps an item's position to
+     * its key; an item with no entry takes the next integer key, as `[$a, $b]` does. Each value
+     * and key is a builder, an {@see Expression}, or a plain value.
+     * `Expr::arrayOf([$id, $name], ['id', 'name'])` is `['id' => $id, 'name' => $name]`.
+     *
+     * @param array<mixed> $values
+     * @param array<mixed> $keys
+     */
+    public static function arrayOf(array<mixed> $values, array<mixed> $keys = []): self {
+        array<ArrayItem> $items = [];
+        array<ParameterExpression> $parameters = [];
+        array<ParameterExpression> $roots = [];
+        int $position = 0;
+        foreach ($values as $value) {
+            ?ExpressionNode $keyNode = null;
+            if (\array_key_exists($position, $keys)) {
+                $keyNode = self::itemNode($keys[$position], $parameters, $roots);
+            }
+            ExpressionNode $valueNode = self::itemNode($value, $parameters, $roots);
+            $items[] = new ArrayItem($valueNode, $keyNode);
+            $position++;
+        }
+
+        ArrayExpression $node = new ArrayExpression($items);
+        return new self($node, $parameters, null, $node->type, $roots, $node, false, null, null, true, []);
+    }
+
+    /**
+     * @param array<ParameterExpression> $parameters
+     * @param array<ParameterExpression> $roots
+     */
+    private static function itemNode(
+        mixed $value,
+        array<ParameterExpression> &$parameters,
+        array<ParameterExpression> &$roots,
+    ): ExpressionNode {
+        if ($value instanceof self) {
+            $parameters = self::unionParams($parameters, $value->parameters);
+            $roots = self::unionParams($roots, $value->roots);
+            return $value->materialize();
+        }
+        if ($value instanceof Expression) {
+            $parameters = self::unionParams($parameters, $value->parameters);
+            return $value->body;
+        }
+        return new ConstantExpression($value, self::constantType($value));
+    }
+
     public static function isChainMethod(string $name): bool {
         return \in_array(\strtolower($name), self::CHAIN_METHODS, true);
     }
@@ -131,9 +243,10 @@ class Expr extends Expression<callable> {
     public function prop(string $name): self {
         bool $nullSafe = $this->pendingNullSafe;
         ExpressionNode $object = $this->tip();
+        string $type = Expression\FluentSupport::memberType($object->type, $name, $nullSafe);
         ExpressionNode $next = $nullSafe
-            ? new NullSafeAccessExpression($object, $name, 'mixed')
-            : new PropertyAccessExpression($object, $name, 'mixed');
+            ? new NullSafeAccessExpression($object, $name, $type)
+            : new PropertyAccessExpression($object, $name, $type);
         return $this->derive($next, true, false, $this->pendingLeft, $this->pendingOp, $this->ternaryStack);
     }
 
@@ -147,7 +260,7 @@ class Expr extends Expression<callable> {
     }
 
     /**
-     * The next property is read with `?->`. A builder method before that property is an error.
+     * The next property or {@see call()} uses `?->`. Any other builder method before it is an error.
      */
     public function nullSafe(): self {
         $this->guardNullSafe('nullSafe');
@@ -510,9 +623,11 @@ class Expr extends Expression<callable> {
     }
 
     public function call(string $method, mixed ...$args): self {
-        $this->guardNullSafe('call');
+        bool $nullSafe = $this->pendingNullSafe;
         ArgumentList $resolved = $this->resolveList($args);
-        MethodCallExpression $node = new MethodCallExpression($this->tip(), $method, $resolved->arguments, 'mixed');
+        ExpressionNode $node = $nullSafe
+            ? new NullSafeMethodCallExpression($this->tip(), $method, $resolved->arguments, 'mixed')
+            : new MethodCallExpression($this->tip(), $method, $resolved->arguments, 'mixed');
         return $this->derive(
             $node,
             true,
@@ -833,7 +948,7 @@ class Expr extends Expression<callable> {
     private function guardNullSafe(string $method): void {
         if ($this->pendingNullSafe) {
             throw new \LogicException(
-                'nullSafe() must be followed by a property, not ' . $method . '().',
+                'nullSafe() must be followed by a property or call(), not ' . $method . '().',
             );
         }
     }

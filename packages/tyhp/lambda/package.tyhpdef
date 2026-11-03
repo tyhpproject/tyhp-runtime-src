@@ -2,7 +2,7 @@
 /**
  * AUTO-GENERATED, DO NOT EDIT
  * Compiler: 805.1.2.0
- * Generated: 2026-10-23T23:17:01.1613390Z
+ * Generated: 2026-11-02T23:01:15.6918460Z
  */
 namespace Tyhp {
     /**
@@ -477,8 +477,14 @@ namespace Tyhp {
         /**
         * Return type string for {@see Expression::lambda()}: the closure's declared return
         * type when a closure was passed and declares one, otherwise the type stored on the tree body.
+        * When the body type is the full Tyhp form of the closure's PHP type (`array<App\Post>` for
+        * `array`), the body type is kept.
         */
         protected static function inferReturnType(?\Closure $callable, \Tyhp\Expression\ExpressionNode $body): string;
+        /**
+        * `$full` when it erases to `$declared` (same PHP type, more detail), otherwise `$declared`.
+        */
+        protected static function refinedType(string $full, string $declared): string;
         /**
         * PHP return type of `$callable`, or null when it is absent or `mixed`.
         */
@@ -559,8 +565,10 @@ namespace Tyhp {
     * continue from the original parameter. Each of those seals the left side
     * first, so `a->and()->b->or()->c` is `(a && b) || c`.
     *
-    * `nullSafe()` applies only to the next property. `expr()` turns a nested
+    * `nullSafe()` applies only to the next property or `call()`. `expr()` turns a nested
     * chain into one value so the next call applies to that whole result.
+    * `closure()` builds a nested `fn` and `arrayOf()` an array literal; both are
+    * values to pass to other calls, such as `call()` arguments.
     * `backedBy()` stores the native closure used by invoke. Omit it and invoke
     * compiles a closure from the tree when every name and value can be represented
     * safely, and walks the tree otherwise.
@@ -589,6 +597,29 @@ namespace Tyhp {
         * A chain whose value is `$value` and which has no parameters.
         */
         public static function literal(mixed $value): self;
+        /**
+        * A nested `fn` used as a value, such as a method argument:
+        * `Expr::param('b', Blog::class)->posts->call('any', Expr::closure([Expr::param('p', Post::class)], fn ($p) => $p->rating->gt(3)))`.
+        *
+        * Each parameter is a {@see param()} builder whose index is its position in the nested
+        * `fn`. `$body` is a builder, an {@see Expression}, a closure that receives one builder per
+        * parameter and returns a builder, or a plain value. A parameter in the body that the nested
+        * `fn` does not declare refers to the enclosing expression's parameter of that name.
+        * `$returnType` defaults to the body's type.
+        *
+        * @param array<self> $parameters
+        */
+        public static function closure(array<self> $parameters, mixed $body, string $returnType = ''): self;
+        /**
+        * An array literal. `$values` are the items in order. `$keys` maps an item's position to
+        * its key; an item with no entry takes the next integer key, as `[$a, $b]` does. Each value
+        * and key is a builder, an {@see Expression}, or a plain value.
+        * `Expr::arrayOf([$id, $name], ['id', 'name'])` is `['id' => $id, 'name' => $name]`.
+        *
+        * @param array<mixed> $values
+        * @param array<mixed> $keys
+        */
+        public static function arrayOf(array<mixed> $values, array<mixed> $keys = []): self;
         public static function isChainMethod(string $name): bool;
         /**
         * Property hop. Use this when the name is a builder method (`eq`, `and`, …).
@@ -596,7 +627,7 @@ namespace Tyhp {
         public function prop(string $name): self;
         public function __get(string $name): self;
         /**
-        * The next property is read with `?->`. A builder method before that property is an error.
+        * The next property or {@see call()} uses `?->`. Any other builder method before it is an error.
         */
         public function nullSafe(): self;
         /**
@@ -745,6 +776,20 @@ namespace Tyhp\Expression {
         public function __construct(string $name, string $paramType, int $index): void;
         public function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
     }
+    /**
+    * `$object?->method(...)`. When `$object` is null the call is skipped, its arguments are not
+    * evaluated, and the rest of the access chain yields null.
+    */
+    final class NullSafeMethodCallExpression extends \Tyhp\Expression\ExpressionNode {
+        readonly public array<\Tyhp\Expression\ExpressionNode> $arguments;
+        readonly public \Tyhp\Expression\ExpressionNode $object;
+        readonly public string $method;
+        /**
+        * @param array<ExpressionNode> $arguments
+        */
+        public function __construct(\Tyhp\Expression\ExpressionNode $object, string $method, array<\Tyhp\Expression\ExpressionNode> $arguments, string $type = 'mixed'): void;
+        public function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
+    }
     final class NullSafeAccessExpression extends \Tyhp\Expression\ExpressionNode {
         readonly public \Tyhp\Expression\ExpressionNode $object;
         readonly public string $property;
@@ -762,6 +807,25 @@ namespace Tyhp\Expression {
         readonly public \Tyhp\Expression\ExpressionNode $object;
         readonly public string $method;
         public function __construct(\Tyhp\Expression\ExpressionNode $object, string $method, array<\Tyhp\Expression\ExpressionNode> $arguments, string $type = 'mixed'): void;
+        public function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
+    }
+    /**
+    * A nested `fn` inside an expression tree, such as the predicate in
+    * `fn ($b) => $b->posts->any(fn ($p) => $p->rating > 3)`.
+    *
+    * A {@see ParameterExpression} in {@see $body} refers to the nearest enclosing lambda that
+    * declares a parameter with the same name. Any other parameter refers to an outer lambda's
+    * parameter or to the expression's own argument at its index. Evaluating the node yields a
+    * `\Closure`.
+    */
+    final class LambdaExpression extends \Tyhp\Expression\ExpressionNode {
+        readonly public array<\Tyhp\Expression\ParameterExpression> $parameters;
+        readonly public \Tyhp\Expression\ExpressionNode $body;
+        readonly public string $returnType ?? 'mixed';
+        /**
+        * @param array<ParameterExpression> $parameters
+        */
+        public function __construct(array<\Tyhp\Expression\ParameterExpression> $parameters, \Tyhp\Expression\ExpressionNode $body, string $returnType = 'mixed'): void;
         public function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
     }
     final class InstanceofExpression extends \Tyhp\Expression\ExpressionNode {
@@ -786,6 +850,39 @@ namespace Tyhp\Expression {
         public function visitCast(\Tyhp\Expression\CastExpression $node): mixed;
         public function visitNew(\Tyhp\Expression\NewExpression $node): mixed;
         public function visitInstanceof(\Tyhp\Expression\InstanceofExpression $node): mixed;
+        public function visitNullSafeMethodCall(\Tyhp\Expression\NullSafeMethodCallExpression $node): mixed;
+        public function visitLambda(\Tyhp\Expression\LambdaExpression $node): mixed;
+        public function visitArray(\Tyhp\Expression\ArrayExpression $node): mixed;
+    }
+    /**
+    * The structure of an expression tree with its constant values left out.
+    *
+    * Captured variables, literals, and `Cls::CONST` reads are {@see ConstantExpression} nodes.
+    * {@see $key} covers everything {@see ExpressionSerializer::toJson()} writes except those
+    * nodes' values: node kinds, operators, property and method names, class names, parameter
+    * names, types and positions, every node's type spelling, and the return type. Two trees that
+    * differ only in constant values share a key, so a plan built for one tree can be reused for
+    * the other with that tree's {@see $parameters}.
+    *
+    * A constant keeps its type spelling in the key. Literal spellings, which name the value
+    * itself (`18`, `1.5`, `true`), are replaced by the value's PHP type (`int`, `float`, `bool`,
+    * `string`), so `$u->age > 18` and `$u->age > 21` share a key. `null` stays `null`, so a
+    * constant that is null and one that holds an `int` give different keys, and so do an `int`
+    * constant and a `string` constant. A constant used as an array-literal key (`['id' => …]`)
+    * keeps its value in the key, because it names a field of the result; it is still listed in
+    * {@see $parameters}.
+    *
+    * The key is a 32-character hex `xxh128` hash and is the same in every PHP process.
+    */
+    final class ExpressionShape {
+        readonly public string $key;
+        readonly public array<\Tyhp\Expression\ConstantExpression> $constants;
+        readonly public array<mixed> $parameters;
+        public static function of(\Tyhp\Expression $expression): \Tyhp\Expression\ExpressionShape;
+        /**
+        * Position of `$constant` in {@see $constants} and {@see $parameters}.
+        */
+        public function slotOf(\Tyhp\Expression\ConstantExpression $constant): int;
     }
     final class ExpressionSerializer {
         public static function toJson(\Tyhp\Expression $expression): string;
@@ -794,6 +891,14 @@ namespace Tyhp\Expression {
         * their serialized JSON representations (parameters, return type, and body).
         */
         public static function equals(\Tyhp\Expression $a, \Tyhp\Expression $b): bool;
+        /**
+        * Key for the tree's structure with constant values left out. See {@see ExpressionShape}.
+        */
+        public static function shapeKey(\Tyhp\Expression $expression): string;
+        /**
+        * Values of the tree's constant nodes, left to right as written. See {@see ExpressionShape}.
+        */
+        public static function shapeParameters(\Tyhp\Expression $expression): array<mixed>;
     }
     type SerializedExpression = struct {
         string $nodeType = '';
@@ -859,6 +964,23 @@ namespace Tyhp\Expression {
         \Tyhp\Expression\SerializedExpression $operand;
         string $targetType = '';
     };
+    type SerializedNullSafeMethodCallExpression = struct extends \Tyhp\Expression\SerializedExpression {
+        \Tyhp\Expression\SerializedExpression $object;
+        string $method = '';
+        array<\Tyhp\Expression\SerializedExpression> $arguments = [];
+    };
+    type SerializedLambdaExpression = struct extends \Tyhp\Expression\SerializedExpression {
+        string $returnType = '';
+        array<\Tyhp\Expression\SerializedExpression> $parameters = [];
+        \Tyhp\Expression\SerializedExpression $body;
+    };
+    type SerializedArrayItem = struct {
+        ?\Tyhp\Expression\SerializedExpression $key = null;
+        \Tyhp\Expression\SerializedExpression $value;
+    };
+    type SerializedArrayExpression = struct extends \Tyhp\Expression\SerializedExpression {
+        array<\Tyhp\Expression\SerializedArrayItem> $items = [];
+    };
     abstract class ExpressionNode {
         readonly public string $type;
         readonly public string $nodeType;
@@ -868,9 +990,11 @@ namespace Tyhp\Expression {
     /**
     * Evaluates an expression tree when no native closure was stored.
     *
-    * `&&` / `||`, `??`, and `?->` stop as soon as PHP would. Property reads are
-    * public `->` / `?->` on objects. A node this walker cannot run the way PHP
-    * would throws, rather than guessing.
+    * `&&` / `||`, `??`, and `?->` stop as soon as PHP would: a `?->` on null skips the
+    * rest of its access chain (property reads, method calls, and array reads after it).
+    * Property reads are public `->` / `?->` on objects. A nested {@see LambdaExpression}
+    * evaluates to a `\Closure`. A node this walker cannot run the way PHP would throws,
+    * rather than guessing.
     */
     final class ExpressionInterpreter {
         /**
@@ -900,6 +1024,27 @@ namespace Tyhp\Expression {
         readonly public string $operator;
         readonly public \Tyhp\Expression\ExpressionNode $right;
         public function __construct(\Tyhp\Expression\ExpressionNode $left, string $operator, \Tyhp\Expression\ExpressionNode $right, string $type = 'mixed'): void;
+        public function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
+    }
+    /**
+    * One element of an {@see ArrayExpression}. `$key` is null for an element without an explicit
+    * key (`[$a, $b]`), so it takes the next integer key.
+    */
+    final class ArrayItem {
+        readonly public \Tyhp\Expression\ExpressionNode $value;
+        readonly public ?\Tyhp\Expression\ExpressionNode $key ?? null;
+        public function __construct(\Tyhp\Expression\ExpressionNode $value, ?\Tyhp\Expression\ExpressionNode $key = null): void;
+    }
+    /**
+    * An array literal such as `[1, 2, 3]` or `['id' => $u->id, 'name' => $u->name]`.
+    * Items keep their source order.
+    */
+    final class ArrayExpression extends \Tyhp\Expression\ExpressionNode {
+        readonly public array<\Tyhp\Expression\ArrayItem> $items;
+        /**
+        * @param array<ArrayItem> $items
+        */
+        public function __construct(array<\Tyhp\Expression\ArrayItem> $items, string $type = 'array'): void;
         public function accept(\Tyhp\Expression\ExpressionVisitor $visitor): mixed;
     }
     final class ArrayAccessExpression extends \Tyhp\Expression\ExpressionNode {

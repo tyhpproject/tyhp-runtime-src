@@ -7,9 +7,11 @@ use Tyhp\Type;
 /**
  * Evaluates an expression tree when no native closure was stored.
  *
- * `&&` / `||`, `??`, and `?->` stop as soon as PHP would. Property reads are
- * public `->` / `?->` on objects. A node this walker cannot run the way PHP
- * would throws, rather than guessing.
+ * `&&` / `||`, `??`, and `?->` stop as soon as PHP would: a `?->` on null skips the
+ * rest of its access chain (property reads, method calls, and array reads after it).
+ * Property reads are public `->` / `?->` on objects. A nested {@see LambdaExpression}
+ * evaluates to a `\Closure`. A node this walker cannot run the way PHP would throws,
+ * rather than guessing.
  */
 final class ExpressionInterpreter {
     /**
@@ -21,103 +23,79 @@ final class ExpressionInterpreter {
         mixed ...$args,
     ): mixed {
         (void)$parameters;
-        return self::evalNode($node, $args);
+        return self::evalNode($node, $args, null);
     }
 
     /**
      * @param array<int, mixed> $args
      */
-    private static function evalNode(ExpressionNode $node, array<int, mixed> $args): mixed {
+    private static function evalNode(ExpressionNode $node, array<int, mixed> $args, ?LambdaScope $scope): mixed {
+        if (self::isChainLink($node)) {
+            mixed $linked = self::evalLink($node, $args, $scope);
+            return $linked instanceof ChainShortCircuit ? null : $linked;
+        }
+
         if ($node instanceof ParameterExpression) {
-            if (!\array_key_exists($node->index, $args)) {
-                throw new \ArgumentCountError(
-                    'Expression parameter $' . $node->name . ' at index ' . (string)$node->index . ' was not passed.',
-                );
-            }
-            return $args[$node->index];
+            return self::readParameter($node, $args, $scope);
         }
 
         if ($node instanceof ConstantExpression) {
             return $node->value;
         }
 
-        if ($node instanceof PropertyAccessExpression) {
-            return self::readProperty(self::evalNode($node->object, $args), $node->property, false);
-        }
-
-        if ($node instanceof NullSafeAccessExpression) {
-            mixed $object = self::evalNode($node->object, $args);
-            if ($object === null) {
-                return null;
-            }
-            return self::readProperty($object, $node->property, true);
-        }
-
         if ($node instanceof BinaryExpression) {
-            return self::evalBinary($node, $args);
+            return self::evalBinary($node, $args, $scope);
         }
 
         if ($node instanceof UnaryExpression) {
-            return self::evalUnary($node, $args);
+            return self::evalUnary($node, $args, $scope);
         }
 
         if ($node instanceof TernaryExpression) {
-            mixed $condition = self::evalNode($node->condition, $args);
+            mixed $condition = self::evalNode($node->condition, $args, $scope);
             if ((bool)$condition) {
                 if ($node->ifTrue === null) {
                     return $condition;
                 }
-                return self::evalNode($node->ifTrue, $args);
+                return self::evalNode($node->ifTrue, $args, $scope);
             }
-            return self::evalNode($node->ifFalse, $args);
+            return self::evalNode($node->ifFalse, $args, $scope);
         }
 
         if ($node instanceof CoalesceExpression) {
-            mixed $left = self::evalNode($node->left, $args);
+            mixed $left = self::evalNode($node->left, $args, $scope);
             if ($left !== null) {
                 return $left;
             }
-            return self::evalNode($node->right, $args);
-        }
-
-        if ($node instanceof ArrayAccessExpression) {
-            return self::readIndex(
-                self::evalNode($node->array, $args),
-                self::evalNode($node->index, $args),
-            );
+            return self::evalNode($node->right, $args, $scope);
         }
 
         if ($node instanceof CastExpression) {
-            return self::castValue($node->targetType, self::evalNode($node->operand, $args));
-        }
-
-        if ($node instanceof MethodCallExpression) {
-            mixed $object = self::evalNode($node->object, $args);
-            array<mixed> $methodArgs = [];
-            foreach ($node->arguments as $argument) {
-                $methodArgs[] = self::evalNode($argument, $args);
-            }
-            return self::callMethod($object, $node->method, $methodArgs);
+            return self::castValue($node->targetType, self::evalNode($node->operand, $args, $scope));
         }
 
         if ($node instanceof StaticMethodCallExpression) {
-            array<mixed> $methodArgs = [];
-            foreach ($node->arguments as $argument) {
-                $methodArgs[] = self::evalNode($argument, $args);
-            }
-            return self::callStatic($node->class, $node->method, $methodArgs);
+            return self::callStatic(
+                $node->class,
+                $node->method,
+                self::evalArguments($node->arguments, $args, $scope),
+            );
         }
 
         if ($node instanceof NewExpression) {
-            array<mixed> $ctorArgs = [];
-            foreach ($node->arguments as $argument) {
-                $ctorArgs[] = self::evalNode($argument, $args);
-            }
-            return self::construct($node->class, $ctorArgs);
+            return self::construct($node->class, self::evalArguments($node->arguments, $args, $scope));
         }
 
         if ($node instanceof InstanceofExpression) {
-            return self::valueIsType(self::evalNode($node->operand, $args), $node->targetType);
+            return self::valueIsType(self::evalNode($node->operand, $args, $scope), $node->targetType);
+        }
+
+        if ($node instanceof ArrayExpression) {
+            return self::evalArray($node, $args, $scope);
+        }
+
+        if ($node instanceof LambdaExpression) {
+            return self::makeClosure($node, $args, $scope);
         }
 
         throw new \RuntimeException(
@@ -126,37 +104,201 @@ final class ExpressionInterpreter {
     }
 
     /**
+     * Property reads, method calls, and array reads: the links of an access chain.
+     */
+    private static function isChainLink(ExpressionNode $node): bool {
+        return $node instanceof PropertyAccessExpression
+            || $node instanceof NullSafeAccessExpression
+            || $node instanceof MethodCallExpression
+            || $node instanceof NullSafeMethodCallExpression
+            || $node instanceof ArrayAccessExpression;
+    }
+
+    /**
+     * Evaluates one chain link. Returns a {@see ChainShortCircuit} when a `?->` earlier in the
+     * chain (or on this link) met null.
+     *
      * @param array<int, mixed> $args
      */
-    private static function evalBinary(BinaryExpression $node, array<int, mixed> $args): mixed {
+    private static function evalLink(ExpressionNode $node, array<int, mixed> $args, ?LambdaScope $scope): mixed {
+        if ($node instanceof PropertyAccessExpression) {
+            mixed $object = self::evalReceiver($node->object, $args, $scope);
+            if ($object instanceof ChainShortCircuit) {
+                return $object;
+            }
+            return self::readProperty($object, $node->property, false);
+        }
+
+        if ($node instanceof NullSafeAccessExpression) {
+            mixed $object = self::evalReceiver($node->object, $args, $scope);
+            if ($object instanceof ChainShortCircuit) {
+                return $object;
+            }
+            if ($object === null) {
+                return new ChainShortCircuit();
+            }
+            return self::readProperty($object, $node->property, true);
+        }
+
+        if ($node instanceof MethodCallExpression) {
+            mixed $object = self::evalReceiver($node->object, $args, $scope);
+            if ($object instanceof ChainShortCircuit) {
+                return $object;
+            }
+            return self::callMethod(
+                $object,
+                $node->method,
+                self::evalArguments($node->arguments, $args, $scope),
+            );
+        }
+
+        if ($node instanceof NullSafeMethodCallExpression) {
+            mixed $object = self::evalReceiver($node->object, $args, $scope);
+            if ($object instanceof ChainShortCircuit) {
+                return $object;
+            }
+            if ($object === null) {
+                return new ChainShortCircuit();
+            }
+            return self::callMethod(
+                $object,
+                $node->method,
+                self::evalArguments($node->arguments, $args, $scope),
+            );
+        }
+
+        if ($node instanceof ArrayAccessExpression) {
+            mixed $array = self::evalReceiver($node->array, $args, $scope);
+            if ($array instanceof ChainShortCircuit) {
+                return $array;
+            }
+            return self::readIndex($array, self::evalNode($node->index, $args, $scope));
+        }
+
+        return self::evalNode($node, $args, $scope);
+    }
+
+    /**
+     * The object (or array) a chain link reads from. A short-circuit marker passes through.
+     *
+     * @param array<int, mixed> $args
+     */
+    private static function evalReceiver(ExpressionNode $node, array<int, mixed> $args, ?LambdaScope $scope): mixed {
+        if (self::isChainLink($node)) {
+            return self::evalLink($node, $args, $scope);
+        }
+        return self::evalNode($node, $args, $scope);
+    }
+
+    /**
+     * A parameter declared by an enclosing {@see LambdaExpression} (nearest first, by name);
+     * otherwise the expression's own argument at the parameter's index.
+     *
+     * @param array<int, mixed> $args
+     */
+    private static function readParameter(ParameterExpression $node, array<int, mixed> $args, ?LambdaScope $scope): mixed {
+        ?LambdaScope $current = $scope;
+        while ($current !== null) {
+            foreach ($current->parameters as $declared) {
+                if ($declared->name === $node->name) {
+                    if (!\array_key_exists($declared->index, $current->args)) {
+                        throw new \ArgumentCountError(
+                            'Lambda parameter $' . $declared->name . ' at index ' . (string)$declared->index
+                            . ' was not passed.',
+                        );
+                    }
+                    return $current->args[$declared->index];
+                }
+            }
+            $current = $current->parent;
+        }
+
+        if (!\array_key_exists($node->index, $args)) {
+            throw new \ArgumentCountError(
+                'Expression parameter $' . $node->name . ' at index ' . (string)$node->index . ' was not passed.',
+            );
+        }
+        return $args[$node->index];
+    }
+
+    /**
+     * @param array<ExpressionNode> $arguments
+     * @param array<int, mixed> $args
+     * @return array<mixed>
+     */
+    private static function evalArguments(
+        array<ExpressionNode> $arguments,
+        array<int, mixed> $args,
+        ?LambdaScope $scope,
+    ): array<mixed> {
+        array<mixed> $values = [];
+        foreach ($arguments as $argument) {
+            $values[] = self::evalNode($argument, $args, $scope);
+        }
+        return $values;
+    }
+
+    /**
+     * Keys are evaluated before their values, in item order, as PHP does.
+     *
+     * @param array<int, mixed> $args
+     * @return array<int|string, mixed>
+     */
+    private static function evalArray(ArrayExpression $node, array<int, mixed> $args, ?LambdaScope $scope): array<int|string, mixed> {
+        array<int|string, mixed> $result = [];
+        foreach ($node->items as $item) {
+            ?ExpressionNode $keyNode = $item->key;
+            if ($keyNode === null) {
+                $result[] = self::evalNode($item->value, $args, $scope);
+                continue;
+            }
+            int|string $key = self::arrayKey(self::evalNode($keyNode, $args, $scope));
+            $result[$key] = self::evalNode($item->value, $args, $scope);
+        }
+        return $result;
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private static function makeClosure(LambdaExpression $node, array<int, mixed> $args, ?LambdaScope $scope): \Closure {
+        return static function (mixed ...$lambdaArgs) use ($node, $args, $scope): mixed {
+            return self::evalNode($node->body, $args, new LambdaScope($node->parameters, $lambdaArgs, $scope));
+        };
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private static function evalBinary(BinaryExpression $node, array<int, mixed> $args, ?LambdaScope $scope): mixed {
         string $operator = $node->operator;
 
         if ($operator === '&&' || $operator === 'and') {
-            mixed $left = self::evalNode($node->left, $args);
+            mixed $left = self::evalNode($node->left, $args, $scope);
             if (!((bool)$left)) {
                 return false;
             }
-            return (bool)self::evalNode($node->right, $args);
+            return (bool)self::evalNode($node->right, $args, $scope);
         }
 
         if ($operator === '||' || $operator === 'or') {
-            mixed $left = self::evalNode($node->left, $args);
+            mixed $left = self::evalNode($node->left, $args, $scope);
             if ((bool)$left) {
                 return true;
             }
-            return (bool)self::evalNode($node->right, $args);
+            return (bool)self::evalNode($node->right, $args, $scope);
         }
 
         if ($operator === '??') {
-            mixed $left = self::evalNode($node->left, $args);
+            mixed $left = self::evalNode($node->left, $args, $scope);
             if ($left !== null) {
                 return $left;
             }
-            return self::evalNode($node->right, $args);
+            return self::evalNode($node->right, $args, $scope);
         }
 
-        mixed $left = self::evalNode($node->left, $args);
-        mixed $right = self::evalNode($node->right, $args);
+        mixed $left = self::evalNode($node->left, $args, $scope);
+        mixed $right = self::evalNode($node->right, $args, $scope);
 
         if ($operator === 'xor') {
             return ((bool)$left) !== ((bool)$right);
@@ -203,14 +345,14 @@ final class ExpressionInterpreter {
     /**
      * @param array<int, mixed> $args
      */
-    private static function evalUnary(UnaryExpression $node, array<int, mixed> $args): mixed {
+    private static function evalUnary(UnaryExpression $node, array<int, mixed> $args, ?LambdaScope $scope): mixed {
         if (!$node->isPrefix) {
             throw new \RuntimeException(
                 'Cannot evaluate postfix operator "' . $node->operator . '".',
             );
         }
 
-        mixed $value = self::evalNode($node->operand, $args);
+        mixed $value = self::evalNode($node->operand, $args, $scope);
         return match ($node->operator) {
             '!' => !((bool)$value),
             '+' => self::positive($value),
@@ -238,20 +380,27 @@ final class ExpressionInterpreter {
     }
 
     private static function readIndex(mixed $array, mixed $index): mixed {
+        return self::readKeyed($array, self::arrayKey($index));
+    }
+
+    /**
+     * The key PHP uses for `$index` in `$array[$index]` or `[$index => …]`.
+     */
+    private static function arrayKey(mixed $index): int|string {
         if ($index is int) {
-            return self::readKeyed($array, $index);
+            return $index;
         }
         if ($index is string) {
-            return self::readKeyed($array, $index);
+            return $index;
         }
         if ($index === null) {
-            return self::readKeyed($array, '');
+            return '';
         }
         if ($index is bool) {
-            return self::readKeyed($array, $index ? 1 : 0);
+            return $index ? 1 : 0;
         }
         if ($index is float) {
-            return self::readKeyed($array, (int)$index);
+            return (int)$index;
         }
         throw new \TypeError(
             'Cannot use ' . \get_debug_type($index) . ' as an array key.',

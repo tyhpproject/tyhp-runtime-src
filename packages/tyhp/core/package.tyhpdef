@@ -2,7 +2,7 @@
 /**
  * AUTO-GENERATED, DO NOT EDIT
  * Compiler: 805.1.2.0
- * Generated: 2026-10-23T23:15:06.9141340Z
+ * Generated: 2026-11-02T22:59:08.9216920Z
  */
 global use extension \Tyhp\ArrayExtensions;
 global use extension \Tyhp\ArrayExtensionsVersioned;
@@ -125,6 +125,37 @@ namespace Tyhp {
         * `self` / `static` / `parent` relative to the callable's declaring class when known.
         */
         public static function fromReflectionType(\ReflectionType $type, ?string $relativeClassName = null): self;
+        /**
+        * Read a type spelling such as `array<App\Post>`, `?App\Table<App\Blog>`,
+        * `array<string, int>|null`, or `struct App\Address`.
+        *
+        * - Builtins: `string`, `int`, `float`, `bool`, `true`/`false` (as `bool`), `null`, `void`,
+        *   `mixed`, `never`, `object`, `callable`, `iterable`, `resource`, `array`.
+        *   `decimal` is the `Tyhp\Decimal` class.
+        * - `array<V>` is {@see listOf()}, `array<K, V>` is {@see mapOf()}, `iterable<…>` is the same
+        *   shape on `iterable`.
+        * - `?T`, `A|B`, `A&B`, and parentheses for grouping.
+        * - `struct Name`, `object Name`, `callable Name` are the forms `__toString()` prints for
+        *   struct, object-shape, and callable-shape types.
+        * - Any other name is a class. A leading `\` is optional. A name registered with
+        *   {@see register()} (a source type alias or struct) resolves through {@see ref()},
+        *   with its type arguments.
+        * - Class type arguments are positional: read them with {@see typeArguments()}.
+        *
+        * Invalid spellings throw {@see Exceptions\InvalidTypeException}.
+        */
+        public static function parse(string $spelling): self;
+        /**
+        * Declared Tyhp type of `$property` on `$class`.
+        *
+        * Reads the compiler's `#[\Tyhp\PropertyType]` stamp, which keeps what the PHP hint loses
+        * (`array<App\Post>`, `App\Table<App\Blog>`, `struct App\Address`). Without a stamp the
+        * reflected PHP type is used, and an untyped property is `mixed`. For an object whose class
+        * tracks generics, a property typed by a class type parameter returns the bound argument.
+        * `$class` may be a class name, a generic spelling (`App\Table<App\Blog>`), or an object.
+        * A missing property throws {@see Exceptions\PropertyNotFoundException}.
+        */
+        public static function fromProperty(string|object $class, string $property): self;
         public static function of(mixed $value): self;
         #[\Tyhp\GenericRuntime(erased: false, binder: "isType__tyhpGeneric", layouts: [1], compiler: "805.1.2.0")]
         public static function isType<TTarget>(mixed $value): $value is TTarget;
@@ -144,6 +175,38 @@ namespace Tyhp {
         public function asNullable(): self;
         public function asNonNullable(): self;
         public function genericParameter(string $name): ?\Tyhp\NamedType;
+        /**
+        * Type arguments of a generic type, in order (`App\Table<App\Blog>` → `[App\Blog]`,
+        * `array<string, int>` → `[string, int]`). Empty for every other kind.
+        *
+        * @return array<int, self>
+        */
+        public function typeArguments(): array<int, self>;
+        /**
+        * One type argument, by position or by parameter name (`TValue`, or the declared name
+        * when the type was built with it). Null when there is no such argument.
+        */
+        public function typeArgument(int|string $position): ?self;
+        /**
+        * Value type of an `array` / `iterable` type: `V` for `array<V>` and `array<K, V>`,
+        * `mixed` for a bare `array` / `iterable`. Null for every other kind.
+        */
+        public function elementType(): ?self;
+        /**
+        * Key type of an `array` / `iterable` type: `K` for `array<K, V>`, `int|string` otherwise.
+        * Null for every other kind.
+        */
+        public function keyType(): ?self;
+        /**
+        * Declared type of field `$name` on a struct type. Null for a missing field or another kind.
+        */
+        public function fieldType(int|string $name): ?self;
+        /**
+        * The type PHP can declare for this type: type arguments are dropped (`array<App\Post>` →
+        * `array`, `App\Table<App\Blog>` → `App\Table`), structs are `array`, object shapes are
+        * `object`, callable shapes are `callable`. Nullability is kept.
+        */
+        public function erased(): self;
         public function getKind(): string;
         public function getName(): ?string;
         public function isNullable(): bool;
@@ -334,6 +397,23 @@ namespace Tyhp {
         fn ucFirst(): string => \Tyhp\StringHelper::ucFirst($this);
         #[\Tyhp\Optimize\Pure]
         fn lcFirst(): string => \Tyhp\StringHelper::lcFirst($this);
+    }
+    /**
+    * Runtime-visible declared Tyhp type of a property or promoted constructor parameter.
+    *
+    * The compiler stamps it only when the PHP type hint loses information: generic type
+    * arguments (`array<App\Post>`, `App\Table<App\Blog>`), struct types (`struct App\Address`),
+    * and source type aliases (`App\UserId`). `$type` uses the spelling {@see Type::parse()}
+    * reads. Read it with {@see Type::fromProperty()}, which falls back to the reflected PHP
+    * type when the stamp is absent.
+    *
+    * The compiler writes this attribute. One written in source is replaced by the compiler's stamp,
+    * or dropped when the PHP hint already carries the full type.
+    */
+    #[\Attribute(\Attribute::TARGET_PROPERTY | \Attribute::TARGET_PARAMETER)]
+    final class PropertyType {
+        readonly public string $type;
+        public function __construct(string $type): void;
     }
     /**
     * Single physical storage cell for one hooked property on one object.
@@ -649,6 +729,7 @@ namespace Tyhp {
         public function init(string $hostClass, string $declaringClass, \Tyhp\NamedType ...$genericArguments): void;
         public function initInterface(string $interface, \Tyhp\NamedType ...$args): void;
         public function setPropertyType(string $property, \Tyhp\Type $type): void;
+        public function propertyType(string $property): ?\Tyhp\Type;
         public function enablePropertyChecks(): void;
         public function checkProperty(string $property, mixed $value): void;
         public function objectType(): ?\Tyhp\Type;

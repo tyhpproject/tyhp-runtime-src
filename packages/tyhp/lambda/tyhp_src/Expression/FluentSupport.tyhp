@@ -3,6 +3,7 @@
 namespace Tyhp\Expression;
 
 use Tyhp\Expression;
+use Tyhp\Type;
 
 /**
  * Shared helpers for {@see \Tyhp\PropertyPathBuilder} and {@see \Tyhp\ExpressionBuilder}.
@@ -143,10 +144,11 @@ final class FluentSupport {
         for (int $i = 0; $i < $count; $i++) {
             string $segment = $path[$i];
             bool $nullSafe = $nullSafeFlags[$i] ?? false;
+            string $type = self::memberType($body->type, $segment, $nullSafe);
             if ($nullSafe) {
-                $body = new NullSafeAccessExpression($body, $segment, 'mixed');
+                $body = new NullSafeAccessExpression($body, $segment, $type);
             } else {
-                $body = new PropertyAccessExpression($body, $segment, 'mixed');
+                $body = new PropertyAccessExpression($body, $segment, $type);
             }
         }
 
@@ -154,6 +156,63 @@ final class FluentSupport {
             parameterExpression => $paramExpr,
             body => $body
         ];
+    }
+
+    /** @var array<string, string> */
+    private static array<string, string> $memberTypes = [];
+
+    /**
+     * Type spelling of `$receiverType->$name`: the declared Tyhp type from
+     * {@see \Tyhp\Type::fromProperty()} for a class receiver, or the field type for a struct.
+     * A null-safe hop or a nullable receiver makes the result nullable.
+     * `mixed` when the receiver or the member is unknown.
+     */
+    public static function memberType(string $receiverType, string $name, bool $nullSafe): string {
+        if ($receiverType === '' || $receiverType === 'mixed') {
+            return 'mixed';
+        }
+
+        string $key = $receiverType . '->' . $name . ($nullSafe ? '?' : '');
+        if (\array_key_exists($key, self::$memberTypes)) {
+            return self::$memberTypes[$key];
+        }
+
+        string $resolved = self::resolveMemberType($receiverType, $name, $nullSafe);
+        self::$memberTypes[$key] = $resolved;
+        return $resolved;
+    }
+
+    private static function resolveMemberType(string $receiverType, string $name, bool $nullSafe): string {
+        ?Type $member = null;
+        bool $nullable = $nullSafe;
+        try {
+            Type $receiver = Type::parse($receiverType);
+            if ($receiver->isNullable()) {
+                $nullable = true;
+                $receiver = $receiver->asNonNullable();
+            }
+
+            string $kind = $receiver->getKind();
+            if ($kind === 'struct') {
+                $member = $receiver->fieldType($name);
+            } elseif ($kind === 'class' || $kind === 'generic') {
+                $member = Type::fromProperty((string)$receiver, $name);
+            }
+        } catch (\Throwable $e) {
+            (void)$e;
+            return 'mixed';
+        }
+
+        if ($member === null) {
+            return 'mixed';
+        }
+
+        string $spelled = (string)$member;
+        if ($spelled === '' || $spelled === 'mixed') {
+            return 'mixed';
+        }
+
+        return $nullable && !$member->isNullable() ? (string)$member->asNullable() : $spelled;
     }
 
     public static function evaluateBinary(mixed $left, string $operator, mixed $right): bool {

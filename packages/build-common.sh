@@ -7,7 +7,7 @@
 # Generated dist trees stay at packages/dist/.
 TYHP_PKG_DIR="$SCRIPT_DIR/tyhp"
 
-# Dist package semver: MAJOR = PHP (802/803/804/805).
+# Dist package semver: MAJOR = PHP (80N, one per DIST_BUILDS entry).
 # Each package has its own independent X.Y in composer.json (not the compiler version):
 #   source "0.0"              → dist "80N.0.0"
 #   source "1.4"              → dist "80N.1.4"
@@ -19,6 +19,9 @@ PACKAGE_VERSION_SUFFIX="${PACKAGE_VERSION_SUFFIX:-}"
 # php major : phpVersion CLI value : label
 # Each target uses the package's tyhp.json with --output:phpVersion=.
 # output.path interpolates {phpVersion.id} from that override.
+# This is the only list of PHP targets: per-PHP builds, published 80N.X.Y tags,
+# php_label_for_major, and the sibling constraints in matching_minor_constraint_for
+# all read it.
 DIST_BUILDS=(
   "802:8.2:PHP 8.2"
   "803:8.3:PHP 8.3"
@@ -154,9 +157,17 @@ matching_minor_constraint_for() {
   local dep_pkg="$1"
   local parsed
   local x
+  local entry
+  local constraint=""
   parsed="$(_parse_package_source_version "$TYHP_PKG_DIR/$dep_pkg/composer.json")" || return 1
   IFS='|' read -r x _ _ _ <<< "$parsed"
-  echo "802.${x}.* || 803.${x}.* || 804.${x}.* || 805.${x}.*"
+  for entry in "${DIST_BUILDS[@]}"; do
+    if [[ -n "$constraint" ]]; then
+      constraint+=" || "
+    fi
+    constraint+="${entry%%:*}.${x}.*"
+  done
+  echo "$constraint"
 }
 
 core_version_constraint() {
@@ -208,16 +219,24 @@ php_constraint_for_major() {
 }
 
 php_label_for_major() {
-  case "$1" in
-    802) echo "8.2" ;;
-    803) echo "8.3" ;;
-    804) echo "8.4" ;;
-    805) echo "8.5" ;;
-    *)
-      echo "unknown PHP major: $1" >&2
-      return 1
-      ;;
-  esac
+  local entry
+  local rest
+  for entry in "${DIST_BUILDS[@]}"; do
+    if [[ "${entry%%:*}" == "$1" ]]; then
+      rest="${entry#*:}"
+      echo "${rest%%:*}"
+      return 0
+    fi
+  done
+  echo "unknown PHP major: $1" >&2
+  return 1
+}
+
+# "8.2–8.5": first and last DIST_BUILDS phpVersion, for progress messages.
+dist_php_range_label() {
+  local first="${DIST_BUILDS[0]#*:}"
+  local last="${DIST_BUILDS[${#DIST_BUILDS[@]}-1]#*:}"
+  echo "${first%%:*}–${last%%:*}"
 }
 
 

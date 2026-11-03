@@ -12,6 +12,9 @@ class Type implements \Stringable
 
     private static array<string, array<int, array<int, self>>> $cachedGenerics = [];
 
+    /// Declared property types read by {@see fromProperty()}, keyed by lowercase class `::` property.
+    private static array<string, self> $propertyTypes = [];
+
     private bool $immutable = false;
 
     private ?self $forward = null;
@@ -749,6 +752,393 @@ class Type implements \Stringable
         }
 
         return self::fromClassName($parent);
+    }
+
+    /**
+     * Read a type spelling such as `array<App\Post>`, `?App\Table<App\Blog>`,
+     * `array<string, int>|null`, or `struct App\Address`.
+     *
+     * - Builtins: `string`, `int`, `float`, `bool`, `true`/`false` (as `bool`), `null`, `void`,
+     *   `mixed`, `never`, `object`, `callable`, `iterable`, `resource`, `array`.
+     *   `decimal` is the `Tyhp\Decimal` class.
+     * - `array<V>` is {@see listOf()}, `array<K, V>` is {@see mapOf()}, `iterable<…>` is the same
+     *   shape on `iterable`.
+     * - `?T`, `A|B`, `A&B`, and parentheses for grouping.
+     * - `struct Name`, `object Name`, `callable Name` are the forms `__toString()` prints for
+     *   struct, object-shape, and callable-shape types.
+     * - Any other name is a class. A leading `\` is optional. A name registered with
+     *   {@see register()} (a source type alias or struct) resolves through {@see ref()},
+     *   with its type arguments.
+     * - Class type arguments are positional: read them with {@see typeArguments()}.
+     *
+     * Invalid spellings throw {@see Exceptions\InvalidTypeException}.
+     */
+    public static function parse(string $spelling): self
+    {
+        array<int, string> $tokens = self::tokenizeSpelling($spelling);
+        if (\count($tokens) === 0) {
+            throw new Exceptions\InvalidTypeException('Type spelling is empty.');
+        }
+
+        int $position = 0;
+        self $type = self::parseUnionSpelling($tokens, $position, $spelling);
+        if ($position !== \count($tokens)) {
+            throw new Exceptions\InvalidTypeException(
+                'Unexpected "' . $tokens[$position] . '" in type spelling "' . $spelling . '".',
+            );
+        }
+
+        return $type;
+    }
+
+    /**
+     * Declared Tyhp type of `$property` on `$class`.
+     *
+     * Reads the compiler's `#[\Tyhp\PropertyType]` stamp, which keeps what the PHP hint loses
+     * (`array<App\Post>`, `App\Table<App\Blog>`, `struct App\Address`). Without a stamp the
+     * reflected PHP type is used, and an untyped property is `mixed`. For an object whose class
+     * tracks generics, a property typed by a class type parameter returns the bound argument.
+     * `$class` may be a class name, a generic spelling (`App\Table<App\Blog>`), or an object.
+     * A missing property throws {@see Exceptions\PropertyNotFoundException}.
+     */
+    public static function fromProperty(string|object $class, string $property): self
+    {
+        string $className;
+        if (\is_object($class)) {
+            ?self $tracked = self::tryGetGenericPropertyType($class, $property);
+            if ($tracked !== null) {
+                return $tracked;
+            }
+
+            $className = $class::class;
+        } else {
+            $className = self::classNameFromSpelling($class);
+        }
+
+        string $key = \strtolower($className) . '::' . $property;
+        if (\array_key_exists($key, self::$propertyTypes)) {
+            return self::$propertyTypes[$key];
+        }
+
+        \ReflectionProperty $reflected;
+        try {
+            $reflected = new \ReflectionProperty($className, $property);
+        } catch (\Throwable $e) {
+            throw new Exceptions\PropertyNotFoundException($property, $className, $e);
+        }
+
+        self $type = self::fromReflectionProperty($reflected)->immutable();
+        self::$propertyTypes[$key] = $type;
+
+        return $type;
+    }
+
+    private static function fromReflectionProperty(\ReflectionProperty $property): self
+    {
+        foreach ($property->getAttributes(PropertyType::class) as $attribute) {
+            array<int|string, mixed> $arguments = $attribute->getArguments();
+            mixed $spelling = $arguments[0] ?? $arguments['type'] ?? null;
+            if (!\is_string($spelling)) {
+                continue;
+            }
+
+            try {
+                return self::parse($spelling);
+            } catch (Exceptions\InvalidTypeException $e) {
+                (void)$e;
+                break;
+            }
+        }
+
+        ?\ReflectionType $native = $property->getType();
+        if ($native === null) {
+            return self::mixed();
+        }
+
+        return self::fromReflectionType($native, (string)$property->getDeclaringClass()->getName());
+    }
+
+    /// Class part of a spelling: `?\App\Table<App\Blog>` → `App\Table`.
+    private static function classNameFromSpelling(string $spelling): string
+    {
+        string $name = \ltrim(\trim($spelling), '?\\');
+        int|false $angle = \strpos($name, '<');
+        if ($angle !== false) {
+            $name = \substr($name, 0, $angle);
+        }
+
+        return \trim($name);
+    }
+
+    /// Type registered for `$property` in the object's generic bag, if any.
+    /// Duck-typed like {@see tryGetGenericObjectType()}.
+    private static function tryGetGenericPropertyType(object $value, string $property): ?self
+    {
+        if (!\property_exists($value, '__tyhpGeneric')) {
+            return null;
+        }
+
+        mixed $bag = $value->__tyhpGeneric ?? null;
+        if (!\is_object($bag) || !\method_exists($bag, 'propertyType')) {
+            return null;
+        }
+
+        mixed $registered = $bag->propertyType($property);
+        return $registered instanceof self ? $registered : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function tokenizeSpelling(string $spelling): array<int, string>
+    {
+        array<int, string> $tokens = [];
+        int $length = \strlen($spelling);
+        int $i = 0;
+        while ($i < $length) {
+            string $char = $spelling[$i];
+            if ($char === ' ' || $char === "\t" || $char === "\n" || $char === "\r") {
+                $i++;
+                continue;
+            }
+
+            if (\str_contains('?|&<>,()', $char)) {
+                $tokens[] = $char;
+                $i++;
+                continue;
+            }
+
+            int $start = $i;
+            while ($i < $length && self::isSpellingNameByte($spelling[$i])) {
+                $i++;
+            }
+
+            if ($i === $start) {
+                throw new Exceptions\InvalidTypeException(
+                    'Unexpected "' . $char . '" in type spelling "' . $spelling . '".',
+                );
+            }
+
+            $tokens[] = \substr($spelling, $start, $i - $start);
+        }
+
+        return $tokens;
+    }
+
+    private static function isSpellingNameByte(string $char): bool
+    {
+        int $code = \ord($char);
+
+        return ($code >= 0x61 && $code <= 0x7a)
+            || ($code >= 0x41 && $code <= 0x5a)
+            || ($code >= 0x30 && $code <= 0x39)
+            || $code === 0x5f
+            || $code === 0x5c
+            || $code >= 0x80;
+    }
+
+    /**
+     * @param array<int, string> $tokens
+     */
+    private static function parseUnionSpelling(array<int, string> $tokens, int &$position, string $spelling): self
+    {
+        array<int, self> $members = [self::parseIntersectionSpelling($tokens, $position, $spelling)];
+        while (($tokens[$position] ?? null) === '|') {
+            $position++;
+            $members[] = self::parseIntersectionSpelling($tokens, $position, $spelling);
+        }
+
+        if (\count($members) === 1) {
+            return $members[0];
+        }
+
+        bool $nullable = false;
+        array<int, self> $nonNull = [];
+        foreach ($members as $member) {
+            if ($member->kind === 'scalar' && $member->name === 'null') {
+                $nullable = true;
+                continue;
+            }
+
+            if ($member->isNullable) {
+                $nullable = true;
+                $member = $member->asNonNullable();
+            }
+
+            $nonNull[] = $member;
+        }
+
+        self $combined = match (\count($nonNull)) {
+            0 => self::null(),
+            1 => $nonNull[0],
+            default => self::union(...$nonNull),
+        };
+
+        return $nullable ? $combined->asNullable() : $combined;
+    }
+
+    /**
+     * @param array<int, string> $tokens
+     */
+    private static function parseIntersectionSpelling(
+        array<int, string> $tokens,
+        int &$position,
+        string $spelling,
+    ): self {
+        array<int, self> $members = [self::parsePrefixSpelling($tokens, $position, $spelling)];
+        while (($tokens[$position] ?? null) === '&') {
+            $position++;
+            $members[] = self::parsePrefixSpelling($tokens, $position, $spelling);
+        }
+
+        return \count($members) === 1 ? $members[0] : self::intersection(...$members);
+    }
+
+    /**
+     * @param array<int, string> $tokens
+     */
+    private static function parsePrefixSpelling(array<int, string> $tokens, int &$position, string $spelling): self
+    {
+        ?string $token = $tokens[$position] ?? null;
+        if ($token === '?') {
+            $position++;
+            return self::parsePrefixSpelling($tokens, $position, $spelling)->asNullable();
+        }
+
+        if ($token === '(') {
+            $position++;
+            self $inner = self::parseUnionSpelling($tokens, $position, $spelling);
+            self::expectSpellingToken($tokens, $position, ')', $spelling);
+            return $inner;
+        }
+
+        return self::parseNamedSpelling($tokens, $position, $spelling);
+    }
+
+    /**
+     * @param array<int, string> $tokens
+     */
+    private static function parseNamedSpelling(array<int, string> $tokens, int &$position, string $spelling): self
+    {
+        ?string $token = $tokens[$position] ?? null;
+        if ($token === null || \str_contains('?|&<>,()', $token)) {
+            throw new Exceptions\InvalidTypeException(
+                'Expected a type name in type spelling "' . $spelling . '".',
+            );
+        }
+
+        $position++;
+        string $name = \ltrim($token, '\\');
+        string $lower = \strtolower($name);
+
+        ?string $next = $tokens[$position] ?? null;
+        if (($lower === 'struct' || $lower === 'object' || $lower === 'callable')
+            && $next !== null
+            && !\str_contains('?|&<>,()', $next)) {
+            $position++;
+            string $shapeName = \ltrim($next, '\\');
+            array<int, self> $shapeArgs = self::parseSpellingTypeArguments($tokens, $position, $spelling);
+            if (\array_key_exists($shapeName, self::$registry)) {
+                return self::ref($shapeName, ...$shapeArgs);
+            }
+
+            return match ($lower) {
+                'struct' => self::struct($shapeName),
+                'object' => self::shape($shapeName),
+                default => self::callableShape($shapeName),
+            };
+        }
+
+        array<int, self> $args = self::parseSpellingTypeArguments($tokens, $position, $spelling);
+
+        if ($lower === 'array' || $lower === 'iterable') {
+            return match (\count($args)) {
+                0 => self::scalar($lower),
+                1 => $lower === 'array'
+                    ? self::listOf($args[0])
+                    : self::generic('iterable', new NamedType('TValue', $args[0])),
+                2 => $lower === 'array'
+                    ? self::mapOf($args[0], $args[1])
+                    : self::generic('iterable', new NamedType('TKey', $args[0]), new NamedType('TValue', $args[1])),
+                default => throw new Exceptions\InvalidTypeException(
+                    'Type "' . $name . '" takes at most two type arguments in "' . $spelling . '".',
+                ),
+            };
+        }
+
+        ?self $builtin = match ($lower) {
+            'string', 'int', 'float', 'bool', 'null', 'void', 'mixed', 'never', 'object', 'callable', 'resource' => self::scalar($lower),
+            'true', 'false' => self::bool(),
+            'decimal' => self::fromClassName('Tyhp\\Decimal'),
+            default => null,
+        };
+        if ($builtin !== null) {
+            if (\count($args) !== 0) {
+                throw new Exceptions\InvalidTypeException(
+                    'Type "' . $name . '" does not take type arguments in "' . $spelling . '".',
+                );
+            }
+
+            return $builtin;
+        }
+
+        if (\array_key_exists($name, self::$registry)) {
+            return self::ref($name, ...$args);
+        }
+
+        if (\count($args) === 0) {
+            return self::fromClassName($name);
+        }
+
+        array<int, NamedType> $named = [];
+        foreach ($args as $index => $arg) {
+            $named[] = new NamedType('T' . $index, $arg);
+        }
+
+        return self::generic($name, ...$named);
+    }
+
+    /**
+     * @param array<int, string> $tokens
+     * @return array<int, self>
+     */
+    private static function parseSpellingTypeArguments(
+        array<int, string> $tokens,
+        int &$position,
+        string $spelling,
+    ): array<int, self> {
+        if (($tokens[$position] ?? null) !== '<') {
+            return [];
+        }
+
+        $position++;
+        array<int, self> $args = [self::parseUnionSpelling($tokens, $position, $spelling)];
+        while (($tokens[$position] ?? null) === ',') {
+            $position++;
+            $args[] = self::parseUnionSpelling($tokens, $position, $spelling);
+        }
+
+        self::expectSpellingToken($tokens, $position, '>', $spelling);
+
+        return $args;
+    }
+
+    /**
+     * @param array<int, string> $tokens
+     */
+    private static function expectSpellingToken(
+        array<int, string> $tokens,
+        int &$position,
+        string $expected,
+        string $spelling,
+    ): void {
+        if (($tokens[$position] ?? null) !== $expected) {
+            throw new Exceptions\InvalidTypeException(
+                'Expected "' . $expected . '" in type spelling "' . $spelling . '".',
+            );
+        }
+
+        $position++;
     }
 
     public static function of(mixed $value): self
@@ -1492,6 +1882,151 @@ class Type implements \Stringable
         }
 
         return null;
+    }
+
+    /**
+     * Type arguments of a generic type, in order (`App\Table<App\Blog>` → `[App\Blog]`,
+     * `array<string, int>` → `[string, int]`). Empty for every other kind.
+     *
+     * @return array<int, self>
+     */
+    public function typeArguments(): array<int, self>
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'generic') {
+            return [];
+        }
+
+        array<int, self> $arguments = [];
+        foreach ($current->typeArgs as $arg) {
+            $arguments[] = $arg instanceof NamedType ? $arg->getUnderlyingType() : $arg;
+        }
+
+        return $arguments;
+    }
+
+    /**
+     * One type argument, by position or by parameter name (`TValue`, or the declared name
+     * when the type was built with it). Null when there is no such argument.
+     */
+    public function typeArgument(int|string $position): ?self
+    {
+        if ($position is int) {
+            return $this->typeArguments()[$position] ?? null;
+        }
+
+        return $this->genericParameter($position)?->getUnderlyingType();
+    }
+
+    /**
+     * Value type of an `array` / `iterable` type: `V` for `array<V>` and `array<K, V>`,
+     * `mixed` for a bare `array` / `iterable`. Null for every other kind.
+     */
+    public function elementType(): ?self
+    {
+        self $current = $this->ready();
+        if (!$current->isArrayFamily()) {
+            return null;
+        }
+
+        array<int, self> $arguments = $current->typeArguments();
+        int $count = \count($arguments);
+
+        return $count === 0 ? self::scalar('mixed') : $arguments[$count - 1];
+    }
+
+    /**
+     * Key type of an `array` / `iterable` type: `K` for `array<K, V>`, `int|string` otherwise.
+     * Null for every other kind.
+     */
+    public function keyType(): ?self
+    {
+        self $current = $this->ready();
+        if (!$current->isArrayFamily()) {
+            return null;
+        }
+
+        array<int, self> $arguments = $current->typeArguments();
+
+        return \count($arguments) === 2
+            ? $arguments[0]
+            : self::union(self::scalar('int'), self::scalar('string'));
+    }
+
+    /**
+     * Declared type of field `$name` on a struct type. Null for a missing field or another kind.
+     */
+    public function fieldType(int|string $name): ?self
+    {
+        self $current = $this->ready();
+        if ($current->kind !== 'struct') {
+            return null;
+        }
+
+        return $current->structFields[$name] ?? null;
+    }
+
+    /**
+     * The type PHP can declare for this type: type arguments are dropped (`array<App\Post>` →
+     * `array`, `App\Table<App\Blog>` → `App\Table`), structs are `array`, object shapes are
+     * `object`, callable shapes are `callable`. Nullability is kept.
+     */
+    public function erased(): self
+    {
+        self $current = $this->ready();
+        if ($current instanceof NamedType) {
+            return $current->getUnderlyingType()->erased();
+        }
+
+        self $result = match ($current->kind) {
+            'generic' => $current->isArrayFamily()
+                ? self::scalar($current->name ?? 'array')
+                : self::fromClassName($current->name ?? 'object'),
+            'struct' => self::scalar('array'),
+            'objectShape' => self::scalar('object'),
+            'callableShape' => self::scalar('callable'),
+            'union', 'intersection' => self::erasedComposite($current),
+            default => $current,
+        };
+
+        if ($current->isNullable && !$result->isNullable()) {
+            return $result->asNullable();
+        }
+
+        return $result;
+    }
+
+    private static function erasedComposite(self $type): self
+    {
+        array<int, self> $members = [];
+        foreach ($type->typeArgs as $member) {
+            self $erasedMember = ($member instanceof NamedType ? $member->getUnderlyingType() : $member)
+                ->erased();
+            foreach ($members as $existing) {
+                if ((string)$existing === (string)$erasedMember) {
+                    continue 2;
+                }
+            }
+
+            $members[] = $erasedMember;
+        }
+
+        if (\count($members) === 1) {
+            return $members[0];
+        }
+
+        return $type->kind === 'intersection'
+            ? self::intersection(...$members)
+            : self::union(...$members);
+    }
+
+    private function isArrayFamily(): bool
+    {
+        if ($this->kind === 'scalar' || $this->kind === 'generic') {
+            return $this->name === 'array' || $this->name === 'iterable';
+        }
+
+        return false;
     }
 
     public function getKind(): string

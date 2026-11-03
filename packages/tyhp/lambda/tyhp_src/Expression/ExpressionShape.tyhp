@@ -1,0 +1,284 @@
+<?tyhp
+
+namespace Tyhp\Expression;
+
+/**
+ * The structure of an expression tree with its constant values left out.
+ *
+ * Captured variables, literals, and `Cls::CONST` reads are {@see ConstantExpression} nodes.
+ * {@see $key} covers everything {@see ExpressionSerializer::toJson()} writes except those
+ * nodes' values: node kinds, operators, property and method names, class names, parameter
+ * names, types and positions, every node's type spelling, and the return type. Two trees that
+ * differ only in constant values share a key, so a plan built for one tree can be reused for
+ * the other with that tree's {@see $parameters}.
+ *
+ * A constant keeps its type spelling in the key. Literal spellings, which name the value
+ * itself (`18`, `1.5`, `true`), are replaced by the value's PHP type (`int`, `float`, `bool`,
+ * `string`), so `$u->age > 18` and `$u->age > 21` share a key. `null` stays `null`, so a
+ * constant that is null and one that holds an `int` give different keys, and so do an `int`
+ * constant and a `string` constant. A constant used as an array-literal key (`['id' => …]`)
+ * keeps its value in the key, because it names a field of the result; it is still listed in
+ * {@see $parameters}.
+ *
+ * The key is a 32-character hex `xxh128` hash and is the same in every PHP process.
+ */
+final class ExpressionShape {
+    private const string KEY_PREFIX = 'tyhp-expression-shape-1:';
+
+    /**
+     * @param array<ConstantExpression> $constants The tree's constant nodes, in the order they are written.
+     * @param array<mixed> $parameters The values of `$constants`, in the same order.
+     */
+    private function __construct(
+        public readonly string $key,
+        public readonly array<ConstantExpression> $constants,
+        public readonly array<mixed> $parameters,
+    ) {}
+
+    public static function of(\Tyhp\Expression $expression): ExpressionShape {
+        array<string, mixed> $serialized = ExpressionSerializer::toArray($expression);
+
+        int $slots = 0;
+        mixed $shape = self::strip($serialized, $slots);
+
+        array<ConstantExpression> $constants = [];
+        self::collectConstants($expression->body, $constants);
+        if (\count($constants) !== $slots) {
+            throw new \LogicException(
+                'Expression shape found ' . $slots . ' serialized constants but '
+                . \count($constants) . ' constant nodes.',
+            );
+        }
+
+        array<mixed> $parameters = [];
+        foreach ($constants as $constant) {
+            $parameters[] = $constant->value;
+        }
+
+        return new ExpressionShape(
+            \hash('xxh128', self::KEY_PREFIX . \serialize($shape)),
+            $constants,
+            $parameters,
+        );
+    }
+
+    /**
+     * Position of `$constant` in {@see $constants} and {@see $parameters}.
+     */
+    public function slotOf(ConstantExpression $constant): int {
+        int $count = \count($this->constants);
+        for (int $slot = 0; $slot < $count; $slot++) {
+            if ($this->constants[$slot] === $constant) {
+                return $slot;
+            }
+        }
+
+        throw new \InvalidArgumentException('The constant node is not part of this expression tree.');
+    }
+
+    /**
+     * Copy of a serialized tree with each constant's value dropped and its type widened.
+     * `$keepConstantValue` keeps the value when `$value` is itself a constant node.
+     */
+    private static function strip(mixed $value, int &$slots, bool $keepConstantValue = false): mixed {
+        if (!\is_array($value)) {
+            if ($value === null || \is_scalar($value)) {
+                return $value;
+            }
+            throw new \LogicException(
+                'Expression shape cannot encode a ' . \get_debug_type($value) . ' outside a constant node.',
+            );
+        }
+
+        mixed $nodeType = $value['nodeType'] ?? null;
+        bool $isConstant = $nodeType === 'constant';
+        array<mixed> $result = [];
+        foreach ($value as $key => $item) {
+            if ($isConstant && $key === 'value') {
+                if ($keepConstantValue) {
+                    $result[$key] = self::strip($item, $slots);
+                }
+                continue;
+            }
+            if ($isConstant && $key === 'type') {
+                $result[$key] = self::constantType($item, $value['value'] ?? null);
+                continue;
+            }
+            if ($nodeType === 'array' && $key === 'items' && \is_array($item)) {
+                $result[$key] = self::stripArrayItems($item, $slots);
+                continue;
+            }
+            $result[$key] = self::strip($item, $slots);
+        }
+
+        if ($isConstant) {
+            $slots++;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Serialized array-literal items. A constant key keeps its value, because it names a
+     * field of the result.
+     */
+    private static function stripArrayItems(array $items, int &$slots): array<mixed> {
+        array<mixed> $result = [];
+        foreach ($items as $index => $item) {
+            if (!\is_array($item)) {
+                $result[$index] = self::strip($item, $slots);
+                continue;
+            }
+            array<mixed> $stripped = [];
+            foreach ($item as $field => $part) {
+                $stripped[$field] = self::strip($part, $slots, $field === 'key');
+            }
+            $result[$index] = $stripped;
+        }
+        return $result;
+    }
+
+    private static function constantType(mixed $type, mixed $value): mixed {
+        if (!($type is string) || !self::isLiteralTypeSpelling($type)) {
+            return $type;
+        }
+        if ($value is int) {
+            return 'int';
+        }
+        if ($value is float) {
+            return 'float';
+        }
+        if ($value is bool) {
+            return 'bool';
+        }
+        if ($value is string) {
+            return 'string';
+        }
+
+        return $type;
+    }
+
+    private static function isLiteralTypeSpelling(string $type): bool {
+        if ($type === 'true' || $type === 'false' || \is_numeric($type)) {
+            return true;
+        }
+
+        return \preg_match('/\A(?:\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*")\z/s', $type) === 1;
+    }
+
+    /**
+     * Constant nodes under `$node`, left to right as the expression is written.
+     *
+     * @param array<ConstantExpression> $constants
+     */
+    private static function collectConstants(ExpressionNode $node, array<ConstantExpression> &$constants): void {
+        if ($node instanceof ConstantExpression) {
+            $constants[] = $node;
+            return;
+        }
+
+        foreach (self::children($node) as $child) {
+            self::collectConstants($child, $constants);
+        }
+    }
+
+    /**
+     * Child nodes of `$node` in written order. Node kinds not listed here contribute the
+     * nodes held in their public properties, in declaration order.
+     */
+    private static function children(ExpressionNode $node): array<ExpressionNode> {
+        if ($node instanceof ParameterExpression) {
+            return [];
+        }
+        if ($node instanceof PropertyAccessExpression) {
+            return [$node->object];
+        }
+        if ($node instanceof NullSafeAccessExpression) {
+            return [$node->object];
+        }
+        if ($node instanceof MethodCallExpression) {
+            return [$node->object, ...$node->arguments];
+        }
+        if ($node instanceof StaticMethodCallExpression) {
+            return $node->arguments;
+        }
+        if ($node instanceof BinaryExpression) {
+            return [$node->left, $node->right];
+        }
+        if ($node instanceof UnaryExpression) {
+            return [$node->operand];
+        }
+        if ($node instanceof TernaryExpression) {
+            ?ExpressionNode $ifTrue = $node->ifTrue;
+            return $ifTrue !== null
+                ? [$node->condition, $ifTrue, $node->ifFalse]
+                : [$node->condition, $node->ifFalse];
+        }
+        if ($node instanceof CoalesceExpression) {
+            return [$node->left, $node->right];
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            return [$node->array, $node->index];
+        }
+        if ($node instanceof CastExpression) {
+            return [$node->operand];
+        }
+        if ($node instanceof NewExpression) {
+            return $node->arguments;
+        }
+        if ($node instanceof InstanceofExpression) {
+            return [$node->operand];
+        }
+        if ($node instanceof NullSafeMethodCallExpression) {
+            return [$node->object, ...$node->arguments];
+        }
+        if ($node instanceof LambdaExpression) {
+            return [$node->body];
+        }
+        if ($node instanceof ArrayExpression) {
+            array<ExpressionNode> $items = [];
+            foreach ($node->items as $item) {
+                ?ExpressionNode $key = $item->key;
+                if ($key !== null) {
+                    $items[] = $key;
+                }
+                $items[] = $item->value;
+            }
+            return $items;
+        }
+
+        array<ExpressionNode> $children = [];
+        self::appendPropertyNodes($node, $children);
+        return $children;
+    }
+
+    /**
+     * Nodes held in `$object`'s public properties, directly, in arrays, or in other objects.
+     *
+     * @param array<ExpressionNode> $children
+     */
+    private static function appendPropertyNodes(object $object, array<ExpressionNode> &$children): void {
+        foreach (\get_object_vars($object) as $property) {
+            self::appendNodes($property, $children);
+        }
+    }
+
+    /**
+     * @param array<ExpressionNode> $children
+     */
+    private static function appendNodes(mixed $value, array<ExpressionNode> &$children): void {
+        if ($value instanceof ExpressionNode) {
+            $children[] = $value;
+            return;
+        }
+        if (\is_array($value)) {
+            foreach ($value as $item) {
+                self::appendNodes($item, $children);
+            }
+            return;
+        }
+        if (\is_object($value) && !($value instanceof \Closure)) {
+            self::appendPropertyNodes($value, $children);
+        }
+    }
+}

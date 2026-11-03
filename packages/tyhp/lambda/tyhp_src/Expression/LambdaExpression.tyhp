@@ -1,0 +1,32 @@
+<?tyhp
+
+namespace Tyhp\Expression;
+
+/**
+ * A nested `fn` inside an expression tree, such as the predicate in
+ * `fn ($b) => $b->posts->any(fn ($p) => $p->rating > 3)`.
+ *
+ * A {@see ParameterExpression} in {@see $body} refers to the nearest enclosing lambda that
+ * declares a parameter with the same name. Any other parameter refers to an outer lambda's
+ * parameter or to the expression's own argument at its index. Evaluating the node yields a
+ * `\Closure`.
+ */
+final class LambdaExpression extends ExpressionNode {
+    public readonly array<ParameterExpression> $parameters;
+
+    /**
+     * @param array<ParameterExpression> $parameters
+     */
+    public function __construct(
+        array<ParameterExpression> $parameters,
+        public readonly ExpressionNode $body,
+        public readonly string $returnType = 'mixed',
+    ) {
+        $this->parameters = $parameters;
+        parent::__construct('Closure', 'lambda');
+    }
+
+    public function accept(ExpressionVisitor $visitor): mixed {
+        return $visitor->visitLambda($this);
+    }
+}

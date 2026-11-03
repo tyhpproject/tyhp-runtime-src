@@ -19,8 +19,16 @@
 # Pass --package NAME to publish one package (and leave the other GitHub repos
 # untouched). NAME is a package folder name (php, php-ext-bz2, core,
 # compiler, psr-log/3.0.2) or a Composer name (tyhpdef/php, tyhp/core,
-# tyhp/compiler). Without --package, every discovered package with a GitHub
-# repo is published.
+# tyhp/compiler). Only that package is rebuilt. Without --package, every
+# discovered package with a GitHub repo is published.
+#
+# The working tree must be clean (--allow-dirty overrides). --dry-run builds
+# and compares like a real run, then prints the tags it would push without
+# cloning, committing, pushing, or calling Packagist write APIs. --resume
+# finishes a compiled package whose 80N tags were only partly pushed.
+# tyhp/compiler is published only when the GitHub Release v<version> on
+# tyhpproject/tyhp is public and has checksums.txt plus every platform binary
+# the shim downloads.
 #
 # Pass --list to discover packages, apply --package if given, and check that
 # each GitHub repo exists — the same match set as a real publish — then print
@@ -56,7 +64,6 @@
 # built in-place under packages/tyhp/compiler and tagged from that
 # composer.json version (for example 805.0.0), same tag style as tyhpdef/*.
 #
-# Do not run this until after the compiler history wipe and the package repos are public.
 # When scripts/packagist.credentials exists, each published GitHub repo whose
 # tags Packagist has not crawled yet is refreshed with POST /api/update-package
 # (the same action as the Update button). --create-packagist-packages still
@@ -114,6 +121,22 @@ PACKAGE_FILTER_SET=0
 LIST_ONLY=0
 CREATE_GITHUB=0
 CREATE_PACKAGIST=0
+DRY_RUN=0
+NO_BUILD=0
+RESUME=0
+ALLOW_DIRTY=0
+# Checks a real run would fail on; --dry-run reports them and exits 1.
+DRY_RUN_PROBLEMS=()
+readonly COMPILER_RELEASE_REPO="tyhpproject/tyhp"
+# Assets the tyhp/compiler shim downloads (Platform.tyhp, Installer.tyhp).
+readonly COMPILER_RELEASE_ASSETS=(
+  "checksums.txt"
+  "tyhp-osx-arm64"
+  "tyhp-osx-x64"
+  "tyhp-linux-x64"
+  "tyhp-linux-arm64"
+  "tyhp-win-x64.exe"
+)
 
 # build-common.sh expects SCRIPT_DIR = packages and REPO_ROOT = this repo.
 SCRIPT_DIR="${PACKAGES_DIR}"
@@ -140,7 +163,25 @@ Options:
                                   folder name (php, php-ext-bz2, core,
                                   compiler, psr-log/3.0.2) or a
                                   Composer name (tyhpdef/php, tyhp/core,
-                                  tyhp/compiler).
+                                  tyhp/compiler). Only that package is
+                                  rebuilt; a compiled package other than core
+                                  needs the dist/ trees of the packages it
+                                  requires from an earlier full build.
+  --dry-run                       Build and compare with the GitHub tags like a
+                                  real run, then print the tags that would be
+                                  pushed. Does not clone, commit, tag, push,
+                                  create repos, or call Packagist write APIs.
+                                  Exits 1 when a real run would stop.
+  --no-build                      With --dry-run only: skip the build and
+                                  compare the existing packages/dist and
+                                  compiler output.
+  --resume                        Finish a compiled package whose 80N.X.Y tags
+                                  were partly pushed: push only the missing
+                                  tags, after checking that every existing tag
+                                  holds the same tree as this build.
+  --allow-dirty                   Publish from a working tree with uncommitted
+                                  changes (the tags then contain code that is
+                                  not in git).
   --create-github-repos           If a tyhpproject-packages/<folder> repo is missing,
                                   create an empty public GitHub repo (no
                                   README / license / .gitignore) instead of
@@ -162,17 +203,25 @@ scripts/packagist.credentials exists, published repos with tags Packagist has
 not crawled are refreshed via POST /api/update-package. Without that file,
 run scripts/update-packagist-packages.sh or use the Update button.
 Compiled packages (core, decimal, async,
-lambda, parallel, io) still run base-build-all.sh so dist trees exist. tyhp/compiler is
-built in-place by that script and tagged from its composer.json version (not
-80N.X.Y). tyhpdef packages skip that build and tag the version in that
-package's composer.json. --list uses that same match set and skips the build
-and publish.
+lambda, parallel, io) run base-build-all.sh so dist trees exist (every package,
+or only the --package one). tyhp/compiler is built in-place by that script and
+tagged from its composer.json version (not 80N.X.Y); it is published only when
+the GitHub Release v<version> on tyhpproject/tyhp is public and has
+checksums.txt and every platform binary. tyhpdef packages skip that build and
+tag the version in that package's composer.json. --list uses that same match
+set and skips the build and publish.
+
+The working tree must be clean before the build, so each tag matches a
+commit in this repo. Pass --allow-dirty to override.
 
 Examples:
   scripts/publish-runtime-packages.sh
   scripts/publish-runtime-packages.sh --list
   scripts/publish-runtime-packages.sh --package php
   scripts/publish-runtime-packages.sh --list --package php
+  scripts/publish-runtime-packages.sh --dry-run --package core
+  scripts/publish-runtime-packages.sh --dry-run --no-build
+  scripts/publish-runtime-packages.sh --resume --package core
   scripts/publish-runtime-packages.sh --package=tyhp/compiler
   scripts/publish-runtime-packages.sh --package=tyhpdef/php
   scripts/publish-runtime-packages.sh --package psr-log/3.0.2
@@ -188,6 +237,10 @@ parse_args() {
   LIST_ONLY=0
   CREATE_GITHUB=0
   CREATE_PACKAGIST=0
+  DRY_RUN=0
+  NO_BUILD=0
+  RESUME=0
+  ALLOW_DIRTY=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -h|--help)
@@ -196,6 +249,22 @@ parse_args() {
         ;;
       --list)
         LIST_ONLY=1
+        shift
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        shift
+        ;;
+      --no-build)
+        NO_BUILD=1
+        shift
+        ;;
+      --resume)
+        RESUME=1
+        shift
+        ;;
+      --allow-dirty)
+        ALLOW_DIRTY=1
         shift
         ;;
       --create-github-repos)
@@ -236,6 +305,109 @@ parse_args() {
   done
   if [[ "$PACKAGE_FILTER_SET" -eq 1 && -z "$ONLY_PACKAGE" ]]; then
     echo "error: --package requires a package name." >&2
+    exit 1
+  fi
+  if [[ "$NO_BUILD" -eq 1 && "$DRY_RUN" -eq 0 ]]; then
+    echo "error: --no-build is only allowed with --dry-run (a real publish always builds)." >&2
+    exit 1
+  fi
+  if [[ "$LIST_ONLY" -eq 1 && "$DRY_RUN" -eq 1 ]]; then
+    echo "error: --list and --dry-run are separate previews; pass one of them." >&2
+    exit 1
+  fi
+}
+
+# A real run stops on these; --dry-run records them and keeps going.
+publish_problem() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "PROBLEM: $*" >&2
+    DRY_RUN_PROBLEMS+=("$*")
+    return 0
+  fi
+  echo "error: $*" >&2
+  exit 1
+}
+
+# Prints the skipped write and returns 0 under --dry-run.
+dry_run_note() {
+  [[ "$DRY_RUN" -eq 1 ]] || return 1
+  echo "    DRY RUN: would $*"
+  return 0
+}
+
+working_tree_status() {
+  git -C "$PROJECT_ROOT" status --porcelain --untracked-files=normal
+}
+
+check_clean_tree() {
+  local status
+  local count
+  status="$(working_tree_status)"
+  [[ -n "$status" ]] || return 0
+  count="$(printf '%s\n' "$status" | wc -l | tr -d ' ')"
+  if [[ "$ALLOW_DIRTY" -eq 1 ]]; then
+    echo "warning: publishing from a dirty working tree (${count} path(s)); --allow-dirty is set." >&2
+    return 0
+  fi
+  publish_problem "the working tree has ${count} uncommitted path(s). Commit what ships first, or pass --allow-dirty."
+}
+
+# tyhp/compiler downloads the binary for v<version> from the compiler's GitHub
+# Release (releases/tags/<tag>, which hides drafts) and verifies checksums.txt.
+check_compiler_release() {
+  local version="$1"
+  local tag="v${version#v}"
+  local out
+  local rc=0
+  local asset
+  local missing_assets=()
+  out="$(gh release view "$tag" --repo "$COMPILER_RELEASE_REPO" --json isDraft,assets \
+    --jq '"draft=\(.isDraft)", (.assets[].name)' 2>&1)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    publish_problem "tyhp/compiler ${version} needs the GitHub Release ${tag} on ${COMPILER_RELEASE_REPO}, which was not found (${out}). Run tyhp's scripts/release.sh first."
+    return 0
+  fi
+  if printf '%s\n' "$out" | grep -qx 'draft=true'; then
+    publish_problem "the GitHub Release ${tag} on ${COMPILER_RELEASE_REPO} is still a draft; the shim cannot see it. Publish it first (rerun tyhp's scripts/release.sh)."
+    return 0
+  fi
+  for asset in "${COMPILER_RELEASE_ASSETS[@]}"; do
+    if ! printf '%s\n' "$out" | grep -qxF "$asset"; then
+      missing_assets+=("$asset")
+    fi
+  done
+  if [[ ${#missing_assets[@]} -gt 0 ]]; then
+    publish_problem "the GitHub Release ${tag} on ${COMPILER_RELEASE_REPO} is missing ${missing_assets[*]}."
+    return 0
+  fi
+  echo "  ${COMPILER_RELEASE_REPO} release ${tag}: public, checksums.txt and ${#COMPILER_RELEASE_ASSETS[@]} shim assets present"
+}
+
+# A single compiled-package build resolves sibling packages through the
+# ../../dist/tyhp-<dep>/<major>.latest path repositories in its composer.json.
+check_single_build_prereqs() {
+  local pkg="$1"
+  local pkg_dir
+  local url
+  local missing_deps=()
+  pkg_dir="$(package_dir "$pkg")"
+  # Command substitution, not `done < <(...)` (macOS bash 3.2 fd leak).
+  # shellcheck disable=SC2016
+  for url in $(php -r '
+    $doc = \json_decode((string) \file_get_contents($argv[1]), true);
+    foreach ((\is_array($doc) ? ($doc["repositories"] ?? []) : []) as $repo) {
+        $u = \is_array($repo) ? (string) ($repo["url"] ?? "") : "";
+        if (($repo["type"] ?? "") === "path" && \str_contains($u, "/dist/")) {
+            echo $u, "\n";
+        }
+    }' "${pkg_dir}/composer.json"); do
+    if [[ ! -e "${pkg_dir}/${url}" ]]; then
+      missing_deps+=("$url")
+    fi
+  done
+  if [[ ${#missing_deps[@]} -gt 0 ]]; then
+    echo "error: building only ${pkg} needs ${missing_deps[*]} (relative to packages/tyhp/${pkg})." >&2
+    echo "Run packages/base-build-all.sh once, or publish without --package." >&2
     exit 1
   fi
 }
@@ -840,7 +1012,7 @@ ensure_github_repo() {
     return 1
   fi
 
-  if [[ "$LIST_ONLY" -eq 1 ]]; then
+  if [[ "$LIST_ONLY" -eq 1 || "$DRY_RUN" -eq 1 ]]; then
     if [[ ${#GITHUB_WOULD_CREATE_REPOS[@]} -eq 0 ]] || ! list_contains "$repo" "${GITHUB_WOULD_CREATE_REPOS[@]}"; then
       GITHUB_WOULD_CREATE_REPOS+=("$repo")
       echo "would create GitHub repo ${GITHUB_ORG}/${repo} (empty public; no README / license / .gitignore)"
@@ -984,7 +1156,7 @@ ensure_one_packagist_package() {
     return 1
   fi
 
-  if [[ "$LIST_ONLY" -eq 1 ]]; then
+  if [[ "$LIST_ONLY" -eq 1 || "$DRY_RUN" -eq 1 ]]; then
     echo "would create Packagist package ${name} from ${repo_url}"
     PACKAGIST_WOULD_CREATE_NAMES+=("$name")
     return 0
@@ -1116,7 +1288,7 @@ ensure_missing_github_repos() {
   local pkg
   local repo
   [[ "$CREATE_GITHUB" -eq 1 ]] || return 0
-  [[ "$LIST_ONLY" -eq 0 ]] || return 0
+  [[ "$LIST_ONLY" -eq 0 && "$DRY_RUN" -eq 0 ]] || return 0
   echo "Checking which GitHub repos still need to be created (${#ALL_PACKAGES[@]} packages)..."
   for pkg in "${ALL_PACKAGES[@]}"; do
     if ! is_publishable_package "$pkg"; then
@@ -1379,6 +1551,8 @@ read_publish_plan() {
   PLAN_SEEN=0
   PLAN_ERRORS=()
   PLAN_BUMPS=()
+  PLAN_NEW_TAGS=()
+  PLAN_EXISTING_TAGS=()
   PLAN_PUBLIC="absent"
   PLAN_IMPL="absent"
   PLAN_PUBLIC_TAG=""
@@ -1387,10 +1561,17 @@ read_publish_plan() {
     [[ "$row_pkg" == "$pkg" ]] || continue
     PLAN_SEEN=1
     case "$result" in
-      new) PLAN_NEW=$((PLAN_NEW + 1)) ;;
-      ok) PLAN_TAGGED=$((PLAN_TAGGED + 1)) ;;
+      new)
+        PLAN_NEW=$((PLAN_NEW + 1))
+        PLAN_NEW_TAGS+=("$tag")
+        ;;
+      ok)
+        PLAN_TAGGED=$((PLAN_TAGGED + 1))
+        PLAN_EXISTING_TAGS+=("$tag")
+        ;;
       bump)
         PLAN_TAGGED=$((PLAN_TAGGED + 1))
+        PLAN_EXISTING_TAGS+=("$tag")
         case "$kind" in
           public) entry="public ${repo} tag ${tag}" ;;
           impl) entry="impl ${repo} tag ${tag}" ;;
@@ -1553,6 +1734,16 @@ publish_composer_lib_pair() {
     cd "$PROJECT_ROOT"
     return 0
   fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    if [[ "$publish_public" -eq 1 ]]; then
+      dry_run_note "clone ${GITHUB_ORG}/${parent}, commit the public metapackage, tag ${upstream}, and push main and ${upstream}"
+    fi
+    if [[ "$publish_impl" -eq 1 ]]; then
+      dry_run_note "clone ${GITHUB_ORG}/${parent}-impl, commit, tag ${impl_tag}, and push main and ${impl_tag}"
+    fi
+    cd "$PROJECT_ROOT"
+    return 0
+  fi
 
   meta_dir="${dest}-public-meta"
   mkdir -p "$meta_dir"
@@ -1605,6 +1796,10 @@ publish_tyhpdef_package() {
   fi
 
   echo "    ${pkg} ${tag}"
+  if dry_run_note "clone ${GITHUB_ORG}/${repo}, commit, tag ${tag}, and push main and ${tag}"; then
+    cd "$PROJECT_ROOT"
+    return 0
+  fi
   prepare_clone "$repo" "$dest"
   sync_composer_lib_dist "$pkg" "$dest"
   commit_and_tag "$dest" "$tag"
@@ -1640,6 +1835,10 @@ publish_compiler_package() {
   fi
 
   echo "    ${pkg} ${tag}"
+  if dry_run_note "clone ${GITHUB_ORG}/${repo}, commit, tag ${tag}, and push main and ${tag}"; then
+    cd "$PROJECT_ROOT"
+    return 0
+  fi
   prepare_clone "$repo" "$dest"
   sync_compiler_dist "$pkg" "$dest"
   commit_and_tag "$dest" "$tag"
@@ -1676,7 +1875,7 @@ publish_package() {
   if [[ -z "$composer_name" ]]; then
     composer_name="tyhp/${pkg}"
   fi
-  echo "==> Publishing ${composer_name} to ${GITHUB_ORG}/${pkg} (PHP 8.2–8.5)"
+  echo "==> Publishing ${composer_name} to ${GITHUB_ORG}/${pkg} (PHP $(dist_php_range_label))"
 
   load_package_release_version "$pkg" || exit 1
   read_publish_plan "$pkg"
@@ -1689,18 +1888,38 @@ publish_package() {
   fi
   if [[ "$PLAN_TAGGED" -gt 0 ]]; then
     note_plan_bumps
-    echo "Partial publish in ${GITHUB_ORG}/${pkg}: ${PLAN_TAGGED}/$((PLAN_TAGGED + PLAN_NEW)) tags already exist." >&2
-    echo "Finish or delete the incomplete tags, then re-run." >&2
-    exit 1
+    if [[ "$RESUME" -eq 0 ]]; then
+      publish_problem "partial publish in ${GITHUB_ORG}/${pkg}: ${PLAN_TAGGED}/$((PLAN_TAGGED + PLAN_NEW)) tags already exist (${PLAN_EXISTING_TAGS[*]}); missing ${PLAN_NEW_TAGS[*]}. Re-run with --resume to push only the missing tags."
+      cd "$PROJECT_ROOT"
+      return 0
+    fi
+    if [[ ${#PLAN_BUMPS[@]} -gt 0 ]]; then
+      publish_problem "--resume refused for ${pkg}: an existing tag holds a different tree than this build (see CHANGE WITHOUT VERSION BUMP above). Bump the version in packages/tyhp/${pkg}/composer.json and publish a new version instead."
+      cd "$PROJECT_ROOT"
+      return 0
+    fi
+    echo "    resuming: ${PLAN_EXISTING_TAGS[*]} already match this build; publishing ${PLAN_NEW_TAGS[*]}"
   fi
-
-  prepare_clone "$pkg" "$dest"
 
   for entry in "${DIST_BUILDS[@]}"; do
     php_major="${entry%%:*}"
     dist_version="$(package_version "$php_major")"
-    tags+=("$dist_version")
+    if list_contains "$dist_version" "${PLAN_NEW_TAGS[@]}"; then
+      tags+=("$dist_version")
+    fi
+  done
+  if [[ ${#tags[@]} -eq 0 ]]; then
+    echo "error: the publish plan for ${pkg} lists ${PLAN_NEW_TAGS[*]}, which this build does not produce." >&2
+    exit 1
+  fi
+  if dry_run_note "clone ${GITHUB_ORG}/${pkg}, commit and tag ${tags[*]}, and push main and those tags"; then
+    cd "$PROJECT_ROOT"
+    return 0
+  fi
 
+  prepare_clone "$pkg" "$dest"
+
+  for dist_version in "${tags[@]}"; do
     echo "    ${pkg} ${dist_version}"
     sync_compile_dist "$pkg" "$dest" "$dist_version"
     commit_and_tag "$dest" "$dist_version"
@@ -1747,6 +1966,15 @@ main() {
     return 0
   fi
 
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "DRY RUN: nothing is cloned, committed, tagged, pushed, created, or sent to Packagist."
+    PACKAGIST_UPDATE_DRY_RUN=1
+  fi
+  if [[ "$RESUME" -eq 1 ]]; then
+    echo "Resume: compiled packages with some 80N tags already pushed publish only the missing tags."
+  fi
+  check_clean_tree
+
   if [[ -f "$PACKAGIST_CREDENTIALS_FILE" ]]; then
     validate_packagist_credentials
     PACKAGIST_CREDENTIALS_READY=1
@@ -1785,6 +2013,7 @@ main() {
       compiler_ver="$(read_tyhp_package_version "$(package_dir "$pkg")/composer.json")" || exit 1
       compiler_repo="$(github_repo_for_package "$pkg")"
       echo "  ${pkg}: ${compiler_ver} → ${GITHUB_ORG}/${compiler_repo} tag ${compiler_ver}"
+      check_compiler_release "$compiler_ver"
     done
   fi
 
@@ -1803,9 +2032,18 @@ main() {
     ensure_missing_github_repos
   fi
 
-  if [[ "$needs_compiled_build" -eq 1 ]]; then
+  local tree_before_build
+  tree_before_build="$(working_tree_status)"
+  if [[ "$NO_BUILD" -eq 1 ]]; then
+    echo "Skipping the build (--no-build): comparing the existing packages/dist and compiler output."
+  elif [[ "$needs_compiled_build" -eq 1 && "$PACKAGE_FILTER_SET" -eq 1 ]]; then
     require_tool dotnet
-    echo "Building runtime packages for PHP 8.2–8.5..."
+    check_single_build_prereqs "${compiled_packages[0]}"
+    echo "Building ${compiled_packages[0]} for PHP $(dist_php_range_label)..."
+    "${PACKAGES_DIR}/base-build-all.sh" "${compiled_packages[0]}"
+  elif [[ "$needs_compiled_build" -eq 1 ]]; then
+    require_tool dotnet
+    echo "Building runtime packages for PHP $(dist_php_range_label)..."
     "${PACKAGES_DIR}/base-build-all.sh"
   elif [[ "$needs_compiler_build" -eq 1 ]]; then
     require_tool dotnet
@@ -1813,6 +2051,9 @@ main() {
     "${PACKAGES_DIR}/base-build-all.sh" compiler
   else
     echo "Skipping compiled-package build (no ${DIST_PACKAGES[*]} or compiler package in this run)."
+  fi
+  if [[ "$(working_tree_status)" != "$tree_before_build" ]]; then
+    echo "warning: the build changed files tracked by git (re-emitted PHP). The tags will hold that output; commit it to keep git and the published tags in step." >&2
   fi
 
   collect_publish_matches
@@ -1839,7 +2080,9 @@ main() {
     done
   fi
 
-  if [[ ${#published[@]} -gt 0 ]]; then
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "DRY RUN: checked ${#published[@]} package(s)${published[*]:+: ${published[*]}}."
+  elif [[ ${#published[@]} -gt 0 ]]; then
     echo "Published ${published[*]}."
   else
     echo "No packages published."
@@ -1872,7 +2115,11 @@ main() {
     fi
   fi
   if [[ ${#PACKAGIST_UPDATED_NAMES[@]} -gt 0 ]]; then
-    echo "Packagist update queued: ${PACKAGIST_UPDATED_NAMES[*]}"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "Packagist update would be queued: ${PACKAGIST_UPDATED_NAMES[*]}"
+    else
+      echo "Packagist update queued: ${PACKAGIST_UPDATED_NAMES[*]}"
+    fi
   fi
   if [[ ${#PACKAGIST_CURRENT_NAMES[@]} -gt 0 ]]; then
     echo "Packagist already current: ${#PACKAGIST_CURRENT_NAMES[@]} package(s)"
@@ -1889,6 +2136,11 @@ main() {
     echo "Or add ${PACKAGIST_CREDENTIALS_FILE} and run scripts/update-packagist-packages.sh."
   fi
   if [[ ${#GITHUB_CREATE_FAILED_REPOS[@]} -gt 0 || ${#PACKAGIST_FAILED_NAMES[@]} -gt 0 || ${#PACKAGIST_UPDATE_FAILED_NAMES[@]} -gt 0 ]]; then
+    return 1
+  fi
+  if [[ ${#DRY_RUN_PROBLEMS[@]} -gt 0 ]]; then
+    echo "DRY RUN: a real run would stop with ${#DRY_RUN_PROBLEMS[@]} problem(s):" >&2
+    printf '  - %s\n' "${DRY_RUN_PROBLEMS[@]}" >&2
     return 1
   fi
 }

@@ -4,14 +4,7 @@ namespace Tyhp\Expression;
 
 final class ExpressionSerializer {
     public static function toJson(\Tyhp\Expression $expression): string {
-        array<string, mixed> $data = [
-            'parameters' => \array_map(
-                fn(ParameterExpression $p): array<string, mixed> => ['name' => $p->name, 'index' => $p->index, 'type' => $p->type],
-                $expression->parameters
-            ),
-            'returnType' => $expression->returnType,
-            'body' => self::nodeToArray($expression->body),
-        ];
+        array<string, mixed> $data = self::toArray($expression);
         string|false $json = \json_encode($data, \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR);
         if (!\is_string($json)) {
             throw new \JsonException(\json_last_error_msg());
@@ -26,6 +19,34 @@ final class ExpressionSerializer {
      */
     public static function equals(\Tyhp\Expression $a, \Tyhp\Expression $b): bool {
         return self::toJson($a) === self::toJson($b);
+    }
+
+    /**
+     * Key for the tree's structure with constant values left out. See {@see ExpressionShape}.
+     */
+    public static function shapeKey(\Tyhp\Expression $expression): string {
+        return ExpressionShape::of($expression)->key;
+    }
+
+    /**
+     * Values of the tree's constant nodes, left to right as written. See {@see ExpressionShape}.
+     */
+    public static function shapeParameters(\Tyhp\Expression $expression): array<mixed> {
+        return ExpressionShape::of($expression)->parameters;
+    }
+
+    /**
+     * The data {@see toJson()} encodes.
+     */
+    internal static function toArray(\Tyhp\Expression $expression): array<string, mixed> {
+        return [
+            'parameters' => \array_map(
+                fn(ParameterExpression $p): array<string, mixed> => ['name' => $p->name, 'index' => $p->index, 'type' => $p->type],
+                $expression->parameters
+            ),
+            'returnType' => $expression->returnType,
+            'body' => self::nodeToArray($expression->body),
+        ];
     }
 
     private static function nodeToArray(ExpressionNode $node, int $depth = 0): SerializedExpression {
@@ -172,7 +193,52 @@ final class ExpressionSerializer {
             ];
         }
 
+        if ($node instanceof NullSafeMethodCallExpression) {
+            return new SerializedNullSafeMethodCallExpression() with [
+                nodeType => $node->nodeType,
+                'type' => $node->type,
+                object => self::nodeToArray($node->object, $depth + 1),
+                method => $node->method,
+                arguments => \array_map(
+                    fn(ExpressionNode $arg): SerializedExpression => self::nodeToArray($arg, $depth + 1),
+                    $node->arguments
+                ),
+            ];
+        }
+
+        if ($node instanceof LambdaExpression) {
+            return new SerializedLambdaExpression() with [
+                nodeType => $node->nodeType,
+                'type' => $node->type,
+                returnType => $node->returnType,
+                parameters => \array_map(
+                    fn(ParameterExpression $p): SerializedExpression => self::nodeToArray($p, $depth + 1),
+                    $node->parameters
+                ),
+                body => self::nodeToArray($node->body, $depth + 1),
+            ];
+        }
+
+        if ($node instanceof ArrayExpression) {
+            return new SerializedArrayExpression() with [
+                nodeType => $node->nodeType,
+                'type' => $node->type,
+                items => \array_map(
+                    fn(ArrayItem $item): SerializedArrayItem => self::itemToArray($item, $depth + 1),
+                    $node->items
+                ),
+            ];
+        }
+
         throw new \InvalidArgumentException('Unsupported ExpressionNode type: ' . \get_class($node));
+    }
+
+    private static function itemToArray(ArrayItem $item, int $depth): SerializedArrayItem {
+        ?ExpressionNode $key = $item->key;
+        return new SerializedArrayItem() with [
+            key => $key !== null ? self::nodeToArray($key, $depth) : null,
+            value => self::nodeToArray($item->value, $depth),
+        ];
     }
 }
 
@@ -253,4 +319,25 @@ type SerializedNewExpression = struct extends SerializedExpression {
 type SerializedInstanceofExpression = struct extends SerializedExpression {
     SerializedExpression $operand;
     string $targetType = '';
+};
+
+type SerializedNullSafeMethodCallExpression = struct extends SerializedExpression {
+    SerializedExpression $object;
+    string $method = '';
+    array<SerializedExpression> $arguments = [];
+};
+
+type SerializedLambdaExpression = struct extends SerializedExpression {
+    string $returnType = '';
+    array<SerializedExpression> $parameters = [];
+    SerializedExpression $body;
+};
+
+type SerializedArrayItem = struct {
+    ?SerializedExpression $key = null;
+    SerializedExpression $value;
+};
+
+type SerializedArrayExpression = struct extends SerializedExpression {
+    array<SerializedArrayItem> $items = [];
 };

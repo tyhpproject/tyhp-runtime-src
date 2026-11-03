@@ -1,0 +1,28 @@
+<?tyhp
+
+namespace Tyhp\Expression;
+
+/**
+ * `$object?->method(...)`. When `$object` is null the call is skipped, its arguments are not
+ * evaluated, and the rest of the access chain yields null.
+ */
+final class NullSafeMethodCallExpression extends ExpressionNode {
+    public readonly array<ExpressionNode> $arguments;
+
+    /**
+     * @param array<ExpressionNode> $arguments
+     */
+    public function __construct(
+        public readonly ExpressionNode $object,
+        public readonly string $method,
+        array<ExpressionNode> $arguments,
+        string $type = 'mixed',
+    ) {
+        $this->arguments = $arguments;
+        parent::__construct($type, 'nullSafeMethodCall');
+    }
+
+    public function accept(ExpressionVisitor $visitor): mixed {
+        return $visitor->visitNullSafeMethodCall($this);
+    }
+}

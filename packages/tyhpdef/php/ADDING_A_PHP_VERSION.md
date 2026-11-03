@@ -4,14 +4,16 @@ This is the maintainer runbook for adding a newly released PHP minor (example: *
 
 Version-specific APIs live in one gated tree: `declare(php=…)` on whole declarations and `#[\Tyhp\Php]` on members. `generate_tyhpdef --php-targets` reflects each listed minor with Tyhp-managed PHP and merges those gates. Do not point `--php` at several Homebrew binaries and merge by hand.
 
+Paths starting with `tyhp/` are in the compiler checkout next to this repo. Paths starting with `tyhp-docs-src/` are in the docs source repo. Every other path is relative to the root of this repo (`tyhp-runtime-src`).
+
 ## 1. Compiler and managed PHP
 
 `generate_tyhpdef --php-targets` only provisions minors listed in the compiler’s managed-PHP manifest.
 
-1. Add `"8.6"` to `Tyhp/Domain/Services/PhpRuntimeManifest.json` (`minors`).
-2. Add `"8.6"` to `PhpRuntimeInfo.SupportedMinors` (`Tyhp/Domain/Services/PhpRuntimeInfo.cs`).
-3. Add `"8.6"` to `OutputConfig` supported `output.phpVersion` values (`Tyhp/Config/OutputConfig.cs`) so lint/build can target it.
-4. Rebuild the compiler (`dotnet build tyhp.csproj`).
+1. Add `"8.6"` to `tyhp/Tyhp/Domain/Services/PhpRuntimeManifest.json` (`minors`).
+2. Add `"8.6"` to `PhpRuntimeInfo.SupportedMinors` (`tyhp/Tyhp/Domain/Services/PhpRuntimeInfo.cs`).
+3. Add `"8.6"` to `OutputConfig` supported `output.phpVersion` values (`tyhp/Tyhp/Config/OutputConfig.cs`) so lint/build can target it.
+4. Rebuild the compiler (`dotnet build tyhp.csproj` in `tyhp`).
 
 Until managed 8.6 exists, `--php-targets=…,8.6` fails and writes nothing merged. Do not invent 8.6 APIs by hand to paper over that.
 
@@ -19,13 +21,13 @@ Until managed 8.6 exists, `--php-targets=…,8.6` fails and writes nothing merge
 
 `generate_tyhpdef --ext-name` writes Reflection JSON under `{project root}/tyhpdef_gen/snapshots/{minor}/` (gitignored). Later runs reuse those files unless you pass `--refresh-snapshots`.
 
-- Run every regen from the **repo root** so the snapshot directory is `tyhpdef_gen/snapshots/`.
+- Run every regen from the root of this repo so the snapshot directory is `tyhpdef_gen/snapshots/`.
 - After 8.6 is provisioned once, `tyhpdef_gen/snapshots/8.6/*.json` is the cache for that minor.
 - Snapshots are Reflection JSON, not tyhpdef sources. Do not copy APIs from elsewhere into Layer 1.
 
 ## 3. Regenerate `tyhpdef/php` (always-present only)
 
-Always-present extensions, each into `runtime/packages/php/_tyhpdef/` with `--output-file=Ext.<Name>.tyhpdef`:
+Always-present extensions, each into `packages/tyhpdef/php/_tyhpdef/` with `--output-file=Ext.<Name>.tyhpdef`:
 
 | `--ext-name` | `--output-file` |
 |---|---|
@@ -44,12 +46,12 @@ Always-present extensions, each into `runtime/packages/php/_tyhpdef/` with `--ou
 Example (json). Repeat for the other ten. `--overwrite` replaces Layer 1 and `overlays/stubs/`; it does not touch hand-written `overlays/*.tyhpdef`.
 
 ```bash
-TYHP_DLL="${TYHP_DLL:-./bin/Debug/net9.0/tyhp.dll}"
+TYHP_DLL="${TYHP_DLL:-$PWD/../tyhp/bin/Debug/net9.0/tyhp.dll}"
 
 dotnet "$TYHP_DLL" generate_tyhpdef \
   --ext-name=json \
   --php-targets=8.2,8.3,8.4,8.5,8.6 \
-  --output=runtime/packages/php/_tyhpdef/ \
+  --output=packages/tyhpdef/php/_tyhpdef/ \
   --output-file=Ext.Json.tyhpdef \
   --overwrite
 ```
@@ -60,13 +62,13 @@ Identical APIs across every listed minor stay ungated. Symbols that appear at 8.
 
 ## 4. Regenerate every `php-ext-*`
 
-Same `--php-targets` list, package-local `--output` and `--output-file=Ext.<Stem>.tyhpdef` (see an existing package such as `php-ext-bz2` / `php-ext-pdo_mysql`). From the repo root:
+Same `--php-targets` list, package-local `--output` and `--output-file=Ext.<Stem>.tyhpdef` (see an existing package such as `php-ext-bz2` / `php-ext-pdo_mysql`). From the root of this repo:
 
 ```bash
 dotnet "$TYHP_DLL" generate_tyhpdef \
   --ext-name=bz2 \
   --php-targets=8.2,8.3,8.4,8.5,8.6 \
-  --output=runtime/packages/php-ext-bz2/_tyhpdef/ \
+  --output=packages/tyhpdef/php-ext-bz2/_tyhpdef/ \
   --output-file=Ext.Bz2.tyhpdef \
   --overwrite
 ```
@@ -79,10 +81,10 @@ Regen overwrites Layer 1 and generated stub overlays. Hand-written `_tyhpdef/ove
 
 ```bash
 # tyhpdef/php overlays (tests project includes this package only)
-(cd runtime/packages/php/tests && dotnet "$TYHP_DLL" overlay stamp)
+(cd packages/tyhpdef/php/tests && dotnet "$TYHP_DLL" overlay stamp)
 
 # one php-ext package (includes that package + tyhpdef/php)
-(cd runtime/packages/php-ext-bz2/tests && dotnet "$TYHP_DLL" overlay stamp)
+(cd packages/tyhpdef/php-ext-bz2/tests && dotnet "$TYHP_DLL" overlay stamp)
 ```
 
 **TYHP8027:** these `tests/` projects do not include `tyhp/core`, `tyhp/decimal`, `tyhp/async`, or `tyhp/lambda`. Overlay stamp then warns TYHP8027 and the process exits **5** (`CompileWarning`). The stamps still applied. Treat exit **0** or **5** as success for this command.
@@ -93,15 +95,15 @@ Review **TYHP8021** (stamp mismatch) on hand overlays after a Layer 1 change; `-
 
 ## 6. `supported-minors` and Composer
 
-In `runtime/packages/php/composer.json` and every `runtime/packages/php-ext-*/composer.json`, append `"8.6"` to `extra.tyhp.supported-minors`. Leave `"php": ">=8.2"` (do not add mutually exclusive per-minor constraints). Do not add `runtime/packages/php-8.6/` or `tyhpdef/php-8.6-ext-*`.
+In `packages/tyhpdef/php/composer.json` and every `packages/tyhpdef/php-ext-*/composer.json`, append `"8.6"` to `extra.tyhp.supported-minors`. Leave `"php": ">=8.2"` (do not add mutually exclusive per-minor constraints). Do not add `packages/tyhpdef/php-8.6/` or `tyhpdef/php-8.6-ext-*`.
 
 ## 7. Tests matrix
 
 `output.phpVersion` is how you see 8.6-gated symbols. You do not install four (or five) PHPs for that check.
 
-- Add `runtime/packages/php/tests/tyhp-php8.6.json`: copy `tests/tyhp.json` and set `"output"."phpVersion"` to `"8.6"`.
+- Add `packages/tyhpdef/php/tests/tyhp-php8.6.json`: copy `tests/tyhp.json` and set `"output"."phpVersion"` to `"8.6"`.
 - For each `php-ext-*` that already has `tests/tyhp-php8.3.json` (and 8.4 / 8.5), add `tests/tyhp-php8.6.json` the same way. Packages that only ship `tests/tyhp.json` (8.2) can keep that default and add 8.6 when you start asserting 8.6-only APIs.
-- If you emit compiled runtime packages with `base-build-all.sh`, add a `806:8.6:PHP 8.6` entry to `DIST_BUILDS` in `runtime/packages/build-common.sh` (`tyhpdef/php` itself is tyhpdefs only and is not in that list). The build uses each package's `tyhp.json` plus `--output:phpVersion=8.6`.
+- If you emit compiled runtime packages with `base-build-all.sh`, add a `806:8.6:PHP 8.6` entry to `DIST_BUILDS` in `packages/build-common.sh` (`tyhpdef/php` itself is tyhpdefs only and is not in that list). That one list drives the per-PHP builds, the published `80N.X.Y` tags, and the `802.X.* || … || 806.X.*` sibling constraints. The build uses each package's `tyhp.json` plus `--output:phpVersion=8.6`. The compiler's `RuntimePackageVersions.PublishedPhpVersions` (`tyhp/Tyhp/Domain/Services/RuntimePackageVersions.cs`) lists the same minors.
 
 Lint/build the **same** tree at 8.2, 8.3, 8.4, 8.5, and 8.6. Confirm 8.6-only symbols are absent at 8.5 and visible at 8.6.
 
@@ -110,18 +112,18 @@ Lint/build the **same** tree at 8.2, 8.3, 8.4, 8.5, and 8.6. Confirm 8.6-only sy
 Hand overlays (`_tyhpdef/overlays/*.tyhpdef`, not `stubs/`) are not regenerated. After a gated Layer 1 refresh:
 
 - Stamp (step 5).
-- If 8.6 adds a native helper a scalar method should call, gate that arm with `declare(php=">=8.6")` in `tyhp/core` (`runtime/packages/core/_tyhpdef/extensions/`; attributes are not allowed on `extension` declarations).
+- If 8.6 adds a native helper a scalar method should call, gate that arm with `declare(php=">=8.6")` in `tyhp/core` (the `*Extensions.tyhp` files in `packages/tyhp/core/tyhp_src/`; attributes are not allowed on `extension` declarations).
 
 ## 9. Docs and user-facing strings
 
-Update user docs that list the 8.2–8.5 matrix (`docs/content/tyhp_0320_phpVersionGating.md`, Composer package pages, `generate_tyhpdef` help examples) so 8.6 is part of the current contract. New CLI help strings go in **both** `Resources/CLI.TyhpHostedService.resx` and `Resources/CLI.TyhpHostedService.en-US.resx`.
+Update user docs that list the 8.2–8.5 matrix (`tyhp-docs-src/content/tyhp_0320_phpVersionGating.md`, Composer package pages, `generate_tyhpdef` help examples) so 8.6 is part of the current contract. New CLI help strings go in **both** `tyhp/Resources/CLI.TyhpHostedService.resx` and `tyhp/Resources/CLI.TyhpHostedService.en-US.resx`.
 
 ## Checklist
 
 - [ ] Managed PHP 8.6 is in the compiler manifest and `SupportedMinors`
 - [ ] `output.phpVersion` `"8.6"` is a supported compiler target
 - [ ] `tyhpdef/php` Layer 1 regenerated with `--php-targets=8.2,8.3,8.4,8.5,8.6` for the 11 always-present extensions only
-- [ ] json, hash, and libxml still exist only under `runtime/packages/php/`
+- [ ] json, hash, and libxml still exist only under `packages/tyhpdef/php/`
 - [ ] Every `php-ext-*` regenerated the same way, or left unchanged on TYHP7511
 - [ ] Overlay stamp run from each package’s `tests/` (exit 0 or 5)
 - [ ] `extra.tyhp.supported-minors` includes `"8.6"`; no `php-8.6` directories

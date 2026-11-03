@@ -10,6 +10,10 @@ namespace Tyhp\Expression;
  * identifiers, class names are those segments joined by a backslash, and
  * operators come from a fixed set. A tree that cannot be compiled this way
  * returns null so the caller walks it.
+ *
+ * Access chains are written without parentheses between links, so a `?->` that
+ * meets null skips the rest of its chain as it does in PHP. A nested
+ * {@see LambdaExpression} becomes an arrow `fn`.
  */
 internal final class EvalBacker {
     /** @var array<int, mixed> */
@@ -17,6 +21,13 @@ internal final class EvalBacker {
 
     /** @var array<int, string> */
     private array<int, string> $parameterNames = [];
+
+    /**
+     * Parameter names of the nested lambdas around the node being written, innermost last.
+     *
+     * @var array<array<string, int>>
+     */
+    private array<array<string, int>> $lambdaScopes = [];
 
     /**
      * @param array<ParameterExpression> $parameters
@@ -91,17 +102,15 @@ internal final class EvalBacker {
     }
 
     private function emit(ExpressionNode $node): ?string {
+        if (self::isChainLink($node)) {
+            ?string $link = $this->emitLink($node);
+            return $link === null ? null : '(' . $link . ')';
+        }
         if ($node instanceof ParameterExpression) {
             return $this->emitParameter($node);
         }
         if ($node instanceof ConstantExpression) {
             return $this->emitConstant($node);
-        }
-        if ($node instanceof PropertyAccessExpression) {
-            return $this->emitProperty($node->object, $node->property, false);
-        }
-        if ($node instanceof NullSafeAccessExpression) {
-            return $this->emitProperty($node->object, $node->property, true);
         }
         if ($node instanceof BinaryExpression) {
             return $this->emitBinary($node);
@@ -115,14 +124,8 @@ internal final class EvalBacker {
         if ($node instanceof CoalesceExpression) {
             return $this->emitCoalesce($node);
         }
-        if ($node instanceof ArrayAccessExpression) {
-            return $this->emitArrayAccess($node);
-        }
         if ($node instanceof CastExpression) {
             return $this->emitCast($node);
-        }
-        if ($node instanceof MethodCallExpression) {
-            return $this->emitMethod($node);
         }
         if ($node instanceof StaticMethodCallExpression) {
             return $this->emitStatic($node);
@@ -133,10 +136,61 @@ internal final class EvalBacker {
         if ($node instanceof InstanceofExpression) {
             return $this->emitInstanceof($node);
         }
+        if ($node instanceof ArrayExpression) {
+            return $this->emitArray($node);
+        }
+        if ($node instanceof LambdaExpression) {
+            return $this->emitLambda($node);
+        }
         return null;
     }
 
+    /**
+     * Property reads, method calls, and array reads: the links of an access chain.
+     */
+    private static function isChainLink(ExpressionNode $node): bool {
+        return $node instanceof PropertyAccessExpression
+            || $node instanceof NullSafeAccessExpression
+            || $node instanceof MethodCallExpression
+            || $node instanceof NullSafeMethodCallExpression
+            || $node instanceof ArrayAccessExpression;
+    }
+
+    /**
+     * One chain link without surrounding parentheses, so the links of a chain stay one PHP chain.
+     */
+    private function emitLink(ExpressionNode $node): ?string {
+        if ($node instanceof PropertyAccessExpression) {
+            return $this->emitProperty($node->object, $node->property, false);
+        }
+        if ($node instanceof NullSafeAccessExpression) {
+            return $this->emitProperty($node->object, $node->property, true);
+        }
+        if ($node instanceof MethodCallExpression) {
+            return $this->emitMethod($node->object, $node->method, $node->arguments, false);
+        }
+        if ($node instanceof NullSafeMethodCallExpression) {
+            return $this->emitMethod($node->object, $node->method, $node->arguments, true);
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            return $this->emitArrayAccess($node);
+        }
+        return null;
+    }
+
+    private function emitReceiver(ExpressionNode $node): ?string {
+        if (self::isChainLink($node)) {
+            return $this->emitLink($node);
+        }
+        return $this->emit($node);
+    }
+
     private function emitParameter(ParameterExpression $node): ?string {
+        for (int $i = \count($this->lambdaScopes) - 1; $i >= 0; $i--) {
+            if (\array_key_exists($node->name, $this->lambdaScopes[$i])) {
+                return '$' . $node->name;
+            }
+        }
         if ($node->index < 0 || $node->index >= \count($this->parameterNames)) {
             return null;
         }
@@ -159,12 +213,12 @@ internal final class EvalBacker {
         if (!self::isIdentifier($name)) {
             return null;
         }
-        ?string $target = $this->emit($object);
+        ?string $target = $this->emitReceiver($object);
         if ($target === null) {
             return null;
         }
         string $operator = $nullSafe ? '?->' : '->';
-        return '(' . $target . $operator . $name . ')';
+        return $target . $operator . $name;
     }
 
     private function emitBinary(BinaryExpression $node): ?string {
@@ -230,7 +284,7 @@ internal final class EvalBacker {
     }
 
     private function emitArrayAccess(ArrayAccessExpression $node): ?string {
-        ?string $array = $this->emit($node->array);
+        ?string $array = $this->emitReceiver($node->array);
         if ($array === null) {
             return null;
         }
@@ -238,7 +292,7 @@ internal final class EvalBacker {
         if ($index === null) {
             return null;
         }
-        return '(' . $array . '[' . $index . '])';
+        return $array . '[' . $index . ']';
     }
 
     private function emitCast(CastExpression $node): ?string {
@@ -253,19 +307,88 @@ internal final class EvalBacker {
         return '(' . $cast . $operand . ')';
     }
 
-    private function emitMethod(MethodCallExpression $node): ?string {
-        if (!self::isIdentifier($node->method)) {
+    /**
+     * @param array<ExpressionNode> $arguments
+     */
+    private function emitMethod(
+        ExpressionNode $object,
+        string $method,
+        array<ExpressionNode> $arguments,
+        bool $nullSafe,
+    ): ?string {
+        if (!self::isIdentifier($method)) {
             return null;
         }
-        ?string $object = $this->emit($node->object);
-        if ($object === null) {
+        ?string $target = $this->emitReceiver($object);
+        if ($target === null) {
             return null;
         }
-        ?string $arguments = $this->emitArguments($node->arguments);
-        if ($arguments === null) {
+        ?string $rendered = $this->emitArguments($arguments);
+        if ($rendered === null) {
             return null;
         }
-        return '(' . $object . '->' . $node->method . '(' . $arguments . '))';
+        string $operator = $nullSafe ? '?->' : '->';
+        return $target . $operator . $method . '(' . $rendered . ')';
+    }
+
+    private function emitArray(ArrayExpression $node): ?string {
+        array<int, string> $rendered = [];
+        foreach ($node->items as $item) {
+            ?string $value = $this->emit($item->value);
+            if ($value === null) {
+                return null;
+            }
+            ?ExpressionNode $keyNode = $item->key;
+            if ($keyNode === null) {
+                $rendered[] = $value;
+                continue;
+            }
+            ?string $key = $this->emit($keyNode);
+            if ($key === null) {
+                return null;
+            }
+            $rendered[] = $key . ' => ' . $value;
+        }
+        return '[' . \implode(', ', $rendered) . ']';
+    }
+
+    private function emitLambda(LambdaExpression $node): ?string {
+        int $count = \count($node->parameters);
+        array<int, string> $names = [];
+        for (int $i = 0; $i < $count; $i++) {
+            $names[$i] = '';
+        }
+
+        array<string, int> $scope = [];
+        foreach ($node->parameters as $parameter) {
+            if ($parameter->index < 0 || $parameter->index >= $count) {
+                return null;
+            }
+            if ($names[$parameter->index] !== '') {
+                return null;
+            }
+            if (!self::isIdentifier($parameter->name) || self::isReservedName($parameter->name)) {
+                return null;
+            }
+            if (\array_key_exists($parameter->name, $scope)) {
+                return null;
+            }
+            $scope[$parameter->name] = $parameter->index;
+            $names[$parameter->index] = $parameter->name;
+        }
+
+        array<int, string> $rendered = [];
+        foreach ($names as $name) {
+            $rendered[] = '$' . $name;
+        }
+
+        $this->lambdaScopes[] = $scope;
+        ?string $body = $this->emit($node->body);
+        \array_pop($this->lambdaScopes);
+        if ($body === null) {
+            return null;
+        }
+        return '(fn (' . \implode(', ', $rendered) . ') => ' . $body . ')';
     }
 
     private function emitStatic(StaticMethodCallExpression $node): ?string {
@@ -516,6 +639,6 @@ internal final class EvalBacker {
     }
 
     private static function isReservedName(string $name): bool {
-        return $name === '__bound' || $name === '__r' || $name === '__tyhpType';
+        return $name === '__bound' || $name === '__r' || $name === '__tyhpType' || $name === 'this';
     }
 }

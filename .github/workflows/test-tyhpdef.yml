@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      tyhp_tag:
+        description: "tyhp CLI release tag (for example v805.1.2-beta.3). Empty uses the newest non-draft release."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -16,10 +21,25 @@ jobs:
       - name: Download released tyhp CLI
         env:
           GH_TOKEN: ${{ github.token }}
+          TYHP_TAG: ${{ inputs.tyhp_tag }}
         run: |
+          set -euo pipefail
+          # Same rule as the IDE clients: newest non-draft release, prereleases included.
+          # /releases/latest (what `gh release download` uses without a tag) skips prereleases.
+          tag="${TYHP_TAG:-}"
+          if [[ -z "$tag" ]]; then
+            tag="$(gh api 'repos/tyhpproject/tyhp/releases?per_page=20' --jq '[.[] | select(.draft | not)][0].tag_name // empty')"
+          fi
+          if [[ -z "$tag" ]]; then
+            echo "No non-draft release found on tyhpproject/tyhp." >&2
+            exit 1
+          fi
+          echo "Using tyhp ${tag}"
           mkdir -p "$RUNNER_TEMP/tyhp"
-          gh release download --repo tyhpproject/tyhp --pattern 'tyhp-linux-x64' --dir "$RUNNER_TEMP/tyhp"
+          gh release download "$tag" --repo tyhpproject/tyhp --pattern 'tyhp-linux-x64' --pattern 'checksums.txt' --dir "$RUNNER_TEMP/tyhp"
+          (cd "$RUNNER_TEMP/tyhp" && grep -E '  tyhp-linux-x64$' checksums.txt | sha256sum -c -)
           chmod +x "$RUNNER_TEMP/tyhp/tyhp-linux-x64"
+          "$RUNNER_TEMP/tyhp/tyhp-linux-x64" version
       - name: Lint tyhpdef packages
         env:
           TYHP_BIN: ${{ runner.temp }}/tyhp/tyhp-linux-x64

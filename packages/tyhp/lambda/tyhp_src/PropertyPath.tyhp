@@ -91,7 +91,8 @@ class PropertyPath<TCallableShape extends callable> extends Expression<TCallable
 
     /**
      * Result type for {@see PropertyPath::from()}: the closure's return type, then the
-     * declared type of the last property in `$path`.
+     * declared type of the last property in `$path`. When the declared property type is the
+     * full Tyhp form of the closure's PHP type (`array<App\Post>` for `array`), it is kept.
      *
      * @param array<string> $path
      * @param array<bool> $nullSafeFlags
@@ -102,17 +103,13 @@ class PropertyPath<TCallableShape extends callable> extends Expression<TCallable
         array<string> $path,
         array<bool> $nullSafeFlags,
     ): string {
+        ?string $fromPath = self::reflectPathType($sourceType, $path, $nullSafeFlags);
         ?string $fromCallable = self::callableReturnTypeName($callable);
         if ($fromCallable !== null) {
-            return $fromCallable;
+            return $fromPath === null ? $fromCallable : self::refinedType($fromPath, $fromCallable);
         }
 
-        ?string $fromPath = self::reflectPathType($sourceType, $path, $nullSafeFlags);
-        if ($fromPath !== null) {
-            return $fromPath;
-        }
-
-        return 'mixed';
+        return $fromPath ?? 'mixed';
     }
 
     /**
@@ -133,8 +130,9 @@ class PropertyPath<TCallableShape extends callable> extends Expression<TCallable
     }
 
     /**
-     * Walk `$path` on `$sourceType` and spell the last property's PHP type.
-     * A null-safe segment or a nullable property makes the result nullable.
+     * Walk `$path` on `$sourceType` and spell the last property's declared type
+     * (see {@see Type::fromProperty()}). A null-safe segment or a nullable property
+     * makes the rest of the path nullable. Null when a segment's type is unknown.
      *
      * @param array<string> $path
      * @param array<bool> $nullSafeFlags
@@ -144,85 +142,20 @@ class PropertyPath<TCallableShape extends callable> extends Expression<TCallable
         array<string> $path,
         array<bool> $nullSafeFlags,
     ): ?string {
-        if ($path === [] || !\class_exists($sourceType)) {
+        if ($path === []) {
             return null;
         }
 
-        string $class = $sourceType;
-        bool $nullable = false;
+        string $type = $sourceType;
         int $count = \count($path);
         for (int $i = 0; $i < $count; $i++) {
-            if (!\class_exists($class)) {
+            $type = Expression\FluentSupport::memberType($type, $path[$i], $nullSafeFlags[$i] ?? false);
+            if ($type === 'mixed') {
                 return null;
             }
-
-            \ReflectionProperty $property;
-            try {
-                $property = new \ReflectionProperty($class, $path[$i]);
-            } catch (\Throwable $e) {
-                (void)$e;
-                return null;
-            }
-
-            ?\ReflectionType $reflected = $property->getType();
-            if ($reflected === null) {
-                return null;
-            }
-
-            if (($nullSafeFlags[$i] ?? false) || $reflected->allowsNull()) {
-                $nullable = true;
-            }
-
-            if ($i < $count - 1) {
-                ?string $next = self::nextPathClass($reflected, $class);
-                if ($next === null) {
-                    return null;
-                }
-                $class = $next;
-                continue;
-            }
-
-            string $text = (string)Type::fromReflectionType($reflected, $class);
-            if ($text === '' || $text === 'mixed') {
-                return null;
-            }
-
-            if ($nullable && !self::spellingIsNullable($text)) {
-                return '?' . $text;
-            }
-
-            return $text;
         }
 
-        return null;
-    }
-
-    /**
-     * Class to continue a property walk through, when this segment's type names one class.
-     */
-    private static function nextPathClass(\ReflectionType $type, string $declaringClass): ?string {
-        if (!($type instanceof \ReflectionNamedType) || $type->isBuiltin()) {
-            return null;
-        }
-
-        string $name = $type->getName();
-        if ($name === 'self' || $name === 'static') {
-            return $declaringClass;
-        }
-
-        if ($name === 'parent') {
-            string|false $parent = \get_parent_class($declaringClass);
-            if (!\is_string($parent)) {
-                return null;
-            }
-            return $parent;
-        }
-
-        return $name;
-    }
-
-    private static function spellingIsNullable(string $type): bool {
-        return \str_starts_with($type, '?') || \str_contains($type, '|null') || \str_contains($type, 'null|');
+        return $type;
     }
 
     public function getPropertyName(): string {

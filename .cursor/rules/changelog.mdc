@@ -1,0 +1,29 @@
+---
+description: Add a CHANGELOG.md line with each user-visible package change; review the entries in commits the user asks for and when publishing runtime packages
+alwaysApply: true
+---
+
+# CHANGELOG.md
+
+`CHANGELOG.md` (Keep a Changelog) lists user-visible changes to the `tyhp/*` and `tyhpdef/*` packages built from `packages/`. It covers this repo only. Compiler, docs, AI dev guide, IDE client, and example changes belong in their own repos. There are no per-package changelogs; this file covers every package.
+
+## When you make a change
+
+- When a change you make is visible to package consumers (or, for publish/ownership scripts, to maintainers), add one line for it under `## [Unreleased]` as part of the same change, before you report the work done. Use the matching group: `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security`. Create the group if it is missing.
+- Start each line with the Composer package it affects (`tyhp/core: …`, `tyhpdef/php: …`). Packages version independently (`VERSIONING.md`).
+- Write for package consumers: public API, tyhpdef signatures, runtime behavior, supported PHP versions. Log publish/ownership script changes only when they change how maintainers publish.
+- Re-emitted `src/` PHP with no behavior change, tests, and refactors may be left out.
+- Editing `CHANGELOG.md` is a normal file edit and needs no commit. Re-read the file right before editing, since other agents may be adding entries.
+
+## When the user asks you to commit
+
+- Review the `[Unreleased]` entries against the diff being committed rather than writing them from scratch: add lines for changes that have none, and condense or correct lines the diff no longer matches. Keep entries for other in-progress work.
+- Include the CHANGELOG edit in the commit the user asked for. Never commit just to update it.
+
+## When the user asks you to publish
+
+`scripts/publish-runtime-packages.sh [--package NAME]` tags each package from its `composer.json` version (compiled `tyhp/*` as `80N.X.Y`) and pushes to `tyhpproject-packages`. It does not commit in this repo. When running a publish the user asked for:
+
+1. Move the published packages' entries from `[Unreleased]` under `## YYYY-MM-DD` (publish date).
+2. Begin that section with one line listing what was published, e.g. `Published: tyhp/core 802.0.4–805.0.4, tyhpdef/php 0.0.4`.
+3. Leave entries for packages that were not published under `[Unreleased]`. Commit the edit only when the user asks.
