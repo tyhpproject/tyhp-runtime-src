@@ -17,6 +17,7 @@ Notable changes to the Tyhp runtime packages (`tyhp/*` and `tyhpdef/*`) built fr
 
 ### Changed
 
+- `tyhp/compiler`: installs compiler v805.1.2-beta.4.
 - `tyhp/lambda`: Property nodes built by `Expr` and `PropertyPath` carry the property's declared type from `Type::fromProperty()` instead of `mixed`, and a tree's return type keeps the full type (`array<App\Post>`) when the closure declares only its PHP form (`array`). This needs the new `tyhp/core` `Type` API.
 - `tyhp/core`, `tyhp/async`, `tyhp/decimal`, `tyhp/lambda`, `tyhp/parallel`, and `tyhp/io`: source version `0.4` (`802.0.4` through `805.0.4`).
 - `scripts/publish-runtime-packages.sh`: refuses a working tree with uncommitted changes (`--allow-dirty` overrides), and publishes `tyhp/compiler` only when the GitHub Release `v<version>` on `tyhpproject/tyhp` is public with `checksums.txt` and the five binaries the shim downloads.
