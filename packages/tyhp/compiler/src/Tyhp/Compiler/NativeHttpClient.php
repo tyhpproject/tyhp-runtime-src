@@ -10,14 +10,23 @@ namespace Tyhp\Compiler;
 
 final class NativeHttpClient implements HttpClient
 {
+    /**
+     * @param array<string, string> $headers
+     */
     public function get(string $url, array $headers = []): string
     {
         return $this->curl($url, $headers, null);
     }
+    /**
+     * @param array<string, string> $headers
+     */
     public function downloadToFile(string $url, string $destination, array $headers = []): void
     {
         $this->curl($url, $headers, $destination);
     }
+    /**
+     * @param array<string, string> $headers
+     */
     private function curl(string $url, array $headers, ?string $destination): string
     {
         if (!\function_exists('curl_init')) {

@@ -13,6 +13,9 @@ namespace Tyhp\Compiler;
  */
 final class Shim
 {
+    /**
+     * @var resource
+     */
     private mixed $stderr;
     /**
      * @param resource|null $stderr

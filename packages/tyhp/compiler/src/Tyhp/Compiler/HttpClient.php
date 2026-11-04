@@ -13,7 +13,13 @@ namespace Tyhp\Compiler;
  */
 interface HttpClient
 {
+    /**
+     * @param array<string, string> $headers
+     */
     public function get(string $url, array $headers = []): string;
+    /**
+     * @param array<string, string> $headers
+     */
     public function downloadToFile(string $url, string $destination, array $headers = []): void;
 }
 //# sourceMappingURL=HttpClient.php.map

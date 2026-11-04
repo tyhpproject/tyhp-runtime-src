@@ -4,6 +4,18 @@ Notable changes to the Tyhp runtime packages (`tyhp/*` and `tyhpdef/*`) built fr
 
 ## [Unreleased]
 
+## 2026-11-04
+
+### Version Bumps
+- `tyhp/core`: 0.4
+- `tyhp/async`: 0.4
+- `tyhp/decimal`: 0.4
+- `tyhp/lambda`: 0.4
+- `tyhp/parallel`: 0.4
+- `tyhp/io`: 0.4
+- `tyhp/compiler`: 805.1.2-beta.4
+- `tyhpdef/php`: 0.0.3
+
 ### Added
 
 - `tyhp/core`: `#[\Tyhp\PropertyType]`, the attribute the compiler stamps on properties and promoted constructor parameters whose PHP hint loses the Tyhp type.

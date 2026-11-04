@@ -190,6 +190,10 @@ final class Installer
         \proc_close($proc);
         return \is_string($stdout) && (\preg_match('/Microsoft\.NETCore\.App 9\./', $stdout) === 1);
     }
+    /**
+     * @param array<string, string> $headers
+     * @return array{tag_name: string, assets: array<array{name: string, browser_download_url: string}>}
+     */
     private function fetchReleaseByTag(string $tag, array $headers): array
     {
         $url = ((('https://api.github.com/repos/' . self::RELEASE_REPO) . '/releases/tags/') . \rawurlencode($tag));
@@ -222,6 +226,9 @@ final class Installer
         }
         return new \RuntimeException((("GitHub release tag `$tag` was not found on " . self::RELEASE_REPO) . (($apiMessage !== null) ? " ($apiMessage)" : '')) . '.');
     }
+    /**
+     * @param array{tag_name: string, assets: array<array{name: string, browser_download_url: string}>} $release
+     */
     private function requireAssetUrl(array $release, string $assetName, string $tag): string
     {
         foreach ($release['assets'] as $asset) {
@@ -232,6 +239,9 @@ final class Installer
         }
         throw new \RuntimeException("GitHub release $tag has no asset named `$assetName`.");
     }
+    /**
+     * @return array<string, string>
+     */
     private function githubHeaders(): array
     {
         $headers = ['User-Agent' => self::USER_AGENT, 'Accept' => 'application/vnd.github+json'];
