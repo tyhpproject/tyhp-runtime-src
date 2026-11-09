@@ -22,7 +22,7 @@ class PolyfillChild extends PolyfillParent
         $this->tyhpBootTraits();
         // Emitter seeds defaultValue via Reflection before register; runtime register also
         // auto-captures when defaultValue is omitted. Smoke the runtime path here.
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'val',
             $this,
             get: fn(): string => \strtoupper($this->__tyhpPropertyHook->parentGet($this, 'val', self::class)),
@@ -37,7 +37,7 @@ class PolyfillChild extends PolyfillParent
     public function registerPrivateSet(string $property, Type $type, mixed ...$arguments): void
     {
         $this->tyhpBootTraits();
-        $this->__tyhpPropertyHook->register__tyhpGeneric($type)($property, $this, ...$arguments);
+        $this->__tyhpPropertyHook->register($type)($property, $this, ...$arguments);
     }
 
     public function readParentBacking(): mixed
@@ -68,7 +68,7 @@ class PolyfillHookedParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'name',
             $this,
             get: $this->__get_name__tyhpPropertyHook(...),
@@ -108,7 +108,7 @@ class PolyfillHookedChild extends PolyfillHookedParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'name',
             $this,
             get: $this->__get_name__tyhpPropertyHook(...),
@@ -164,7 +164,7 @@ class PolyfillFinalHookParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'name',
             $this,
             get: $this->__get_name__tyhpPropertyHook(...),
@@ -209,7 +209,7 @@ class PolyfillFinalHookChildOverrideBoth extends PolyfillFinalHookParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'name',
             $this,
             get: $this->__get_name__tyhpPropertyHook(...),
@@ -253,7 +253,7 @@ class PolyfillFinalSetOnlyParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'username',
             $this,
             set: $this->__set_username__tyhpPropertyHook(...),
@@ -288,7 +288,7 @@ class PolyfillFinalSetOnlyChildAddsGet extends PolyfillFinalSetOnlyParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'username',
             $this,
             get: $this->__get_username__tyhpPropertyHook(...),
@@ -324,7 +324,7 @@ class PolyfillFinalSetOnlyChildOverridesSet extends PolyfillFinalSetOnlyParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'username',
             $this,
             get: $this->__get_username__tyhpPropertyHook(...),
@@ -370,7 +370,7 @@ class PolyfillPartialOverrideParent
             return;
         }
 
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'prop',
             $this,
             get: $this->__get_prop__tyhpPropertyHook(...),
@@ -412,7 +412,7 @@ class PolyfillPartialOverrideChild extends PolyfillPartialOverrideParent
         }
 
         // Redeclare get only — self-referencing backing, leave set inherited.
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'prop',
             $this,
             get: $this->__get_prop__tyhpPropertyHook(...),

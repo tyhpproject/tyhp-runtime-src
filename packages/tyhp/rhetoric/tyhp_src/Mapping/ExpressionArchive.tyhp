@@ -1,0 +1,269 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+use Tyhp\Expression\ArrayAccessExpression;
+use Tyhp\Expression\ArrayExpression;
+use Tyhp\Expression\ArrayItem;
+use Tyhp\Expression\BinaryExpression;
+use Tyhp\Expression\CastExpression;
+use Tyhp\Expression\CoalesceExpression;
+use Tyhp\Expression\ConstantExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\InstanceofExpression;
+use Tyhp\Expression\LambdaExpression;
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\NewExpression;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\NullSafeMethodCallExpression;
+use Tyhp\Expression\ParameterExpression;
+use Tyhp\Expression\PropertyAccessExpression;
+use Tyhp\Expression\StaticMethodCallExpression;
+use Tyhp\Expression\TernaryExpression;
+use Tyhp\Expression\UnaryExpression;
+use Tyhp\Rhetoric\Context;
+
+/**
+ * Stores a scope tree without the closure the compiler attached to it.
+ * A captured context becomes {@see ArchivedContext}; translation reads the context that runs the query.
+ */
+final class ExpressionArchive {
+    public static function export(\Tyhp\Expression $expression): string {
+        ExpressionNode $body = self::scrub($expression->body, 0);
+        string|false $payload = \serialize([
+            'returnType' => $expression->returnType,
+            'parameters' => $expression->parameters,
+            'body' => $body,
+        ]);
+        if (!\is_string($payload)) {
+            throw new \RuntimeException('A scope could not be stored.');
+        }
+        string $encoded = \base64_encode($payload);
+
+        return $encoded;
+    }
+
+    public static function import(string $encoded): \Tyhp\Expression {
+        string|false $payload = \base64_decode($encoded, true);
+        if (!\is_string($payload)) {
+            throw new \RuntimeException('A stored scope is not valid.');
+        }
+        mixed $decoded = \unserialize($payload);
+        if (!\is_array($decoded)) {
+            throw new \RuntimeException('A stored scope is not valid.');
+        }
+        mixed $returnType = $decoded['returnType'] ?? null;
+        mixed $body = $decoded['body'] ?? null;
+        mixed $parameters = $decoded['parameters'] ?? null;
+        if (!\is_string($returnType) || !($body instanceof ExpressionNode) || !\is_array($parameters)) {
+            throw new \RuntimeException('A stored scope is not valid.');
+        }
+        array<int, ParameterExpression> $list = [];
+        foreach ($parameters as $parameter) {
+            if (!($parameter instanceof ParameterExpression)) {
+                throw new \RuntimeException('A stored scope is not valid.');
+            }
+            $list[] = $parameter;
+        }
+
+        return new \Tyhp\Expression($body, $list, null, $returnType);
+    }
+
+    private static function scrub(ExpressionNode $node, int $depth): ExpressionNode {
+        if ($depth > 100) {
+            throw new \RuntimeException('A scope is too deep to store.');
+        }
+        if ($node instanceof ConstantExpression) {
+            if ($node->value instanceof Context) {
+                return new ConstantExpression(new ArchivedContext(), $node->type);
+            }
+            if ($node->value instanceof \Closure) {
+                throw new \RuntimeException('A scope captures a closure.');
+            }
+
+            return $node;
+        }
+        if ($node instanceof ParameterExpression) {
+            return $node;
+        }
+        if ($node instanceof PropertyAccessExpression) {
+            ExpressionNode $object = self::scrub($node->object, $depth + 1);
+            if ($object === $node->object) {
+                return $node;
+            }
+
+            return new PropertyAccessExpression($object, $node->property, $node->type);
+        }
+        if ($node instanceof NullSafeAccessExpression) {
+            ExpressionNode $object = self::scrub($node->object, $depth + 1);
+            if ($object === $node->object) {
+                return $node;
+            }
+
+            return new NullSafeAccessExpression($object, $node->property, $node->type);
+        }
+        if ($node instanceof MethodCallExpression || $node instanceof NullSafeMethodCallExpression) {
+            ExpressionNode $object = self::scrub($node->object, $depth + 1);
+            array<int, ExpressionNode> $original = self::nodes($node->arguments);
+            array<int, ExpressionNode> $arguments = self::children($original, $depth + 1);
+            bool $same = $object === $node->object && self::same($original, $arguments);
+            if ($same) {
+                return $node;
+            }
+            if ($node instanceof MethodCallExpression) {
+                return new MethodCallExpression($object, $node->method, $arguments, $node->type);
+            }
+
+            return new NullSafeMethodCallExpression($object, $node->method, $arguments, $node->type);
+        }
+        if ($node instanceof StaticMethodCallExpression) {
+            array<int, ExpressionNode> $original = self::nodes($node->arguments);
+            array<int, ExpressionNode> $arguments = self::children($original, $depth + 1);
+            if (self::same($original, $arguments)) {
+                return $node;
+            }
+
+            return new StaticMethodCallExpression($node->class, $node->method, $arguments, $node->type);
+        }
+        if ($node instanceof BinaryExpression) {
+            ExpressionNode $left = self::scrub($node->left, $depth + 1);
+            ExpressionNode $right = self::scrub($node->right, $depth + 1);
+            if ($left === $node->left && $right === $node->right) {
+                return $node;
+            }
+
+            return new BinaryExpression($left, $node->operator, $right, $node->type);
+        }
+        if ($node instanceof UnaryExpression) {
+            ExpressionNode $operand = self::scrub($node->operand, $depth + 1);
+            if ($operand === $node->operand) {
+                return $node;
+            }
+
+            return new UnaryExpression($node->operator, $operand, $node->isPrefix, $node->type);
+        }
+        if ($node instanceof TernaryExpression) {
+            ExpressionNode $condition = self::scrub($node->condition, $depth + 1);
+            ?ExpressionNode $whenTrue = $node->ifTrue === null ? null : self::scrub($node->ifTrue, $depth + 1);
+            ExpressionNode $whenFalse = self::scrub($node->ifFalse, $depth + 1);
+            if ($condition === $node->condition && $whenTrue === $node->ifTrue && $whenFalse === $node->ifFalse) {
+                return $node;
+            }
+
+            return new TernaryExpression($condition, $whenTrue, $whenFalse, $node->type);
+        }
+        if ($node instanceof CoalesceExpression) {
+            ExpressionNode $left = self::scrub($node->left, $depth + 1);
+            ExpressionNode $right = self::scrub($node->right, $depth + 1);
+            if ($left === $node->left && $right === $node->right) {
+                return $node;
+            }
+
+            return new CoalesceExpression($left, $right, $node->type);
+        }
+        if ($node instanceof CastExpression) {
+            ExpressionNode $operand = self::scrub($node->operand, $depth + 1);
+            if ($operand === $node->operand) {
+                return $node;
+            }
+
+            return new CastExpression($node->targetType, $operand);
+        }
+        if ($node instanceof NewExpression) {
+            array<int, ExpressionNode> $original = self::nodes($node->arguments);
+            array<int, ExpressionNode> $arguments = self::children($original, $depth + 1);
+            if (self::same($original, $arguments)) {
+                return $node;
+            }
+
+            return new NewExpression($node->class, $arguments);
+        }
+        if ($node instanceof InstanceofExpression) {
+            ExpressionNode $operand = self::scrub($node->operand, $depth + 1);
+            if ($operand === $node->operand) {
+                return $node;
+            }
+
+            return new InstanceofExpression($operand, $node->targetType, $node->type);
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            ExpressionNode $array = self::scrub($node->array, $depth + 1);
+            ExpressionNode $index = self::scrub($node->index, $depth + 1);
+            if ($array === $node->array && $index === $node->index) {
+                return $node;
+            }
+
+            return new ArrayAccessExpression($array, $index, $node->type);
+        }
+        if ($node instanceof ArrayExpression) {
+            array<int, ArrayItem> $items = [];
+            bool $same = true;
+            foreach ($node->items as $item) {
+                ExpressionNode $value = self::scrub($item->value, $depth + 1);
+                ?ExpressionNode $key = $item->key === null ? null : self::scrub($item->key, $depth + 1);
+                if ($value !== $item->value || $key !== $item->key) {
+                    $same = false;
+                }
+                $items[] = new ArrayItem($value, $key);
+            }
+            if ($same) {
+                return $node;
+            }
+
+            return new ArrayExpression($items, $node->type);
+        }
+        if ($node instanceof LambdaExpression) {
+            ExpressionNode $body = self::scrub($node->body, $depth + 1);
+            if ($body === $node->body) {
+                return $node;
+            }
+
+            return new LambdaExpression($node->parameters, $body, $node->returnType);
+        }
+
+        throw new \RuntimeException('A scope uses ' . $node::class . ', which the mapping cache cannot store.');
+    }
+
+    /**
+     * @param array<int|string, ExpressionNode> $nodes
+     * @return array<int, ExpressionNode>
+     */
+    private static function nodes(array<int|string, ExpressionNode> $nodes): array<int, ExpressionNode> {
+        array<int, ExpressionNode> $list = [];
+        foreach ($nodes as $node) {
+            $list[] = $node;
+        }
+
+        return $list;
+    }
+
+    /**
+     * @param array<int, ExpressionNode> $nodes
+     * @return array<int, ExpressionNode>
+     */
+    private static function children(array<int, ExpressionNode> $nodes, int $depth): array<int, ExpressionNode> {
+        array<int, ExpressionNode> $scrubbed = [];
+        foreach ($nodes as $node) {
+            $scrubbed[] = self::scrub($node, $depth);
+        }
+
+        return $scrubbed;
+    }
+
+    /**
+     * @param array<int, ExpressionNode> $left
+     * @param array<int, ExpressionNode> $right
+     */
+    private static function same(array<int, ExpressionNode> $left, array<int, ExpressionNode> $right): bool {
+        if (\count($left) !== \count($right)) {
+            return false;
+        }
+        foreach ($left as $index => $node) {
+            if (($right[$index] ?? null) !== $node) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

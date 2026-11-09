@@ -1,0 +1,74 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Observers;
+
+use Tyhp\Rhetoric\Mapping\ModelMap;
+
+final class ObserverDispatcher {
+    public static function fire(ModelMap $map, string $event, object $model): void {
+        foreach ($map->observers as $class) {
+            if (!\class_exists($class)) {
+                throw new \InvalidArgumentException('Observer ' . $class . ' does not exist.');
+            }
+            \ReflectionClass $reflection = new \ReflectionClass($class);
+            object $instance = $reflection->newInstance();
+            if (!($instance instanceof Observer)) {
+                throw new \InvalidArgumentException($class . ' must extend ' . Observer::class . '.');
+            }
+            self::invoke($instance, $event, $model);
+        }
+    }
+
+    private static function invoke(Observer $observer, string $event, object $model): void {
+        if ($event === 'creating') {
+            $observer->creating($model);
+
+            return;
+        }
+        if ($event === 'created') {
+            $observer->created($model);
+
+            return;
+        }
+        if ($event === 'updating') {
+            $observer->updating($model);
+
+            return;
+        }
+        if ($event === 'updated') {
+            $observer->updated($model);
+
+            return;
+        }
+        if ($event === 'saving') {
+            $observer->saving($model);
+
+            return;
+        }
+        if ($event === 'saved') {
+            $observer->saved($model);
+
+            return;
+        }
+        if ($event === 'deleting') {
+            $observer->deleting($model);
+
+            return;
+        }
+        if ($event === 'deleted') {
+            $observer->deleted($model);
+
+            return;
+        }
+        if ($event === 'restoring') {
+            $observer->restoring($model);
+
+            return;
+        }
+        if ($event === 'restored') {
+            $observer->restored($model);
+
+            return;
+        }
+    }
+}

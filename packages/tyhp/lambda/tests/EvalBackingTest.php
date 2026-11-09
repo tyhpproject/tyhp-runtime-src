@@ -113,7 +113,7 @@ class EvalBackingTest extends TestCase
         $expr = Expr::param('person', EvalPerson::class)
             ->age
             ->gte(18)
-            ->backedBy(fn (EvalPerson $person): bool => false);
+            ->backedBy()(fn (EvalPerson $person): bool => false);
 
         self::assertFalse($expr(new EvalPerson(40)));
         self::assertFalse($expr->compile()(new EvalPerson(40)));

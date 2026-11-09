@@ -1,0 +1,53 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+
+/**
+ * A cursor page that remembers the model properties the next cursor is built from.
+ */
+final class CursorPage<T> extends \Illuminate\Pagination\CursorPaginator<int, T> {
+    /**
+     * @param \Illuminate\Support\Collection<int, T> $items
+     * @param array<int, string> $properties
+     */
+    public function __construct(
+        \Illuminate\Support\Collection<int, T> $items,
+        int $perPage,
+        ?\Illuminate\Pagination\Cursor $cursor,
+        private array<int, string> $properties,
+        string $cursorName,
+        private ModelMap $map,
+    ) {
+        \Illuminate\Pagination\PaginatorOptions $options = new \Illuminate\Pagination\PaginatorOptions() with [
+            path => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
+        ];
+        parent::__construct($items, $perPage, $cursor, $options);
+        $this->parameters = $properties;
+        $this->cursorName = $cursorName;
+    }
+
+    /**
+     * The values a cursor carries are the stored column values, so a date or an enum survives the
+     * trip through an encoded cursor and compares against the column it came from.
+     *
+     * @return array<string, mixed>
+     */
+    public function getParametersForItem(mixed $item): array<string, mixed> {
+        if (!\is_object($item)) {
+            throw new \LogicException('A cursor page holds models.');
+        }
+        array<string, mixed> $values = [];
+        foreach ($this->properties as $property) {
+            mixed $value = PropertyBag::read($item, $property);
+            if ($this->map->hasColumn($property)) {
+                $value = PropertyBag::database($this->map->column($property), $value);
+            }
+            $values[$property] = $value;
+        }
+
+        return $values;
+    }
+}

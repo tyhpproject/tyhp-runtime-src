@@ -1,0 +1,89 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures\Graph;
+
+use Tyhp\Rhetoric\Query\SqlText;
+
+class RelScenarios {
+    public static function blogName(BlogContext $context, string $name): SqlText {
+        return $context->posts->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->blog->name === $name)->statement('select');
+    }
+
+    public static function orderByBlog(BlogContext $context): SqlText {
+        return $context->posts->orderBy(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->blog->name)->statement('select');
+    }
+
+    public static function selectBlogName(BlogContext $context): SqlText {
+        return $context->posts->select(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->blog->name)->statement('select');
+    }
+
+    public static function postsExist(BlogContext $context): SqlText {
+        return $context->blogs->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->posts->exists())->statement('select');
+    }
+
+    public static function postsCounted(BlogContext $context): SqlText {
+        return $context->blogs->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->posts->count() > 0)->statement('select');
+    }
+
+    public static function blogsWithTaggedPosts(BlogContext $context, string $tag): \Illuminate\Support\Collection<int, \Tyhp\Rhetoric\Fixtures\Graph\Blog> {
+        return $context->blogs->where(
+            fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->posts->exists(
+                fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->tags->exists(
+                    fn (\Tyhp\Rhetoric\Fixtures\Graph\Tag $label) => $label->name === $tag,
+                ),
+            ),
+        )->orderBy(fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->id)->get();
+    }
+
+    public static function blogsWithTaggedPostsSql(BlogContext $context, string $tag): SqlText {
+        return $context->blogs->where(
+            fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->posts->exists(
+                fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->tags->exists(
+                    fn (\Tyhp\Rhetoric\Fixtures\Graph\Tag $label) => $label->name === $tag,
+                ),
+            ),
+        )->statement('select');
+    }
+
+    public static function tagsExist(BlogContext $context): SqlText {
+        return $context->posts->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->tags->exists())->statement('select');
+    }
+
+    public static function postsNamed(BlogContext $context, string $name): \Illuminate\Support\Collection<int, \Tyhp\Rhetoric\Fixtures\Graph\Post> {
+        return $context->posts->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->blog->name === $name)->get();
+    }
+
+    public static function blogsWithPosts(BlogContext $context): \Illuminate\Support\Collection<int, \Tyhp\Rhetoric\Fixtures\Graph\Blog> {
+        return $context->blogs->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->posts->exists())->get();
+    }
+
+    public static function blogsWithCountedPosts(BlogContext $context): \Illuminate\Support\Collection<int, \Tyhp\Rhetoric\Fixtures\Graph\Blog> {
+        return $context->blogs->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->posts->count() > 0)->get();
+    }
+
+    public static function loadGraph(BlogContext $context): \Illuminate\Support\Collection<int, \Tyhp\Rhetoric\Fixtures\Graph\Blog> {
+        return $context->blogs
+            ->with(fn (\Tyhp\Rhetoric\Fixtures\Graph\Blog $blog) => $blog->posts)
+            ->thenWith<\Tyhp\Rhetoric\Fixtures\Graph\Post, array<int, \Tyhp\Rhetoric\Fixtures\Graph\Tag>>(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->tags)
+            ->get();
+    }
+
+    public static function loadOne(BlogContext $context, int $id): ?\Tyhp\Rhetoric\Fixtures\Graph\Post {
+        return $context->posts
+            ->with(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->tags)
+            ->where(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->id === $id)
+            ->first();
+    }
+
+    public static function untrackedPost(BlogContext $context): ?\Tyhp\Rhetoric\Fixtures\Graph\Post {
+        return $context->posts->untracked()->with(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->blog)->first();
+    }
+
+    public static function loadTags(BlogContext $context, \Tyhp\Rhetoric\Fixtures\Graph\Post $post): void {
+        $context->load<\Tyhp\Rhetoric\Fixtures\Graph\Post, array<int, \Tyhp\Rhetoric\Fixtures\Graph\Tag>>($post, fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $model) => $model->tags);
+    }
+
+    public static function loadMissingTags(BlogContext $context, \Tyhp\Rhetoric\Fixtures\Graph\Post $post): void {
+        $context->loadMissing<\Tyhp\Rhetoric\Fixtures\Graph\Post, array<int, \Tyhp\Rhetoric\Fixtures\Graph\Tag>>($post, fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $model) => $model->tags);
+    }
+}

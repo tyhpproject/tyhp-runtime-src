@@ -1,0 +1,144 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric;
+
+/**
+ * A has-many or belongs-to-many navigation. PHP arrays cannot stay unloaded,
+ * so the navigation holds this collection and loads its rows the first time
+ * they are read.
+ */
+final class LazyCollection<T> implements \IteratorAggregate, \Countable, \ArrayAccess {
+    /** @var array<int, mixed> */
+    private array<int, mixed> $items = [];
+
+    private bool $loaded = false;
+
+    private ?\Closure $loader = null;
+
+    public function __construct() {}
+
+    public function arm(\Closure $loader): void {
+        $this->loader = $loader;
+        $this->loaded = false;
+        $this->items = [];
+    }
+
+    /**
+     * @param array<int, mixed> $items
+     */
+    public function fulfill(array<int, mixed> $items): void {
+        array<int, mixed> $stored = [];
+        foreach ($items as $item) {
+            $stored[] = $item;
+        }
+        $this->items = $stored;
+        $this->loaded = true;
+        $this->loader = null;
+    }
+
+    public function isLoaded(): bool {
+        return $this->loaded;
+    }
+
+    /**
+     * The items already loaded. Does not load.
+     *
+     * @return array<int, mixed>
+     */
+    public function values(): array<int, mixed> {
+        if (!$this->loaded) {
+            return [];
+        }
+
+        return $this->items;
+    }
+
+    public function item(int $index): T {
+        $this->load();
+        mixed $value = $this->items[$index] ?? null;
+        if (!($value is T)) {
+            throw new \OutOfBoundsException('Collection item is missing.');
+        }
+
+        return $value;
+    }
+
+    public function getIterator(): \Traversable {
+        $this->load();
+
+        return new \ArrayIterator($this->items);
+    }
+
+    public function count(): int {
+        $this->load();
+
+        return \count($this->items);
+    }
+
+    public function offsetExists(mixed $offset): bool {
+        $this->load();
+        if (!\is_int($offset)) {
+            return false;
+        }
+
+        return \array_key_exists($offset, $this->items);
+    }
+
+    public function offsetGet(mixed $offset): mixed {
+        $this->load();
+        if (!\is_int($offset)) {
+            return null;
+        }
+
+        return $this->items[$offset] ?? null;
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void {
+        $this->load();
+        if ($offset === null) {
+            $this->items[] = $value;
+
+            return;
+        }
+        if (!\is_int($offset)) {
+            return;
+        }
+        $this->items[$offset] = $value;
+    }
+
+    public function offsetUnset(mixed $offset): void {
+        $this->load();
+        if (!\is_int($offset)) {
+            return;
+        }
+        unset($this->items[$offset]);
+        array<int, mixed> $stored = [];
+        foreach ($this->items as $item) {
+            $stored[] = $item;
+        }
+        $this->items = $stored;
+    }
+
+    private function load(): void {
+        if ($this->loaded) {
+            return;
+        }
+        ?\Closure $loader = $this->loader;
+        if ($loader === null) {
+            $this->loaded = true;
+
+            return;
+        }
+        $this->loader = null;
+        try {
+            $loader();
+        } catch (\Throwable $error) {
+            $this->loader = $loader;
+            throw $error;
+        }
+        if (!$this->loaded) {
+            $this->items = [];
+            $this->loaded = true;
+        }
+    }
+}

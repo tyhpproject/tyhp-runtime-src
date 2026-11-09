@@ -1,0 +1,37 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures\Graph;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\Mapper;
+use Tyhp\Rhetoric\Table;
+
+class BlogContext extends Context {
+    public function __construct(string $name) {
+        $this->connection = $name;
+    }
+
+    public Table<\Tyhp\Rhetoric\Fixtures\Graph\Blog> $blogs {
+        get => $this->table<\Tyhp\Rhetoric\Fixtures\Graph\Blog>();
+    }
+
+    public Table<\Tyhp\Rhetoric\Fixtures\Graph\Post> $posts {
+        get => $this->table<\Tyhp\Rhetoric\Fixtures\Graph\Post>();
+    }
+
+    public Table<\Tyhp\Rhetoric\Fixtures\Graph\Tag> $tags {
+        get => $this->table<\Tyhp\Rhetoric\Fixtures\Graph\Tag>();
+    }
+
+    protected function map(Mapper $map): void {
+        $map->model<\Tyhp\Rhetoric\Fixtures\Graph\Blog>();
+        $map->model<\Tyhp\Rhetoric\Fixtures\Graph\Post>()
+            ->belongsTo(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->blog);
+        $map->model<\Tyhp\Rhetoric\Fixtures\Graph\Post>()
+            ->belongsToMany(fn (\Tyhp\Rhetoric\Fixtures\Graph\Post $post) => $post->tags)
+            ->using<\Tyhp\Rhetoric\Fixtures\Graph\PostTag>();
+        $map->model<\Tyhp\Rhetoric\Fixtures\Graph\Tag>()
+            ->belongsToMany(fn (\Tyhp\Rhetoric\Fixtures\Graph\Tag $tag) => $tag->posts)
+            ->using<\Tyhp\Rhetoric\Fixtures\Graph\PostTag>();
+    }
+}

@@ -1,0 +1,219 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Expression\ArrayAccessExpression;
+use Tyhp\Expression\ArrayExpression;
+use Tyhp\Expression\BinaryExpression;
+use Tyhp\Expression\CastExpression;
+use Tyhp\Expression\CoalesceExpression;
+use Tyhp\Expression\ConstantExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\InstanceofExpression;
+use Tyhp\Expression\LambdaExpression;
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\NewExpression;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\NullSafeMethodCallExpression;
+use Tyhp\Expression\ParameterExpression;
+use Tyhp\Expression\PropertyAccessExpression;
+use Tyhp\Expression\StaticMethodCallExpression;
+use Tyhp\Expression\TernaryExpression;
+use Tyhp\Expression\UnaryExpression;
+
+final class ExpressionText {
+    public static function lambda(\Tyhp\Expression $expression): string {
+        string $params = '';
+        foreach ($expression->parameters as $parameter) {
+            if ($params !== '') {
+                $params .= ', ';
+            }
+            $params .= '$' . $parameter->name;
+        }
+
+        return 'fn (' . $params . ') => ' . self::node($expression->body);
+    }
+
+    public static function node(ExpressionNode $node): string {
+        if ($node instanceof ParameterExpression) {
+            return '$' . $node->name;
+        }
+        if ($node instanceof ConstantExpression) {
+            return self::constant($node->value);
+        }
+        if ($node instanceof PropertyAccessExpression || $node instanceof NullSafeAccessExpression) {
+            string $op = $node instanceof NullSafeAccessExpression ? '?->' : '->';
+
+            return self::node($node->object) . $op . $node->property;
+        }
+        if ($node instanceof MethodCallExpression || $node instanceof NullSafeMethodCallExpression) {
+            string $op = $node instanceof NullSafeMethodCallExpression ? '?->' : '->';
+
+            return self::node($node->object) . $op . $node->method . '(' . self::arguments($node->arguments) . ')';
+        }
+        if ($node instanceof StaticMethodCallExpression) {
+            return $node->class . '::' . $node->method . '(' . self::arguments($node->arguments) . ')';
+        }
+        if ($node instanceof BinaryExpression) {
+            return '(' . self::node($node->left) . ' ' . $node->operator . ' ' . self::node($node->right) . ')';
+        }
+        if ($node instanceof UnaryExpression) {
+            return $node->operator . self::node($node->operand);
+        }
+        if ($node instanceof TernaryExpression) {
+            string $whenTrue = $node->ifTrue !== null ? self::node($node->ifTrue) : '';
+
+            return '(' . self::node($node->condition) . ' ? ' . $whenTrue . ' : ' . self::node($node->ifFalse) . ')';
+        }
+        if ($node instanceof CoalesceExpression) {
+            return '(' . self::node($node->left) . ' ?? ' . self::node($node->right) . ')';
+        }
+        if ($node instanceof CastExpression) {
+            return '(' . $node->targetType . ') ' . self::node($node->operand);
+        }
+        if ($node instanceof NewExpression) {
+            return 'new ' . $node->class . '(' . self::arguments($node->arguments) . ')';
+        }
+        if ($node instanceof ArrayExpression) {
+            return '[…]';
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            return self::node($node->array) . '[' . self::node($node->index) . ']';
+        }
+        if ($node instanceof InstanceofExpression) {
+            return self::node($node->operand) . ' instanceof ' . $node->targetType;
+        }
+        if ($node instanceof LambdaExpression) {
+            return 'fn (…) => ' . self::node($node->body);
+        }
+
+        return $node->nodeType;
+    }
+
+    public static function rawMarker(ExpressionNode $node): string {
+        string $marker = '';
+        if ($node instanceof StaticMethodCallExpression && MethodTranslatorRegistry::isSql($node->class, 'raw')) {
+            foreach ($node->arguments as $argument) {
+                if ($argument instanceof ConstantExpression && \is_string($argument->value)) {
+                    $marker .= '|raw:' . \strlen($argument->value) . ':' . $argument->value;
+                    break;
+                }
+            }
+        }
+        if ($node instanceof StaticMethodCallExpression && MethodTranslatorRegistry::isSql($node->class, 'fn')) {
+            string $name = '';
+            foreach ($node->arguments as $argument) {
+                if ($argument instanceof ConstantExpression && \is_string($argument->value)) {
+                    $name = $argument->value;
+                    break;
+                }
+            }
+            $marker .= '|' . MethodTranslatorRegistry::shared()->functionMarker($name);
+        }
+        foreach (self::children($node) as $child) {
+            $marker .= self::rawMarker($child);
+        }
+
+        return $marker;
+    }
+
+    /**
+     * @return array<int, ExpressionNode>
+     */
+    private static function children(ExpressionNode $node): array<int, ExpressionNode> {
+        if ($node instanceof BinaryExpression || $node instanceof CoalesceExpression) {
+            return [$node->left, $node->right];
+        }
+        if ($node instanceof UnaryExpression || $node instanceof CastExpression || $node instanceof InstanceofExpression) {
+            return [$node->operand];
+        }
+        if ($node instanceof TernaryExpression) {
+            array<int, ExpressionNode> $children = [$node->condition, $node->ifFalse];
+            if ($node->ifTrue !== null) {
+                $children[] = $node->ifTrue;
+            }
+
+            return $children;
+        }
+        if ($node instanceof PropertyAccessExpression || $node instanceof NullSafeAccessExpression) {
+            return [$node->object];
+        }
+        if ($node instanceof MethodCallExpression || $node instanceof NullSafeMethodCallExpression) {
+            array<int, ExpressionNode> $children = [$node->object];
+            foreach ($node->arguments as $argument) {
+                if ($argument instanceof ExpressionNode) {
+                    $children[] = $argument;
+                }
+            }
+
+            return $children;
+        }
+        if ($node instanceof StaticMethodCallExpression || $node instanceof NewExpression) {
+            array<int, ExpressionNode> $children = [];
+            foreach ($node->arguments as $argument) {
+                if ($argument instanceof ExpressionNode) {
+                    $children[] = $argument;
+                }
+            }
+
+            return $children;
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            return [$node->array, $node->index];
+        }
+        if ($node instanceof ArrayExpression) {
+            array<int, ExpressionNode> $children = [];
+            foreach ($node->items as $item) {
+                if ($item->key !== null) {
+                    $children[] = $item->key;
+                }
+                $children[] = $item->value;
+            }
+
+            return $children;
+        }
+        if ($node instanceof LambdaExpression) {
+            return [$node->body];
+        }
+
+        return [];
+    }
+
+    /**
+     * @param array<int|string, ExpressionNode> $arguments
+     */
+    private static function arguments(array<int|string, ExpressionNode> $arguments): string {
+        string $text = '';
+        foreach ($arguments as $argument) {
+            if (!($argument instanceof ExpressionNode)) {
+                continue;
+            }
+            if ($text !== '') {
+                $text .= ', ';
+            }
+            $text .= self::node($argument);
+        }
+
+        return $text;
+    }
+
+    private static function constant(mixed $value): string {
+        if ($value === null) {
+            return 'null';
+        }
+        if (\is_string($value)) {
+            return "'" . $value . "'";
+        }
+        if (\is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (\is_int($value) || \is_float($value)) {
+            return (string)$value;
+        }
+        if (\is_array($value)) {
+            return '[…]';
+        }
+
+        return '?';
+    }
+}

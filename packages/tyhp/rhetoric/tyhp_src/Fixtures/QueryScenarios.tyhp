@@ -1,0 +1,429 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+use Tyhp\Rhetoric\Query\QueryTranslationException;
+use Tyhp\Rhetoric\Query\Sql;
+use Tyhp\Rhetoric\Query\SqlText;
+use Tyhp\Rhetoric\Query\TranslationCache;
+
+class QueryScenarios {
+    public static function rating(QueryContext $context, int $minimum): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->rating >= $minimum)->statement('select');
+    }
+
+    public static function missingPublished(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->publishedAt === null)->statement('select');
+    }
+
+    public static function sameInstant(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->publishedAt === $post->deletedAt)->statement('select');
+    }
+
+    public static function differentInstant(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->publishedAt !== $post->deletedAt)->statement('select');
+    }
+
+    public static function titleStarts(QueryContext $context, string $prefix): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->title->startsWith($prefix))->statement('select');
+    }
+
+    public static function titleContains(QueryContext $context, string $needle): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->title->contains($needle))->statement('select');
+    }
+
+    public static function titleEnds(QueryContext $context, string $suffix): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->title->endsWith($suffix))->statement('select');
+    }
+
+    public static function lowerTitle(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->title->trim()->toLower() === 'tyhp')->statement('select');
+    }
+
+    public static function titleLength(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->title->length() > 2)->statement('select');
+    }
+
+    /**
+     * @param array<int, int> $ids
+     */
+    public static function ids(QueryContext $context, array<int, int> $ids): SqlText {
+        return $context->posts->where(fn (Post $post) => $ids->contains($post->id))->statement('select');
+    }
+
+    public static function ordered(QueryContext $context): SqlText {
+        return $context->posts
+            ->orderBy(fn (Post $post) => $post->title)
+            ->thenBy(fn (Post $post) => $post->id)
+            ->statement('select');
+    }
+
+    public static function latest(QueryContext $context): SqlText {
+        return $context->posts->latest()->statement('select');
+    }
+
+    public static function page(QueryContext $context): SqlText {
+        return $context->posts->skip(20)->take(10)->statement('select');
+    }
+
+    public static function distinctLock(QueryContext $context): SqlText {
+        return $context->posts->distinct()->lockForUpdate()->statement('select');
+    }
+
+    public static function shared(QueryContext $context): SqlText {
+        return $context->posts->sharedLock()->statement('select');
+    }
+
+    public static function tagged(QueryContext $context): SqlText {
+        return $context->posts->tag('listing')->statement('select');
+    }
+
+    public static function fromPosts(QueryContext $context, string $sql): SqlText {
+        return $context->posts->fromRaw($sql)->statement('select');
+    }
+
+    public static function titles(QueryContext $context): SqlText {
+        return $context->posts->select(fn (Post $post) => new PostTitle($post->id, $post->title))->statement('select');
+    }
+
+    public static function counted(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->rating >= 3)->statement('count');
+    }
+
+    public static function summed(QueryContext $context): SqlText {
+        return $context->posts->columnStatement('sum', fn (Post $post) => $post->rating);
+    }
+
+    public static function existed(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->rating >= 3)->statement('exists');
+    }
+
+    public static function absent(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => $post->rating >= 3)->statement('notExists');
+    }
+
+    public static function everyone(QueryContext $context): SqlText {
+        return $context->posts->everyStatement(fn (Post $post) => $post->rating >= 3);
+    }
+
+    public static function firstSql(QueryContext $context): SqlText {
+        return $context->posts->statement('first');
+    }
+
+    public static function rawSql(QueryContext $context): string {
+        return $context->posts->where(fn (Post $post) => $post->rating >= 3)->toRawSql();
+    }
+
+    public static function untranslatable(QueryContext $context): string {
+        try {
+            $context->posts->where(fn (Post $post) => $post->title->reverse() === 'x')->toSql();
+
+            return '';
+        } catch (QueryTranslationException $error) {
+            return $error->getMessage();
+        }
+    }
+
+    public static function cacheMisses(QueryContext $context): int {
+        TranslationCache::clear();
+        array<int, int> $first = [1, 2];
+        array<int, int> $second = [3, 4];
+        $context->posts->where(fn (Post $post) => $first->contains($post->id))->toSql();
+        $context->posts->where(fn (Post $post) => $second->contains($post->id))->toSql();
+
+        return TranslationCache::misses();
+    }
+
+    public static function liked(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::like($post->title, 'Ty%'))->statement('select');
+    }
+
+    /**
+     * @return array<int, Post>
+     */
+    public static function highRated(QueryContext $context): array<int, Post> {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 3)
+            ->orderBy(fn (Post $post) => $post->id)
+            ->all();
+    }
+
+    public static function firstHigh(QueryContext $context): ?Post {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 3)
+            ->orderBy(fn (Post $post) => $post->id)
+            ->first();
+    }
+
+    public static function missing(QueryContext $context): Post {
+        return $context->posts->where(fn (Post $post) => $post->id === 99)->firstOrFail();
+    }
+
+    public static function only(QueryContext $context): Post {
+        return $context->posts->where(fn (Post $post) => $post->id === 1)->sole();
+    }
+
+    public static function tooMany(QueryContext $context): Post {
+        return $context->posts->sole();
+    }
+
+    public static function anyRated(QueryContext $context): bool {
+        return $context->posts->where(fn (Post $post) => $post->rating >= 3)->exists();
+    }
+
+    public static function noneLow(QueryContext $context): bool {
+        return $context->posts->where(fn (Post $post) => $post->rating < 0)->doesntExist();
+    }
+
+    public static function allHigh(QueryContext $context): bool {
+        return $context->posts->where(fn (Post $post) => $post->rating >= 3)->every(fn (Post $post) => $post->rating >= 3);
+    }
+
+    public static function notAll(QueryContext $context): bool {
+        return $context->posts->every(fn (Post $post) => $post->rating >= 3);
+    }
+
+    public static function howMany(QueryContext $context): int {
+        return $context->posts->where(fn (Post $post) => $post->rating >= 3)->count();
+    }
+
+    public static function totalRating(QueryContext $context): int|float {
+        return $context->posts->sum(fn (Post $post) => $post->rating);
+    }
+
+    public static function lowest(QueryContext $context): int|float|string|null {
+        return $context->posts->min(fn (Post $post) => $post->rating);
+    }
+
+    public static function highest(QueryContext $context): int|float|string|null {
+        return $context->posts->max(fn (Post $post) => $post->rating);
+    }
+
+    public static function average(QueryContext $context): ?float {
+        return $context->posts->avg(fn (Post $post) => $post->rating);
+    }
+
+    /**
+     * @return array<int, PostTitle>
+     */
+    public static function projected(QueryContext $context): array<int, PostTitle> {
+        return $context->posts
+            ->orderBy(fn (Post $post) => $post->id)
+            ->select(fn (Post $post) => new PostTitle($post->id, $post->title))
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function reversed(QueryContext $context): array<int, string> {
+        return $context->posts
+            ->orderBy(fn (Post $post) => $post->id)
+            ->select(fn (Post $post) => $post->title->reverse())
+            ->all();
+    }
+
+    public static function memo(QueryContext $context): ?Memo {
+        return $context->memos->orderBy(fn (Memo $memo) => $memo->id)->first();
+    }
+
+    public static function collected(QueryContext $context): int {
+        return $context->posts->get()->count();
+    }
+
+    public static function urlNotSql(QueryContext $context, string $url): SqlText {
+        return $context->blogs->where(fn (Blog $blog) => $blog->url !== $url)->statement('select');
+    }
+
+    public static function urlNegatedSql(QueryContext $context, string $url): SqlText {
+        return $context->blogs->where(fn (Blog $blog) => !($blog->url === $url))->statement('select');
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function urlNotIds(QueryContext $context, string $url): array<int, int> {
+        return self::blogIds($context->blogs->where(fn (Blog $blog) => $blog->url !== $url));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function urlNegatedIds(QueryContext $context, string $url): array<int, int> {
+        return self::blogIds($context->blogs->where(fn (Blog $blog) => !($blog->url === $url)));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function urlIs(QueryContext $context, ?string $url): array<int, int> {
+        return self::blogIds($context->blogs->where(fn (Blog $blog) => $blog->url === $url));
+    }
+
+    public static function everyUrlIs(QueryContext $context, string $url): bool {
+        return $context->blogs->where(fn (Blog $blog) => $blog->id < 3)->every(fn (Blog $blog) => $blog->url === $url);
+    }
+
+    public static function idsPlus(QueryContext $context, array<int, int> $ids, int $offset): SqlText {
+        return $context->posts->where(fn (Post $post) => $ids->contains($post->id + $offset))->statement('select');
+    }
+
+    public static function skipOnly(QueryContext $context): SqlText {
+        return $context->posts->skip(5)->statement('select');
+    }
+
+    public static function pagedCount(QueryContext $context): SqlText {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->take(2)->statement('count');
+    }
+
+    public static function pagedSum(QueryContext $context): SqlText {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->skip(1)->columnStatement('sum', fn (Post $post) => $post->rating + 1);
+    }
+
+    public static function pagedEvery(QueryContext $context): SqlText {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->skip(1)->everyStatement(fn (Post $post) => $post->rating >= 3);
+    }
+
+    public static function pagedExists(QueryContext $context): SqlText {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->skip(1)->statement('exists');
+    }
+
+    public static function pagedCountValue(QueryContext $context, int $take): int {
+        return $context->posts->take($take)->count();
+    }
+
+    public static function skippedCountValue(QueryContext $context): int {
+        return $context->posts->skip(1)->count();
+    }
+
+    public static function pagedSumValue(QueryContext $context): int|float {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->take(2)->sum(fn (Post $post) => $post->rating);
+    }
+
+    public static function pagedExistsValue(QueryContext $context, int $skip): bool {
+        return $context->posts->skip($skip)->exists();
+    }
+
+    public static function pagedEveryValue(QueryContext $context): bool {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->skip(1)->every(fn (Post $post) => $post->rating >= 3);
+    }
+
+    /**
+     * @return array<int, Post>
+     */
+    public static function skippedRows(QueryContext $context): array<int, Post> {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->skip(1)->all();
+    }
+
+    public static function suffixedFrom(QueryContext $context, string $suffix): SqlText {
+        return $context->posts
+            ->fromRaw('(select * from posts where rating > ?) as posts', [0])
+            ->select(fn (Post $post) => new PostTitle($post->id, $post->title . $suffix))
+            ->statement('select');
+    }
+
+    /**
+     * @return array<int, PostTitle>
+     */
+    public static function suffixedRows(QueryContext $context, string $suffix): array<int, PostTitle> {
+        return $context->posts
+            ->fromRaw('(select * from posts where rating > ?) as posts', [0])
+            ->orderBy(fn (Post $post) => $post->id)
+            ->select(fn (Post $post) => new PostTitle($post->id, $post->title . $suffix))
+            ->all();
+    }
+
+    public static function twoTags(QueryContext $context): string {
+        return $context->posts->tag('a')->tag('b')->toSql();
+    }
+
+    public static function oneTag(QueryContext $context, string $tag): string {
+        return $context->posts->tag($tag)->toSql();
+    }
+
+    public static function postsSql(QueryContext $context): string {
+        return $context->posts->toSql();
+    }
+
+    public static function blogsSql(QueryContext $context): string {
+        return $context->blogs->toSql();
+    }
+
+    public static function prefixedBlogsSql(QueryPrefixedContext $context): string {
+        return $context->blogs->toSql();
+    }
+
+    public static function rawFragment(QueryContext $context, string $sql): string {
+        return $context->posts->where(fn (Post $post) => Sql::raw($sql))->toSql();
+    }
+
+    public static function rawPair(QueryContext $context, string $first, string $second): string {
+        return $context->posts->where(fn (Post $post) => Sql::raw($first) && Sql::raw($second))->toSql();
+    }
+
+    public static function likeThenComparison(QueryContext $context): string {
+        return $context->posts
+            ->where(fn (Post $post) => $post->title->startsWith('Ty') && $post->rating > 2)
+            ->toRawSql();
+    }
+
+    public static function taggedComparison(QueryContext $context, string $tag): string {
+        return $context->posts->tag($tag)->where(fn (Post $post) => $post->rating > 2)->toRawSql();
+    }
+
+    public static function firstWithTake(QueryContext $context, int $take): ?Post {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->take($take)->first();
+    }
+
+    public static function soleWithTake(QueryContext $context, int $take): Post {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->take($take)->sole();
+    }
+
+    public static function firstStatementWithTake(QueryContext $context, int $take): SqlText {
+        return $context->posts->take($take)->statement('first');
+    }
+
+    /**
+     * @return array<int, Post>
+     */
+    public static function skippedWithNegativeTake(QueryContext $context): array<int, Post> {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->take(-1)->skip(1)->all();
+    }
+
+    public static function whereAfterSelect(QueryContext $context): string {
+        try {
+            $context->posts
+                ->select(fn (Post $post) => new PostTitle($post->id, $post->title))
+                ->where(fn (PostTitle $title) => $title->title === 'Alpha')
+                ->toSql();
+
+            return '';
+        } catch (QueryTranslationException $error) {
+            return $error->getMessage();
+        }
+    }
+
+    public static function whereThenSelect(QueryContext $context): SqlText {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 3)
+            ->select(fn (Post $post) => new PostTitle($post->id, $post->title))
+            ->statement('select');
+    }
+
+    public static function namedFunction(QueryContext $context, string $name): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::fn($name, $post->title) === 'x')->statement('select');
+    }
+
+    public static function namedFunctionWithRawSlot(QueryContext $context, string $name): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::fn($name, Sql::raw('{1}'), $post->title) === 'x')->statement('select');
+    }
+
+    private static function blogIds(\Tyhp\Rhetoric\Query\Query<Blog> $query): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($query->orderBy(fn (Blog $blog) => $blog->id)->all() as $blog) {
+            $ids[] = $blog->id;
+        }
+
+        return $ids;
+    }
+}

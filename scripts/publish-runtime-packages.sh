@@ -54,8 +54,8 @@
 # They are one tree across PHP 8.2–8.5; they do not get 80N.X.Y tags.
 #
 # Compiled tyhp/* packages (DIST_PACKAGES in packages/build-common.sh: core,
-# decimal, async, lambda, parallel, io) live under packages/tyhp/ and are tagged once per PHP
-# target (802 / 803 / 804 / 805). Package MAJOR is the emit
+# decimal, async, lambda, parallel, io, rhetoric) live under packages/tyhp/ and are tagged once per PHP
+# target (802 / 803 / 804 / 805; rhetoric is 803–805). Package MAJOR is the emit
 # PHP. X.Y comes from that package's own composer.json (independent of the
 # compiler version). Libraries require 80N.X.* across PHP majors for a given
 # compiled package. See VERSIONING.md and packages/build-common.sh.
@@ -203,7 +203,7 @@ scripts/packagist.credentials exists, published repos with tags Packagist has
 not crawled are refreshed via POST /api/update-package. Without that file,
 run scripts/update-packagist-packages.sh or use the Update button.
 Compiled packages (core, decimal, async,
-lambda, parallel, io) run base-build-all.sh so dist trees exist (every package,
+lambda, parallel, io, rhetoric) run base-build-all.sh so dist trees exist (every package,
 or only the --package one). tyhp/compiler is built in-place by that script and
 tagged from its composer.json version (not 80N.X.Y); it is published only when
 the GitHub Release v<version> on tyhpproject/tyhp is public and has
@@ -1532,6 +1532,7 @@ load_publish_plan() {
   PUBLISH_PLAN="${PUBLISH_WORKDIR}/plan.tsv"
   echo "Comparing publish trees with GitHub tags..."
   CHECK_DIST_PACKAGES="${DIST_PACKAGES[*]}" CHECK_PHP_MAJORS="$majors" \
+    CHECK_PACKAGE_PHP_MAJORS="$(restricted_package_php_majors)" \
     php "${PROJECT_ROOT}/scripts/check-version-bumps.php" \
       --format=tsv --only-file "$list" > "$PUBLISH_PLAN"
 }
@@ -1875,7 +1876,7 @@ publish_package() {
   if [[ -z "$composer_name" ]]; then
     composer_name="tyhp/${pkg}"
   fi
-  echo "==> Publishing ${composer_name} to ${GITHUB_ORG}/${pkg} (PHP $(dist_php_range_label))"
+  echo "==> Publishing ${composer_name} to ${GITHUB_ORG}/${pkg} (PHP $(package_php_range_label "$pkg"))"
 
   load_package_release_version "$pkg" || exit 1
   read_publish_plan "$pkg"
@@ -1901,7 +1902,8 @@ publish_package() {
     echo "    resuming: ${PLAN_EXISTING_TAGS[*]} already match this build; publishing ${PLAN_NEW_TAGS[*]}"
   fi
 
-  for entry in "${DIST_BUILDS[@]}"; do
+  set_package_dist_builds "$pkg"
+  for entry in "${PACKAGE_DIST_BUILDS[@]}"; do
     php_major="${entry%%:*}"
     dist_version="$(package_version "$php_major")"
     if list_contains "$dist_version" "${PLAN_NEW_TAGS[@]}"; then

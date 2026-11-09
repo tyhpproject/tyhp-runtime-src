@@ -25,3 +25,24 @@ function reflectionGenerator_getTrace_isDebugStackFrames(\ReflectionGenerator $g
 function reflectionReference_fromArrayElement_followsKeys(array<string, int> $arr): void {
     ?\ReflectionReference $ref = \ReflectionReference::fromArrayElement($arr, "k");
 }
+
+declare(php=">=8.4") {
+    function ignoreLazyObject(\stdClass $object): void {
+    }
+
+    function newLazyGhost_acceptsVoidInitializer(\ReflectionClass<\stdClass> $class): \stdClass {
+        return $class->newLazyGhost(fn (\stdClass $object): void => ignoreLazyObject($object));
+    }
+
+    function newLazyProxy_acceptsFactoryReturningSame(\ReflectionClass<\stdClass> $class): \stdClass {
+        return $class->newLazyProxy(fn (\stdClass $object): \stdClass => $object);
+    }
+
+    function resetAsLazyGhost_acceptsVoidInitializer(\ReflectionClass<\stdClass> $class, \stdClass $object): void {
+        $class->resetAsLazyGhost($object, fn (\stdClass $ghost): void => ignoreLazyObject($ghost));
+    }
+
+    function resetAsLazyProxy_acceptsFactoryReturningSame(\ReflectionClass<\stdClass> $class, \stdClass $object): void {
+        $class->resetAsLazyProxy($object, fn (\stdClass $proxy): \stdClass => $proxy);
+    }
+}

@@ -1,0 +1,137 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric;
+
+/**
+ * A typed query over an Eloquent model.
+ *
+ * `query` and `on` name the model with their type argument. `where` and `orderBy` take a lambda whose
+ * parameter is that model. A property is the column named by its `Column` attribute,
+ * or the property name in snake case. The query runs through that model's Eloquent
+ * builder and returns the model. PHP 8.4 or newer is required so a typed property
+ * can read and write the attribute without sharing Eloquent's `__get` and `__set`.
+ */
+final class EloquentQuery<T extends \Illuminate\Database\Eloquent\Model> {
+    private \Illuminate\Database\Eloquent\Builder<T> $builder;
+
+    private string $modelClass;
+
+    private function __construct(
+        ?\Illuminate\Database\Eloquent\Builder<T> $builder,
+        string $modelClass,
+        ?\Illuminate\Database\Eloquent\Model $seed = null,
+        \UnitEnum|string|null $connection = null,
+    ) {
+        self::requirePhp();
+        if ($seed !== null) {
+            if (!($seed is T)) {
+                throw new \TypeError('EloquentQuery created ' . $seed::class . '.');
+            }
+            if ($connection !== null) {
+                (void)$seed->setConnection($connection);
+            }
+            $this->builder = $seed->newQuery();
+            $this->modelClass = $modelClass;
+
+            return;
+        }
+        if ($builder === null) {
+            throw new \InvalidArgumentException('EloquentQuery needs an Eloquent model.');
+        }
+        $this->builder = $builder;
+        $this->modelClass = $modelClass;
+    }
+
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     * @return EloquentQuery<TModel>
+     */
+    public static function query<TModel extends \Illuminate\Database\Eloquent\Model>(): EloquentQuery<TModel> {
+        self::requirePhp();
+        __ClassName<TModel> $model = TModel::class;
+
+        return new EloquentQuery<TModel>(null, $model, self::model($model), null);
+    }
+
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     * @return EloquentQuery<TModel>
+     */
+    public static function on<TModel extends \Illuminate\Database\Eloquent\Model>(
+        \UnitEnum|string $connection,
+    ): EloquentQuery<TModel> {
+        self::requirePhp();
+        __ClassName<TModel> $model = TModel::class;
+
+        return new EloquentQuery<TModel>(null, $model, self::model($model), $connection);
+    }
+
+    public function where(\Tyhp\Expression<callable(T): bool> $predicate): EloquentQuery<T> {
+        \Illuminate\Database\Eloquent\Builder<T> $copy = clone $this->builder;
+        (new \Tyhp\Rhetoric\Query\EloquentTranslator<T>($this->modelClass, $predicate))->applyWhere($copy);
+
+        return new EloquentQuery<T>($copy, $this->modelClass);
+    }
+
+    public function orderBy(\Tyhp\Expression<callable(T): mixed> $column): EloquentQuery<T> {
+        return $this->sort($column, 'asc');
+    }
+
+    public function orderByDesc(\Tyhp\Expression<callable(T): mixed> $column): EloquentQuery<T> {
+        return $this->sort($column, 'desc');
+    }
+
+    public function get(): \Illuminate\Database\Eloquent\Collection<int, T> {
+        return $this->builder->get();
+    }
+
+    public function first(): ?T {
+        mixed $row = $this->builder->first();
+        if ($row === null) {
+            return null;
+        }
+        if (!($row is T)) {
+            string $found = \is_object($row) ? $row::class : \get_debug_type($row);
+            throw new \TypeError('The query returned ' . $found . '.');
+        }
+
+        return $row;
+    }
+
+    public function builder(): \Illuminate\Database\Eloquent\Builder<T> {
+        return $this->builder;
+    }
+
+    public static function requirePhp(): void {
+        if (\PHP_VERSION_ID < 80400) {
+            throw new \LogicException('Typed queries over Eloquent models require PHP 8.4 or newer.');
+        }
+    }
+
+    private function sort(\Tyhp\Expression<callable(T): mixed> $column, string $direction): EloquentQuery<T> {
+        \Illuminate\Database\Eloquent\Builder<T> $copy = clone $this->builder;
+        (new \Tyhp\Rhetoric\Query\EloquentTranslator<T>($this->modelClass, $column))->applyOrder($copy, $direction);
+
+        return new EloquentQuery<T>($copy, $this->modelClass);
+    }
+
+    private static function model(string $class): \Illuminate\Database\Eloquent\Model {
+        if ($class === '' || !\is_a($class, \Illuminate\Database\Eloquent\Model::class, true)) {
+            throw new \InvalidArgumentException('EloquentQuery needs an Eloquent model.');
+        }
+        try {
+            \ReflectionClass $reflection = new \ReflectionClass($class);
+            object $instance = $reflection->newInstance();
+            if (!($instance is \Illuminate\Database\Eloquent\Model)) {
+                throw new \TypeError('EloquentQuery created ' . $instance::class . '.');
+            }
+
+            return $instance;
+        } catch (\Throwable $error) {
+            if ($error is \InvalidArgumentException || $error is \TypeError) {
+                throw $error;
+            }
+            throw new \InvalidArgumentException('EloquentQuery needs an Eloquent model.', 0, $error);
+        }
+    }
+}

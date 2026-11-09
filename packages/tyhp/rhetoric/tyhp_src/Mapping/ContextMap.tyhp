@@ -1,0 +1,26 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+use Tyhp\Rhetoric\Observers\QueryInterceptor;
+
+final class ContextMap {
+    public function __construct(
+        public readonly __ClassName $contextClass,
+        public readonly array<string, ModelMap> $models,
+        public readonly array<int, QueryInterceptor> $interceptors = [],
+    ) {}
+
+    public function hasModel(__ClassName $class): bool {
+        return isset($this->models[\ltrim($class, '\\')]);
+    }
+
+    public function model(__ClassName $class): ModelMap {
+        string $name = \ltrim($class, '\\');
+        if (!isset($this->models[$name])) {
+            throw new \InvalidArgumentException($this->contextClass . ' has no model ' . $name . '.');
+        }
+
+        return $this->models[$name];
+    }
+}

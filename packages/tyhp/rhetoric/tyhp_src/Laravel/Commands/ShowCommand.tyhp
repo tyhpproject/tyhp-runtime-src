@@ -1,0 +1,58 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Laravel\MappingPrinter;
+
+class ShowCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:show');
+        $this->setDescription('Print tables, columns, keys, foreign keys, and relations for a context.');
+        $this->addArgument('context', \Symfony\Component\Console\Input\InputArgument::REQUIRED, 'Context class');
+    }
+
+    public function handle(): int {
+        mixed $argument = $this->argument('context');
+        if (!\is_string($argument)) {
+            $this->error('A context class is required.');
+
+            return 1;
+        }
+        string $class = \ltrim($argument, '\\');
+        if (!\class_exists($class)) {
+            $this->error($class . ' is not a context.');
+
+            return 1;
+        }
+        if (!\is_subclass_of($class, Context::class)) {
+            $this->error($class . ' is not a context.');
+
+            return 1;
+        }
+        $this->line(MappingPrinter::render($this->makeContext($class)->mapping()));
+
+        return 0;
+    }
+
+    private function makeContext(__ClassName $class): Context {
+        \ReflectionProperty $laravel = new \ReflectionProperty($this, 'laravel');
+        if ($laravel->isInitialized($this)) {
+            mixed $container = $laravel->getValue($this);
+            if ($container instanceof \Psr\Container\ContainerInterface && $container->has($class)) {
+                mixed $resolved = $container->get($class);
+                if ($resolved instanceof Context) {
+                    return $resolved;
+                }
+            }
+        }
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+        object $instance = $reflection->newInstance();
+        if (!($instance instanceof Context)) {
+            throw new \InvalidArgumentException($class . ' is not a context.');
+        }
+
+        return $instance;
+    }
+}

@@ -229,11 +229,12 @@ final class Parallel {
             array<TKey, Promise<T>> $promises = [];
             foreach ($tasks as $key => $task) {
                 Promise<T> $promise = self::runAsync<T>($task, $group->getToken());
-                $promise->catch(function (\Throwable $error) use (&$firstError, $group): void {
+                $promise->catch(function (\Throwable $error) use (&$firstError, $group): T {
                     if ($firstError === null && !($error instanceof OperationCancelledException)) {
                         $firstError = $error;
                         $group->cancel();
                     }
+                    throw $error;
                 });
                 $promises[$key] = $promise;
             }

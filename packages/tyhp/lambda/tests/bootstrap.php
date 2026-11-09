@@ -36,6 +36,11 @@ foreach ($sourceRoots as $sourceRoot) {
 });
 
 foreach ($sourceRoots as $sourceRoot) {
+    $rootFunctions = \dirname($sourceRoot) . '/_functions.php';
+    if (\is_file($rootFunctions)) {
+        require_once $rootFunctions;
+    }
+
     if (\is_file($sourceRoot . '/_functions.php')) {
         require_once $sourceRoot . '/_functions.php';
     }

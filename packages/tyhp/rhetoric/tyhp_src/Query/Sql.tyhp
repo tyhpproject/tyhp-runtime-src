@@ -1,0 +1,104 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+final class Sql {
+    public static function like(string $value, string $pattern): bool {
+        string $quoted = \preg_quote($pattern, '/');
+        $quoted = \str_replace(['%', '_'], ['.*', '.'], $quoted);
+
+        return \preg_match('/^' . $quoted . '$/s', $value) === 1;
+    }
+
+    public static function raw(string $sql): bool {
+        (void)$sql;
+
+        return false;
+    }
+
+    /**
+     * Whole days from `$start` to `$end`.
+     */
+    public static function dateDiff(mixed $start, mixed $end): int {
+        ?\DateTimeImmutable $from = self::instant($start);
+        ?\DateTimeImmutable $to = self::instant($end);
+        if ($from === null || $to === null) {
+            return 0;
+        }
+        \DateTimeImmutable $fromDay = $from->setTime(0, 0);
+        \DateTimeImmutable $toDay = $to->setTime(0, 0);
+
+        return (int)$fromDay->diff($toDay)->format('%r%a');
+    }
+
+    public static function year(mixed $value): int {
+        return self::part($value, 'Y');
+    }
+
+    public static function month(mixed $value): int {
+        return self::part($value, 'n');
+    }
+
+    public static function day(mixed $value): int {
+        return self::part($value, 'j');
+    }
+
+    public static function abs(int|float $value): int|float {
+        if (\is_int($value)) {
+            return $value < 0 ? -$value : $value;
+        }
+
+        return \abs($value);
+    }
+
+    public static function round(int|float $value, int $precision = 0): float {
+        return \round($value, $precision);
+    }
+
+    public static function floor(int|float $value): float {
+        return \floor($value);
+    }
+
+    public static function ceiling(int|float $value): float {
+        return \ceil($value);
+    }
+
+    /**
+     * A database function registered on the translator.
+     */
+    public static function fn(string $name, mixed ...$arguments): mixed {
+        (void)$name;
+        (void)$arguments;
+
+        throw new \LogicException('Sql::fn() is translated to SQL.');
+    }
+
+    private static function part(mixed $value, string $format): int {
+        ?\DateTimeImmutable $instant = self::instant($value);
+        if ($instant === null) {
+            return 0;
+        }
+
+        return (int)$instant->format($format);
+    }
+
+    private static function instant(mixed $value): ?\DateTimeImmutable {
+        if ($value instanceof \DateTimeImmutable) {
+            return $value;
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return \DateTimeImmutable::createFromInterface($value);
+        }
+        if (\is_string($value) && $value !== '') {
+            try {
+                return new \DateTimeImmutable($value);
+            } catch (\Throwable $error) {
+                (void)$error;
+
+                return null;
+            }
+        }
+
+        return null;
+    }
+}

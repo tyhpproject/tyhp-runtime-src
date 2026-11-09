@@ -30,7 +30,7 @@ class MemberTypeTest extends TestCase
 
     public function testPropertyNodeCarriesTheStampedType(): void
     {
-        $posts = Expr::param('b', MemberBlog::class)->posts->backedBy(fn (MemberBlog $b) => $b->posts);
+        $posts = Expr::param('b', MemberBlog::class)->posts->backedBy()(fn (MemberBlog $b) => $b->posts);
 
         self::assertSame('array<' . self::NS . 'MemberPost>', $posts->body->type);
         self::assertSame('array<' . self::NS . 'MemberPost>', $posts->returnType);
@@ -38,14 +38,14 @@ class MemberTypeTest extends TestCase
 
     public function testErasedClosureReturnTypeKeepsTheFullBodyType(): void
     {
-        $posts = Expr::param('b', MemberBlog::class)->posts->backedBy(fn (MemberBlog $b): array => $b->posts);
+        $posts = Expr::param('b', MemberBlog::class)->posts->backedBy()(fn (MemberBlog $b): array => $b->posts);
 
         self::assertSame('array<' . self::NS . 'MemberPost>', $posts->returnType);
     }
 
     public function testDifferentClosureReturnTypeWins(): void
     {
-        $posts = Expr::param('b', MemberBlog::class)->posts->backedBy(fn (MemberBlog $b): iterable => $b->posts);
+        $posts = Expr::param('b', MemberBlog::class)->posts->backedBy()(fn (MemberBlog $b): iterable => $b->posts);
 
         self::assertSame('iterable', $posts->returnType);
     }
@@ -53,7 +53,7 @@ class MemberTypeTest extends TestCase
     public function testNativePropertyTypesAndNullSafeHops(): void
     {
         $title = Expr::param('b', MemberBlog::class)->featured->nullSafe()->title
-            ->backedBy(fn (MemberBlog $b) => $b->featured?->title);
+            ->backedBy()(fn (MemberBlog $b) => $b->featured?->title);
 
         self::assertSame('?' . self::NS . 'MemberPost', $title->body->object->type);
         self::assertSame('?string', $title->body->type);
@@ -74,7 +74,7 @@ class MemberTypeTest extends TestCase
             FluentSupport::memberType('?' . self::NS . 'MemberTable<' . self::NS . 'MemberBlog>', 'name', false),
         );
 
-        $city = Expr::param('b', MemberBlog::class)->address->city->backedBy(fn (MemberBlog $b) => $b->address['city']);
+        $city = Expr::param('b', MemberBlog::class)->address->city->backedBy()(fn (MemberBlog $b) => $b->address['city']);
         self::assertSame('struct ' . self::NS . 'MemberAddress', $city->body->object->type);
         self::assertSame('string', $city->body->type);
     }
@@ -89,13 +89,13 @@ class MemberTypeTest extends TestCase
 
     public function testPropertyPathResultTypeUsesTheStamp(): void
     {
-        $inferred = PropertyPath::from(MemberBlog::class, ['posts'], fn (MemberBlog $b) => $b->posts);
+        $inferred = PropertyPath::from()(MemberBlog::class, ['posts'], fn (MemberBlog $b) => $b->posts);
         self::assertSame('array<' . self::NS . 'MemberPost>', $inferred->returnType);
 
-        $declared = PropertyPath::from(MemberBlog::class, ['posts'], fn (MemberBlog $b): array => $b->posts);
+        $declared = PropertyPath::from()(MemberBlog::class, ['posts'], fn (MemberBlog $b): array => $b->posts);
         self::assertSame('array<' . self::NS . 'MemberPost>', $declared->returnType);
 
-        $nested = PropertyPath::from(
+        $nested = PropertyPath::from()(
             MemberBlog::class,
             ['featured', 'title'],
             fn (MemberBlog $b) => $b->featured?->title,

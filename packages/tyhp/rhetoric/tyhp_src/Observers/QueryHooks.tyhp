@@ -1,0 +1,36 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Observers;
+
+use Tyhp\Rhetoric\Context;
+
+final class QueryHooks {
+    /** @var array<string, bool> */
+    private static array<string, bool> $installed = [];
+
+    public static function install(Context $context, \Illuminate\Database\Connection $connection): void {
+        string $key = (string)\spl_object_id($connection) . ':' . $context::class;
+        if (isset(self::$installed[$key])) {
+            return;
+        }
+        self::$installed[$key] = true;
+        array<int, QueryInterceptor> $interceptors = $context->mapping()->interceptors;
+        if (\count($interceptors) === 0) {
+            return;
+        }
+        $connection->beforeExecuting(function (mixed $sql, mixed $bindings, mixed $current) use ($interceptors): void {
+            if (!\is_string($sql) || !\is_array($bindings) || !($current instanceof \Illuminate\Database\Connection)) {
+                return;
+            }
+            array<int|string, mixed> $bound = [];
+            foreach ($bindings as $name => $value) {
+                if (\is_int($name) || \is_string($name)) {
+                    $bound[$name] = $value;
+                }
+            }
+            foreach ($interceptors as $interceptor) {
+                $interceptor->beforeExecuting($sql, $bound, $current);
+            }
+        });
+    }
+}

@@ -1,0 +1,183 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+
+final class QueryPlan {
+    /**
+     * @param array<int, BindingRecipe> $recipes
+     * @param array<int, string> $aliases
+     * @param array<int, string|int> $labels
+     * @param array<int, QueryPlan> $operands
+     * @param array<int, EagerSpan> $eager
+     */
+    public function __construct(
+        public readonly string $sql,
+        public readonly array<int, BindingRecipe> $recipes,
+        public readonly string $terminal,
+        public readonly string $rowKind,
+        public readonly array<int, string> $aliases,
+        public readonly array<int, string|int> $labels = [],
+        public readonly array<int, QueryPlan> $operands = [],
+        public readonly array<int, EagerSpan> $eager = [],
+    ) {}
+
+    public function text(QueryState $state, ?Context $context = null): SqlText {
+        return new SqlText($this->sql, $this->bindings($state, $context));
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    public function bindings(QueryState $state, ?Context $context = null): array<int, mixed> {
+        array<int, mixed> $values = [];
+        foreach ($this->recipes as $recipe) {
+            mixed $value = $this->recipeValue($state, $recipe, $context);
+            if ($recipe->kind === 'list') {
+                if (!\is_array($value)) {
+                    throw new \LogicException('IN binding is not an array.');
+                }
+                foreach ($value as $item) {
+                    $values[] = self::scalar($item);
+                }
+                continue;
+            }
+            if ($recipe->kind === 'like') {
+                if (!\is_string($value)) {
+                    throw new \LogicException('LIKE binding is not a string.');
+                }
+                $values[] = Translator::likePattern($value, $recipe->mode);
+                continue;
+            }
+            $values[] = self::scalar($value);
+        }
+
+        foreach ($this->operands as $index => $operand) {
+            ?SetOperand $set = $state->sets[$index] ?? null;
+            if ($set === null) {
+                throw new \LogicException('Set operand ' . (string)$index . ' is missing.');
+            }
+            foreach ($operand->bindings($set->state, $context) as $binding) {
+                $values[] = $binding;
+            }
+        }
+
+        return $values;
+    }
+
+    private function recipeValue(QueryState $state, BindingRecipe $recipe, ?Context $context): mixed {
+        if ($recipe->kind === 'fixed') {
+            return $recipe->mode;
+        }
+        if ($recipe->kind === 'context') {
+            if ($context === null) {
+                throw new \LogicException('A scope binding needs the context that runs the query.');
+            }
+
+            return PropertyBag::read($context, $recipe->mode);
+        }
+        if ($recipe->source === 'keyset') {
+            if (!\array_key_exists($recipe->slot, $state->keysetBindings)) {
+                throw new \LogicException('Keyset binding ' . $recipe->slot . ' is missing.');
+            }
+
+            return $state->keysetBindings[$recipe->slot];
+        }
+        if ($recipe->source === 'cursor') {
+            if ($state->cursor === null || !\array_key_exists($recipe->slot, $state->cursor->values)) {
+                throw new \LogicException('Cursor binding ' . (string)$recipe->slot . ' is missing.');
+            }
+
+            return $state->cursor->values[$recipe->slot];
+        }
+        if ($recipe->kind === 'from' || $recipe->source === 'from') {
+            if (!\array_key_exists($recipe->slot, $state->fromBindings)) {
+                throw new \LogicException('FROM binding ' . $recipe->slot . ' is missing.');
+            }
+
+            return $state->fromBindings[$recipe->slot];
+        }
+
+        ?\Tyhp\Expression $expression = $this->sourceExpression($state, $recipe);
+        if ($expression === null) {
+            throw new \LogicException('Binding source ' . $recipe->source . ' is missing.');
+        }
+        \Tyhp\Expression\ExpressionShape $shape = \Tyhp\Expression\ExpressionShape::of($expression);
+        if (!\array_key_exists($recipe->slot, $shape->parameters)) {
+            throw new \LogicException('Binding slot ' . $recipe->slot . ' is missing.');
+        }
+
+        return $shape->parameters[$recipe->slot];
+    }
+
+    private function sourceExpression(QueryState $state, BindingRecipe $recipe): ?\Tyhp\Expression {
+        if ($recipe->source === 'where') {
+            return $state->wheres[$recipe->sourceIndex] ?? null;
+        }
+        if ($recipe->source === 'order') {
+            ?OrderSpec $order = $state->orders[$recipe->sourceIndex] ?? null;
+            if ($order === null) {
+                return null;
+            }
+
+            return $order->expression;
+        }
+        if ($recipe->source === 'projection') {
+            return $state->projection;
+        }
+        if ($recipe->source === 'every') {
+            return $state->every;
+        }
+        if ($recipe->source === 'aggregate') {
+            return $state->aggregate;
+        }
+        if ($recipe->source === 'group') {
+            return $state->groups[$recipe->sourceIndex] ?? null;
+        }
+        if ($recipe->source === 'having') {
+            return $state->havings[$recipe->sourceIndex] ?? null;
+        }
+        if ($recipe->source === 'joinOuter') {
+            ?JoinSpec $outer = $state->joins[$recipe->sourceIndex] ?? null;
+            if ($outer === null) {
+                return null;
+            }
+
+            return $outer->outerKey;
+        }
+        if ($recipe->source === 'joinInner') {
+            ?JoinSpec $inner = $state->joins[$recipe->sourceIndex] ?? null;
+            if ($inner === null) {
+                return null;
+            }
+
+            return $inner->innerKey;
+        }
+        if (\str_starts_with($recipe->source, 'joinFilter:')) {
+            array<int, string> $parts = \explode(':', $recipe->source);
+            int $join = (int)($parts[1] ?? '0');
+            int $where = (int)($parts[2] ?? '0');
+            ?JoinSpec $spec = $state->joins[$join] ?? null;
+            if ($spec === null) {
+                return null;
+            }
+
+            return $spec->state->wheres[$where] ?? null;
+        }
+        if ($recipe->source === 'include') {
+            return $state->includes[$recipe->sourceIndex]->constrain ?? null;
+        }
+
+        return null;
+    }
+
+    public static function scalar(mixed $value): mixed {
+        if (\is_bool($value)) {
+            return $value ? 1 : 0;
+        }
+
+        return $value;
+    }
+}

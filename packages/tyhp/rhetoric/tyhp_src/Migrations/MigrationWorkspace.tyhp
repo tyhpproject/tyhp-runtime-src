@@ -1,0 +1,245 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+use Tyhp\Rhetoric\Context;
+
+final class MigrationHeader {
+    public function __construct(
+        public string $context,
+        public string $from,
+        public string $snapshot,
+    ) {}
+}
+
+final class MigrationFile {
+    public function __construct(
+        public string $path,
+        public string $name,
+        public MigrationHeader $header,
+    ) {}
+}
+
+final class MigrationResult {
+    public function __construct(
+        public ?string $path,
+        public MigrationPlan $plan,
+        public bool $snapshotUpdated,
+    ) {}
+}
+
+final class PendingReport {
+    public function __construct(
+        public array<int, string> $reasons,
+        public array<int, string> $warnings,
+    ) {}
+
+    public function clean(): bool {
+        return $this->reasons === [];
+    }
+}
+
+/**
+ * Writes, removes, and compares plain PHP migrations against the context snapshot.
+ */
+final class MigrationWorkspace {
+    public function __construct(
+        private SnapshotStore $snapshots,
+        private string $migrations,
+    ) {}
+
+    public static function configure(?string $snapshot, ?string $migrations): MigrationWorkspace {
+        string $directory = ($snapshot !== null && $snapshot !== '') ? $snapshot : 'database/rhetoric';
+        string $files = ($migrations !== null && $migrations !== '') ? $migrations : 'database/migrations';
+
+        return new MigrationWorkspace(new SnapshotStore($directory), $files);
+    }
+
+    public function snapshots(): SnapshotStore {
+        return $this->snapshots;
+    }
+
+    /**
+     * @param array<int, string> $renames
+     */
+    public function add(Context $context, string $name, array<int, string> $renames, string $stamp, bool $defer = false, bool $independent = false): MigrationResult {
+        string $class = $context::class;
+        SnapshotDocument $current = SchemaExtractor::extract($context->mapping());
+        SnapshotDocument $previous = $this->snapshots->load($class);
+        MigrationPlan $plan = MapDiffer::diff($previous, $current, $renames);
+        if ($plan->operations === [] && $previous->hash() === $current->hash()) {
+            return new MigrationResult(null, $plan, false);
+        }
+        if ($plan->operations === []) {
+            $this->snapshots->save($current);
+
+            return new MigrationResult(null, $plan, true);
+        }
+        string $path = $this->migrations . '/' . $stamp . '_' . self::slug($name) . '.php';
+        if (\is_file($path)) {
+            throw new \RuntimeException('Migration ' . $path . ' already exists.');
+        }
+        self::ensure($this->migrations);
+        string $source = LaravelMigrationWriter::source($class, $previous->hash(), $current->hash(), $plan, $defer, $independent);
+        mixed $written = \file_put_contents($path, $source);
+        if ($written === false) {
+            throw new \RuntimeException('Could not write ' . $path . '.');
+        }
+        $this->snapshots->remember($previous);
+        $this->snapshots->save($current);
+        $this->snapshots->remember($current);
+
+        return new MigrationResult($path, $plan, true);
+    }
+
+    public function remove(Context $context, ?\Illuminate\Database\Migrations\MigrationRepositoryInterface $repository = null): string {
+        string $class = $context::class;
+        array<int, MigrationFile> $files = $this->filesFor($class);
+        if ($files === []) {
+            throw new \RuntimeException('No Rhetoric migration exists for ' . $class . '.');
+        }
+        MigrationFile $latest = $files[\count($files) - 1];
+        if ($repository !== null && $repository->repositoryExists() && \in_array($latest->name, $repository->getRan(), true)) {
+            throw new \RuntimeException('Migration ' . $latest->name . ' has been applied. Roll it back before removing it.');
+        }
+        SnapshotDocument $empty = SnapshotDocument::empty($class);
+        if ($latest->header->from === $empty->hash()) {
+            $this->snapshots->save($empty);
+        } else {
+            $this->snapshots->restore($latest->header->from);
+        }
+        if (!\unlink($latest->path)) {
+            throw new \RuntimeException('Could not remove ' . $latest->path . '.');
+        }
+
+        return $latest->path;
+    }
+
+    public function pending(Context $context): PendingReport {
+        string $class = $context::class;
+        SnapshotDocument $current = SchemaExtractor::extract($context->mapping());
+        SnapshotDocument $stored = $this->snapshots->load($class);
+        MigrationPlan $plan = MapDiffer::diff($stored, $current, []);
+        array<int, string> $reasons = [];
+        array<int, string> $warnings = $plan->warnings;
+        if ($stored->hash() !== $current->hash()) {
+            $reasons[] = 'The mapping differs from the snapshot.';
+        }
+        array<int, MigrationFile> $files = $this->filesFor($class);
+        if ($files !== []) {
+            MigrationFile $latest = $files[\count($files) - 1];
+            if ($latest->header->snapshot !== $stored->hash()) {
+                ?MigrationPlan $drift = $this->drift($latest->header->snapshot, $stored);
+                if ($drift === null || $drift->operations !== []) {
+                    $reasons[] = 'The latest migration does not match the snapshot.';
+                } else {
+                    // A primary key or table comment change is warned about but never migrated, so it cannot keep the report failing.
+                    foreach ($drift->warnings as $warning) {
+                        if (!\in_array($warning, $warnings, true)) {
+                            $warnings[] = $warning;
+                        }
+                    }
+                }
+            }
+        }
+
+        return new PendingReport($reasons, $warnings);
+    }
+
+    // A snapshot-only update (a renamed model class, an onDelete edit) moves the stored hash without a migration.
+    // The latest migration still matches when the snapshot it recorded needs no schema operation to become the stored one.
+    // Null when that snapshot is not in the history.
+    private function drift(string $recordedHash, SnapshotDocument $stored): ?MigrationPlan {
+        if (!$this->snapshots->hasHistory($recordedHash)) {
+            return null;
+        }
+
+        return MapDiffer::diff($this->snapshots->recorded($recordedHash), $stored, []);
+    }
+
+    /**
+     * @return array<int, MigrationFile>
+     */
+    public function filesFor(string $context): array<int, MigrationFile> {
+        if (!\is_dir($this->migrations)) {
+            return [];
+        }
+        mixed $names = \scandir($this->migrations);
+        if (!\is_array($names)) {
+            return [];
+        }
+        array<int, string> $files = [];
+        foreach ($names as $name) {
+            if (!\is_string($name) || !\str_ends_with($name, '.php')) {
+                continue;
+            }
+            $files[] = $name;
+        }
+        \sort($files);
+        array<int, MigrationFile> $matched = [];
+        foreach ($files as $name) {
+            string $path = $this->migrations . '/' . $name;
+            ?MigrationHeader $header = self::header($path);
+            if ($header === null || $header->context !== $context) {
+                continue;
+            }
+            $matched[] = new MigrationFile($path, \substr($name, 0, -4), $header);
+        }
+
+        return $matched;
+    }
+
+    public static function header(string $path): ?MigrationHeader {
+        mixed $contents = \file_get_contents($path);
+        if (!\is_string($contents)) {
+            return null;
+        }
+        ?string $context = self::line($contents, 'Context');
+        ?string $from = self::line($contents, 'From');
+        ?string $snapshot = self::line($contents, 'Snapshot');
+        if ($context === null || $from === null || $snapshot === null) {
+            return null;
+        }
+
+        return new MigrationHeader($context, $from, $snapshot);
+    }
+
+    private static function line(string $contents, string $label): ?string {
+        string $prefix = ' * ' . $label . ': ';
+        mixed $lines = \preg_split('/\R/', $contents);
+        if (!\is_array($lines)) {
+            return null;
+        }
+        foreach ($lines as $line) {
+            if (!\is_string($line) || !\str_starts_with($line, $prefix)) {
+                continue;
+            }
+
+            return \substr($line, \strlen($prefix));
+        }
+
+        return null;
+    }
+
+    private static function slug(string $name): string {
+        mixed $replaced = \preg_replace('/[^A-Za-z0-9]+/', '_', \trim($name));
+        if (!\is_string($replaced)) {
+            throw new \InvalidArgumentException('A migration name is required.');
+        }
+        string $slug = \trim($replaced, '_');
+        if ($slug === '') {
+            throw new \InvalidArgumentException('A migration name is required.');
+        }
+
+        return \strtolower($slug);
+    }
+
+    private static function ensure(string $directory): void {
+        if (\is_dir($directory)) {
+            return;
+        }
+        if (!\mkdir($directory, 0777, true) && !\is_dir($directory)) {
+            throw new \RuntimeException('Could not create ' . $directory . '.');
+        }
+    }
+}

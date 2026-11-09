@@ -1,0 +1,52 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Casts;
+
+final class BackedEnumCast extends \Tyhp\Rhetoric\Casts\Cast<\BackedEnum, int|string> {
+    public function __construct(
+        private string $enum,
+    ) {}
+
+    public function get(mixed $value): ?\BackedEnum {
+        if ($value === null) {
+            return null;
+        }
+        if ($value instanceof \BackedEnum) {
+            return $value;
+        }
+        if (!\is_int($value) && !\is_string($value)) {
+            throw new \InvalidArgumentException($this->enum . ' columns require an int or a string.');
+        }
+        string $enum = $this->enum;
+        mixed $case = \call_user_func([$enum, 'from'], $value);
+        if (!($case instanceof \BackedEnum)) {
+            throw new \InvalidArgumentException($enum . ' did not return a backed enum.');
+        }
+
+        return $case;
+    }
+
+    public function set(mixed $value): int|string|null {
+        if ($value === null) {
+            return null;
+        }
+        if ($value instanceof \BackedEnum) {
+            return self::backing($value);
+        }
+        if (\is_int($value) || \is_string($value)) {
+            return $value;
+        }
+
+        throw new \InvalidArgumentException($this->enum . ' columns require a backed enum.');
+    }
+
+    private static function backing(\BackedEnum $value): int|string {
+        foreach ((new \ReflectionEnum($value))->getCases() as $case) {
+            if ($case instanceof \ReflectionEnumBackedCase && $case->getValue() === $value) {
+                return $case->getBackingValue();
+            }
+        }
+
+        throw new \InvalidArgumentException('A backed enum case is required.');
+    }
+}

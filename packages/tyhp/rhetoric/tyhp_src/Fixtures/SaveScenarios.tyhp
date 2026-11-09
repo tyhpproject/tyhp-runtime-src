@@ -1,0 +1,49 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+class SaveScenarios {
+    public static function originalTitle(SaveContext $context, SavePost $post): mixed {
+        return $context->entry<SavePost>($post)->getOriginal(fn (SavePost $model) => $model->title);
+    }
+
+    public static function titleDirty(SaveContext $context, SavePost $post): bool {
+        return $context->entry<SavePost>($post)->isDirty(fn (SavePost $model) => $model->title);
+    }
+
+    public static function slugDirty(SaveContext $context, SavePost $post): bool {
+        return $context->entry<SavePost>($post)->isDirty(fn (SavePost $model) => $model->slug);
+    }
+
+    public static function untrackedFirst(SaveContext $context): ?SavePost {
+        return $context->posts->untracked()->orderBy(fn (SavePost $post) => $post->id)->first();
+    }
+
+    /**
+     * @return array<int, SavePost>
+     */
+    public static function duplicated(SaveContext $context): array<int, SavePost> {
+        return $context->posts
+            ->fromRaw('(select * from save_posts where id = 1 union all select * from save_posts where id = 1) as save_posts')
+            ->untrackedWithIdentity()
+            ->all();
+    }
+
+    public static function sameTracked(SaveContext $context, int $id): bool {
+        ?SavePost $first = $context->posts->find($id);
+        ?SavePost $again = $context->posts->where(fn (SavePost $post) => $post->id === $id)->first();
+
+        return $first !== null && $first === $again;
+    }
+
+    public static function transactionValue(SaveContext $context): int {
+        return $context->transaction<int>(fn (): int => 4, attempts: 1);
+    }
+
+    /**
+     * @return array<int, \stdClass>
+     */
+    public static function rawBlogs(SaveContext $context): array<int, \stdClass> {
+        return $context->select<\stdClass>('select name from save_blogs order by name');
+    }
+}

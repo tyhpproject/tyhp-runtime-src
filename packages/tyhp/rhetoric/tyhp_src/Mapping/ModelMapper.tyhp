@@ -1,0 +1,191 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+final class ModelMapper<T> {
+    public function __construct(
+        private ModelConfig $config,
+    ) {}
+
+    public function table(string $name): ModelMapper<T> {
+        $this->config->table = $name;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function comment(string $text): ModelMapper<T> {
+        $this->config->comment = $text;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function keyless(): ModelMapper<T> {
+        array<int, string> $none = [];
+        $this->config->keyProperties = $none;
+        $this->config->keyless = true;
+        $this->config->readOnly = true;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function key<TValue>(\Tyhp\PropertyPath<callable(T): TValue> ...$properties): ModelMapper<T> {
+        $this->config->keyless = false;
+        $this->config->keyProperties = $this->names($properties);
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function fromView(string $name): ModelMapper<T> {
+        array<int, string> $none = [];
+        $this->config->view = $name;
+        $this->config->table = $name;
+        $this->config->keyProperties = $none;
+        $this->config->keyless = true;
+        $this->config->readOnly = true;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function softDeletes(): ModelMapper<T> {
+        $this->config->softDeletes = true;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function addGlobalScope(\Tyhp\Expression<callable(T): bool> $predicate): ModelMapper<T> {
+        $this->config->globalScopes[] = $predicate;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function discriminator<TValue>(\Tyhp\PropertyPath<callable(T): TValue> $property): ModelMapper<T> {
+        $this->config->discriminatorProperty = Paths::name($property);
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function discriminatorValue(string $value): ModelMapper<T> {
+        $this->config->discriminatorValue = $value;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function observedBy(__ClassName $observer): ModelMapper<T> {
+        $this->config->observers[] = $observer;
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function extraColumn<TValue>(string $name): ColumnMapper {
+        if (!isset($this->config->extras[$name])) {
+            ColumnConfig $column = new ColumnConfig();
+            $column->valueType = typeof(TValue);
+            $this->config->extras[$name] = $column;
+        }
+
+        return new ColumnMapper($this->config->extras[$name]);
+    }
+
+    public function alternateKey<TValue>(\Tyhp\PropertyPath<callable(T): TValue> ...$properties): ModelMapper<T> {
+        $this->config->alternateKeys[] = $this->names($properties);
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function hasIndex<TValue>(\Tyhp\PropertyPath<callable(T): TValue> ...$properties): IndexMapper {
+        IndexConfig $index = new IndexConfig($this->names($properties));
+        $this->config->indexes[] = $index;
+
+        return new IndexMapper($index);
+    }
+
+    public function seed(array<string, mixed> ...$rows): ModelMapper<T> {
+        foreach ($rows as $row) {
+            $this->config->seeds[] = $row;
+        }
+
+        return new ModelMapper<T>($this->config);
+    }
+
+    public function column<TValue>(\Tyhp\PropertyPath<callable(T): TValue> $property): ColumnMapper {
+        string $name = Paths::name($property);
+        if (!isset($this->config->columns[$name])) {
+            $this->config->columns[$name] = new ColumnConfig();
+        }
+
+        return new ColumnMapper($this->config->columns[$name]);
+    }
+
+    public function belongsTo<TRelated>(
+        \Tyhp\PropertyPath<callable(T): ?TRelated> $navigation,
+    ): BelongsToMapper<T, TRelated> {
+        return new BelongsToMapper<T, TRelated>(
+            $this->config,
+            $this->record($navigation, RelationKind::BelongsTo, false),
+        );
+    }
+
+    public function hasOne<TRelated>(
+        \Tyhp\PropertyPath<callable(T): ?TRelated> $navigation,
+    ): HasMapper<T, TRelated> {
+        return new HasMapper<T, TRelated>(
+            $this->config,
+            $this->record($navigation, RelationKind::HasOne, false),
+        );
+    }
+
+    public function hasMany<TRelated>(
+        \Tyhp\PropertyPath<callable(T): array<TRelated>> $navigation,
+    ): HasMapper<T, TRelated> {
+        return new HasMapper<T, TRelated>(
+            $this->config,
+            $this->record($navigation, RelationKind::HasMany, true),
+        );
+    }
+
+    public function belongsToMany<TRelated>(
+        \Tyhp\PropertyPath<callable(T): array<TRelated>> $navigation,
+    ): HasMapper<T, TRelated> {
+        return new HasMapper<T, TRelated>(
+            $this->config,
+            $this->record($navigation, RelationKind::BelongsToMany, true),
+        );
+    }
+
+    private function record<TCallable extends callable>(
+        \Tyhp\PropertyPath<TCallable> $navigation,
+        RelationKind $kind,
+        bool $collection,
+    ): string {
+        string $property = Paths::name($navigation);
+        __ClassName $related = Paths::relatedClass($navigation, $collection);
+        ?RelationConfig $existing = $this->config->relations[$property] ?? null;
+        $this->config->relations[$property] = new RelationConfig(
+            $property,
+            $kind,
+            $related,
+            $existing?->inverseProperty,
+            $existing?->foreignKeyProperty,
+            $existing?->onDelete,
+            $existing?->pivotClass,
+            $existing?->pivotTable,
+            $existing?->pivotForeignKey,
+            $existing?->pivotRelatedKey,
+            $existing?->referencedColumn,
+        );
+
+        return $property;
+    }
+
+    private function names<TCallable extends callable>(array<int, \Tyhp\PropertyPath<TCallable>> $properties): array<int, string> {
+        if ($properties === []) {
+            throw new \InvalidArgumentException('A property path is required.');
+        }
+        array<int, string> $names = [];
+        foreach ($properties as $property) {
+            $names[] = Paths::name($property);
+        }
+
+        return $names;
+    }
+}

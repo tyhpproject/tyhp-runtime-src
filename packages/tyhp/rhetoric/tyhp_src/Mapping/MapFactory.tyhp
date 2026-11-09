@@ -1,0 +1,1485 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+use Tyhp\Rhetoric\Attributes\AsJson as AsJsonAttribute;
+use Tyhp\Rhetoric\Attributes\Cast as CastAttribute;
+use Tyhp\Rhetoric\Attributes\Column as ColumnAttribute;
+use Tyhp\Rhetoric\Attributes\ConcurrencyCheck as ConcurrencyCheckAttribute;
+use Tyhp\Rhetoric\Attributes\Discriminator as DiscriminatorAttribute;
+use Tyhp\Rhetoric\Attributes\DiscriminatorValue as DiscriminatorValueAttribute;
+use Tyhp\Rhetoric\Attributes\Embedded as EmbeddedAttribute;
+use Tyhp\Rhetoric\Attributes\Comment as CommentAttribute;
+use Tyhp\Rhetoric\Attributes\DefaultValue as DefaultValueAttribute;
+use Tyhp\Rhetoric\Attributes\Deferred as DeferredAttribute;
+use Tyhp\Rhetoric\Attributes\ForeignKey as ForeignKeyAttribute;
+use Tyhp\Rhetoric\Attributes\Generated as GeneratedAttribute;
+use Tyhp\Rhetoric\Attributes\Index as IndexAttribute;
+use Tyhp\Rhetoric\Attributes\InverseOf as InverseOfAttribute;
+use Tyhp\Rhetoric\Attributes\Key as KeyAttribute;
+use Tyhp\Rhetoric\Attributes\Keyless as KeylessAttribute;
+use Tyhp\Rhetoric\Attributes\MaxLength as MaxLengthAttribute;
+use Tyhp\Rhetoric\Attributes\NotMapped as NotMappedAttribute;
+use Tyhp\Rhetoric\Attributes\ObservedBy as ObservedByAttribute;
+use Tyhp\Rhetoric\Attributes\Precision as PrecisionAttribute;
+use Tyhp\Rhetoric\Attributes\RowVersion as RowVersionAttribute;
+use Tyhp\Rhetoric\Attributes\SoftDeletes as SoftDeletesAttribute;
+use Tyhp\Rhetoric\Attributes\Table as TableAttribute;
+use Tyhp\Rhetoric\Attributes\Text as TextAttribute;
+use Tyhp\Rhetoric\Attributes\Timestamps as TimestampsAttribute;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Observers\QueryInterceptor;
+use Tyhp\Rhetoric\OnDelete;
+use Tyhp\Rhetoric\Table;
+
+final class MapFactory {
+    private array<string, array<string, PropertyFacts>> $factsCache = [];
+    private array<string, ModelDraft> $drafts = [];
+
+    public function __construct(
+        private __ClassName $contextClass,
+        private Conventions $conventions,
+        private array<string, ModelConfig> $fluent,
+        private array<int, QueryInterceptor> $interceptors = [],
+    ) {}
+
+    public static function build(
+        Context $context,
+        Conventions $conventions,
+        array<string, ModelConfig> $fluent,
+        array<int, QueryInterceptor> $interceptors = [],
+    ): ContextMap {
+        MapFactory $factory = new MapFactory($context::class, $conventions, $fluent, $interceptors);
+
+        return $factory->create();
+    }
+
+    private function create(): ContextMap {
+        $this->draftAll($this->seedClasses());
+        $this->applyAttributes();
+        $this->applyFluent();
+        $this->applyEmbedded();
+        $this->applySoftDeletes();
+        $this->shareHierarchy();
+        $this->markConventionGenerated();
+        $this->linkInverses();
+        $this->addForeignKeys();
+
+        return $this->freeze();
+    }
+
+    private function seedClasses(): array<int, __ClassName> {
+        array<string, __ClassName> $classes = [];
+        foreach ($this->facts($this->contextClass) as $facts) {
+            ?__ClassName $model = $this->tableModel($facts->type);
+            if ($model !== null) {
+                $classes[$model] = $model;
+            }
+        }
+        foreach ($this->fluent as $config) {
+            $classes[$config->class] = $config->class;
+        }
+        array<int, __ClassName> $list = [];
+        foreach ($classes as $class) {
+            $list[] = $class;
+        }
+
+        return $list;
+    }
+
+    private function draftAll(array<int, __ClassName> $seed): void {
+        array<string, bool> $seen = [];
+        array<int, __ClassName> $queue = [];
+        foreach ($seed as $class) {
+            if (!isset($seen[$class])) {
+                $seen[$class] = true;
+                $queue[] = $class;
+            }
+        }
+        int $index = 0;
+        while ($index < \count($queue)) {
+            __ClassName $class = $queue[$index];
+            $index++;
+            ModelDraft $draft = $this->conventionDraft($class);
+            $this->drafts[$class] = $draft;
+            foreach ($draft->relations as $relation) {
+                if (!isset($seen[$relation->relatedClass])) {
+                    $seen[$relation->relatedClass] = true;
+                    $queue[] = $relation->relatedClass;
+                }
+            }
+        }
+    }
+
+    private function conventionDraft(__ClassName $class): ModelDraft {
+        ModelDraft $draft = new ModelDraft($class);
+        $draft->table = $this->conventions->tableName($class);
+        $draft->facts = $this->facts($class);
+        foreach ($draft->facts as $facts) {
+            if ($facts->virtual || $this->hasAttribute($facts, NotMappedAttribute::class)) {
+                continue;
+            }
+            // A cast stores the value in one column, so a property with #[Cast] or a fluent cast is a column even when
+            // its type is a class. Skipping the relation also keeps that class from being drafted as a model.
+            ?RelationDraft $relation = $this->storedAsColumn($class, $facts)
+                ? null
+                : $this->conventionRelation($class, $facts);
+            if ($relation !== null) {
+                $draft->relations[$facts->name] = $relation;
+                continue;
+            }
+            $draft->columns[$facts->name] = $this->conventionColumn($facts);
+        }
+        $draft->keyProperties = $this->conventionKey($class, $draft);
+
+        return $draft;
+    }
+
+    private function hasFluentCast(__ClassName $class, string $property): bool {
+        ?ModelConfig $config = $this->fluent[$class] ?? null;
+        if ($config === null || !isset($config->columns[$property])) {
+            return false;
+        }
+
+        return $config->columns[$property]->castClass !== null;
+    }
+
+    private function storedAsColumn(__ClassName $class, PropertyFacts $facts): bool {
+        if ($this->hasAttribute($facts, CastAttribute::class) || $this->hasAttribute($facts, EmbeddedAttribute::class) || $this->hasAttribute($facts, AsJsonAttribute::class)) {
+            return true;
+        }
+        ?ModelConfig $config = $this->fluent[$class] ?? null;
+        if ($config === null || !isset($config->columns[$facts->name])) {
+            return false;
+        }
+        ColumnConfig $column = $config->columns[$facts->name];
+
+        return $column->castClass !== null || $column->embedded || $column->asJson;
+    }
+
+    private function conventionKey(__ClassName $class, ModelDraft $draft): ?array<int, string> {
+        if (isset($draft->columns['id'])) {
+            array<int, string> $id = ['id'];
+
+            return $id;
+        }
+        string $named = $this->conventions->modelKeyProperty($class);
+        if (isset($draft->columns[$named])) {
+            array<int, string> $key = [$named];
+
+            return $key;
+        }
+
+        return null;
+    }
+
+    // The `id` convention generates its value only while `id` is still the key after attributes and the fluent mapper
+    // have run, and only when neither of them set the flag explicitly.
+    private function markConventionGenerated(): void {
+        foreach ($this->drafts as $draft) {
+            ?array<int, string> $key = $draft->keyProperties;
+            if ($key === null || \count($key) !== 1 || ($key[0] ?? null) !== 'id') {
+                continue;
+            }
+            if (!isset($draft->columns['id'])) {
+                continue;
+            }
+            ColumnDraft $column = $draft->columns['id'];
+            if (!$column->generatedSet && $column->type === 'int' && !$column->nullable) {
+                $column->generated = true;
+            }
+        }
+    }
+
+    private function conventionColumn(PropertyFacts $facts): ColumnDraft {
+        return new ColumnDraft(
+            $facts->name,
+            $this->conventions->columnName($facts->name),
+            (string)$facts->type->asNonNullable(),
+            $facts->type->isNullable(),
+        );
+    }
+
+    private function conventionRelation(__ClassName $owner, PropertyFacts $facts): ?RelationDraft {
+        \Tyhp\Type $type = $facts->type->asNonNullable();
+        ?\Tyhp\Type $element = $type->elementType();
+        if ($element === null && $this->isLazyCollection($type)) {
+            $element = $type->typeArgument(0);
+        }
+        if ($element !== null && ($type->getName() === 'array' || $type->getName() === 'iterable' || $this->isLazyCollection($type))) {
+            \Tyhp\Type $elementType = $element->asNonNullable();
+            if ($elementType->getKind() !== 'class' && $elementType->getKind() !== 'generic') {
+                return null;
+            }
+            ?string $elementName = $elementType->getName();
+            if ($elementName === null) {
+                return null;
+            }
+            string $relatedName = \ltrim($elementName, '\\');
+            if ($relatedName === 'mixed' || $relatedName === 'array' || $this->isValueClass($relatedName)) {
+                return null;
+            }
+            __ClassName $related = $this->requireClass($relatedName);
+            string $ownerKey = $this->conventions->modelKeyProperty($owner);
+            if ($this->hasProperty($related, $ownerKey)) {
+                return new RelationDraft($facts->name, RelationKind::HasMany, $related, foreignKeyProperty: $ownerKey);
+            }
+            ?string $collectionForeignKey = $this->belongsToForeignKey($related, $owner);
+            if ($collectionForeignKey !== null) {
+                return new RelationDraft($facts->name, RelationKind::HasMany, $related, foreignKeyProperty: $collectionForeignKey);
+            }
+
+            return new RelationDraft(
+                $facts->name,
+                RelationKind::BelongsToMany,
+                $related,
+                pivotTable: $this->conventions->pivotTable($owner, $related),
+            );
+        }
+
+        ?string $className = $type->getName();
+        if ($className === null || ($type->getKind() !== 'class' && $type->getKind() !== 'generic')) {
+            return null;
+        }
+        string $relatedName = \ltrim($className, '\\');
+        if ($relatedName === 'array' || $relatedName === 'iterable' || $relatedName === 'mixed' || $relatedName === Table::class || $this->isValueClass($relatedName)) {
+            return null;
+        }
+        __ClassName $related = $this->requireClass($relatedName);
+        string $foreignKey = $this->conventions->foreignKeyProperty($facts->name);
+        if ($this->hasProperty($owner, $foreignKey)) {
+            return new RelationDraft($facts->name, RelationKind::BelongsTo, $related, foreignKeyProperty: $foreignKey);
+        }
+        string $inverseKey = $this->conventions->modelKeyProperty($owner);
+        if ($this->hasProperty($related, $inverseKey)) {
+            return new RelationDraft($facts->name, RelationKind::HasOne, $related, foreignKeyProperty: $inverseKey);
+        }
+
+        return new RelationDraft($facts->name, RelationKind::BelongsTo, $related, foreignKeyProperty: $foreignKey);
+    }
+
+    private function belongsToForeignKey(__ClassName $related, __ClassName $owner): ?string {
+        foreach ($this->facts($related) as $facts) {
+            if ($facts->virtual) {
+                continue;
+            }
+            \Tyhp\Type $type = $facts->type->asNonNullable();
+            if ($type->getKind() !== 'class' && $type->getKind() !== 'generic') {
+                continue;
+            }
+            ?string $name = $type->getName();
+            if ($name === null || \ltrim($name, '\\') !== \ltrim($owner, '\\')) {
+                continue;
+            }
+            string $foreignKey = $this->conventions->foreignKeyProperty($facts->name);
+            if ($this->hasProperty($related, $foreignKey)) {
+                return $foreignKey;
+            }
+        }
+
+        return null;
+    }
+
+    private function applyAttributes(): void {
+        foreach ($this->drafts as $draft) {
+            \ReflectionClass $reflection = new \ReflectionClass($draft->class);
+            foreach ($reflection->getAttributes(TableAttribute::class) as $attribute) {
+                object $instance = $attribute->newInstance();
+                if ($instance instanceof TableAttribute) {
+                    $draft->table = $instance->name;
+                    $draft->tableExplicit = true;
+                }
+            }
+            foreach ($reflection->getAttributes(CommentAttribute::class) as $attribute) {
+                object $instance = $attribute->newInstance();
+                if ($instance instanceof CommentAttribute) {
+                    $draft->comment = $instance->text;
+                }
+            }
+            if ($reflection->getAttributes(TimestampsAttribute::class) !== []) {
+                $draft->timestamps = true;
+            }
+            array<int, string> $keys = [];
+            foreach ($draft->facts as $facts) {
+                $this->applyPropertyAttributes($draft, $facts, $keys);
+            }
+            if ($keys !== []) {
+                $draft->keyProperties = $keys;
+            }
+            foreach ($reflection->getAttributes(IndexAttribute::class) as $attribute) {
+                object $instance = $attribute->newInstance();
+                if ($instance instanceof IndexAttribute && $instance->properties !== []) {
+                    $draft->indexes[] = new IndexConfig($instance->properties, $instance->unique, $instance->name);
+                }
+            }
+            if ($reflection->getAttributes(KeylessAttribute::class) !== []) {
+                array<int, string> $none = [];
+                $draft->keyProperties = $none;
+                $draft->keyless = true;
+                $draft->readOnly = true;
+            }
+            if ($reflection->getAttributes(SoftDeletesAttribute::class) !== []) {
+                $draft->softDeletes = true;
+            }
+            foreach ($reflection->getAttributes(DiscriminatorAttribute::class) as $attribute) {
+                object $instance = $attribute->newInstance();
+                if ($instance instanceof DiscriminatorAttribute && $instance->property !== '') {
+                    $draft->discriminatorProperty = $instance->property;
+                }
+            }
+            foreach ($reflection->getAttributes(DiscriminatorValueAttribute::class) as $attribute) {
+                object $instance = $attribute->newInstance();
+                if ($instance instanceof DiscriminatorValueAttribute) {
+                    $draft->discriminatorValue = $instance->value;
+                }
+            }
+            foreach ($reflection->getAttributes(ObservedByAttribute::class) as $attribute) {
+                object $instance = $attribute->newInstance();
+                if ($instance instanceof ObservedByAttribute) {
+                    $draft->observers[] = $instance->observer;
+                }
+            }
+        }
+    }
+
+    private function applyPropertyAttributes(ModelDraft $draft, PropertyFacts $facts, array<int, string> &$keys): void {
+        if ($facts->reflection === null) {
+            return;
+        }
+        if ($this->hasAttribute($facts, NotMappedAttribute::class)) {
+            unset($draft->columns[$facts->name]);
+            unset($draft->relations[$facts->name]);
+
+            return;
+        }
+        if ($this->hasAttribute($facts, KeyAttribute::class)) {
+            $keys[] = $facts->name;
+        }
+        ?object $columnName = $this->attribute($facts, ColumnAttribute::class);
+        if ($columnName instanceof ColumnAttribute && isset($draft->columns[$facts->name])) {
+            if ($columnName->name !== '') {
+                $draft->columns[$facts->name]->name = $columnName->name;
+            }
+            if ($columnName->type !== null && $columnName->type !== '') {
+                $draft->columns[$facts->name]->columnType = $columnName->type;
+            }
+        }
+        ?object $maxLength = $this->attribute($facts, MaxLengthAttribute::class);
+        if ($maxLength instanceof MaxLengthAttribute && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->maxLength = $maxLength->length;
+        }
+        ?object $precision = $this->attribute($facts, PrecisionAttribute::class);
+        if ($precision instanceof PrecisionAttribute && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->precision = $precision->precision;
+            $draft->columns[$facts->name]->scale = $precision->scale;
+        }
+        ?object $generated = $this->attribute($facts, GeneratedAttribute::class);
+        if ($generated instanceof GeneratedAttribute && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->generated = $generated->value;
+            $draft->columns[$facts->name]->generatedSet = true;
+        }
+        ?object $comment = $this->attribute($facts, CommentAttribute::class);
+        if ($comment instanceof CommentAttribute && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->comment = $comment->text;
+        }
+        if ($this->hasAttribute($facts, TextAttribute::class) && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->text = true;
+        }
+        ?object $defaultValue = $this->attribute($facts, DefaultValueAttribute::class);
+        if ($defaultValue instanceof DefaultValueAttribute && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->hasDefault = true;
+            $draft->columns[$facts->name]->default = $defaultValue->value;
+        }
+        ?object $cast = $this->attribute($facts, CastAttribute::class);
+        if ($cast instanceof CastAttribute && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->castClass = $cast->cast;
+        }
+        if ($this->hasAttribute($facts, EmbeddedAttribute::class)) {
+            $draft->embedded[$facts->name] = true;
+        }
+        if ($this->hasAttribute($facts, AsJsonAttribute::class)) {
+            $draft->asJson[$facts->name] = true;
+        }
+        if ($this->hasAttribute($facts, ConcurrencyCheckAttribute::class) && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->concurrency = true;
+        }
+        if ($this->hasAttribute($facts, RowVersionAttribute::class) && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->concurrency = true;
+            $draft->columns[$facts->name]->rowVersion = true;
+        }
+        if ($this->hasAttribute($facts, DeferredAttribute::class) && isset($draft->columns[$facts->name])) {
+            $draft->columns[$facts->name]->deferred = true;
+        }
+        foreach ($facts->reflection->getAttributes(IndexAttribute::class) as $attribute) {
+            object $instance = $attribute->newInstance();
+            if (!($instance instanceof IndexAttribute)) {
+                continue;
+            }
+            array<int, string> $properties = $instance->propertyNames();
+            if ($properties === []) {
+                $properties = [$facts->name];
+            }
+            $draft->indexes[] = new IndexConfig($properties, $instance->unique, $instance->name);
+        }
+        ?object $inverse = $this->attribute($facts, InverseOfAttribute::class);
+        if ($inverse instanceof InverseOfAttribute && isset($draft->relations[$facts->name])) {
+            $draft->relations[$facts->name]->inverseProperty = $inverse->propertyName();
+        }
+        ?object $foreignKey = $this->attribute($facts, ForeignKeyAttribute::class);
+        if ($foreignKey instanceof ForeignKeyAttribute) {
+            $this->applyForeignKeyAttribute($draft, $facts->name, $foreignKey);
+        }
+    }
+
+    private function applyForeignKeyAttribute(ModelDraft $draft, string $property, ForeignKeyAttribute $foreignKey): void {
+        __ClassName $referenced = $foreignKey->target;
+        ?RelationDraft $relation = $this->relationForForeignKey($draft, $property, $referenced);
+        if ($relation !== null) {
+            $relation->onDelete = $foreignKey->onDelete;
+            $relation->referencedColumn = $foreignKey->referencedColumn;
+
+            return;
+        }
+        $draft->foreignKeys[] = new ForeignKeyDraft(
+            $property,
+            $referenced,
+            $foreignKey->referencedColumn,
+            $foreignKey->onDelete,
+        );
+    }
+
+    private function relationForForeignKey(ModelDraft $draft, string $property, __ClassName $referencedClass): ?RelationDraft {
+        foreach ($draft->relations as $relation) {
+            if ($relation->foreignKeyProperty === $property && $relation->relatedClass === $referencedClass) {
+                return $relation;
+            }
+        }
+        foreach ($draft->relations as $relation) {
+            if ($relation->kind === RelationKind::BelongsTo && $relation->relatedClass === $referencedClass) {
+                $relation->foreignKeyProperty = $property;
+
+                return $relation;
+            }
+        }
+
+        return null;
+    }
+
+    private function applyFluent(): void {
+        foreach ($this->fluent as $config) {
+            __ClassName $class = $config->class;
+            if (!isset($this->drafts[$class])) {
+                $this->drafts[$class] = $this->conventionDraft($class);
+            }
+            ModelDraft $draft = $this->drafts[$class];
+            if ($config->table !== null) {
+                $draft->table = $config->table;
+                $draft->tableExplicit = true;
+            }
+            if ($config->view !== null) {
+                $draft->view = true;
+                $draft->table = $config->view;
+                $draft->tableExplicit = true;
+                $draft->keyless = true;
+                $draft->readOnly = true;
+                array<int, string> $none = [];
+                $draft->keyProperties = $none;
+            }
+            if ($config->comment !== null) {
+                $draft->comment = $config->comment;
+            }
+            if ($config->keyless) {
+                $draft->keyless = true;
+                $draft->readOnly = true;
+            }
+            if ($config->readOnly) {
+                $draft->readOnly = true;
+            }
+            if ($config->keyProperties !== null && $config->view === null) {
+                $draft->keyProperties = $config->keyProperties;
+            }
+            if ($config->softDeletes) {
+                $draft->softDeletes = true;
+            }
+            foreach ($config->globalScopes as $scope) {
+                $draft->globalScopes[] = $scope;
+            }
+            if ($config->discriminatorProperty !== null) {
+                $draft->discriminatorProperty = $config->discriminatorProperty;
+            }
+            if ($config->discriminatorValue !== null) {
+                $draft->discriminatorValue = $config->discriminatorValue;
+            }
+            foreach ($config->observers as $observer) {
+                $draft->observers[] = $observer;
+            }
+            foreach ($config->extras as $name => $extra) {
+                $this->applyExtra($draft, $name, $extra);
+            }
+            foreach ($config->alternateKeys as $alternate) {
+                $draft->alternateKeys[] = $alternate;
+            }
+            foreach ($config->indexes as $index) {
+                $this->replaceIndex($draft, $index);
+            }
+            foreach ($config->columns as $property => $column) {
+                $this->applyFluentColumn($draft, $property, $column);
+            }
+            foreach ($config->relations as $relation) {
+                $this->applyFluentRelation($draft, $relation);
+            }
+            foreach ($config->seeds as $row) {
+                $draft->seeds[] = $row;
+            }
+        }
+    }
+
+    private function replaceIndex(ModelDraft $draft, IndexConfig $index): void {
+        array<int, IndexConfig> $kept = [];
+        foreach ($draft->indexes as $existing) {
+            if ($existing->properties !== $index->properties) {
+                $kept[] = $existing;
+            }
+        }
+        $kept[] = $index;
+        $draft->indexes = $kept;
+    }
+
+    private function applyFluentColumn(ModelDraft $draft, string $property, ColumnConfig $config): void {
+        if (!isset($draft->facts[$property])) {
+            throw new \InvalidArgumentException($draft->class . ' has no property ' . $property . '.');
+        }
+        if ($draft->facts[$property]->virtual) {
+            throw new \InvalidArgumentException($draft->class . '::$' . $property . ' is virtual and is not mapped.');
+        }
+        if (!isset($draft->columns[$property])) {
+            $draft->columns[$property] = $this->conventionColumn($draft->facts[$property]);
+            unset($draft->relations[$property]);
+        }
+        ColumnDraft $column = $draft->columns[$property];
+        if ($config->name !== null) {
+            $column->name = $config->name;
+        }
+        if ($config->maxLength !== null) {
+            $column->maxLength = $config->maxLength;
+        }
+        if ($config->precision !== null) {
+            $column->precision = $config->precision;
+            $column->scale = $config->scale ?? 0;
+        }
+        if ($config->generated !== null) {
+            $column->generated = $config->generated;
+            $column->generatedSet = true;
+        }
+        if ($config->comment !== null) {
+            $column->comment = $config->comment;
+        }
+        if ($config->blueprintType !== null) {
+            $column->columnType = $config->blueprintType;
+        }
+        if ($config->text === true) {
+            $column->text = true;
+        }
+        if ($config->hasDefault === true) {
+            $column->hasDefault = true;
+            $column->default = $config->default;
+        }
+        if ($config->castClass !== null) {
+            $column->castClass = $config->castClass;
+        }
+        if ($config->asJson) {
+            $draft->asJson[$property] = true;
+        }
+        if ($config->embedded) {
+            $draft->embedded[$property] = true;
+        }
+        if ($config->concurrency) {
+            $column->concurrency = true;
+        }
+        if ($config->rowVersion) {
+            $column->concurrency = true;
+            $column->rowVersion = true;
+        }
+    }
+
+    private function applyFluentRelation(ModelDraft $draft, RelationConfig $config): void {
+        if ($config->relatedClass === null) {
+            throw new \InvalidArgumentException($draft->class . '::$' . $config->property . ' has no related model.');
+        }
+        __ClassName $related = $config->relatedClass;
+        if (!isset($this->drafts[$related])) {
+            $this->drafts[$related] = $this->conventionDraft($related);
+        }
+        if (!isset($draft->relations[$config->property])) {
+            $draft->relations[$config->property] = new RelationDraft($config->property, $config->kind, $related);
+            unset($draft->columns[$config->property]);
+        }
+        RelationDraft $relation = $draft->relations[$config->property];
+        $relation->kind = $config->kind;
+        $relation->relatedClass = $related;
+        if ($config->inverseProperty !== null) {
+            $relation->inverseProperty = $config->inverseProperty;
+        }
+        if ($config->foreignKeyProperty !== null) {
+            $relation->foreignKeyProperty = $config->foreignKeyProperty;
+        }
+        if ($config->onDelete !== null) {
+            $relation->onDelete = $config->onDelete;
+            $relation->onDeleteFluent = true;
+        }
+        if ($config->pivotClass !== null) {
+            $relation->pivotClass = $config->pivotClass;
+        }
+        if ($config->pivotTable !== null) {
+            $relation->pivotTable = $config->pivotTable;
+        }
+        if ($config->pivotForeignKey !== null) {
+            $relation->pivotForeignKey = $config->pivotForeignKey;
+        }
+        if ($config->pivotRelatedKey !== null) {
+            $relation->pivotRelatedKey = $config->pivotRelatedKey;
+        }
+        if ($config->referencedColumn !== null) {
+            $relation->referencedColumn = $config->referencedColumn;
+        }
+    }
+
+    private function linkInverses(): void {
+        foreach ($this->drafts as $model) {
+            foreach ($model->relations as $relation) {
+                if ($relation->inverseProperty !== null) {
+                    $this->pointBack($model, $relation);
+                    continue;
+                }
+                ?RelationDraft $other = $this->uniqueInverse($model, $relation);
+                if ($other === null) {
+                    continue;
+                }
+                $relation->inverseProperty = $other->property;
+                if ($other->inverseProperty === null) {
+                    $other->inverseProperty = $relation->property;
+                }
+            }
+        }
+    }
+
+    private function pointBack(ModelDraft $model, RelationDraft $relation): void {
+        string $inverse = $relation->inverseProperty ?? '';
+        if ($inverse === '' || !isset($this->drafts[$relation->relatedClass])) {
+            return;
+        }
+        ModelDraft $related = $this->drafts[$relation->relatedClass];
+        if (!isset($related->relations[$inverse])) {
+            return;
+        }
+        if ($related->relations[$inverse]->inverseProperty === null) {
+            $related->relations[$inverse]->inverseProperty = $relation->property;
+        }
+        (void)$model;
+    }
+
+    // The inverse is inferred only when it is unambiguous from both sides. Two relations that could pair with the
+    // same counterpart leave every one of them without an inverse, whatever order the models are visited in.
+    private function uniqueInverse(ModelDraft $model, RelationDraft $relation): ?RelationDraft {
+        array<int, RelationDraft> $matches = $this->inverseCandidates($model, $relation);
+        foreach ($matches as $match) {
+            if ($match->inverseProperty === $relation->property) {
+                return $match;
+            }
+        }
+        array<int, RelationDraft> $open = [];
+        foreach ($matches as $match) {
+            if ($match->inverseProperty === null) {
+                $open[] = $match;
+            }
+        }
+        if (\count($open) !== 1) {
+            return null;
+        }
+        RelationDraft $other = $open[0];
+        if (!isset($this->drafts[$relation->relatedClass])) {
+            return null;
+        }
+        if (\count($this->inverseCandidates($this->drafts[$relation->relatedClass], $other)) !== 1) {
+            return null;
+        }
+
+        return $other;
+    }
+
+    private function inverseCandidates(ModelDraft $model, RelationDraft $relation): array<int, RelationDraft> {
+        array<int, RelationDraft> $matches = [];
+        if (!isset($this->drafts[$relation->relatedClass])) {
+            return $matches;
+        }
+        foreach ($this->drafts[$relation->relatedClass]->relations as $candidate) {
+            if ($candidate->relatedClass !== $model->class || !$this->kindsPair($relation->kind, $candidate->kind)) {
+                continue;
+            }
+            if ($relation->foreignKeyProperty !== null
+                && $candidate->foreignKeyProperty !== null
+                && $relation->kind !== RelationKind::BelongsToMany
+                && $relation->foreignKeyProperty !== $candidate->foreignKeyProperty) {
+                continue;
+            }
+            if ($candidate->inverseProperty !== null && $candidate->inverseProperty !== $relation->property) {
+                continue;
+            }
+            $matches[] = $candidate;
+        }
+
+        return $matches;
+    }
+
+    private function kindsPair(RelationKind $left, RelationKind $right): bool {
+        if ($left === RelationKind::BelongsToMany && $right === RelationKind::BelongsToMany) {
+            return true;
+        }
+        if ($left === RelationKind::BelongsTo && ($right === RelationKind::HasMany || $right === RelationKind::HasOne)) {
+            return true;
+        }
+        if (($left === RelationKind::HasMany || $left === RelationKind::HasOne) && $right === RelationKind::BelongsTo) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function addForeignKeys(): void {
+        foreach ($this->drafts as $draft) {
+            // Foreign keys declared by attribute without a navigation. A fluent onDelete on the matching
+            // hasOne/hasMany wins over the attribute.
+            foreach ($draft->foreignKeys as $foreignKey) {
+                ?OnDelete $declaredPaired = $this->fluentHasOnDelete($draft->class, $foreignKey->property, $foreignKey->referencedClass);
+                if ($declaredPaired !== null) {
+                    $foreignKey->onDelete = $declaredPaired;
+                }
+            }
+            foreach ($draft->relations as $relation) {
+                if ($relation->kind !== RelationKind::BelongsTo || $relation->foreignKeyProperty === null) {
+                    continue;
+                }
+                OnDelete $onDelete = $relation->onDelete ?? OnDelete::Restrict;
+                if (!$relation->onDeleteFluent) {
+                    ?OnDelete $paired = $this->fluentHasOnDelete(
+                        $draft->class,
+                        $relation->foreignKeyProperty,
+                        $relation->relatedClass,
+                    );
+                    if ($paired !== null) {
+                        $onDelete = $paired;
+                    }
+                }
+                $this->addForeignKey(
+                    $draft,
+                    $relation->foreignKeyProperty,
+                    $relation->relatedClass,
+                    $relation->referencedColumn,
+                    $onDelete,
+                );
+            }
+        }
+        foreach ($this->drafts as $draft) {
+            foreach ($draft->relations as $relation) {
+                if (($relation->kind !== RelationKind::HasMany && $relation->kind !== RelationKind::HasOne) || $relation->foreignKeyProperty === null) {
+                    continue;
+                }
+                if (!isset($this->drafts[$relation->relatedClass])) {
+                    continue;
+                }
+                ModelDraft $child = $this->drafts[$relation->relatedClass];
+                if ($this->hasForeignKey($child, $relation->foreignKeyProperty)) {
+                    continue;
+                }
+                $this->addForeignKey(
+                    $child,
+                    $relation->foreignKeyProperty,
+                    $draft->class,
+                    null,
+                    $relation->onDelete ?? OnDelete::Restrict,
+                );
+            }
+        }
+    }
+
+    private function fluentHasOnDelete(__ClassName $childClass, string $property, __ClassName $parentClass): ?OnDelete {
+        if (!isset($this->drafts[$parentClass])) {
+            return null;
+        }
+        foreach ($this->drafts[$parentClass]->relations as $relation) {
+            if ($relation->kind !== RelationKind::HasMany && $relation->kind !== RelationKind::HasOne) {
+                continue;
+            }
+            if ($relation->relatedClass !== $childClass || $relation->foreignKeyProperty !== $property) {
+                continue;
+            }
+            if ($relation->onDeleteFluent && $relation->onDelete !== null) {
+                return $relation->onDelete;
+            }
+        }
+
+        return null;
+    }
+
+    private function foreignKeyOnDelete(ModelDraft $draft, RelationDraft $relation): OnDelete {
+        OnDelete $fallback = $relation->onDelete ?? OnDelete::Restrict;
+        ?string $property = $relation->foreignKeyProperty;
+        if ($property === null) {
+            return $fallback;
+        }
+        if ($relation->kind === RelationKind::BelongsTo) {
+            foreach ($draft->foreignKeys as $foreignKey) {
+                if ($foreignKey->property === $property && $foreignKey->referencedClass === $relation->relatedClass) {
+                    return $foreignKey->onDelete;
+                }
+            }
+
+            return $fallback;
+        }
+        if (($relation->kind === RelationKind::HasMany || $relation->kind === RelationKind::HasOne)
+            && isset($this->drafts[$relation->relatedClass])) {
+            foreach ($this->drafts[$relation->relatedClass]->foreignKeys as $foreignKey) {
+                if ($foreignKey->property === $property && $foreignKey->referencedClass === $draft->class) {
+                    return $foreignKey->onDelete;
+                }
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function hasForeignKey(ModelDraft $draft, string $property): bool {
+        foreach ($draft->foreignKeys as $foreignKey) {
+            if ($foreignKey->property === $property) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function addForeignKey(
+        ModelDraft $draft,
+        string $property,
+        __ClassName $referencedClass,
+        ?string $referencedColumn,
+        OnDelete $onDelete,
+    ): void {
+        if (!isset($draft->columns[$property]) || $this->hasForeignKey($draft, $property)) {
+            return;
+        }
+        $draft->foreignKeys[] = new ForeignKeyDraft($property, $referencedClass, $referencedColumn, $onDelete);
+    }
+
+    private function freeze(): ContextMap {
+        array<string, ModelMap> $models = [];
+        foreach ($this->drafts as $draft) {
+            $models[$draft->class] = $this->freezeModel($draft);
+        }
+
+        return new ContextMap($this->contextClass, $models, $this->interceptors);
+    }
+
+    private function freezeModel(ModelDraft $draft): ModelMap {
+        array<string, ColumnMap> $columns = [];
+        foreach ($draft->columns as $column) {
+            $columns[$column->property] = new ColumnMap(
+                $column->property,
+                $column->name,
+                $column->type,
+                $column->nullable,
+                $column->maxLength,
+                $column->precision,
+                $column->scale,
+                $column->generated,
+                $column->comment,
+                $this->castSlot($column),
+                $column->hasDefault,
+                $column->hasDefault ? $column->default : null,
+                $column->text,
+                $column->columnType,
+                $column->castClass,
+                $column->json,
+                $column->shadow,
+                $column->concurrency,
+                $column->rowVersion,
+                $column->deferred,
+            );
+        }
+        ?string $discriminatorColumn = null;
+        if ($draft->discriminatorProperty !== null && isset($columns[$draft->discriminatorProperty])) {
+            $discriminatorColumn = $columns[$draft->discriminatorProperty]->name;
+        }
+        ?KeyMap $key = $this->freezeKey($draft, $draft->keyProperties, true);
+        array<int, KeyMap> $alternateKeys = [];
+        foreach ($draft->alternateKeys as $properties) {
+            ?KeyMap $alternate = $this->freezeKey($draft, $properties, false);
+            if ($alternate !== null) {
+                $alternateKeys[] = $alternate;
+            }
+        }
+        array<int, IndexMap> $indexes = [];
+        foreach ($draft->indexes as $index) {
+            $indexes[] = new IndexMap(
+                $index->properties,
+                $this->columnNames($draft, $index->properties),
+                $index->unique,
+                $index->name,
+            );
+        }
+        array<int, ForeignKeyMap> $foreignKeys = [];
+        foreach ($draft->foreignKeys as $foreignKey) {
+            if (!isset($draft->columns[$foreignKey->property])) {
+                continue;
+            }
+            string $columnName = $draft->columns[$foreignKey->property]->name;
+            array<int, string> $properties = [$foreignKey->property];
+            array<int, string> $localColumns = [$columnName];
+            array<int, string> $referencedColumns = $this->referencedColumns($foreignKey);
+            string $referencedTable = isset($this->drafts[$foreignKey->referencedClass])
+                ? $this->drafts[$foreignKey->referencedClass]->table
+                : $this->conventions->tableName($foreignKey->referencedClass);
+            $foreignKeys[] = new ForeignKeyMap(
+                $draft->table . '_' . $columnName . '_foreign',
+                $properties,
+                $localColumns,
+                $foreignKey->referencedClass,
+                $referencedTable,
+                $referencedColumns,
+                $foreignKey->onDelete,
+            );
+        }
+        array<string, RelationMap> $relations = [];
+        foreach ($draft->relations as $relation) {
+            $relations[$relation->property] = $this->freezeRelation($draft, $relation);
+        }
+
+        return new ModelMap(
+            $draft->class,
+            $draft->table,
+            $draft->comment,
+            $columns,
+            $key,
+            $alternateKeys,
+            $indexes,
+            $foreignKeys,
+            $relations,
+            $draft->timestamps,
+            $draft->seeds,
+            $draft->globalScopes,
+            $draft->softDeletes,
+            $draft->deletedAtProperty,
+            $draft->deletedAtColumn,
+            $draft->readOnly,
+            $draft->view,
+            $draft->discriminatorProperty,
+            $discriminatorColumn,
+            $draft->discriminatorValue,
+            $draft->rootClass,
+            $draft->discriminatorTypes,
+            $draft->observers,
+        );
+    }
+
+    private function freezeRelation(ModelDraft $draft, RelationDraft $relation): RelationMap {
+        ?string $foreignKeyColumn = null;
+        if ($relation->foreignKeyProperty !== null) {
+            if ($relation->kind === RelationKind::BelongsTo && isset($draft->columns[$relation->foreignKeyProperty])) {
+                $foreignKeyColumn = $draft->columns[$relation->foreignKeyProperty]->name;
+            } elseif (isset($this->drafts[$relation->relatedClass])) {
+                ModelDraft $related = $this->drafts[$relation->relatedClass];
+                if (isset($related->columns[$relation->foreignKeyProperty])) {
+                    $foreignKeyColumn = $related->columns[$relation->foreignKeyProperty]->name;
+                }
+            }
+        }
+        ?string $pivotTable = null;
+        ?string $pivotForeignKey = null;
+        ?string $pivotRelatedKey = null;
+        if ($relation->kind === RelationKind::BelongsToMany) {
+            $pivotTable = $relation->pivotTable ?? $this->conventions->pivotTable($draft->class, $relation->relatedClass);
+            string $relatedKey = isset($this->drafts[$relation->relatedClass])
+                ? $this->keyColumnName($this->drafts[$relation->relatedClass])
+                : 'id';
+            $pivotForeignKey = $relation->pivotForeignKey
+                ?? $this->conventions->pivotForeignKey($draft->class, $this->keyColumnName($draft));
+            $pivotRelatedKey = $relation->pivotRelatedKey
+                ?? $this->conventions->pivotForeignKey($relation->relatedClass, $relatedKey);
+        }
+
+        return new RelationMap(
+            $relation->property,
+            $relation->kind,
+            $relation->relatedClass,
+            $relation->inverseProperty,
+            $relation->foreignKeyProperty,
+            $foreignKeyColumn,
+            $this->foreignKeyOnDelete($draft, $relation),
+            $pivotTable,
+            $pivotForeignKey,
+            $pivotRelatedKey,
+            $relation->kind === RelationKind::BelongsToMany ? $relation->pivotClass : null,
+        );
+    }
+
+    private function referencedColumns(ForeignKeyDraft $foreignKey): array<int, string> {
+        if ($foreignKey->referencedColumn !== null) {
+            array<int, string> $columns = [$foreignKey->referencedColumn];
+
+            return $columns;
+        }
+        if (!isset($this->drafts[$foreignKey->referencedClass])) {
+            array<int, string> $id = ['id'];
+
+            return $id;
+        }
+
+        return $this->columnNames(
+            $this->drafts[$foreignKey->referencedClass],
+            $this->drafts[$foreignKey->referencedClass]->keyProperties ?? ['id'],
+        );
+    }
+
+    private function freezeKey(ModelDraft $draft, ?array<int, string> $properties, bool $primary): ?KeyMap {
+        if ($properties === null || $properties === []) {
+            return null;
+        }
+
+        return new KeyMap($properties, $this->columnNames($draft, $properties), $primary);
+    }
+
+    private function columnNames(ModelDraft $draft, array<int, string> $properties): array<int, string> {
+        array<int, string> $names = [];
+        foreach ($properties as $property) {
+            if (!isset($draft->columns[$property])) {
+                throw new \InvalidArgumentException($draft->class . ' has no column ' . $property . '.');
+            }
+            $names[] = $draft->columns[$property]->name;
+        }
+
+        return $names;
+    }
+
+    private function keyColumnName(ModelDraft $draft): string {
+        ?array<int, string> $key = $draft->keyProperties;
+        if ($key !== null && isset($key[0]) && isset($draft->columns[$key[0]])) {
+            return $draft->columns[$key[0]]->name;
+        }
+
+        return 'id';
+    }
+
+    private function facts(__ClassName $class): array<string, PropertyFacts> {
+        if (!isset($this->factsCache[$class])) {
+            $this->factsCache[$class] = PropertyReader::read($class);
+        }
+
+        return $this->factsCache[$class];
+    }
+
+    private function hasProperty(__ClassName $class, string $property): bool {
+        array<string, PropertyFacts> $facts = $this->facts($class);
+
+        return isset($facts[$property]) && !$facts[$property]->virtual;
+    }
+
+    private function tableModel(\Tyhp\Type $type): ?__ClassName {
+        \Tyhp\Type $current = $type->asNonNullable();
+        ?string $name = $current->getName();
+        if ($name === null || \ltrim($name, '\\') !== \ltrim(Table::class, '\\')) {
+            return null;
+        }
+        ?\Tyhp\Type $argument = $current->typeArgument(0);
+        if ($argument === null) {
+            return null;
+        }
+        ?string $model = $argument->asNonNullable()->getName();
+        if ($model === null || $model === '' || $model === 'mixed') {
+            return null;
+        }
+        string $class = \ltrim($model, '\\');
+        if (!\class_exists($class)) {
+            return null;
+        }
+
+        return $class;
+    }
+
+    private function requireClass(string $name): __ClassName {
+        string $class = \ltrim($name, '\\');
+        if (!\class_exists($class)) {
+            throw new \InvalidArgumentException($class . ' is not a class.');
+        }
+
+        return $class;
+    }
+
+    private function hasAttribute(PropertyFacts $facts, string $class): bool {
+        if ($facts->reflection === null) {
+            return false;
+        }
+
+        return $facts->reflection->getAttributes($class) !== [];
+    }
+
+    private function attribute(PropertyFacts $facts, string $class): ?object {
+        if ($facts->reflection === null) {
+            return null;
+        }
+        array<int, \ReflectionAttribute> $attributes = $facts->reflection->getAttributes($class);
+        if ($attributes === []) {
+            return null;
+        }
+        \ReflectionAttribute|null $first = $attributes[0] ?? null;
+        if ($first === null) {
+            return null;
+        }
+
+        return $first->newInstance();
+    }
+
+    private function isLazyCollection(\Tyhp\Type $type): bool {
+        ?string $name = $type->getName();
+
+        return $name !== null && \ltrim($name, '\\') === \ltrim(\Tyhp\Rhetoric\LazyCollection::class, '\\');
+    }
+
+    private function isValueClass(string $class): bool {
+        if ($class === 'DateTime' || $class === 'DateTimeImmutable' || $class === 'DateTimeInterface') {
+            return true;
+        }
+        if ($class === 'Tyhp\\Decimal' || $class === 'Carbon\\Carbon' || $class === 'Carbon\\CarbonImmutable' || $class === 'Illuminate\\Support\\Carbon') {
+            return true;
+        }
+        if (\enum_exists($class)) {
+            return true;
+        }
+        if ((\class_exists($class) || \interface_exists($class)) && \is_subclass_of($class, 'DateTimeInterface')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function castSlot(ColumnDraft $column): ?CastSlot {
+        return CastSlot::forType($column->type, $column->castClass);
+    }
+
+    private function applyExtra(ModelDraft $draft, string $name, ColumnConfig $config): void {
+        if (isset($draft->facts[$name])) {
+            throw new \InvalidArgumentException($draft->class . ' already has a property ' . $name . '.');
+        }
+        \Tyhp\Type $type = $config->valueType ?? \Tyhp\Type::string();
+        \Tyhp\Type $stored = $type->asNonNullable();
+        ColumnDraft $column = new ColumnDraft($name, $config->name ?? $name, (string)$stored, $type->isNullable());
+        $column->shadow = true;
+        if ($config->maxLength !== null) {
+            $column->maxLength = $config->maxLength;
+        }
+        if ($config->precision !== null) {
+            $column->precision = $config->precision;
+            $column->scale = $config->scale ?? 0;
+        }
+        if ($config->comment !== null) {
+            $column->comment = $config->comment;
+        }
+        if ($config->blueprintType !== null) {
+            $column->columnType = $config->blueprintType;
+        }
+        if ($config->text === true) {
+            $column->text = true;
+        }
+        if ($config->hasDefault === true) {
+            $column->hasDefault = true;
+            $column->default = $config->default;
+        }
+        if ($this->isJsonType($stored) || $config->asJson) {
+            $column->json = true;
+            $column->columnType = 'json';
+        }
+        $draft->columns[$name] = $column;
+    }
+
+    private function applyEmbedded(): void {
+        foreach ($this->drafts as $draft) {
+            array<string, ColumnDraft> $columns = $draft->columns;
+            foreach ($columns as $property => $column) {
+                if (!isset($draft->facts[$property])) {
+                    continue;
+                }
+                PropertyFacts $facts = $draft->facts[$property];
+                \Tyhp\Type $type = $facts->type->asNonNullable();
+                bool $json = ($draft->asJson[$property] ?? false) || $column->json;
+                if ($json) {
+                    $column->json = true;
+                    $column->columnType = 'json';
+                    unset($draft->relations[$property]);
+                    continue;
+                }
+                if ($type->getKind() === 'struct') {
+                    $this->expandStruct($draft, $property, $property, $column->name, $type, $column->nullable);
+                    unset($draft->columns[$property]);
+                    continue;
+                }
+                if (($draft->embedded[$property] ?? false) && ($type->getKind() === 'class' || $type->getKind() === 'generic')) {
+                    ?string $className = $type->getName();
+                    if ($className !== null) {
+                        $this->expandClass($draft, $property, $column->name, $this->requireClass(\ltrim($className, '\\')), $column->nullable);
+                        unset($draft->columns[$property]);
+                        unset($draft->relations[$property]);
+                    }
+                    continue;
+                }
+                if ($this->isJsonType($type)) {
+                    $column->json = true;
+                    $column->columnType = 'json';
+                }
+            }
+        }
+    }
+
+    private function isJsonType(\Tyhp\Type $type): bool {
+        \Tyhp\Type $current = $type->asNonNullable();
+        ?\Tyhp\Type $element = $current->elementType();
+        if ($element === null) {
+            return false;
+        }
+        if ($current->getName() !== 'array' && $current->getName() !== 'iterable') {
+            return false;
+        }
+        \Tyhp\Type $elementType = $element->asNonNullable();
+
+        return $elementType->getKind() !== 'class' && $elementType->getKind() !== 'generic';
+    }
+
+    private function expandStruct(
+        ModelDraft $draft,
+        string $owner,
+        string $prefix,
+        string $columnPrefix,
+        \Tyhp\Type $type,
+        bool $ownerNullable,
+    ): void {
+        array<string, \Tyhp\Type> $fields = StructFields::of($type);
+        if (\count($fields) === 0) {
+            throw new \InvalidArgumentException($draft->class . '::$' . $owner . ' has no fields.');
+        }
+        foreach ($fields as $name => $field) {
+            \Tyhp\Type $fieldType = $field->asNonNullable();
+            string $path = $prefix . '.' . $name;
+            string $columnName = $columnPrefix . '_' . $this->conventions->columnName($name);
+            bool $nullable = $ownerNullable || $field->isNullable();
+            if ($fieldType->getKind() === 'struct') {
+                $this->expandStruct($draft, $owner, $path, $columnName, $fieldType, $nullable);
+                continue;
+            }
+            ColumnDraft $column = new ColumnDraft($path, $columnName, (string)$fieldType, $nullable);
+            if ($this->isJsonType($fieldType)) {
+                $column->json = true;
+                $column->columnType = 'json';
+            }
+            $draft->columns[$path] = $column;
+        }
+    }
+
+    private function expandClass(
+        ModelDraft $draft,
+        string $prefix,
+        string $columnPrefix,
+        __ClassName $class,
+        bool $ownerNullable,
+    ): void {
+        foreach ($this->facts($class) as $facts) {
+            if ($facts->virtual) {
+                continue;
+            }
+            \Tyhp\Type $fieldType = $facts->type->asNonNullable();
+            string $path = $prefix . '.' . $facts->name;
+            string $columnName = $columnPrefix . '_' . $this->conventions->columnName($facts->name);
+            bool $nullable = $ownerNullable || $facts->type->isNullable();
+            if ($fieldType->getKind() === 'struct') {
+                $this->expandStruct($draft, $prefix, $path, $columnName, $fieldType, $nullable);
+                continue;
+            }
+            ColumnDraft $column = new ColumnDraft($path, $columnName, (string)$fieldType, $nullable);
+            if ($this->isJsonType($fieldType)) {
+                $column->json = true;
+                $column->columnType = 'json';
+            }
+            $draft->columns[$path] = $column;
+        }
+    }
+
+    private function applySoftDeletes(): void {
+        foreach ($this->drafts as $draft) {
+            if (!$draft->softDeletes) {
+                continue;
+            }
+            string $property = '';
+            if (isset($draft->facts['deletedAt']) && isset($draft->columns['deletedAt'])) {
+                $property = 'deletedAt';
+            } elseif (isset($draft->facts['deleted_at']) && isset($draft->columns['deleted_at'])) {
+                $property = 'deleted_at';
+            }
+            if ($property !== '') {
+                $draft->deletedAtProperty = $property;
+                $draft->deletedAtColumn = $draft->columns[$property]->name;
+                continue;
+            }
+            if (!isset($draft->columns['deletedAt'])) {
+                ColumnDraft $column = new ColumnDraft('deletedAt', 'deleted_at', 'DateTimeImmutable', true);
+                $column->shadow = true;
+                $draft->columns['deletedAt'] = $column;
+            }
+            $draft->deletedAtProperty = null;
+            $draft->deletedAtColumn = $draft->columns['deletedAt']->name;
+        }
+    }
+
+    private function shareHierarchy(): void {
+        // Columns a model declares itself. Columns pushed up from a derived model are not the root's own, so they
+        // are not handed down to the root's other derived models.
+        array<string, array<string, bool>> $declared = [];
+        foreach ($this->drafts as $class => $declaredDraft) {
+            $declared[$class] = [];
+            foreach (\array_keys($declaredDraft->columns) as $declaredProperty) {
+                $declared[$class][$declaredProperty] = true;
+            }
+        }
+        foreach ($this->drafts as $draft) {
+            ?string $ancestor = $this->draftedAncestor($draft->class);
+            if ($ancestor === null) {
+                continue;
+            }
+            string $root = $ancestor;
+            ?string $above = $this->draftedAncestor($root);
+            while ($above !== null) {
+                $root = $above;
+                $above = $this->draftedAncestor($root);
+            }
+            if (!isset($this->drafts[$root]) || $root === $draft->class) {
+                continue;
+            }
+            ModelDraft $rootDraft = $this->drafts[$root];
+            if ($draft->tableExplicit && $draft->table !== $rootDraft->table) {
+                throw new \InvalidArgumentException($draft->class . ' is stored in ' . $rootDraft->table . '.');
+            }
+            $draft->table = $rootDraft->table;
+            $draft->rootClass = $this->requireClass($root);
+            if ($rootDraft->softDeletes) {
+                $draft->softDeletes = true;
+                $draft->deletedAtProperty = $rootDraft->deletedAtProperty;
+                $draft->deletedAtColumn = $rootDraft->deletedAtColumn;
+            }
+            if ($rootDraft->discriminatorProperty !== null) {
+                $draft->discriminatorProperty = $rootDraft->discriminatorProperty;
+            }
+            // A derived model is filtered and observed like the models it derives from.
+            ?string $inherit = $ancestor;
+            while ($inherit !== null) {
+                if (isset($this->drafts[$inherit])) {
+                    foreach ($this->drafts[$inherit]->globalScopes as $scope) {
+                        if (!\in_array($scope, $draft->globalScopes, true)) {
+                            $draft->globalScopes[] = $scope;
+                        }
+                    }
+                    foreach ($this->drafts[$inherit]->observers as $observer) {
+                        if (!\in_array($observer, $draft->observers, true)) {
+                            $draft->observers[] = $observer;
+                        }
+                    }
+                }
+                $inherit = $this->draftedAncestor($inherit);
+            }
+            if (!$draft->keyless && $rootDraft->keyProperties !== null) {
+                $draft->keyProperties = $rootDraft->keyProperties;
+            }
+            foreach ($rootDraft->columns as $property => $column) {
+                if (isset($declared[$root][$property]) && !isset($draft->columns[$property])) {
+                    $draft->columns[$property] = $this->copyColumn($column);
+                }
+            }
+            foreach ($draft->columns as $property => $column) {
+                if (!isset($rootDraft->columns[$property])) {
+                    ColumnDraft $copy = $this->copyColumn($column);
+                    $copy->nullable = true;
+                    $rootDraft->columns[$property] = $copy;
+                }
+            }
+            // A model between the root and this one also returns this class's rows, so it maps their columns too.
+            ?string $between = $ancestor;
+            while ($between !== null && $between !== $root) {
+                if (isset($this->drafts[$between])) {
+                    foreach ($draft->columns as $property => $column) {
+                        if (!isset($this->drafts[$between]->columns[$property])) {
+                            ColumnDraft $mapped = $this->copyColumn($column);
+                            $mapped->nullable = true;
+                            $this->drafts[$between]->columns[$property] = $mapped;
+                        }
+                    }
+                }
+                $between = $this->draftedAncestor($between);
+            }
+            if ($draft->discriminatorValue !== null) {
+                $rootDraft->discriminatorTypes[$draft->discriminatorValue] = $draft->class;
+            }
+        }
+        foreach ($this->drafts as $draft) {
+            if ($draft->rootClass !== null && isset($this->drafts[$draft->rootClass])) {
+                $draft->discriminatorTypes = $this->drafts[$draft->rootClass]->discriminatorTypes;
+            }
+        }
+    }
+
+    private function draftedAncestor(string $class): ?string {
+        ?string $parent = $this->parentClass($class);
+        while ($parent !== null) {
+            if (isset($this->drafts[$parent])) {
+                return $parent;
+            }
+            $parent = $this->parentClass($parent);
+        }
+
+        return null;
+    }
+
+    private function parentClass(string $class): ?string {
+        if (!\class_exists($class)) {
+            return null;
+        }
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+        \ReflectionClass|false $parent = $reflection->getParentClass();
+        if ($parent === false) {
+            return null;
+        }
+
+        return $parent->getName();
+    }
+
+    private function copyColumn(ColumnDraft $column): ColumnDraft {
+        ColumnDraft $copy = new ColumnDraft(
+            $column->property,
+            $column->name,
+            $column->type,
+            $column->nullable,
+            $column->maxLength,
+            $column->precision,
+            $column->scale,
+            $column->generated,
+            $column->comment,
+            $column->generatedSet,
+            $column->hasDefault,
+            $column->default,
+            $column->text,
+            $column->columnType,
+            $column->castClass,
+        );
+        $copy->json = $column->json;
+        $copy->shadow = $column->shadow;
+        $copy->concurrency = $column->concurrency;
+        $copy->rowVersion = $column->rowVersion;
+        $copy->deferred = $column->deferred;
+
+        return $copy;
+    }
+}

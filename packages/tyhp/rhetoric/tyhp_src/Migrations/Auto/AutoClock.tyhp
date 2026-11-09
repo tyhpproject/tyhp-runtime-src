@@ -1,0 +1,49 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+final class AutoClock {
+    private static ?int $frozen = null;
+
+    public static function now(): int {
+        if (self::$frozen !== null) {
+            return self::$frozen;
+        }
+
+        return \time();
+    }
+
+    public static function freeze(?int $now): void {
+        self::$frozen = $now;
+    }
+
+    public static function frozen(): bool {
+        return self::$frozen !== null;
+    }
+
+    public static function delay(int $attempts, int $first, int $max): int {
+        if ($first < 1) {
+            $first = 1;
+        }
+        if ($max < $first) {
+            $max = $first;
+        }
+        if ($attempts < 1) {
+            $attempts = 1;
+        }
+        int $delay = $first;
+        int $step = 1;
+        while ($step < $attempts) {
+            if ($delay > $max / 2) {
+                return $max;
+            }
+            $delay = $delay * 2;
+            $step++;
+        }
+        if ($delay > $max) {
+            return $max;
+        }
+
+        return $delay;
+    }
+}

@@ -1,0 +1,43 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric;
+
+/**
+ * Creates a context each time it is called.
+ *
+ * A queued job or an Octane worker that runs more than one unit of work creates a context
+ * here for that unit. A context the container scopes to a request is a new instance on the
+ * next request. `tracker->clear()` drops the models a context is still tracking.
+ */
+final class ContextFactory<T extends Context> {
+    public function __construct(
+        private ?\Illuminate\Contracts\Container\Container $container = null,
+    ) {}
+
+    public function create(): T {
+        __ClassName $class = T::class;
+        if ($class === '' || !\is_a($class, Context::class, true)) {
+            throw new \InvalidArgumentException('ContextFactory needs a context class.');
+        }
+        object $instance = $this->instantiate($class);
+        if (!($instance is T)) {
+            throw new \TypeError('ContextFactory created ' . $instance::class . '.');
+        }
+
+        return $instance;
+    }
+
+    private function instantiate(string $class): object {
+        if ($this->container !== null && \method_exists($this->container, 'build')) {
+            mixed $built = \call_user_func([$this->container, 'build'], $class);
+            if (!\is_object($built)) {
+                throw new \RuntimeException('The container did not create ' . $class . '.');
+            }
+
+            return $built;
+        }
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+
+        return $reflection->newInstance();
+    }
+}

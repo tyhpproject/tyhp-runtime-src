@@ -90,6 +90,17 @@ class PropertyPath<TCallableShape extends callable> extends Expression<TCallable
     }
 
     /**
+     * Build a property path from a closure whose body is a chain of property fetches.
+     *
+     * `$expectedShape` supplies a source or result type the closure leaves out, spelled
+     * `callable(User): string`. A body that is not a property chain throws
+     * `\InvalidArgumentException`.
+     */
+    public static function fromClosure(\Closure $fn, mixed $expectedShape): PropertyPath<callable> {
+        return \Tyhp\Expression\ClosureTree::propertyPath($fn, $expectedShape);
+    }
+
+    /**
      * Result type for {@see PropertyPath::from()}: the closure's return type, then the
      * declared type of the last property in `$path`. When the declared property type is the
      * full Tyhp form of the closure's PHP type (`array<App\Post>` for `array`), it is kept.
@@ -184,6 +195,7 @@ class PropertyPath<TCallableShape extends callable> extends Expression<TCallable
      * @param class-string<T> $sourceType
      * @return PropertyPathBuilder<T>
      */
+    #[\Tyhp\InferGeneric]
     public static function on<T extends object>(__ClassName<T> $sourceType): PropertyPathBuilder<T> {
         return new PropertyPathBuilder<T>($sourceType);
     }

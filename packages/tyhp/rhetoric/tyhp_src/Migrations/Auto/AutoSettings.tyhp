@@ -1,0 +1,327 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+final class MigrationSet {
+    /**
+     * @param array<int, string> $paths
+     */
+    public function __construct(
+        public string $name,
+        public array<int, string> $paths,
+        public string $table,
+        public ?string $context,
+    ) {}
+}
+
+final class MigrationTarget {
+    public function __construct(
+        public string $connection,
+        public string $set,
+    ) {}
+}
+
+final class AutoSettings {
+    /**
+     * @param array<int, string>|null $environments
+     * @param array<string, string> $connections
+     * @param array<string, MigrationSet> $sets
+     * @param array<int, string> $exceptPaths
+     * @param array<int, string> $console
+     */
+    public function __construct(
+        public bool $enabled,
+        public ?array<int, string> $environments,
+        public array<string, string> $connections,
+        public array<string, MigrationSet> $sets,
+        public string $trigger,
+        public array<int, string> $exceptPaths,
+        public array<int, string> $console,
+        public bool $queue,
+        public bool $octane,
+        public string $lockDriver,
+        public ?string $lockStore,
+        public int $lockTtl,
+        public int $waitHttp,
+        public int $waitConsole,
+        public int $waitQueue,
+        public string $onTimeout,
+        public string $onFailure,
+        public int $retryAfter,
+        public int $backoffFirst,
+        public int $backoffMax,
+        public string $markerStore,
+        public string $markerPath,
+        public ?string $markerCache,
+        public bool $deferredDispatch,
+        public ?string $deferredQueue,
+        public ?string $manifestPath,
+        public ?string $snapshotPath,
+    ) {}
+
+    public static function fromContainer(\Illuminate\Contracts\Container\Container $app): AutoSettings {
+        mixed $config = null;
+        if ($app->bound('config')) {
+            $config = $app->get('config');
+        }
+        mixed $root = null;
+        if ($config instanceof \Illuminate\Contracts\Config\Repository) {
+            $root = $config->get('rhetoric');
+        }
+        array<string, mixed> $rhetoric = self::stringMapMixed($root);
+        array<string, mixed> $auto = self::stringMapMixed($rhetoric['auto_migrate'] ?? null);
+        ?array<int, string> $environments = null;
+        if (\array_key_exists('environments', $auto) && $auto['environments'] !== null) {
+            $environments = self::strings($auto['environments']);
+        }
+        array<string, MigrationSet> $sets = [];
+        mixed $configuredSets = $auto['sets'] ?? null;
+        if (\is_array($configuredSets)) {
+            foreach ($configuredSets as $name => $spec) {
+                if (!\is_string($name) || $name === '') {
+                    continue;
+                }
+                array<string, mixed> $fields = self::stringMapMixed($spec);
+                array<int, string> $paths = self::strings($fields['paths'] ?? null);
+                string $table = self::text($fields['table'] ?? null, 'migrations');
+                ?string $context = null;
+                mixed $contextValue = $fields['context'] ?? null;
+                if (\is_string($contextValue) && $contextValue !== '') {
+                    $context = \ltrim($contextValue, '\\');
+                }
+                $sets[$name] = new MigrationSet($name, $paths, $table, $context);
+            }
+        }
+        array<string, mixed> $lock = self::stringMapMixed($auto['lock'] ?? null);
+        array<string, mixed> $wait = self::stringMapMixed($auto['wait'] ?? null);
+        array<string, mixed> $marker = self::stringMapMixed($auto['marker'] ?? null);
+        array<string, mixed> $deferred = self::stringMapMixed($auto['deferred'] ?? null);
+        array<int, int> $backoff = self::ints($auto['failure_backoff'] ?? null);
+        int $first = $backoff[0] ?? 30;
+        int $max = $backoff[1] ?? 600;
+        ?string $manifest = self::optionalText($auto['manifest'] ?? null);
+        ?string $snapshot = self::optionalText($rhetoric['snapshot_path'] ?? null);
+        ?string $lockStore = self::optionalText($lock['store'] ?? null);
+        ?string $markerCache = self::optionalText($marker['cache_store'] ?? null);
+        ?string $deferredQueue = self::optionalText($deferred['queue'] ?? null);
+
+        return new AutoSettings(
+            self::bool($auto['enabled'] ?? null, false),
+            $environments,
+            self::stringMap($auto['connections'] ?? null),
+            $sets,
+            self::text($auto['trigger'] ?? null, 'boot'),
+            self::strings($auto['except_paths'] ?? ['up']),
+            self::strings($auto['console'] ?? null),
+            self::bool($auto['queue'] ?? null, true),
+            self::bool($auto['octane'] ?? null, true),
+            self::text($lock['driver'] ?? null, 'database'),
+            $lockStore,
+            self::int($lock['ttl'] ?? null, 3600),
+            self::int($wait['http'] ?? null, 10),
+            self::int($wait['console'] ?? null, 300),
+            self::int($wait['queue'] ?? null, 300),
+            self::text($auto['on_timeout'] ?? null, 'throw'),
+            self::text($auto['on_failure'] ?? null, 'throw'),
+            self::int($auto['retry_after'] ?? null, 15),
+            $first,
+            $max,
+            self::text($marker['store'] ?? null, 'file'),
+            self::text($marker['path'] ?? null, 'storage/framework/rhetoric'),
+            $markerCache,
+            self::bool($deferred['dispatch'] ?? null, false),
+            $deferredQueue,
+            $manifest,
+            $snapshot,
+        );
+    }
+
+    public function allows(string $environment): bool {
+        if ($this->environments === null) {
+            return $environment !== 'testing';
+        }
+
+        return \in_array($environment, $this->environments, true);
+    }
+
+    public function waitFor(string $channel): int {
+        if ($channel === 'http') {
+            return $this->waitHttp;
+        }
+        if ($channel === 'queue') {
+            return $this->waitQueue;
+        }
+
+        return $this->waitConsole;
+    }
+
+    public function set(string $name): MigrationSet {
+        if (!isset($this->sets[$name])) {
+            throw new \InvalidArgumentException('Migration set ' . $name . ' is not configured.');
+        }
+        MigrationSet $set = $this->sets[$name];
+        if ($set->paths === []) {
+            throw new \InvalidArgumentException('Migration set ' . $name . ' has no paths.');
+        }
+
+        return $set;
+    }
+
+    /**
+     * @param array<string, string>|null $connections
+     * @param array<int, string>|null $environments
+     */
+    public function override(?array<string, string> $connections, ?array<int, string> $environments): AutoSettings {
+        array<string, string> $chosenConnections = $this->connections;
+        if ($connections !== null) {
+            $chosenConnections = $connections;
+        }
+        ?array<int, string> $chosenEnvironments = $this->environments;
+        if ($environments !== null) {
+            $chosenEnvironments = $environments;
+        }
+
+        return new AutoSettings(
+            true,
+            $chosenEnvironments,
+            $chosenConnections,
+            $this->sets,
+            $this->trigger,
+            $this->exceptPaths,
+            $this->console,
+            $this->queue,
+            $this->octane,
+            $this->lockDriver,
+            $this->lockStore,
+            $this->lockTtl,
+            $this->waitHttp,
+            $this->waitConsole,
+            $this->waitQueue,
+            $this->onTimeout,
+            $this->onFailure,
+            $this->retryAfter,
+            $this->backoffFirst,
+            $this->backoffMax,
+            $this->markerStore,
+            $this->markerPath,
+            $this->markerCache,
+            $this->deferredDispatch,
+            $this->deferredQueue,
+            $this->manifestPath,
+            $this->snapshotPath,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function stringMapMixed(mixed $value): array<string, mixed> {
+        array<string, mixed> $map = [];
+        if (!\is_array($value)) {
+            return $map;
+        }
+        foreach ($value as $key => $item) {
+            if (\is_string($key)) {
+                $map[$key] = $item;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function stringMap(mixed $value): array<string, string> {
+        array<string, string> $map = [];
+        if (!\is_array($value)) {
+            return $map;
+        }
+        foreach ($value as $key => $item) {
+            if (\is_string($key) && \is_string($item) && $key !== '' && $item !== '') {
+                $map[$key] = $item;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function strings(mixed $value): array<int, string> {
+        array<int, string> $items = [];
+        if (!\is_array($value)) {
+            return $items;
+        }
+        foreach ($value as $item) {
+            if (\is_string($item) && $item !== '') {
+                $items[] = $item;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function ints(mixed $value): array<int, int> {
+        array<int, int> $items = [];
+        if (!\is_array($value)) {
+            return $items;
+        }
+        foreach ($value as $item) {
+            $items[] = self::int($item, 0);
+        }
+
+        return $items;
+    }
+
+    private static function text(mixed $value, string $default): string {
+        if (\is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        return $default;
+    }
+
+    private static function optionalText(mixed $value): ?string {
+        if (\is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        return null;
+    }
+
+    private static function bool(mixed $value, bool $default): bool {
+        if (\is_bool($value)) {
+            return $value;
+        }
+        if (\is_int($value)) {
+            return $value !== 0;
+        }
+        if (\is_string($value)) {
+            string $text = \strtolower($value);
+            if ($text === '1' || $text === 'true' || $text === 'yes' || $text === 'on') {
+                return true;
+            }
+            if ($text === '0' || $text === 'false' || $text === 'no' || $text === 'off' || $text === '') {
+                return false;
+            }
+        }
+
+        return $default;
+    }
+
+    private static function int(mixed $value, int $default): int {
+        if (\is_int($value)) {
+            return $value;
+        }
+        if (\is_string($value) && \is_numeric($value)) {
+            return (int)$value;
+        }
+
+        return $default;
+    }
+}

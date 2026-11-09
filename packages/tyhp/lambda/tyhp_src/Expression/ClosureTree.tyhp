@@ -1,0 +1,587 @@
+<?tyhp
+
+namespace Tyhp\Expression;
+
+use Tyhp\Expression;
+use Tyhp\ExtModule;
+use Tyhp\PropertyPath;
+use Tyhp\Type;
+
+/**
+ * Turns a closure into an expression or property-path tree.
+ *
+ * The tyhp extension walks opcodes. Without it, {@see ClosureSource} tokenizes
+ * the closure's source. A closure the walker rejects is not tokenized.
+ */
+internal final class ClosureTree {
+    private const string MSG_BODY = 'closureTree cannot read this closure body';
+    private const string MSG_PATH = 'closureTree property-path must be a chain of property fetches';
+
+    public static function expression(\Closure $fn, mixed $expectedShape): Expression<callable> {
+        \Tyhp\ExtClosureNode $body = self::read($fn, 'expression');
+        ClosureShape $shape = self::readShape($expectedShape);
+        array<int, string> $shapeParams = $shape->parameters;
+        ?string $shapeReturn = $shape->returnType;
+
+        \ReflectionFunction $reflection = new \ReflectionFunction($fn);
+        array<ParameterExpression> $parameters = [];
+        array<string, ParameterExpression> $byName = [];
+        foreach ($reflection->getParameters() as $index => $parameter) {
+            ?string $reflected = self::reflectedType($parameter->getType());
+            string $type = $reflected ?? ($shapeParams[$index] ?? 'mixed');
+            ParameterExpression $node = new ParameterExpression($parameter->getName(), $type, $index);
+            $parameters[] = $node;
+            $byName[$parameter->getName()] = $node;
+        }
+
+        ExpressionNode $tree = self::hydrate($body, $byName);
+        string $returnType = self::returnType($fn, $tree, $shapeReturn);
+
+        return new Expression<callable>($tree, $parameters, $fn, $returnType);
+    }
+
+    public static function propertyPath(\Closure $fn, mixed $expectedShape): PropertyPath<callable> {
+        \Tyhp\ExtClosureNode $body = self::read($fn, 'property-path');
+        array<int, string> $segments = [];
+        array<bool> $nullSafe = [];
+        if (!self::collectPath($body, $segments, $nullSafe, true)) {
+            throw new \InvalidArgumentException(self::MSG_PATH);
+        }
+
+        \ReflectionFunction $reflection = new \ReflectionFunction($fn);
+        if ($reflection->getNumberOfParameters() !== 1) {
+            throw new \InvalidArgumentException(self::MSG_PATH);
+        }
+
+        ClosureShape $shape = self::readShape($expectedShape);
+        array<int, string> $shapeParams = $shape->parameters;
+        ?string $shapeReturn = $shape->returnType;
+
+        string $sourceType = 'object';
+        foreach ($reflection->getParameters() as $parameter) {
+            ?string $reflected = self::reflectedType($parameter->getType());
+            $sourceType = $reflected ?? ($shapeParams[0] ?? 'object');
+        }
+
+        string $resultType = self::pathResultType($fn, $shapeReturn);
+
+        return new PropertyPath<callable>(
+            $sourceType,
+            $resultType,
+            $segments,
+            $fn,
+            false,
+            $nullSafe,
+        );
+    }
+
+    private static function readShape(mixed $expectedShape): ClosureShape {
+        array<int, string> $parameters = [];
+        ?string $returnType = null;
+        if ($expectedShape === null) {
+            return new ClosureShape($parameters, $returnType);
+        }
+        if (!($expectedShape is string)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        string $shape = \trim($expectedShape);
+        if ($shape === '' || $shape === 'callable' || $shape === 'mixed') {
+            return new ClosureShape($parameters, $returnType);
+        }
+        if (!\str_starts_with($shape, 'callable(')) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        int $start = \strlen('callable(');
+        int $depth = 1;
+        int $index = $start;
+        int $length = \strlen($shape);
+        bool $inQuote = false;
+        string $quote = '';
+        while ($index < $length && $depth > 0) {
+            string $char = $shape[$index];
+            if ($inQuote) {
+                if ($char === '\\') {
+                    $index += 2;
+                    continue;
+                }
+                if ($char === $quote) {
+                    $inQuote = false;
+                }
+                $index++;
+                continue;
+            }
+            if ($char === '"' || $char === "'") {
+                $inQuote = true;
+                $quote = $char;
+                $index++;
+                continue;
+            }
+            if ($char === '(' || $char === '<' || $char === '[') {
+                $depth++;
+            } elseif ($char === ')' || $char === '>' || $char === ']') {
+                $depth--;
+            }
+            if ($depth === 0) {
+                break;
+            }
+            $index++;
+        }
+        if ($depth !== 0) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        string|false $inside = \substr($shape, $start, $index - $start);
+        if (!($inside is string)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        string $rest = \trim(\substr($shape, $index + 1) ?: '');
+        if (\str_starts_with($rest, ':')) {
+            string $return = self::normalizeType(\trim(\substr($rest, 1) ?: ''));
+            if ($return !== '' && $return !== 'mixed') {
+                $returnType = $return;
+            }
+        }
+
+        string $trimmed = \trim($inside);
+        if ($trimmed !== '') {
+            foreach (self::splitCommas($trimmed) as $part) {
+                $parameters[] = self::normalizeType($part);
+            }
+        }
+
+        return new ClosureShape($parameters, $returnType);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function splitCommas(string $text): array<int, string> {
+        array<int, string> $parts = [];
+        int $depth = 0;
+        int $start = 0;
+        int $length = \strlen($text);
+        bool $inQuote = false;
+        string $quote = '';
+        for (int $index = 0; $index < $length; $index++) {
+            string $char = $text[$index];
+            if ($inQuote) {
+                if ($char === '\\') {
+                    $index++;
+                    continue;
+                }
+                if ($char === $quote) {
+                    $inQuote = false;
+                }
+                continue;
+            }
+            if ($char === '"' || $char === "'") {
+                $inQuote = true;
+                $quote = $char;
+                continue;
+            }
+            if ($char === '(' || $char === '<' || $char === '[') {
+                $depth++;
+                continue;
+            }
+            if ($char === ')' || $char === '>' || $char === ']') {
+                $depth--;
+                continue;
+            }
+            if ($char === ',' && $depth === 0) {
+                $parts[] = \trim(\substr($text, $start, $index - $start) ?: '');
+                $start = $index + 1;
+            }
+        }
+        $parts[] = \trim(\substr($text, $start) ?: '');
+        return $parts;
+    }
+
+    private static function normalizeType(string $type): string {
+        $type = \trim($type);
+        if (\strlen($type) >= 2 && $type[0] === '(' && $type[\strlen($type) - 1] === ')') {
+            string|false $inner = \substr($type, 1, -1);
+            if ($inner is string) {
+                $type = \trim($inner);
+            }
+        }
+        if (\str_starts_with($type, '?')) {
+            string|false $rest = \substr($type, 1);
+            return '?' . self::normalizeType($rest is string ? $rest : '');
+        }
+
+        return \ltrim($type, '\\');
+    }
+
+    private static function reflectedType(?\ReflectionType $type): ?string {
+        if ($type === null) {
+            return null;
+        }
+        string $spelled = self::normalizeType((string)$type);
+        if ($spelled === '' || $spelled === 'mixed') {
+            return null;
+        }
+
+        return $spelled;
+    }
+
+    private static function returnType(\Closure $fn, ExpressionNode $body, ?string $shapeReturn): string {
+        ?string $declared = self::callableReturn($fn);
+        if ($declared !== null) {
+            return self::refined($body->type, $declared);
+        }
+        if ($body->type !== '' && $body->type !== 'mixed') {
+            return $body->type;
+        }
+        if ($shapeReturn !== null && $shapeReturn !== '' && $shapeReturn !== 'mixed') {
+            return $shapeReturn;
+        }
+
+        return 'mixed';
+    }
+
+    private static function pathResultType(\Closure $fn, ?string $shapeReturn): string {
+        ?string $declared = self::callableReturn($fn) ?? $shapeReturn;
+        if ($declared === null || $declared === '' || $declared === 'mixed') {
+            return 'mixed';
+        }
+
+        return $declared;
+    }
+
+    private static function callableReturn(\Closure $fn): ?string {
+        ?Type $type = Type::fromCallableReturn($fn);
+        if ($type === null) {
+            return null;
+        }
+        string $name = self::normalizeType((string)$type);
+        if ($name === '' || $name === 'mixed') {
+            return null;
+        }
+
+        return $name;
+    }
+
+    private static function refined(string $full, string $declared): string {
+        if ($full === '' || $full === 'mixed' || $full === $declared) {
+            return $declared;
+        }
+
+        try {
+            if ((string)Type::parse($full)->erased() === (string)Type::parse($declared)->erased()) {
+                return $full;
+            }
+        } catch (\Throwable $e) {
+            (void)$e;
+        }
+
+        return $declared;
+    }
+
+    private static function read(\Closure $fn, 'expression'|'property-path' $mode): \Tyhp\ExtClosureNode {
+        if (ExtModule::available()) {
+            return \Tyhp\Ext::closureTree($fn, $mode);
+        }
+
+        return ClosureSource::parse($fn);
+    }
+
+    /**
+     * @param array<int, string> $segments
+     * @param array<bool> $nullSafe
+     */
+    private static function collectPath(
+        \Tyhp\ExtClosureNode $node,
+        array<int, string> &$segments,
+        array<bool> &$nullSafe,
+        bool $atRoot,
+    ): bool {
+        if ($node->kind === 'param') {
+            return $atRoot === false;
+        }
+        if ($node->kind === 'prop' || $node->kind === 'nullsafe_prop') {
+            if ($node->name === '') {
+                return false;
+            }
+            if (!self::collectPath($node->object, $segments, $nullSafe, false)) {
+                return false;
+            }
+
+            $segments[] = $node->name;
+            $nullSafe[] = $node->kind === 'nullsafe_prop';
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, ParameterExpression> $scope
+     */
+    private static function hydrate(\Tyhp\ExtClosureNode $node, array<string, ParameterExpression> $scope): ExpressionNode {
+        if ($node->kind === 'param') {
+            string $name = $node->name;
+            if (!\array_key_exists($name, $scope)) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+
+            return $scope[$name];
+        }
+
+        if ($node->kind === 'const') {
+            return new ConstantExpression($node->value, self::valueType($node->value));
+        }
+
+        if ($node->kind === 'capture') {
+            string $name = $node->name;
+            if (\array_key_exists($name, $scope)) {
+                return $scope[$name];
+            }
+
+            return new ConstantExpression($node->value, self::valueType($node->value));
+        }
+
+        if ($node->kind === 'prop' || $node->kind === 'nullsafe_prop') {
+            ExpressionNode $object = self::hydrate($node->object, $scope);
+            string $name = $node->name;
+            if ($name === '') {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            if ($node->kind === 'nullsafe_prop') {
+                return new NullSafeAccessExpression($object, $name, 'mixed');
+            }
+
+            return new PropertyAccessExpression($object, $name, 'mixed');
+        }
+
+        if ($node->kind === 'index') {
+            return new ArrayAccessExpression(
+                self::hydrate($node->object, $scope),
+                self::hydrate($node->index, $scope),
+                'mixed',
+            );
+        }
+
+        if ($node->kind === 'binary') {
+            string $op = $node->op;
+            if ($op === '') {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            if ($op === '<>') {
+                $op = '!=';
+            }
+            if ($op === 'and') {
+                $op = '&&';
+            }
+            if ($op === 'or') {
+                $op = '||';
+            }
+
+            return new BinaryExpression(
+                self::hydrate($node->left, $scope),
+                $op,
+                self::hydrate($node->right, $scope),
+                self::binaryType($op),
+            );
+        }
+
+        if ($node->kind === 'unary') {
+            string $op = $node->op;
+            return new UnaryExpression(
+                $op,
+                self::hydrate($node->expr, $scope),
+                true,
+                $op === '!' ? 'bool' : 'mixed',
+            );
+        }
+
+        if ($node->kind === 'ternary') {
+            ?ExpressionNode $then = null;
+            if ($node->then !== null) {
+                $then = self::hydrate($node->then, $scope);
+            }
+
+            return new TernaryExpression(
+                self::hydrate($node->cond, $scope),
+                $then,
+                self::hydrate($node->else, $scope),
+                'mixed',
+            );
+        }
+
+        if ($node->kind === 'coalesce') {
+            return new CoalesceExpression(
+                self::hydrate($node->left, $scope),
+                self::hydrate($node->right, $scope),
+                'mixed',
+            );
+        }
+
+        if ($node->kind === 'cast') {
+            string $type = $node->type;
+            if ($type === '') {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+
+            return new CastExpression($type, self::hydrate($node->expr, $scope));
+        }
+
+        if ($node->kind === 'instanceof') {
+            string $target;
+            if ($node->class is string) {
+                $target = $node->class;
+            } else {
+                ExpressionNode $classNode = self::hydrate($node->class, $scope);
+                if ($classNode instanceof ConstantExpression && $classNode->value is string) {
+                    $target = $classNode->value;
+                } else {
+                    throw new \InvalidArgumentException(self::MSG_BODY);
+                }
+            }
+            return new InstanceofExpression(self::hydrate($node->expr, $scope), $target, 'bool');
+        }
+
+        if ($node->kind === 'new') {
+            string $class = $node->class;
+            if ($class === '') {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+
+            return new NewExpression($class, self::arguments($node->args, $scope));
+        }
+
+        if ($node->kind === 'call' || $node->kind === 'nullsafe_call') {
+            string $name = $node->name;
+            if ($name === '') {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            ExpressionNode $object = self::hydrate($node->object, $scope);
+            array<ExpressionNode> $arguments = self::arguments($node->args, $scope);
+            if ($node->kind === 'nullsafe_call') {
+                return new NullSafeMethodCallExpression($object, $name, $arguments, 'mixed');
+            }
+
+            return new MethodCallExpression($object, $name, $arguments, 'mixed');
+        }
+
+        if ($node->kind === 'static_call') {
+            string $class = $node->class;
+            string $name = $node->name;
+            if ($class === '' || $name === '') {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+
+            return new StaticMethodCallExpression($class, $name, self::arguments($node->args, $scope), 'mixed');
+        }
+
+        if ($node->kind === 'array') {
+            return new ArrayExpression(self::arrayItems($node->elements, $scope), 'array');
+        }
+
+        if ($node->kind === 'lambda') {
+            return self::lambda($node->params, $node->body, $scope);
+        }
+
+        throw new \InvalidArgumentException(self::MSG_BODY);
+    }
+
+    /**
+     * @param array<string, ParameterExpression> $scope
+     */
+    private static function lambda(
+        array<int, string> $params,
+        \Tyhp\ExtClosureNode $body,
+        array<string, ParameterExpression> $scope,
+    ): LambdaExpression {
+        array<string, ParameterExpression> $inner = $scope;
+        array<ParameterExpression> $parameters = [];
+        int $index = 0;
+        foreach ($params as $param) {
+            if ($param === '') {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            ParameterExpression $created = new ParameterExpression($param, 'mixed', $index);
+            $inner[$param] = $created;
+            $parameters[] = $created;
+            $index++;
+        }
+
+        return new LambdaExpression($parameters, self::hydrate($body, $inner), 'mixed');
+    }
+
+    /**
+     * @param array<string, ParameterExpression> $scope
+     * @return array<ArrayItem>
+     */
+    private static function arrayItems(
+        array<int, \Tyhp\ExtClosureElement> $elements,
+        array<string, ParameterExpression> $scope,
+    ): array<ArrayItem> {
+        array<ArrayItem> $items = [];
+        foreach ($elements as $element) {
+            ?ExpressionNode $key = null;
+            if ($element->key !== null) {
+                $key = self::hydrate($element->key, $scope);
+            }
+            $items[] = new ArrayItem(self::hydrate($element->value, $scope), $key);
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param array<string, ParameterExpression> $scope
+     * @return array<ExpressionNode>
+     */
+    private static function arguments(
+        array<int, \Tyhp\ExtClosureNode> $args,
+        array<string, ParameterExpression> $scope,
+    ): array<ExpressionNode> {
+        array<ExpressionNode> $nodes = [];
+        foreach ($args as $arg) {
+            $nodes[] = self::hydrate($arg, $scope);
+        }
+
+        return $nodes;
+    }
+
+    private static function valueType(mixed $value): string {
+        if ($value === null) {
+            return 'null';
+        }
+        if ($value is int) {
+            return 'int';
+        }
+        if ($value is float) {
+            return 'float';
+        }
+        if ($value is bool) {
+            return 'bool';
+        }
+        if ($value is string) {
+            return 'string';
+        }
+        if (\is_array($value)) {
+            return 'array';
+        }
+
+        return 'mixed';
+    }
+
+    private static function binaryType(string $op): string {
+        if (
+            $op === '&&' || $op === '||' || $op === 'xor'
+            || $op === '<' || $op === '<=' || $op === '>' || $op === '>='
+            || $op === '==' || $op === '!=' || $op === '===' || $op === '!=='
+        ) {
+            return 'bool';
+        }
+        if ($op === '<=>') {
+            return 'int';
+        }
+
+        return 'mixed';
+    }
+}

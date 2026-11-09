@@ -3,22 +3,104 @@
 namespace Tyhp\Io\Dns;
 
 use Tyhp\CancellationToken;
+use Tyhp\EventLoop;
+use Tyhp\Exceptions\OperationCancelledException;
+use Tyhp\Exceptions\ParallelException;
+use Tyhp\ExtModule;
+use Tyhp\Io\Exceptions\IoException;
+use Tyhp\Io\IoPending;
 use Tyhp\Io\Offload;
+use Tyhp\ParallelRemoteError;
 use Tyhp\Promise;
 
 /**
- * Host name resolution through the system resolver, run with Offload.
+ * Host name resolution through the system resolver.
+ *
+ * The tyhp extension runs the lookup on a thread and the event loop waits on
+ * its pipe when that extension is loaded. Otherwise the lookup runs with Offload.
  */
 final class Dns {
     /**
      * Resolves $host to its IPv4 addresses (including /etc/hosts entries) followed
-     * by any IPv6 addresses from DNS. An IP address resolves to itself. Rejects
-     * with IoException when nothing resolves and the lookup runs in this
-     * process. When Offload runs it in a tyhp/parallel worker
-     * (Offload::usesWorkers()), a failure, including nothing resolving, rejects
-     * with ParallelException instead.
+     * by any IPv6 addresses from DNS. An IP address resolves to itself.
+     * The tyhp extension performs the lookup when it is loaded and at least
+     * {@see ExtModule::MINIMUM_VERSION}. A missing or older extension uses Offload.
+     * Rejects with IoException when nothing resolves and Offload::usesWorkers()
+     * is false. When Offload::usesWorkers() is true, nothing resolving rejects
+     * with ParallelException whose getRemoteClass() is IoException, with or
+     * without the extension. A cancelled token rejects with
+     * OperationCancelledException.
      */
     public static function resolveAsync(string $host, ?CancellationToken $token = null): Promise<array<int, string>> {
-        return Offload::runAsync<array<int, string>>(new DnsLookup($host), $token);
+        if (!ExtModule::available()) {
+            return Offload::runAsync<array<int, string>>(new DnsLookup($host), $token);
+        }
+
+        return self::resolveWithExtension($host, $token);
+    }
+
+    /**
+     * dnsStart throws RuntimeException when the lookup cannot start. That
+     * exception propagates; this method does not switch to Offload.
+     */
+    private static function resolveWithExtension(string $host, ?CancellationToken $token): Promise<array<int, string>> {
+        bool $viaWorker = Offload::usesWorkers();
+        \Tyhp\ExtDnsStarted $started = \Tyhp\Ext::dnsStart($host);
+        int $id = $started->id;
+        resource $pipe = $started->pipe;
+
+        IoPending<array<int, string>> $pending = new IoPending<array<int, string>>();
+        EventLoop $loop = EventLoop::getInstance();
+        $loop->addReadStream($pipe, function (resource $stream) use ($loop, $id, $pending, $token, $viaWorker): void {
+            $loop->removeReadStream($stream);
+            self::finishExtension($id, $pending, $token, $viaWorker);
+        });
+        $pending->cancelWith($token, function () use ($id): void {
+            \Tyhp\Ext::dnsCancel($id);
+        });
+
+        return $pending->promise();
+    }
+
+    /**
+     * A cancellation that already settled the promise still takes the lookup,
+     * so the thread can finish, and does not write that result into the promise.
+     */
+    private static function finishExtension(
+        int $id,
+        IoPending<array<int, string>> $pending,
+        ?CancellationToken $token,
+        bool $viaWorker,
+    ): void {
+        \Tyhp\ExtDnsTaken $taken = \Tyhp\Ext::dnsTake($id);
+        if ($pending->isSettled()) {
+            return;
+        }
+
+        if ($taken->ok === true) {
+            $pending->resolve($taken->addresses);
+            return;
+        }
+        if ($taken->reason === 'cancelled') {
+            CancellationToken $cancelToken = $token ?? CancellationToken::none();
+            $pending->reject(new OperationCancelledException($cancelToken));
+            return;
+        }
+        $pending->reject(self::unresolvedError($taken->message, $viaWorker));
+    }
+
+    /**
+     * The failure Offload gives for the same lookup: IoException in this process,
+     * ParallelException describing a worker's IoException when Offload uses workers.
+     */
+    private static function unresolvedError(string $message, bool $viaWorker): \Throwable {
+        if (!$viaWorker) {
+            return new IoException($message);
+        }
+        ParallelRemoteError $remote = new ParallelRemoteError() with [
+            'class' => IoException::class,
+            'message' => $message,
+        ];
+        return new ParallelException(IoException::class . ': ' . $message, $remote);
     }
 }

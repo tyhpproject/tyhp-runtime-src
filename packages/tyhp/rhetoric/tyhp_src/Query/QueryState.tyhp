@@ -1,0 +1,271 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Rhetoric\Mapping\ModelMap;
+
+final class QueryState {
+    /**
+     * @param array<int, \Tyhp\Expression> $wheres
+     * @param array<int, OrderSpec> $orders
+     * @param array<int, string> $tags
+     * @param array<int, mixed> $fromBindings
+     * @param array<int, mixed> $keysetBindings
+     * @param array<int, IncludeSpec> $includes
+     * @param array<int, \Tyhp\Expression> $groups
+     * @param array<int, \Tyhp\Expression> $havings
+     * @param array<int, SetOperand> $sets
+     * @param array<int, JoinSpec> $joins
+     */
+    public function __construct(
+        public readonly array<int, \Tyhp\Expression> $wheres,
+        public readonly ?\Tyhp\Expression $projection,
+        public readonly array<int, OrderSpec> $orders,
+        public readonly ?int $skip,
+        public readonly ?int $take,
+        public readonly bool $distinct,
+        public readonly array<int, string> $tags,
+        public readonly ?string $lock,
+        public readonly ?string $fromSql,
+        public readonly array<int, mixed> $fromBindings,
+        public readonly ?\Tyhp\Expression $every,
+        public readonly ?\Tyhp\Expression $aggregate,
+        public readonly QueryTracking $tracking,
+        public readonly ?string $keysetColumn,
+        public readonly array<int, mixed> $keysetBindings,
+        public readonly array<int, IncludeSpec> $includes,
+        public readonly array<int, \Tyhp\Expression> $groups,
+        public readonly array<int, \Tyhp\Expression> $havings,
+        public readonly array<int, SetOperand> $sets,
+        public readonly array<int, JoinSpec> $joins,
+        public readonly bool $singleQuery,
+        public readonly bool $ignoreGlobalScopes = false,
+        public readonly string $trash = 'default',
+        public readonly bool $scopesApplied = false,
+        public readonly ?CursorWindow $cursor = null,
+    ) {}
+
+    public static function empty(): QueryState {
+        return new QueryState([], null, [], null, null, false, [], null, null, [], null, null, QueryTracking::Tracked, null, [], [], [], [], [], [], false);
+    }
+
+    public function withWhere(\Tyhp\Expression $predicate): QueryState {
+        array<int, \Tyhp\Expression> $wheres = $this->wheres;
+        $wheres[] = $predicate;
+
+        return $this->copy($wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withProjection(\Tyhp\Expression $projection): QueryState {
+        return $this->copy($this->wheres, $projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    /**
+     * @param array<int, OrderSpec> $orders
+     */
+    public function withOrders(array<int, OrderSpec> $orders): QueryState {
+        return $this->copy($this->wheres, $this->projection, $orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withSkip(int $skip): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withTake(int $take): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withDistinct(): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, true, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withTag(string $tag): QueryState {
+        array<int, string> $tags = $this->tags;
+        $tags[] = $tag;
+
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withLock(string $lock): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    /**
+     * @param array<int, mixed> $bindings
+     */
+    public function withFrom(string $sql, array<int, mixed> $bindings): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $sql, $bindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withEvery(\Tyhp\Expression $predicate): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $predicate, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withAggregate(\Tyhp\Expression $aggregate): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withTracking(QueryTracking $tracking): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    /**
+     * Page by a key column. Clears offset and ordering so the key order is the only order.
+     *
+     * @param array<int, mixed> $bindings
+     */
+    public function withKeyset(string $column, array<int, mixed> $bindings): QueryState {
+        return $this->copy($this->wheres, $this->projection, [], null, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $column, $bindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    /**
+     * @param array<int, string> $path
+     */
+    public function withInclude(array<int, string> $path, ?\Tyhp\Expression $constrain = null): QueryState {
+        array<int, IncludeSpec> $includes = $this->includes;
+        $includes[] = new IncludeSpec($path, $constrain);
+
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    /**
+     * @param array<int, string> $path
+     */
+    public function withThen(array<int, string> $path): QueryState {
+        if (\count($this->includes) === 0) {
+            throw new \LogicException('thenWith() needs a with().');
+        }
+        array<int, IncludeSpec> $includes = $this->includes;
+        int $index = \count($includes) - 1;
+        IncludeSpec $current = $includes[$index];
+        array<int, string> $segments = $current->path;
+        foreach ($path as $segment) {
+            $segments[] = $segment;
+        }
+        $includes[$index] = new IncludeSpec($segments, $current->constrain);
+
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withGroup(\Tyhp\Expression $key): QueryState {
+        array<int, \Tyhp\Expression> $groups = $this->groups;
+        $groups[] = $key;
+
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $groups, $this->havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withHaving(\Tyhp\Expression $predicate): QueryState {
+        array<int, \Tyhp\Expression> $havings = $this->havings;
+        $havings[] = $predicate;
+
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $havings, $this->sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withSet(SetOperand $operand): QueryState {
+        array<int, SetOperand> $sets = $this->sets;
+        $sets[] = $operand;
+
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $sets, $this->joins, $this->singleQuery);
+    }
+
+    public function withJoin(JoinSpec $join): QueryState {
+        array<int, JoinSpec> $joins = $this->joins;
+        $joins[] = $join;
+
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $joins, $this->singleQuery);
+    }
+
+    public function withSingleQuery(): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, true);
+    }
+
+    /**
+     * The rows a set operation combines: this query's filters, grouping, joins and projection,
+     * without the ordering, paging, tags, eager loads and operands that apply to the combined result.
+     */
+    public function withoutGlobalScopes(): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery, true, $this->trash, false);
+    }
+
+    public function withTrash(string $trash): QueryState {
+        return $this->copy($this->wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery, $this->ignoreGlobalScopes, $trash, false);
+    }
+
+    public function prepared(ModelMap $model): QueryState {
+        if ($this->scopesApplied) {
+            return $this;
+        }
+        array<int, \Tyhp\Expression> $wheres = [];
+        if (!$this->ignoreGlobalScopes) {
+            foreach ($model->globalScopes as $scope) {
+                $wheres[] = $scope;
+            }
+        }
+        foreach ($this->wheres as $where) {
+            $wheres[] = $where;
+        }
+
+        return $this->copy($wheres, $this->projection, $this->orders, $this->skip, $this->take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery, $this->ignoreGlobalScopes, $this->trash, true);
+    }
+
+    public function core(): QueryState {
+        return $this->copy($this->wheres, $this->projection, [], null, null, $this->distinct, [], null, $this->fromSql, $this->fromBindings, null, null, $this->tracking, $this->keysetColumn, $this->keysetBindings, [], $this->groups, $this->havings, [], $this->joins, false);
+    }
+
+    /**
+     * @param array<int, \Tyhp\Expression> $wheres
+     * @param array<int, OrderSpec> $orders
+     * @param array<int, string> $tags
+     * @param array<int, mixed> $fromBindings
+     * @param array<int, mixed> $keysetBindings
+     * @param array<int, IncludeSpec> $includes
+     * @param array<int, \Tyhp\Expression> $groups
+     * @param array<int, \Tyhp\Expression> $havings
+     * @param array<int, SetOperand> $sets
+     * @param array<int, JoinSpec> $joins
+     */
+    private function copy(
+        array<int, \Tyhp\Expression> $wheres,
+        ?\Tyhp\Expression $projection,
+        array<int, OrderSpec> $orders,
+        ?int $skip,
+        ?int $take,
+        bool $distinct,
+        array<int, string> $tags,
+        ?string $lock,
+        ?string $fromSql,
+        array<int, mixed> $fromBindings,
+        ?\Tyhp\Expression $every,
+        ?\Tyhp\Expression $aggregate,
+        QueryTracking $tracking,
+        ?string $keysetColumn,
+        array<int, mixed> $keysetBindings,
+        array<int, IncludeSpec> $includes,
+        array<int, \Tyhp\Expression> $groups,
+        array<int, \Tyhp\Expression> $havings,
+        array<int, SetOperand> $sets,
+        array<int, JoinSpec> $joins,
+        bool $singleQuery,
+        ?bool $ignoreGlobalScopes = null,
+        ?string $trash = null,
+        ?bool $scopesApplied = null,
+        ?CursorWindow $cursor = null,
+        bool $replaceCursor = false,
+    ): QueryState {
+        return new QueryState($wheres, $projection, $orders, $skip, $take, $distinct, $tags, $lock, $fromSql, $fromBindings, $every, $aggregate, $tracking, $keysetColumn, $keysetBindings, $includes, $groups, $havings, $sets, $joins, $singleQuery, $ignoreGlobalScopes ?? $this->ignoreGlobalScopes, $trash ?? $this->trash, $scopesApplied ?? $this->scopesApplied, $replaceCursor ? $cursor : $this->cursor);
+    }
+
+    /**
+     * The filtered rows, without the ordering, offset, limit, or cursor of a page.
+     */
+    public function unlimited(): QueryState {
+        return $this->copy($this->wheres, $this->projection, [], null, null, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery, null, null, null, null, true);
+    }
+
+    /**
+     * @param array<int, OrderSpec> $orders
+     */
+    public function forCursor(array<int, OrderSpec> $orders, int $take, CursorWindow $cursor): QueryState {
+        return $this->copy($this->wheres, $this->projection, $orders, null, $take, $this->distinct, $this->tags, $this->lock, $this->fromSql, $this->fromBindings, $this->every, $this->aggregate, $this->tracking, $this->keysetColumn, $this->keysetBindings, $this->includes, $this->groups, $this->havings, $this->sets, $this->joins, $this->singleQuery, null, null, null, $cursor, true);
+    }
+}

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tyhp\Tests\Lambda;
 
 use PHPUnit\Framework\TestCase;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\PropertyAccessExpression;
 use Tyhp\PropertyPath;
 
 class PropertyPathTest extends TestCase
@@ -83,7 +85,7 @@ class PropertyPathTest extends TestCase
 
     public function testLambdaInfersPropertyTypeWithoutAReturnTypeOnTheClosure(): void
     {
-        $path = PropertyPath::from(
+        $path = PropertyPath::from()(
             PropertyPathSample::class,
             ['age'],
             fn(PropertyPathSample $person) => $person->age,
@@ -96,7 +98,7 @@ class PropertyPathTest extends TestCase
 
     public function testLambdaUsesTheClosureReturnTypeWhenPresent(): void
     {
-        $path = PropertyPath::from(
+        $path = PropertyPath::from()(
             PropertyPathSample::class,
             ['city'],
             fn(PropertyPathSample $person): string => $person->city,
@@ -108,7 +110,7 @@ class PropertyPathTest extends TestCase
 
     public function testLambdaNullSafeFlagMakesTheResultNullable(): void
     {
-        $path = PropertyPath::from(
+        $path = PropertyPath::from()(
             PropertyPathSample::class,
             ['nickname'],
             fn(PropertyPathSample $person) => $person->nickname,
@@ -123,6 +125,64 @@ class PropertyPathTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         new PropertyPath('object', 'mixed', [], fn(): mixed => null);
+    }
+
+    public function testFromClosureReadsAPropertyChain(): void
+    {
+        $fn = fn ($u) => $u->a->b;
+        $path = PropertyPath::fromClosure($fn, null);
+
+        self::assertSame(['a', 'b'], $path->getSegments());
+        self::assertInstanceOf(PropertyAccessExpression::class, $path->body);
+        self::assertSame('ok', $path->getValue((object) ['a' => (object) ['b' => 'ok']]));
+    }
+
+    public function testFromClosureReadsANullsafeChain(): void
+    {
+        $fn = fn ($u) => $u?->a?->b;
+        $path = PropertyPath::fromClosure($fn, 'callable(\\User): string');
+
+        self::assertSame(['a', 'b'], $path->getSegments());
+        self::assertSame('User', $path->parameters[0]->paramType);
+        self::assertSame('string', $path->returnType);
+        self::assertInstanceOf(NullSafeAccessExpression::class, $path->body);
+        self::assertNull($path->getValue((object) ['a' => null]));
+        self::assertSame('ok', $path->getValue((object) ['a' => (object) ['b' => 'ok']]));
+    }
+
+    public function testFromClosureRejectsAnIndex(): void
+    {
+        $this->assertNotAPropertyPath(fn ($u) => $u->tags[0]);
+    }
+
+    public function testFromClosureRejectsAComparison(): void
+    {
+        $this->assertNotAPropertyPath(fn ($u) => $u->age > 1);
+    }
+
+    public function testFromClosureRejectsAMethodCall(): void
+    {
+        $this->assertNotAPropertyPath(fn ($u) => $u->name());
+    }
+
+    public function testFromClosureRejectsABareParameter(): void
+    {
+        $this->assertNotAPropertyPath(fn ($u) => $u);
+    }
+
+    public function testFromClosureRejectsAChainOffASecondParameter(): void
+    {
+        $this->assertNotAPropertyPath(fn ($a, $b) => $b->x);
+    }
+
+    private function assertNotAPropertyPath(\Closure $fn): void
+    {
+        try {
+            PropertyPath::fromClosure($fn, null);
+            self::fail('expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringContainsString('property-path', $e->getMessage());
+        }
     }
 }
 

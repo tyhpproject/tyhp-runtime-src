@@ -168,7 +168,7 @@ final class PromiseRunTest extends TestCase
         $error = new \DomainException('rejected');
 
         try {
-            Promise::run(static fn(): Promise => Promise::reject($error));
+            Promise::run(static fn(): Promise => Promise::reject()($error));
             $this->fail('Expected the rejection reason to be rethrown');
         } catch (\Throwable $caught) {
             $this->assertSame($error, $caught);

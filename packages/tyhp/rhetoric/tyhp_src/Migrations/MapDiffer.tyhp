@@ -1,0 +1,736 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+final class MapDiffer {
+    /**
+     * @param array<int, string> $renames `old:new` or `table.old:new`
+     */
+    public static function diff(SnapshotDocument $previous, SnapshotDocument $current, array<int, string> $renames): MigrationPlan {
+        array<string, TableSpec> $before = $previous->byName();
+        array<string, TableSpec> $after = $current->byName();
+        array<string, array<string, string>> $renameMap = self::renameMap($before, $after, $renames);
+        array<int, Operation> $dropForeignKeys = [];
+        array<int, Operation> $dropIndexes = [];
+        array<int, Operation> $dropColumns = [];
+        array<int, Operation> $dropTimestamps = [];
+        array<int, Operation> $renamed = [];
+        array<int, Operation> $altered = [];
+        array<int, Operation> $addedColumns = [];
+        array<int, Operation> $addedIndexes = [];
+        array<int, Operation> $addedForeignKeys = [];
+        array<int, Operation> $addedTimestamps = [];
+        array<int, string> $warnings = [];
+        array<string, TableSpec> $creating = [];
+        array<string, TableSpec> $dropping = [];
+
+        foreach ($before as $name => $table) {
+            if (!isset($after[$name])) {
+                $dropping[$name] = $table;
+            }
+        }
+        foreach ($after as $name => $table) {
+            if (!isset($before[$name])) {
+                $creating[$name] = $table;
+            }
+        }
+        foreach ($before as $name => $table) {
+            if (!isset($after[$name])) {
+                continue;
+            }
+            self::diffTable(
+                $table,
+                $after[$name],
+                $renameMap[$name] ?? [],
+                $dropForeignKeys,
+                $dropIndexes,
+                $dropColumns,
+                $dropTimestamps,
+                $renamed,
+                $altered,
+                $addedColumns,
+                $addedIndexes,
+                $addedForeignKeys,
+                $addedTimestamps,
+                $warnings,
+            );
+        }
+        foreach ($creating as $table) {
+            foreach ($table->foreignKeys as $foreignKey) {
+                $addedForeignKeys[] = self::make(
+                    OperationKind::AddForeignKey,
+                    $table->table,
+                    constraint: $foreignKey,
+                );
+            }
+        }
+        foreach ($dropping as $table) {
+            foreach ($table->foreignKeys as $foreignKey) {
+                $dropForeignKeys[] = self::lossy(
+                    self::make(OperationKind::DropForeignKey, $table->table, constraint: $foreignKey),
+                    '',
+                );
+            }
+        }
+
+        array<int, Operation> $operations = [];
+        foreach (self::seedDeletes($before, $after) as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($dropForeignKeys as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($dropIndexes as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($dropColumns as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($dropTimestamps as $operation) {
+            $operations[] = $operation;
+        }
+        foreach (self::ordered($dropping, true) as $table) {
+            string $warning = 'Dropping table ' . $table->table . ' loses data.';
+            $warnings[] = $warning;
+            $operations[] = self::make(
+                OperationKind::DropTable,
+                $table->table,
+                warning: $warning,
+                defined: $table,
+            );
+        }
+        foreach ($renamed as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($altered as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($addedColumns as $operation) {
+            $operations[] = $operation;
+        }
+        foreach (self::ordered($creating, false) as $table) {
+            $operations[] = self::make(OperationKind::CreateTable, $table->table, defined: $table);
+        }
+        foreach ($addedIndexes as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($addedTimestamps as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($addedForeignKeys as $operation) {
+            $operations[] = $operation;
+        }
+        foreach (self::seedInserts($before, $after) as $operation) {
+            $operations[] = $operation;
+        }
+        foreach ($operations as $operation) {
+            if ($operation->warning !== '' && !\in_array($operation->warning, $warnings, true)) {
+                $warnings[] = $operation->warning;
+            }
+        }
+
+        return new MigrationPlan($operations, $warnings);
+    }
+
+    /**
+     * @param array<int, Operation> $operations
+     * @return array<int, Operation>
+     */
+    public static function invert(array<int, Operation> $operations): array<int, Operation> {
+        array<int, Operation> $down = [];
+        int $index = \count($operations) - 1;
+        while ($index >= 0) {
+            foreach (self::inverseOf($operations[$index]) as $step) {
+                $down[] = $step;
+            }
+            $index--;
+        }
+
+        return $down;
+    }
+
+    /**
+     * @return array<int, Operation>
+     */
+    private static function inverseOf(Operation $operation): array<int, Operation> {
+        if ($operation->kind === OperationKind::CreateTable) {
+            return [self::make(OperationKind::DropTable, $operation->table, defined: $operation->defined)];
+        }
+        if ($operation->kind === OperationKind::DropTable) {
+            return [self::make(OperationKind::CreateTable, $operation->table, defined: $operation->defined)];
+        }
+        if ($operation->kind === OperationKind::AddColumn) {
+            return [self::make(OperationKind::DropColumn, $operation->table, stored: $operation->column)];
+        }
+        if ($operation->kind === OperationKind::DropColumn) {
+            return [self::make(OperationKind::AddColumn, $operation->table, stored: $operation->column)];
+        }
+        if ($operation->kind === OperationKind::AlterColumn) {
+            return [self::make(
+                OperationKind::AlterColumn,
+                $operation->table,
+                stored: $operation->previous,
+                previous: $operation->column,
+            )];
+        }
+        if ($operation->kind === OperationKind::RenameColumn) {
+            return [self::make(
+                OperationKind::RenameColumn,
+                $operation->table,
+                fromName: $operation->toName,
+                toName: $operation->fromName,
+            )];
+        }
+        if ($operation->kind === OperationKind::AddIndex) {
+            return [self::make(OperationKind::DropIndex, $operation->table, tableIndex: $operation->index)];
+        }
+        if ($operation->kind === OperationKind::DropIndex) {
+            return [self::make(OperationKind::AddIndex, $operation->table, tableIndex: $operation->index)];
+        }
+        if ($operation->kind === OperationKind::AddForeignKey) {
+            return [self::make(OperationKind::DropForeignKey, $operation->table, constraint: $operation->foreignKey)];
+        }
+        if ($operation->kind === OperationKind::DropForeignKey) {
+            return [self::make(OperationKind::AddForeignKey, $operation->table, constraint: $operation->foreignKey)];
+        }
+        if ($operation->kind === OperationKind::AddTimestamps) {
+            return [self::make(OperationKind::DropTimestamps, $operation->table)];
+        }
+        if ($operation->kind === OperationKind::DropTimestamps) {
+            return [self::make(OperationKind::AddTimestamps, $operation->table)];
+        }
+        if ($operation->kind === OperationKind::SeedInsert) {
+            return [self::make(OperationKind::SeedDelete, $operation->table, row: $operation->row)];
+        }
+        if ($operation->kind === OperationKind::SeedDelete) {
+            return [self::make(OperationKind::SeedInsert, $operation->table, row: $operation->row)];
+        }
+
+        return [self::make($operation->kind, $operation->table, reversible: false, warning: 'This operation cannot be reversed.')];
+    }
+
+    /**
+     * @param array<int, Operation> $dropForeignKeys
+     * @param array<int, Operation> $dropIndexes
+     * @param array<int, Operation> $dropColumns
+     * @param array<int, Operation> $dropTimestamps
+     * @param array<int, Operation> $renamed
+     * @param array<int, Operation> $altered
+     * @param array<int, Operation> $addedColumns
+     * @param array<int, Operation> $addedIndexes
+     * @param array<int, Operation> $addedForeignKeys
+     * @param array<int, Operation> $addedTimestamps
+     * @param array<int, string> $warnings
+     * @param array<string, string> $renames
+     */
+    private static function diffTable(
+        TableSpec $before,
+        TableSpec $after,
+        array<string, string> $renames,
+        array<int, Operation> &$dropForeignKeys,
+        array<int, Operation> &$dropIndexes,
+        array<int, Operation> &$dropColumns,
+        array<int, Operation> &$dropTimestamps,
+        array<int, Operation> &$renamed,
+        array<int, Operation> &$altered,
+        array<int, Operation> &$addedColumns,
+        array<int, Operation> &$addedIndexes,
+        array<int, Operation> &$addedForeignKeys,
+        array<int, Operation> &$addedTimestamps,
+        array<int, string> &$warnings,
+    ): void {
+        array<string, ColumnSpec> $oldColumns = self::byColumn($before);
+        array<string, ColumnSpec> $newColumns = self::byColumn($after);
+        foreach ($renames as $from => $to) {
+            if (!isset($oldColumns[$from]) || !isset($newColumns[$to])) {
+                throw new \InvalidArgumentException('Unknown rename ' . $before->table . '.' . $from . ' to ' . $to . '.');
+            }
+            $renamed[] = self::make(
+                OperationKind::RenameColumn,
+                $before->table,
+                fromName: $from,
+                toName: $to,
+                stored: $newColumns[$to],
+                previous: $oldColumns[$from],
+            );
+            if ($oldColumns[$from]->storageDiffers($newColumns[$to])) {
+                ColumnSpec $renamedColumn = $oldColumns[$from];
+                $altered[] = self::make(
+                    OperationKind::AlterColumn,
+                    $before->table,
+                    stored: $newColumns[$to],
+                    previous: new ColumnSpec(
+                        $renamedColumn->property,
+                        $to,
+                        $renamedColumn->type,
+                        $renamedColumn->blueprint,
+                        $renamedColumn->nullable,
+                        $renamedColumn->maxLength,
+                        $renamedColumn->precision,
+                        $renamedColumn->scale,
+                        $renamedColumn->generated,
+                        $renamedColumn->comment,
+                        $renamedColumn->hasDefault,
+                        $renamedColumn->default,
+                    ),
+                );
+            }
+            unset($oldColumns[$from]);
+            unset($newColumns[$to]);
+        }
+        array<int, ColumnSpec> $removed = [];
+        array<int, ColumnSpec> $added = [];
+        foreach ($oldColumns as $name => $column) {
+            if (!isset($newColumns[$name])) {
+                $removed[] = $column;
+            }
+        }
+        foreach ($newColumns as $name => $column) {
+            if (!isset($oldColumns[$name])) {
+                $added[] = $column;
+            }
+        }
+        array<string, bool> $suggested = [];
+        foreach ($removed as $column) {
+            foreach ($added as $other) {
+                if (!$column->sameType($other)) {
+                    continue;
+                }
+                string $hint = '--rename=' . $column->name . ':' . $other->name;
+                if (isset($suggested[$hint])) {
+                    continue;
+                }
+                $suggested[$hint] = true;
+                string $warning = 'Column ' . $before->table . '.' . $column->name
+                    . ' was removed and ' . $before->table . '.' . $other->name
+                    . ' was added with the same type. This drops data. Pass ' . $hint . ' to rename it.';
+                $warnings[] = $warning;
+            }
+        }
+        foreach ($removed as $column) {
+            string $warning = 'Dropping column ' . $before->table . '.' . $column->name . ' loses data.';
+            $dropColumns[] = self::make(OperationKind::DropColumn, $before->table, warning: $warning, stored: $column);
+        }
+        foreach ($added as $column) {
+            $addedColumns[] = self::make(OperationKind::AddColumn, $after->table, stored: $column);
+        }
+        foreach ($oldColumns as $name => $column) {
+            if (!isset($newColumns[$name])) {
+                continue;
+            }
+            ColumnSpec $next = $newColumns[$name];
+            if (!$column->schemaDiffers($next)) {
+                continue;
+            }
+            string $warning = '';
+            if (self::narrows($column, $next)) {
+                $warning = 'Changing ' . $before->table . '.' . $name . ' from ' . self::describe($column) . ' to ' . self::describe($next) . ' may lose data.';
+                $warnings[] = $warning;
+            }
+            $altered[] = self::make(
+                OperationKind::AlterColumn,
+                $before->table,
+                warning: $warning,
+                stored: $next,
+                previous: $column,
+            );
+        }
+        self::diffIndexes($before, $after, $dropIndexes, $addedIndexes);
+        self::diffForeignKeys($before, $after, $dropForeignKeys, $addedForeignKeys);
+        if ($before->timestamps && !$after->timestamps) {
+            $dropTimestamps[] = self::make(
+                OperationKind::DropTimestamps,
+                $before->table,
+                warning: 'Dropping the timestamps of ' . $before->table . ' loses data.',
+            );
+        }
+        if (!$before->timestamps && $after->timestamps) {
+            $addedTimestamps[] = self::make(OperationKind::AddTimestamps, $after->table);
+        }
+        if (self::keyDiffers($before->key, $after->key)) {
+            $warnings[] = 'The primary key of ' . $after->table . ' changed. Rhetoric does not migrate primary key changes on an existing table; add the change to a migration by hand.';
+        }
+        if ($before->comment !== $after->comment) {
+            $warnings[] = 'The comment on ' . $after->table . ' changed. Rhetoric does not migrate table comment changes on an existing table; add the change to a migration by hand.';
+        }
+    }
+
+    private static function keyDiffers(?KeySpec $before, ?KeySpec $after): bool {
+        if ($before === null || $after === null) {
+            return $before !== $after;
+        }
+
+        return $before->columns !== $after->columns;
+    }
+
+    /**
+     * @param array<int, Operation> $dropped
+     * @param array<int, Operation> $added
+     */
+    private static function diffIndexes(
+        TableSpec $before,
+        TableSpec $after,
+        array<int, Operation> &$dropped,
+        array<int, Operation> &$added,
+    ): void {
+        array<string, IndexSpec> $old = [];
+        foreach ($before->indexes as $index) {
+            $old[$index->name] = $index;
+        }
+        array<string, IndexSpec> $new = [];
+        foreach ($after->indexes as $index) {
+            $new[$index->name] = $index;
+        }
+        foreach ($old as $name => $index) {
+            if (!isset($new[$name])) {
+                $dropped[] = self::make(OperationKind::DropIndex, $before->table, tableIndex: $index);
+                continue;
+            }
+            if ($index->differs($new[$name])) {
+                $dropped[] = self::make(OperationKind::DropIndex, $before->table, tableIndex: $index);
+                $added[] = self::make(OperationKind::AddIndex, $after->table, tableIndex: $new[$name]);
+            }
+        }
+        foreach ($new as $name => $index) {
+            if (!isset($old[$name])) {
+                $added[] = self::make(OperationKind::AddIndex, $after->table, tableIndex: $index);
+            }
+        }
+    }
+
+    /**
+     * @param array<int, Operation> $dropped
+     * @param array<int, Operation> $added
+     */
+    private static function diffForeignKeys(
+        TableSpec $before,
+        TableSpec $after,
+        array<int, Operation> &$dropped,
+        array<int, Operation> &$added,
+    ): void {
+        array<string, ForeignKeySpec> $old = [];
+        foreach ($before->foreignKeys as $foreignKey) {
+            $old[$foreignKey->name] = $foreignKey;
+        }
+        array<string, ForeignKeySpec> $new = [];
+        foreach ($after->foreignKeys as $foreignKey) {
+            $new[$foreignKey->name] = $foreignKey;
+        }
+        foreach ($old as $name => $foreignKey) {
+            if (!isset($new[$name])) {
+                $dropped[] = self::make(OperationKind::DropForeignKey, $before->table, constraint: $foreignKey);
+                continue;
+            }
+            if ($foreignKey->schemaDiffers($new[$name])) {
+                $dropped[] = self::make(OperationKind::DropForeignKey, $before->table, constraint: $foreignKey);
+                $added[] = self::make(OperationKind::AddForeignKey, $after->table, constraint: $new[$name]);
+            }
+        }
+        foreach ($new as $name => $foreignKey) {
+            if (!isset($old[$name])) {
+                $added[] = self::make(OperationKind::AddForeignKey, $after->table, constraint: $foreignKey);
+            }
+        }
+    }
+
+    /**
+     * @param array<string, TableSpec> $before
+     * @param array<string, TableSpec> $after
+     * @return array<int, Operation>
+     */
+    private static function seedDeletes(array<string, TableSpec> $before, array<string, TableSpec> $after): array<int, Operation> {
+        array<int, Operation> $operations = [];
+        foreach (self::ordered($before, true) as $table) {
+            array<int, array<string, mixed>> $next = isset($after[$table->table]) ? $after[$table->table]->seeds : [];
+            foreach (self::missingRows($table->seeds, $next) as $row) {
+                $operations[] = self::make(OperationKind::SeedDelete, $table->table, row: $row);
+            }
+        }
+
+        return $operations;
+    }
+
+    /**
+     * @param array<string, TableSpec> $before
+     * @param array<string, TableSpec> $after
+     * @return array<int, Operation>
+     */
+    private static function seedInserts(array<string, TableSpec> $before, array<string, TableSpec> $after): array<int, Operation> {
+        array<int, Operation> $operations = [];
+        foreach (self::ordered($after, false) as $table) {
+            array<int, array<string, mixed>> $previous = isset($before[$table->table]) ? $before[$table->table]->seeds : [];
+            foreach (self::missingRows($table->seeds, $previous) as $row) {
+                $operations[] = self::make(OperationKind::SeedInsert, $table->table, row: $row);
+            }
+        }
+
+        return $operations;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $left
+     * @param array<int, array<string, mixed>> $right
+     * @return array<int, array<string, mixed>>
+     */
+    private static function missingRows(array<int, array<string, mixed>> $left, array<int, array<string, mixed>> $right): array<int, array<string, mixed>> {
+        array<int, array<string, mixed>> $missing = [];
+        foreach ($left as $row) {
+            bool $found = false;
+            foreach ($right as $other) {
+                if (self::sameRow($row, $other)) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $missing[] = $row;
+            }
+        }
+
+        return $missing;
+    }
+
+    /**
+     * @param array<string, mixed> $left
+     * @param array<string, mixed> $right
+     */
+    private static function sameRow(array<string, mixed> $left, array<string, mixed> $right): bool {
+        if (\count($left) !== \count($right)) {
+            return false;
+        }
+        foreach ($left as $column => $value) {
+            if (!\array_key_exists($column, $right) || !SpecJson::sameValue($value, $right[$column])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string, TableSpec> $tables
+     * @return array<int, TableSpec>
+     */
+    private static function ordered(array<string, TableSpec> $tables, bool $childrenFirst): array<int, TableSpec> {
+        array<string, int> $incoming = [];
+        array<string, array<int, string>> $edges = [];
+        foreach ($tables as $name => $table) {
+            $incoming[$name] = 0;
+            $edges[$name] = [];
+        }
+        foreach ($tables as $name => $table) {
+            foreach ($table->foreignKeys as $foreignKey) {
+                if ($foreignKey->referencedTable === $name || !isset($tables[$foreignKey->referencedTable])) {
+                    continue;
+                }
+                $edges[$foreignKey->referencedTable][] = $name;
+                $incoming[$name]++;
+            }
+        }
+        array<int, string> $ready = [];
+        foreach ($incoming as $name => $count) {
+            if ($count === 0) {
+                $ready[] = $name;
+            }
+        }
+        \sort($ready);
+        array<int, string> $order = [];
+        int $cursor = 0;
+        while ($cursor < \count($ready)) {
+            string $name = $ready[$cursor];
+            $cursor++;
+            $order[] = $name;
+            array<int, string> $next = $edges[$name] ?? [];
+            \sort($next);
+            foreach ($next as $child) {
+                $incoming[$child]--;
+                if ($incoming[$child] === 0) {
+                    $ready[] = $child;
+                }
+            }
+        }
+        if (\count($order) !== \count($tables)) {
+            foreach ($tables as $name => $table) {
+                if (!\in_array($name, $order, true)) {
+                    $order[] = $name;
+                }
+                (void)$table;
+            }
+        }
+        if ($childrenFirst) {
+            $order = \array_reverse($order);
+        }
+        array<int, TableSpec> $result = [];
+        foreach ($order as $name) {
+            if (isset($tables[$name])) {
+                $result[] = $tables[$name];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, TableSpec> $before
+     * @param array<string, TableSpec> $after
+     * @param array<int, string> $renames
+     * @return array<string, array<string, string>>
+     */
+    private static function renameMap(array<string, TableSpec> $before, array<string, TableSpec> $after, array<int, string> $renames): array<string, array<string, string>> {
+        array<string, array<string, string>> $map = [];
+        foreach ($renames as $spec) {
+            ?string $table = null;
+            string $from = $spec;
+            string $to = '';
+            int|false $colon = \strpos($spec, ':');
+            if ($colon === false || $colon === 0) {
+                throw new \InvalidArgumentException('Rename ' . $spec . ' must look like old:new.');
+            }
+            $from = \substr($spec, 0, $colon);
+            $to = \substr($spec, $colon + 1);
+            if ($to === '') {
+                throw new \InvalidArgumentException('Rename ' . $spec . ' must look like old:new.');
+            }
+            int|false $dot = \strrpos($from, '.');
+            if ($dot !== false) {
+                $table = \substr($from, 0, $dot);
+                $from = \substr($from, $dot + 1);
+            }
+            if ($table === null) {
+                array<int, string> $matches = [];
+                foreach ($before as $name => $defined) {
+                    if ($defined->column($from) !== null && isset($after[$name]) && $after[$name]->column($to) !== null && $before[$name]->column($to) === null) {
+                        $matches[] = $name;
+                    }
+                }
+                if (\count($matches) !== 1) {
+                    throw new \InvalidArgumentException('Rename ' . $spec . ' needs a table, as in table.' . $from . ':' . $to . '.');
+                }
+                $table = $matches[0];
+            }
+            if (!isset($before[$table]) || !isset($after[$table])) {
+                throw new \InvalidArgumentException('Rename ' . $spec . ' names table ' . $table . ', which is not in both the snapshot and the mapping.');
+            }
+            if (!isset($map[$table])) {
+                $map[$table] = [];
+            }
+            $map[$table][$from] = $to;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return array<string, ColumnSpec>
+     */
+    private static function byColumn(TableSpec $table): array<string, ColumnSpec> {
+        array<string, ColumnSpec> $columns = [];
+        foreach ($table->columns as $column) {
+            $columns[$column->name] = $column;
+        }
+
+        return $columns;
+    }
+
+    private static function narrows(ColumnSpec $before, ColumnSpec $after): bool {
+        if ($before->nullable && !$after->nullable) {
+            return true;
+        }
+        if ($before->blueprint === 'string' && $after->blueprint === 'string') {
+            return ($after->maxLength ?? 255) < ($before->maxLength ?? 255);
+        }
+        if ($before->blueprint === 'text' && $after->blueprint === 'string') {
+            return true;
+        }
+        if ($before->blueprint === 'decimal' && $after->blueprint === 'decimal') {
+            return ($after->precision ?? 8) < ($before->precision ?? 8) || ($after->scale ?? 2) < ($before->scale ?? 2);
+        }
+        if ($before->blueprint === 'bigInteger' && $after->blueprint === 'integer') {
+            return true;
+        }
+        if ($before->blueprint === 'double' && ($after->blueprint === 'float' || $after->blueprint === 'integer')) {
+            return true;
+        }
+        if ($before->blueprint === 'float' && $after->blueprint === 'integer') {
+            return true;
+        }
+        if ($before->blueprint === $after->blueprint) {
+            return false;
+        }
+        array<string, int> $rank = [
+            'text' => 5,
+            'string' => 4,
+            'decimal' => 4,
+            'double' => 4,
+            'float' => 3,
+            'bigInteger' => 3,
+            'bigIncrements' => 3,
+            'id' => 3,
+            'foreignId' => 3,
+            'integer' => 2,
+            'increments' => 2,
+            'boolean' => 1,
+        ];
+        if (!isset($rank[$before->blueprint]) || !isset($rank[$after->blueprint])) {
+            return $before->blueprint !== $after->blueprint;
+        }
+
+        return $rank[$after->blueprint] < $rank[$before->blueprint];
+    }
+
+    private static function describe(ColumnSpec $column): string {
+        string $text = $column->blueprint;
+        if ($column->blueprint === 'string' && $column->maxLength !== null) {
+            $text .= '(' . (string)$column->maxLength . ')';
+        }
+        if ($column->blueprint === 'decimal') {
+            $text .= '(' . (string)($column->precision ?? 8) . ',' . (string)($column->scale ?? 2) . ')';
+        }
+        if ($column->nullable) {
+            $text .= ' nullable';
+        }
+
+        return $text;
+    }
+
+    private static function lossy(Operation $operation, string $warning): Operation {
+        (void)$warning;
+
+        return $operation;
+    }
+
+    /**
+     * Positional so argument labels are not emitted as attribute class names.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function make(
+        OperationKind $kind,
+        string $table,
+        bool $reversible = true,
+        string $warning = '',
+        ?ColumnSpec $stored = null,
+        ?ColumnSpec $previous = null,
+        ?string $fromName = null,
+        ?string $toName = null,
+        ?IndexSpec $tableIndex = null,
+        ?ForeignKeySpec $constraint = null,
+        ?TableSpec $defined = null,
+        ?array<string, mixed> $row = null,
+    ): Operation {
+        return new Operation(
+            $kind,
+            $table,
+            $reversible,
+            $warning,
+            $stored,
+            $previous,
+            $fromName,
+            $toName,
+            $tableIndex,
+            $constraint,
+            $defined,
+            $row,
+        );
+    }
+}

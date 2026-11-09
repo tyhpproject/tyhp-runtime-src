@@ -26,7 +26,7 @@ tyhpdef/php, tyhp/core).
 
 Stops before cloning when the remote tag does not exist.
 
-Compiled packages (core, decimal, async, lambda, parallel, io) compare
+Compiled packages (core, decimal, async, lambda, parallel, io, rhetoric) compare
 each 80N tag. Pass --tag to compare one of them. Composer-lib packages
 compare the public tag and, unless the folder is handed off, the impl
 tag. Pass --side public or --side impl to compare one of those.
@@ -137,7 +137,8 @@ expected_tag_rows() {
       printf '%s\t%s\tcompiled\n' "$repo" "$TAG_OVERRIDE"
       return 0
     fi
-    for entry in "${DIST_BUILDS[@]}"; do
+    set_package_dist_builds "$pkg"
+    for entry in "${PACKAGE_DIST_BUILDS[@]}"; do
       php_major="${entry%%:*}"
       dist_version="$(package_version "$php_major")"
       printf '%s\t%s\tcompiled\n' "$repo" "$dist_version"

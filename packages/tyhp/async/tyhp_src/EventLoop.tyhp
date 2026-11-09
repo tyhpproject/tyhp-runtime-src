@@ -43,6 +43,12 @@ final class EventLoop {
     /** Fibers this loop has started (weakly held). A cancelled run unwinds the suspended ones. */
     private \WeakMap $startedFibers;
 
+    /**
+     * Fiber that entered {@see run()} or {@see runUntilSettled()}, when that caller is itself
+     * a fiber. It is driving the loop, so it is not a loop fiber even if an earlier run started it.
+     */
+    private ?\Fiber $driverFiber = null;
+
     /** Fibers a cancelled run gave up on. The loop never starts or resumes them again. */
     private \WeakMap $abandonedFibers;
 
@@ -53,6 +59,26 @@ final class EventLoop {
         $this->timerQueue->setExtractFlags(\SplPriorityQueue::EXTR_DATA);
         $this->startedFibers = new \WeakMap();
         $this->abandonedFibers = new \WeakMap();
+    }
+
+    /**
+     * True when `$fiber` was started by this loop and is not the fiber currently driving it.
+     * A null fiber, and the user fiber that called {@see run()}, are not loop fibers.
+     */
+    internal function isLoopFiber(?\Fiber $fiber): bool {
+        if ($fiber === null || $fiber === $this->driverFiber) {
+            return false;
+        }
+        return isset($this->startedFibers[$fiber]);
+    }
+
+    /**
+     * Throws when {@see run()} would refuse to start because the loop is already running.
+     */
+    internal function ensureNotReentrant(): void {
+        if ($this->running) {
+            throw new \LogicException('EventLoop::run() called re-entrantly — use await instead of run() inside an async context');
+        }
     }
 
     public static function getInstance(): EventLoop {
@@ -217,11 +243,11 @@ final class EventLoop {
      * token is rejected by `Promise::run()` before the loop starts.
      */
     public function run<T extends __Awaited<void|mixed> = mixed>(Promise<T> $rootPromise, ?CancellationToken $token = null): T {
-        if ($this->running) {
-            throw new \LogicException('EventLoop::run() called re-entrantly — use await instead of run() inside an async context');
-        }
+        $this->ensureNotReentrant();
 
         $this->running = true;
+        ?\Fiber $previousDriver = $this->driverFiber;
+        $this->driverFiber = \Fiber::getCurrent();
 
         try {
             while ($this->running) {
@@ -246,6 +272,7 @@ final class EventLoop {
             }
         } finally {
             $this->running = false;
+            $this->driverFiber = $previousDriver;
         }
 
         if ($rootPromise->isFaulted()) {
@@ -265,6 +292,8 @@ final class EventLoop {
         }
 
         $this->running = true;
+        ?\Fiber $previousDriver = $this->driverFiber;
+        $this->driverFiber = \Fiber::getCurrent();
         int $deadline = $timeoutMs > 0
             ? \hrtime(true) + ($timeoutMs * 1_000_000)
             : -1;
@@ -292,6 +321,7 @@ final class EventLoop {
             }
         } finally {
             $this->running = false;
+            $this->driverFiber = $previousDriver;
         }
 
         if ($promise->isFaulted()) {

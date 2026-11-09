@@ -1,0 +1,664 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+
+/**
+ * Loads each included navigation with its own query (`whereIn` on the keys already
+ * in hand) and points the objects at each other. Tracked queries reuse the identity
+ * map. `untracked()` keeps every instance out of it.
+ */
+final class EagerLoader {
+    /**
+     * @param array<int, object> $models
+     * @param array<int, array<int, string>> $paths
+     * @param array<string, object> $seen
+     * @param array<string, \Tyhp\Expression> $constraints
+     */
+    public static function load(
+        Context $context,
+        array<int, object> $models,
+        ModelMap $map,
+        array<int, array<int, string>> $paths,
+        QueryTracking $tracking,
+        bool $missing,
+        array<string, object> &$seen = [],
+        array<string, \Tyhp\Expression> $constraints = [],
+    ): void {
+        if (\count($models) === 0 || \count($paths) === 0) {
+            return;
+        }
+        array<string, array<int, array<int, string>>> $groups = [];
+        foreach ($paths as $path) {
+            if (\count($path) === 0) {
+                continue;
+            }
+            string $first = $path[0];
+            if (!isset($groups[$first])) {
+                $groups[$first] = [];
+            }
+            array<int, string> $tail = [];
+            for (int $index = 1; $index < \count($path); $index++) {
+                $tail[] = $path[$index];
+            }
+            $groups[$first][] = $tail;
+        }
+        foreach ($groups as $property => $tails) {
+            if (!$map->hasRelation($property)) {
+                throw new \InvalidArgumentException($map->class . ' has no relation ' . $property . '.');
+            }
+            RelationMap $relation = $map->relation($property);
+            if (!$context->mapping()->hasModel($relation->relatedClass)) {
+                throw new \InvalidArgumentException($relation->relatedClass . ' is not a mapped model.');
+            }
+            ModelMap $relatedMap = $context->mapping()->model($relation->relatedClass);
+            array<int, array<int, string>> $childPaths = [];
+            foreach ($tails as $tail) {
+                if (\count($tail) > 0) {
+                    $childPaths[] = $tail;
+                }
+            }
+            if ($missing && self::everyLoaded($context, $models, $property)) {
+                if (\count($childPaths) > 0) {
+                    self::load($context, self::readChildren($models, $relation), $relatedMap, $childPaths, $tracking, true, $seen, []);
+                }
+                continue;
+            }
+            ?\Tyhp\Expression $constrain = $constraints[$property] ?? null;
+            array<int, object> $children = self::fill($context, $models, $map, $relation, $relatedMap, $tracking, $seen, $constrain);
+            foreach ($models as $model) {
+                $context->markRelationLoaded($model, $property);
+                $context->tracker->captureRelation($model, $property);
+            }
+            if (\count($childPaths) > 0) {
+                self::load($context, $children, $relatedMap, $childPaths, $tracking, $missing, $seen, []);
+            }
+        }
+    }
+
+    /**
+     * @param array<int, object> $models
+     * @param array<string, object> $seen
+     * @return array<int, object>
+     */
+    private static function fill(
+        Context $context,
+        array<int, object> $models,
+        ModelMap $map,
+        RelationMap $relation,
+        ModelMap $relatedMap,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+        ?\Tyhp\Expression $constrain,
+    ): array<int, object> {
+        ?SqlPiece $filter = self::constraintPiece($context, $relatedMap, $constrain);
+        if ($relation->kind === RelationKind::BelongsTo) {
+            return self::fillReference($context, $models, $relation, $relatedMap, $tracking, $seen, $filter);
+        }
+        if ($relation->kind === RelationKind::HasOne) {
+            return self::fillDependents($context, $models, $map, $relation, $relatedMap, $tracking, $seen, true, $filter);
+        }
+        if ($relation->kind === RelationKind::HasMany) {
+            return self::fillDependents($context, $models, $map, $relation, $relatedMap, $tracking, $seen, false, $filter);
+        }
+
+        return self::fillManyToMany($context, $models, $map, $relation, $relatedMap, $tracking, $seen, $filter);
+    }
+
+    private static function constraintPiece(Context $context, ModelMap $related, ?\Tyhp\Expression $constrain): ?SqlPiece {
+        if ($constrain === null) {
+            return null;
+        }
+        \Illuminate\Database\Connection $connection = $context->connection();
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $connection->getQueryGrammar();
+        Translator $translator = new Translator(
+            $related,
+            $grammar,
+            $connection->getDriverName(),
+            \Tyhp\Expression\ExpressionShape::of($constrain),
+            $constrain,
+            'include',
+            0,
+            new JoinSet($related, $context->mapping(), $grammar),
+            $context,
+        );
+
+        return $translator->translate($constrain->body);
+    }
+
+    /**
+     * @param array<int, object> $models
+     * @param array<string, object> $seen
+     * @return array<int, object>
+     */
+    private static function fillReference(
+        Context $context,
+        array<int, object> $models,
+        RelationMap $relation,
+        ModelMap $relatedMap,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+        ?SqlPiece $filter,
+    ): array<int, object> {
+        if ($relation->foreignKeyProperty === null || $relatedMap->key === null || \count($relatedMap->key->columns) === 0) {
+            throw new \LogicException($relation->property . ' has no foreign key.');
+        }
+        string $keyProperty = $relatedMap->key->properties[0];
+        ColumnMap $keyColumn = $relatedMap->column($keyProperty);
+        array<string, mixed> $wanted = [];
+        foreach ($models as $model) {
+            mixed $value = PropertyBag::read($model, $relation->foreignKeyProperty);
+            if (!self::present($value)) {
+                continue;
+            }
+            $wanted[PropertyBag::keyToken($keyColumn->type, $value)] = $value;
+        }
+        array<string, object> $indexed = self::index(
+            $context,
+            self::fetch($context, $relatedMap->table, $relatedMap->key->columns[0], self::values($wanted), self::withRowFilter($context, $relatedMap, $filter), Hydrator::selectedColumns($context, $relatedMap)),
+            $relatedMap,
+            $tracking,
+            $seen,
+            $keyProperty,
+            $keyColumn,
+        );
+        array<int, object> $children = [];
+        foreach ($models as $model) {
+            mixed $value = PropertyBag::read($model, $relation->foreignKeyProperty);
+            ?object $related = null;
+            if (self::present($value)) {
+                string $token = PropertyBag::keyToken($keyColumn->type, $value);
+                if (isset($indexed[$token])) {
+                    $related = $indexed[$token];
+                    $children[] = $related;
+                }
+            }
+            self::assign($model, $relation->property, $related);
+            if ($related !== null) {
+                self::wireInverse($context, $relation, $relatedMap, $related, $model);
+            }
+        }
+
+        return $children;
+    }
+
+    /**
+     * @param array<int, object> $models
+     * @param array<string, object> $seen
+     * @return array<int, object>
+     */
+    private static function fillDependents(
+        Context $context,
+        array<int, object> $models,
+        ModelMap $map,
+        RelationMap $relation,
+        ModelMap $relatedMap,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+        bool $single,
+        ?SqlPiece $filter,
+    ): array<int, object> {
+        if ($relation->foreignKeyProperty === null || $relation->foreignKeyColumn === null || $map->key === null) {
+            throw new \LogicException($relation->property . ' has no foreign key.');
+        }
+        if (!$relatedMap->hasColumn($relation->foreignKeyProperty)) {
+            throw new \LogicException($relatedMap->class . ' has no column ' . $relation->foreignKeyProperty . '.');
+        }
+        string $keyProperty = $map->key->properties[0];
+        ColumnMap $keyColumn = $map->column($keyProperty);
+        ColumnMap $foreignColumn = $relatedMap->column($relation->foreignKeyProperty);
+        array<string, mixed> $wanted = [];
+        foreach ($models as $model) {
+            mixed $value = PropertyBag::read($model, $keyProperty);
+            if (!self::present($value)) {
+                continue;
+            }
+            $wanted[PropertyBag::keyToken($keyColumn->type, $value)] = $value;
+        }
+        array<string, array<int, object>> $grouped = [];
+        foreach (self::fetch($context, $relatedMap->table, $relation->foreignKeyColumn, self::values($wanted), self::withRowFilter($context, $relatedMap, $filter), Hydrator::selectedColumns($context, $relatedMap)) as $row) {
+            mixed $fresh = Hydrator::model($relatedMap, $row, $context, $tracking === QueryTracking::Tracked);
+            if (!\is_object($fresh)) {
+                continue;
+            }
+            mixed $foreign = PropertyBag::read($fresh, $relation->foreignKeyProperty);
+            object $child = self::resolve($context, $relatedMap, $fresh, $tracking, $seen);
+            if (!self::present($foreign)) {
+                continue;
+            }
+            string $token = PropertyBag::keyToken($foreignColumn->type, $foreign);
+            if (!isset($grouped[$token])) {
+                $grouped[$token] = [];
+            }
+            $grouped[$token][] = $child;
+        }
+        array<int, object> $children = [];
+        foreach ($models as $model) {
+            mixed $value = PropertyBag::read($model, $keyProperty);
+            array<int, object> $matches = [];
+            if (self::present($value)) {
+                string $token = PropertyBag::keyToken($keyColumn->type, $value);
+                array<int, object> $found = $grouped[$token] ?? [];
+                $matches = $found;
+            }
+            if ($single) {
+                ?object $one = $matches[0] ?? null;
+                self::assign($model, $relation->property, $one);
+                if ($one !== null) {
+                    self::wireInverse($context, $relation, $relatedMap, $one, $model);
+                    $children[] = $one;
+                }
+            } else {
+                self::putMembers($context, $model, $relation, $matches);
+                foreach ($matches as $child) {
+                    self::wireInverse($context, $relation, $relatedMap, $child, $model);
+                    $children[] = $child;
+                }
+            }
+        }
+
+        return $children;
+    }
+
+    /**
+     * @param array<int, object> $models
+     * @param array<string, object> $seen
+     * @return array<int, object>
+     */
+    private static function fillManyToMany(
+        Context $context,
+        array<int, object> $models,
+        ModelMap $map,
+        RelationMap $relation,
+        ModelMap $relatedMap,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+        ?SqlPiece $filter,
+    ): array<int, object> {
+        if ($relation->pivotTable === null || $relation->pivotForeignKey === null || $relation->pivotRelatedKey === null) {
+            throw new \LogicException($relation->property . ' has no pivot.');
+        }
+        if ($map->key === null || $relatedMap->key === null) {
+            throw new \LogicException($relation->property . ' needs a key.');
+        }
+        string $ownerProperty = $map->key->properties[0];
+        ColumnMap $ownerColumn = $map->column($ownerProperty);
+        string $relatedProperty = $relatedMap->key->properties[0];
+        ColumnMap $relatedColumn = $relatedMap->column($relatedProperty);
+        array<string, mixed> $wanted = [];
+        foreach ($models as $model) {
+            mixed $value = PropertyBag::read($model, $ownerProperty);
+            if (!self::present($value)) {
+                continue;
+            }
+            $wanted[PropertyBag::keyToken($ownerColumn->type, $value)] = $value;
+        }
+        array<int, object> $pivotRows = self::fetch($context, $relation->pivotTable, $relation->pivotForeignKey, self::values($wanted), null);
+        array<string, mixed> $relatedKeys = [];
+        foreach ($pivotRows as $row) {
+            mixed $relatedKey = self::field($row, $relation->pivotRelatedKey);
+            if (!self::present($relatedKey)) {
+                continue;
+            }
+            $relatedKeys[PropertyBag::keyToken($relatedColumn->type, $relatedKey)] = $relatedKey;
+        }
+        array<string, object> $indexed = self::index(
+            $context,
+            self::fetch($context, $relatedMap->table, $relatedMap->key->columns[0], self::values($relatedKeys), self::withRowFilter($context, $relatedMap, $filter), Hydrator::selectedColumns($context, $relatedMap)),
+            $relatedMap,
+            $tracking,
+            $seen,
+            $relatedProperty,
+            $relatedColumn,
+        );
+        array<string, array<int, object>> $grouped = [];
+        array<string, array<int, object>> $pivots = [];
+        foreach ($pivotRows as $row) {
+            mixed $ownerKey = self::field($row, $relation->pivotForeignKey);
+            mixed $relatedKey = self::field($row, $relation->pivotRelatedKey);
+            if (!self::present($ownerKey) || !self::present($relatedKey)) {
+                continue;
+            }
+            string $ownerToken = PropertyBag::keyToken($ownerColumn->type, $ownerKey);
+            string $relatedToken = PropertyBag::keyToken($relatedColumn->type, $relatedKey);
+            if (!isset($indexed[$relatedToken])) {
+                continue;
+            }
+            if (!isset($grouped[$ownerToken])) {
+                $grouped[$ownerToken] = [];
+                $pivots[$ownerToken] = [];
+            }
+            $grouped[$ownerToken][] = $indexed[$relatedToken];
+            ?object $pivot = self::pivotModel($relation->pivotClass, $row);
+            $pivots[$ownerToken][] = $pivot ?? new \stdClass();
+        }
+        array<int, object> $children = [];
+        foreach ($models as $model) {
+            mixed $value = PropertyBag::read($model, $ownerProperty);
+            array<int, object> $matches = [];
+            array<int, object> $pairPivots = [];
+            if (self::present($value)) {
+                string $token = PropertyBag::keyToken($ownerColumn->type, $value);
+                if (isset($grouped[$token])) {
+                    $matches = $grouped[$token];
+                    $pairPivots = $pivots[$token];
+                }
+            }
+            self::putMembers($context, $model, $relation, $matches);
+            foreach ($matches as $index => $child) {
+                ?object $pivot = $pairPivots[$index] ?? null;
+                if ($pivot instanceof \stdClass) {
+                    $pivot = null;
+                }
+                self::attachPivot($child, $pivot);
+                $children[] = $child;
+            }
+        }
+
+        return $children;
+    }
+
+    /**
+     * @param array<int, object> $rows
+     * @param array<string, object> $seen
+     * @return array<string, object>
+     */
+    private static function index(
+        Context $context,
+        array<int, object> $rows,
+        ModelMap $map,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+        string $keyProperty,
+        ColumnMap $keyColumn,
+    ): array<string, object> {
+        array<string, object> $indexed = [];
+        foreach ($rows as $row) {
+            mixed $fresh = Hydrator::model($map, $row, $context, $tracking === QueryTracking::Tracked);
+            if (!\is_object($fresh)) {
+                continue;
+            }
+            object $resolved = self::resolve($context, $map, $fresh, $tracking, $seen);
+            mixed $key = PropertyBag::read($resolved, $keyProperty);
+            if (!self::present($key)) {
+                continue;
+            }
+            $indexed[PropertyBag::keyToken($keyColumn->type, $key)] = $resolved;
+        }
+
+        return $indexed;
+    }
+
+    /**
+     * @param array<string, object> $seen
+     */
+    private static function resolve(
+        Context $context,
+        ModelMap $map,
+        object $fresh,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+    ): object {
+        if ($tracking === QueryTracking::Untracked) {
+            return $fresh;
+        }
+        ?string $key = $context->tracker->indexKey($map, $fresh);
+        if ($tracking === QueryTracking::Identity) {
+            if ($key !== null && isset($seen[$key])) {
+                return $seen[$key];
+            }
+            if ($key !== null) {
+                $seen[$key] = $fresh;
+            }
+
+            return $fresh;
+        }
+        if ($key !== null) {
+            ?object $existing = $context->tracker->modelForKey($key);
+            if ($existing !== null) {
+                return $existing;
+            }
+        }
+        $context->tracker->track($map, $fresh, false);
+
+        return $fresh;
+    }
+
+    /**
+     * A to-one inverse is filled in. A collection inverse is left alone: it was not requested,
+     * and the rows in hand are not the whole collection.
+     */
+    private static function wireInverse(
+        Context $context,
+        RelationMap $relation,
+        ModelMap $childMap,
+        object $child,
+        ?object $parent,
+    ): void {
+        if ($parent === null || $relation->inverseProperty === null || !$childMap->hasRelation($relation->inverseProperty)) {
+            return;
+        }
+        RelationMap $inverse = $childMap->relation($relation->inverseProperty);
+        if ($inverse->kind !== RelationKind::BelongsTo && $inverse->kind !== RelationKind::HasOne) {
+            return;
+        }
+        self::assign($child, $inverse->property, $parent);
+        $context->tracker->captureRelation($child, $inverse->property);
+    }
+
+    /**
+     * @param array<int, object> $models
+     */
+    private static function everyLoaded(Context $context, array<int, object> $models, string $property): bool {
+        foreach ($models as $model) {
+            if (!$context->relationLoaded($model, $property)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<int, object> $models
+     * @return array<int, object>
+     */
+    private static function readChildren(array<int, object> $models, RelationMap $relation): array<int, object> {
+        array<int, object> $children = [];
+        foreach ($models as $model) {
+            mixed $value = PropertyBag::read($model, $relation->property);
+            if ($value instanceof \Tyhp\Rhetoric\LazyCollection) {
+                foreach ($value->values() as $item) {
+                    if (\is_object($item)) {
+                        $children[] = $item;
+                    }
+                }
+                continue;
+            }
+            if (\is_object($value)) {
+                $children[] = $value;
+                continue;
+            }
+            if (!\is_array($value)) {
+                continue;
+            }
+            foreach ($value as $item) {
+                if (\is_object($item)) {
+                    $children[] = $item;
+                }
+            }
+        }
+
+        return $children;
+    }
+
+    /**
+     * @param array<string, mixed> $wanted
+     * @return array<int, mixed>
+     */
+    private static function values(array<string, mixed> $wanted): array<int, mixed> {
+        array<int, mixed> $values = [];
+        foreach ($wanted as $value) {
+            $values[] = $value;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param array<int, mixed> $keys
+     * @return array<int, object>
+     */
+    private static function withRowFilter(Context $context, ModelMap $model, ?SqlPiece $constraint): ?SqlPiece {
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $context->connection()->getQueryGrammar();
+        SqlPiece $row = RowFilter::sql($model, $grammar, null, false, false, false, 'default');
+        if ($row->sql === '') {
+            return $constraint;
+        }
+        if ($constraint === null || $constraint->sql === '') {
+            return $row;
+        }
+
+        return new SqlPiece(
+            '(' . $constraint->sql . ') and (' . $row->sql . ')',
+            $constraint->withBindings($row->bindings),
+            'bool',
+            false,
+            null,
+            false,
+        );
+    }
+
+    private static function fetch(
+        Context $context,
+        string $table,
+        string $column,
+        array<int, mixed> $keys,
+        ?SqlPiece $filter,
+        ?array<int, string> $columns = null,
+    ): array<int, object> {
+        if (\count($keys) === 0) {
+            return [];
+        }
+        \Illuminate\Database\Query\Builder $query = $context->connection()->table($table)->whereIn($column, $keys);
+        if ($columns !== null) {
+            (void)$query->select($columns);
+        }
+        if ($filter !== null && $filter->sql !== '') {
+            (void)$query->whereRaw($filter->sql, $filter->bindings);
+        }
+        mixed $selected = $query->get();
+        array<int, object> $rows = [];
+        if ($selected instanceof \Illuminate\Support\Collection) {
+            foreach ($selected->all() as $row) {
+                if (\is_object($row)) {
+                    $rows[] = $row;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<int, object> $matches
+     */
+    private static function putMembers(Context $context, object $model, RelationMap $relation, array<int, object> $matches): void {
+        if (self::wantsCollection($model, $relation->property)) {
+            $context->ghosts()->fulfill($model, $relation->property, $relation->relatedClass, $matches);
+
+            return;
+        }
+        PropertyBag::write($model, $relation->property, $matches);
+    }
+
+    private static function wantsCollection(object $model, string $property): bool {
+        \ReflectionObject $reflection = new \ReflectionObject($model);
+        if (!$reflection->hasProperty($property)) {
+            return false;
+        }
+        ?\ReflectionType $type = $reflection->getProperty($property)->getType();
+        if (!($type instanceof \ReflectionNamedType)) {
+            return false;
+        }
+
+        return \ltrim($type->getName(), '\\') === \ltrim(\Tyhp\Rhetoric\LazyCollection::class, '\\');
+    }
+
+    private static function assign(object $model, string $property, mixed $value): void {
+        if ($value === null) {
+            \ReflectionObject $reflection = new \ReflectionObject($model);
+            if (!$reflection->hasProperty($property)) {
+                return;
+            }
+            ?\ReflectionType $type = $reflection->getProperty($property)->getType();
+            if ($type instanceof \ReflectionNamedType && !$type->allowsNull()) {
+                return;
+            }
+        }
+        PropertyBag::write($model, $property, $value);
+    }
+
+    private static function present(mixed $value): bool {
+        return $value !== null && $value !== 0 && $value !== '' && $value !== '0';
+    }
+
+    private static function field(object $row, string $name): mixed {
+        mixed $cast = (array)$row;
+        if (!\is_array($cast) || !\array_key_exists($name, $cast)) {
+            return null;
+        }
+
+        return $cast[$name];
+    }
+
+    private static function pivotModel(?__ClassName $class, object $row): ?object {
+        if ($class === null) {
+            return null;
+        }
+        \ReflectionClass $reflection = new \ReflectionClass(\ltrim($class, '\\'));
+        object $pivot = $reflection->newInstanceWithoutConstructor();
+        mixed $cast = (array)$row;
+        if (!\is_array($cast)) {
+            return $pivot;
+        }
+        foreach ($reflection->getProperties() as $property) {
+            if ($property->isStatic()) {
+                continue;
+            }
+            string $column = \Illuminate\Support\Str::snake($property->getName());
+            if (!\array_key_exists($column, $cast) && !\array_key_exists($property->getName(), $cast)) {
+                continue;
+            }
+            mixed $value = \array_key_exists($column, $cast) ? $cast[$column] : $cast[$property->getName()];
+            ?\ReflectionType $type = $property->getType();
+            if ($value !== null && $type instanceof \ReflectionNamedType && $type->getName() === 'int' && \is_numeric($value)) {
+                $value = (int)$value;
+            }
+            $property->setValue($pivot, $value);
+        }
+
+        return $pivot;
+    }
+
+    private static function attachPivot(object $related, ?object $pivot): void {
+        if ($pivot === null) {
+            return;
+        }
+        \ReflectionObject $reflection = new \ReflectionObject($related);
+        if (!$reflection->hasProperty('pivot')) {
+            return;
+        }
+        \ReflectionProperty $property = $reflection->getProperty('pivot');
+        if ($property->isStatic() || (\method_exists($property, 'isVirtual') && $property->isVirtual())) {
+            return;
+        }
+        $property->setValue($related, $pivot);
+    }
+}

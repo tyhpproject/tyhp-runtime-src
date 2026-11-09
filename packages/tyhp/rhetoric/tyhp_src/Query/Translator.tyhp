@@ -1,0 +1,905 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Expression\ArrayAccessExpression;
+use Tyhp\Expression\ArrayExpression;
+use Tyhp\Expression\BinaryExpression;
+use Tyhp\Expression\CastExpression;
+use Tyhp\Expression\CoalesceExpression;
+use Tyhp\Expression\ConstantExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\InstanceofExpression;
+use Tyhp\Expression\LambdaExpression;
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\NewExpression;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\NullSafeMethodCallExpression;
+use Tyhp\Expression\ParameterExpression;
+use Tyhp\Expression\PropertyAccessExpression;
+use Tyhp\Expression\StaticMethodCallExpression;
+use Tyhp\Expression\TernaryExpression;
+use Tyhp\Expression\UnaryExpression;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+
+final class Translator {
+    /** @var array<int, BindingRecipe> */
+    private array<int, BindingRecipe> $recipes = [];
+
+    public string $nestedJoins = '';
+
+    private ?Grouping $activeGroup = null;
+
+    public function __construct(
+        private ModelMap $model,
+        private \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        private string $driver,
+        private \Tyhp\Expression\ExpressionShape $shape,
+        private \Tyhp\Expression $expression,
+        private string $source,
+        private int $sourceIndex,
+        private JoinSet $joins,
+        private Context $context,
+        ?Grouping $grouping = null,
+        private ?LambdaExpression $local = null,
+    ) {
+        $this->activeGroup = $grouping;
+        (void)$this->local;
+    }
+
+    /**
+     * @return array<int, BindingRecipe>
+     */
+    public function recipes(): array<int, BindingRecipe> {
+        return $this->recipes;
+    }
+
+    public function translate(ExpressionNode $node): SqlPiece {
+        if ($node instanceof MethodCallExpression || $node instanceof NullSafeMethodCallExpression) {
+            return $this->method($node);
+        }
+        if ($node instanceof StaticMethodCallExpression) {
+            return MethodTranslatorRegistry::shared()->translateStatic($this, $node);
+        }
+        if ($node instanceof BinaryExpression) {
+            return $this->binary($node);
+        }
+        if ($node instanceof UnaryExpression) {
+            return $this->unary($node);
+        }
+        if ($node instanceof ConstantExpression) {
+            return $this->constant($node);
+        }
+        if ($node instanceof PropertyAccessExpression || $node instanceof NullSafeAccessExpression) {
+            return $this->property($node);
+        }
+        if ($node instanceof ParameterExpression) {
+            return $this->fail($node, 'parameter ' . $node->name);
+        }
+        if ($node instanceof TernaryExpression) {
+            return $this->ternary($node);
+        }
+        if ($node instanceof CoalesceExpression) {
+            SqlPiece $left = $this->translate($node->left);
+            SqlPiece $right = $this->translate($node->right);
+
+            return new SqlPiece(
+                'coalesce(' . $left->sql . ', ' . $right->sql . ')',
+                $left->withBindings($right->bindings),
+                $right->valueType,
+                $left->nullable && $right->nullable,
+                null,
+                false,
+            );
+        }
+        if ($node instanceof CastExpression) {
+            return $this->cast($node);
+        }
+        if ($node instanceof NewExpression) {
+            return $this->fail($node, 'new ' . $node->class);
+        }
+        if ($node instanceof InstanceofExpression) {
+            return $this->instanceofCheck($node);
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            return $this->fail($node, 'array access');
+        }
+        if ($node instanceof ArrayExpression) {
+            return $this->fail($node, 'array');
+        }
+        if ($node instanceof LambdaExpression) {
+            return $this->fail($node, 'lambda');
+        }
+
+        return $this->fail($node, $node->nodeType);
+    }
+
+    /**
+     * Predicate of a correlated subquery. Joins the predicate needs are recorded on `nestedJoins`.
+     */
+    public function nested(LambdaExpression $lambda, ModelMap $model, string $alias): SqlPiece {
+        string $local = '';
+        if (isset($lambda->parameters[0])) {
+            $local = $lambda->parameters[0]->name;
+        }
+        JoinSet $child = new JoinSet($model, $this->joins->contextMap(), $this->grammar, $alias, $local, $this->joins, $alias . '_');
+        $child->discover($lambda->body);
+        $child->finish();
+        Translator $inner = new Translator(
+            $model,
+            $this->grammar,
+            $this->driver,
+            $this->shape,
+            $this->expression,
+            $this->source,
+            $this->sourceIndex,
+            $child,
+            $this->context,
+            null,
+            $lambda,
+        );
+        SqlPiece $piece = $inner->translate($lambda->body);
+        foreach ($inner->recipes() as $recipe) {
+            $this->addRecipe($recipe);
+        }
+        $this->nestedJoins = $child->fragment();
+
+        return $piece;
+    }
+
+    /**
+     * Translate an expression that is not the one this translator was built for,
+     * and keep its binding recipes on this translator.
+     */
+    public function translateOwned(\Tyhp\Expression $expression, string $source, int $sourceIndex): SqlPiece {
+        Translator $inner = new Translator(
+            $this->model,
+            $this->grammar,
+            $this->driver,
+            \Tyhp\Expression\ExpressionShape::of($expression),
+            $expression,
+            $source,
+            $sourceIndex,
+            $this->joins,
+            $this->context,
+        );
+        SqlPiece $piece = $inner->translate($expression->body);
+        foreach ($inner->recipes() as $recipe) {
+            $this->addRecipe($recipe);
+        }
+
+        return $piece;
+    }
+
+    public function projectionColumns(NewExpression $node): array<int, SqlPiece> {
+        array<int, SqlPiece> $columns = [];
+        foreach ($node->arguments as $argument) {
+            $columns[] = $this->translate($argument);
+        }
+
+        return $columns;
+    }
+
+    public function stringLike(MethodCallExpression $call, string $mode): SqlPiece {
+        SqlPiece $object = $this->translate($call->object);
+        if (\count($call->arguments) !== 1) {
+            return $this->fail($call, 'method ' . $call->method);
+        }
+        ExpressionNode $argument = $call->arguments[0];
+        if (!($argument instanceof ConstantExpression) || !\is_string($argument->value)) {
+            return $this->fail($call, 'method ' . $call->method);
+        }
+        $this->addRecipe(new BindingRecipe($this->source, $this->sourceIndex, 'like', $this->shape->slotOf($argument), $mode));
+        array<int, mixed> $bindings = $object->bindings;
+        $bindings[] = self::likePattern($argument->value, $mode);
+
+        return new SqlPiece(
+            $object->sql . ' like ? escape ' . $this->likeEscape(),
+            $bindings,
+            'bool',
+            $object->nullable,
+            null,
+            false,
+        );
+    }
+
+    public function stringFunction(MethodCallExpression $call, string $function, string $valueType): SqlPiece {
+        if (\count($call->arguments) !== 0) {
+            return $this->fail($call, 'method ' . $call->method);
+        }
+        SqlPiece $object = $this->translate($call->object);
+
+        return new SqlPiece(
+            $function . '(' . $object->sql . ')',
+            $object->bindings,
+            $valueType,
+            $object->nullable,
+            null,
+            false,
+        );
+    }
+
+    public function length(MethodCallExpression $call): SqlPiece {
+        string $function = $this->driver === 'sqlite' ? 'length' : 'char_length';
+
+        return $this->stringFunction($call, $function, 'int');
+    }
+
+    public function trim(MethodCallExpression $call): SqlPiece {
+        SqlPiece $object = $this->translate($call->object);
+        if (\count($call->arguments) === 0) {
+            return new SqlPiece('trim(' . $object->sql . ')', $object->bindings, 'string', $object->nullable, null, false);
+        }
+        if (\count($call->arguments) !== 1) {
+            return $this->fail($call, 'method trim');
+        }
+        ExpressionNode $argument = $call->arguments[0];
+        if (!($argument instanceof ConstantExpression) || !\is_string($argument->value)) {
+            return $this->fail($call, 'method trim');
+        }
+        $this->addRecipe(new BindingRecipe($this->source, $this->sourceIndex, 'slot', $this->shape->slotOf($argument), ''));
+        array<int, mixed> $bindings = $object->bindings;
+        $bindings[] = $argument->value;
+        string $sql = $this->driver === 'sqlite'
+            ? 'trim(' . $object->sql . ', ?)'
+            : 'trim(both ? from ' . $object->sql . ')';
+
+        return new SqlPiece($sql, $bindings, 'string', $object->nullable, null, false);
+    }
+
+    public function sqlLike(StaticMethodCallExpression $call): SqlPiece {
+        if (\count($call->arguments) !== 2) {
+            return $this->fail($call, 'method Sql::like');
+        }
+        SqlPiece $value = $this->translate($call->arguments[0]);
+        SqlPiece $pattern = $this->translate($call->arguments[1]);
+
+        return new SqlPiece(
+            $value->sql . ' like ' . $pattern->sql,
+            $value->withBindings($pattern->bindings),
+            'bool',
+            $value->nullable || $pattern->nullable,
+            null,
+            false,
+        );
+    }
+
+    public function dateDiff(StaticMethodCallExpression $call): SqlPiece {
+        if (\count($call->arguments) !== 2) {
+            return $this->fail($call, 'method Sql::dateDiff');
+        }
+        // Every grammar reads the end before the start, so the bindings and their recipes follow that order.
+        SqlPiece $end = $this->translate($call->arguments[1]);
+        SqlPiece $start = $this->translate($call->arguments[0]);
+        string $sql = $this->dateDiffSql($start->sql, $end->sql);
+
+        return new SqlPiece($sql, $end->withBindings($start->bindings), 'int', $start->nullable || $end->nullable, null, false);
+    }
+
+    public function datePart(StaticMethodCallExpression $call, string $part): SqlPiece {
+        if (\count($call->arguments) !== 1) {
+            return $this->fail($call, 'method Sql::' . $part);
+        }
+        SqlPiece $value = $this->translate($call->arguments[0]);
+
+        return new SqlPiece($this->datePartSql($part, $value->sql), $value->bindings, 'int', $value->nullable, null, false);
+    }
+
+    public function math(StaticMethodCallExpression $call, string $function): SqlPiece {
+        if (\count($call->arguments) !== 1) {
+            return $this->fail($call, 'method Sql::' . $function);
+        }
+        SqlPiece $value = $this->translate($call->arguments[0]);
+
+        return new SqlPiece($function . '(' . $value->sql . ')', $value->bindings, 'float', $value->nullable, null, false);
+    }
+
+    public function round(StaticMethodCallExpression $call): SqlPiece {
+        if (\count($call->arguments) < 1 || \count($call->arguments) > 2) {
+            return $this->fail($call, 'method Sql::round');
+        }
+        SqlPiece $value = $this->translate($call->arguments[0]);
+        if (\count($call->arguments) === 1) {
+            return new SqlPiece('round(' . $value->sql . ')', $value->bindings, 'float', $value->nullable, null, false);
+        }
+        SqlPiece $precision = $this->translate($call->arguments[1]);
+        // PostgreSQL only rounds NUMERIC to a number of places; a float column has to be cast first.
+        string $rounded = $this->driver === 'pgsql' ? 'cast(' . $value->sql . ' as numeric)' : $value->sql;
+
+        return new SqlPiece(
+            'round(' . $rounded . ', ' . $precision->sql . ')',
+            $value->withBindings($precision->bindings),
+            'float',
+            $value->nullable,
+            null,
+            false,
+        );
+    }
+
+    public function driverName(): string {
+        return $this->driver;
+    }
+
+    public function sqlRaw(StaticMethodCallExpression $call): SqlPiece {
+        ?ConstantExpression $sql = null;
+        foreach ($call->arguments as $argument) {
+            if ($argument instanceof ConstantExpression && \is_string($argument->value)) {
+                $sql = $argument;
+            }
+            break;
+        }
+        if ($sql === null || !\is_string($sql->value)) {
+            return $this->fail($call, 'method Sql::raw');
+        }
+
+        return new SqlPiece($sql->value, [], 'bool', false, null, false);
+    }
+
+    /**
+     * SQL that is true when `$piece` is true, and false when it is false or unknown (NULL). The
+     * negation of a nullable predicate has to treat unknown as false first, the way PHP does.
+     */
+    public function negate(SqlPiece $piece): string {
+        if ($piece->nullable) {
+            return '(case when ' . $piece->sql . ' then 0 else 1 end = 1)';
+        }
+
+        return 'not (' . $piece->sql . ')';
+    }
+
+    public function fail(ExpressionNode $node, string $detail): SqlPiece {
+        throw new QueryTranslationException($node->nodeType, ExpressionText::lambda($this->expression), $detail);
+    }
+
+    public static function likePattern(string $value, string $mode): string {
+        string $escaped = \addcslashes($value, "\\%_");
+        if ($mode === 'prefix') {
+            return $escaped . '%';
+        }
+        if ($mode === 'suffix') {
+            return '%' . $escaped;
+        }
+
+        return '%' . $escaped . '%';
+    }
+
+    /**
+     * Every ESCAPE clause `stringLike` can emit: the MySQL and MariaDB spelling, then the rest.
+     *
+     * @return array<int, string>
+     */
+    public static function likeEscapeClauses(): array<int, string> {
+        return ["escape '\\\\'", "escape '\\'"];
+    }
+
+    private function isMysql(): bool {
+        return $this->driver === 'mysql' || $this->driver === 'mariadb';
+    }
+
+    /**
+     * The ESCAPE character literal. MySQL reads a backslash in a string literal as an escape, so
+     * the literal needs two of them.
+     */
+    private function likeEscape(): string {
+        if ($this->isMysql()) {
+            return "'\\\\'";
+        }
+
+        return "'\\'";
+    }
+
+    private function method(MethodCallExpression|NullSafeMethodCallExpression $call): SqlPiece {
+        ?SqlPiece $grouped = $this->groupAggregate($call);
+        if ($grouped !== null) {
+            return $grouped;
+        }
+        ?SqlPiece $collection = $this->joins->collection($call, $this);
+        if ($collection !== null) {
+            return $collection;
+        }
+        if (\strtolower($call->method) === 'contains') {
+            ?SqlPiece $json = $this->jsonContains($call);
+            if ($json !== null) {
+                return $json;
+            }
+        }
+        if (\strtolower($call->method) === 'contains' && $this->isArrayNode($call->object)) {
+            return $this->translateIn($call);
+        }
+        if ($call instanceof NullSafeMethodCallExpression) {
+            MethodCallExpression $plain = new MethodCallExpression($call->object, $call->method, $call->arguments, $call->type);
+            SqlPiece $piece = MethodTranslatorRegistry::shared()->translate($this, $plain);
+
+            return new SqlPiece($piece->sql, $piece->bindings, $piece->valueType, true, $piece->column, $piece->isNull);
+        }
+
+        return MethodTranslatorRegistry::shared()->translate($this, $call);
+    }
+
+    private function translateIn(MethodCallExpression|NullSafeMethodCallExpression $call): SqlPiece {
+        ?ExpressionNode $valueNode = null;
+        foreach ($call->arguments as $argument) {
+            if ($argument instanceof ExpressionNode) {
+                $valueNode = $argument;
+            }
+            break;
+        }
+        if ($valueNode === null) {
+            return $this->fail($call, 'method contains');
+        }
+        int $recipeMark = \count($this->recipes);
+        SqlPiece $value = $this->translate($valueNode);
+        if ($call->object instanceof ConstantExpression && \is_array($call->object->value)) {
+            array<int, mixed> $items = [];
+            foreach ($call->object->value as $item) {
+                $items[] = QueryPlan::scalar($item);
+            }
+            if (\count($items) === 0) {
+                return $this->never($recipeMark);
+            }
+            $this->addRecipe(new BindingRecipe($this->source, $this->sourceIndex, 'list', $this->shape->slotOf($call->object), ''));
+
+            return new SqlPiece(
+                $value->sql . ' in (' . $this->marks(\count($items)) . ')',
+                $value->withBindings($items),
+                'bool',
+                $value->nullable,
+                null,
+                false,
+            );
+        }
+        if ($call->object instanceof ArrayExpression) {
+            if (\count($call->object->items) === 0) {
+                return $this->never($recipeMark);
+            }
+            array<int, string> $parts = [];
+            array<int, mixed> $bindings = $value->bindings;
+            foreach ($call->object->items as $item) {
+                SqlPiece $part = $this->translate($item->value);
+                $parts[] = $part->sql;
+                $bindings = $this->append($bindings, $part->bindings);
+            }
+
+            return new SqlPiece($value->sql . ' in (' . \implode(', ', $parts) . ')', $bindings, 'bool', $value->nullable, null, false);
+        }
+
+        return $this->fail($call, 'method contains');
+    }
+
+    private function binary(BinaryExpression $node): SqlPiece {
+        string $operator = $node->operator;
+        if ($operator === '&&' || $operator === 'and' || $operator === '||' || $operator === 'or') {
+            SqlPiece $left = $this->translate($node->left);
+            SqlPiece $right = $this->translate($node->right);
+            string $sqlOp = ($operator === '||' || $operator === 'or') ? 'or' : 'and';
+
+            return new SqlPiece(
+                '(' . $left->sql . ' ' . $sqlOp . ' ' . $right->sql . ')',
+                $left->withBindings($right->bindings),
+                'bool',
+                $left->nullable || $right->nullable,
+                null,
+                false,
+            );
+        }
+        if ($operator === '===' || $operator === '!==' || $operator === '==' || $operator === '!=') {
+            return $this->equality($node);
+        }
+        if ($operator === '>' || $operator === '>=' || $operator === '<' || $operator === '<=' || $operator === '+' || $operator === '-' || $operator === '*' || $operator === '/' || $operator === '%' || $operator === '.') {
+            SqlPiece $left = $this->translate($node->left);
+            SqlPiece $right = $this->translate($node->right);
+            string $sqlOp = $operator === '.' ? ($this->isMysql() ? 'concat' : '||') : $operator;
+            if ($sqlOp === 'concat') {
+                return new SqlPiece(
+                    'concat(' . $left->sql . ', ' . $right->sql . ')',
+                    $left->withBindings($right->bindings),
+                    'string',
+                    $left->nullable || $right->nullable,
+                    null,
+                    false,
+                );
+            }
+            string $type = $operator === '.' ? 'string' : 'int';
+
+            return new SqlPiece(
+                $left->sql . ' ' . $sqlOp . ' ' . $right->sql,
+                $left->withBindings($right->bindings),
+                $type,
+                $left->nullable || $right->nullable,
+                null,
+                false,
+            );
+        }
+
+        return $this->fail($node, 'operator ' . $operator);
+    }
+
+    private function equality(BinaryExpression $node): SqlPiece {
+        SqlPiece $left = $this->translate($node->left);
+        SqlPiece $right = $this->translate($node->right);
+        bool $negated = $node->operator === '!==' || $node->operator === '!=';
+        if ($left->isNull || $right->isNull) {
+            SqlPiece $column = $left->isNull ? $right : $left;
+            string $sql = $negated ? $column->sql . ' is not null' : $column->sql . ' is null';
+
+            return new SqlPiece($sql, $column->bindings, 'bool', false, null, false);
+        }
+        bool $strict = $node->operator === '===' || $node->operator === '!==';
+        if ($strict && $left->column !== null && $right->column !== null && $left->nullable && $right->nullable) {
+            string $sql = $negated
+                ? '((' . $left->sql . ' <> ' . $right->sql . ') or (' . $left->sql . ' is null and ' . $right->sql . ' is not null) or (' . $left->sql . ' is not null and ' . $right->sql . ' is null))'
+                : '((' . $left->sql . ' = ' . $right->sql . ') or (' . $left->sql . ' is null and ' . $right->sql . ' is null))';
+
+            return new SqlPiece($sql, $left->withBindings($right->bindings), 'bool', false, null, false);
+        }
+        if ($negated && $left->nullable !== $right->nullable) {
+            // PHP: null !== 'x' is true. SQL: NULL <> 'x' is unknown, so the row would drop out.
+            return new SqlPiece(
+                '((' . $left->sql . ' <> ' . $right->sql . ') is not false)',
+                $left->withBindings($right->bindings),
+                'bool',
+                false,
+                null,
+                false,
+            );
+        }
+        string $sqlOp = $negated ? '<>' : '=';
+
+        return new SqlPiece(
+            $left->sql . ' ' . $sqlOp . ' ' . $right->sql,
+            $left->withBindings($right->bindings),
+            'bool',
+            $left->nullable || $right->nullable,
+            null,
+            false,
+        );
+    }
+
+    private function unary(UnaryExpression $node): SqlPiece {
+        if (!$node->isPrefix) {
+            return $this->fail($node, 'operator ' . $node->operator);
+        }
+        SqlPiece $operand = $this->translate($node->operand);
+        if ($node->operator === '!') {
+            return new SqlPiece($this->negate($operand), $operand->bindings, 'bool', false, null, false);
+        }
+        if ($node->operator === '-') {
+            return new SqlPiece('(-' . $operand->sql . ')', $operand->bindings, $operand->valueType, $operand->nullable, null, false);
+        }
+        if ($node->operator === '+') {
+            return $operand;
+        }
+
+        return $this->fail($node, 'operator ' . $node->operator);
+    }
+
+    private function constant(ConstantExpression $node): SqlPiece {
+        if ($node->value === null) {
+            return new SqlPiece('null', [], 'null', true, null, true);
+        }
+        mixed $bound = QueryPlan::scalar($node->value);
+        $this->addRecipe(new BindingRecipe($this->source, $this->sourceIndex, 'slot', $this->shape->slotOf($node), ''));
+
+        return new SqlPiece('?', [$bound], $node->type, false, null, false);
+    }
+
+    private function property(PropertyAccessExpression|NullSafeAccessExpression $node): SqlPiece {
+        ?SqlPiece $captured = $this->capturedContext($node);
+        if ($captured !== null) {
+            return $captured;
+        }
+        if ($this->activeGroup !== null && $node->object instanceof ParameterExpression && $node->property === 'key') {
+            if (\count($this->activeGroup->keys) === 0) {
+                return $this->fail($node, 'property key');
+            }
+
+            return $this->translateOwned($this->activeGroup->keys[0], 'group', 0);
+        }
+
+        return $this->joins->column($node, $this);
+    }
+
+    private function firstArgument(MethodCallExpression|NullSafeMethodCallExpression $call): ExpressionNode {
+        if ($call instanceof MethodCallExpression) {
+            return $call->arguments[0];
+        }
+
+        return $call->arguments[0];
+    }
+
+    private function groupAggregate(MethodCallExpression|NullSafeMethodCallExpression $call): ?SqlPiece {
+        if ($this->activeGroup === null || !($call->object instanceof ParameterExpression)) {
+            return null;
+        }
+        string $name = \strtolower($call->method);
+        if ($name === 'count' && \count($call->arguments) === 0) {
+            return new SqlPiece('count(*)', [], 'int', false, null, false);
+        }
+        if ($name !== 'sum' && $name !== 'min' && $name !== 'max' && $name !== 'avg') {
+            return null;
+        }
+        if (\count($call->arguments) !== 1) {
+            return $this->fail($call, 'method ' . $call->method);
+        }
+        ExpressionNode $argument = $this->firstArgument($call);
+        if (!($argument instanceof LambdaExpression)) {
+            return $this->fail($call, 'method ' . $call->method);
+        }
+        LambdaExpression $selector = $argument;
+        ?Grouping $saved = $this->activeGroup;
+        $this->activeGroup = null;
+        SqlPiece $inner = $this->translate($selector->body);
+        $this->activeGroup = $saved;
+        string $type = $name === 'avg' ? 'float' : 'int';
+
+        return new SqlPiece($name . '(' . $inner->sql . ')', $inner->bindings, $type, true, null, false);
+    }
+
+    private function dateDiffSql(string $start, string $end): string {
+        if ($this->isMysql()) {
+            return 'datediff(' . $end . ', ' . $start . ')';
+        }
+        if ($this->driver === 'pgsql') {
+            return '(cast(' . $end . ' as date) - cast(' . $start . ' as date))';
+        }
+
+        // Whole calendar days, the way DATEDIFF counts them: the time of day does not move the result.
+        return 'cast(julianday(date(' . $end . ')) - julianday(date(' . $start . ')) as integer)';
+    }
+
+    private function datePartSql(string $part, string $value): string {
+        if ($this->isMysql()) {
+            return $part . '(' . $value . ')';
+        }
+        if ($this->driver === 'pgsql') {
+            return 'cast(extract(' . $part . ' from ' . $value . ') as integer)';
+        }
+        string $format = match ($part) {
+            'year' => '%Y',
+            'month' => '%m',
+            default => '%d',
+        };
+
+        return "cast(strftime('" . $format . "', " . $value . ') as integer)';
+    }
+
+    private function ternary(TernaryExpression $node): SqlPiece {
+        if ($node->ifTrue === null) {
+            return $this->fail($node, 'ternary');
+        }
+        SqlPiece $condition = $this->translate($node->condition);
+        SqlPiece $whenTrue = $this->translate($node->ifTrue);
+        SqlPiece $whenFalse = $this->translate($node->ifFalse);
+        array<int, mixed> $bindings = $condition->withBindings($whenTrue->bindings);
+
+        return new SqlPiece(
+            'case when ' . $condition->sql . ' then ' . $whenTrue->sql . ' else ' . $whenFalse->sql . ' end',
+            $this->append($bindings, $whenFalse->bindings),
+            $whenTrue->valueType,
+            $whenTrue->nullable || $whenFalse->nullable,
+            null,
+            false,
+        );
+    }
+
+    private function cast(CastExpression $node): SqlPiece {
+        SqlPiece $operand = $this->translate($node->operand);
+        string $target = \strtolower($node->targetType);
+        string $sqlType = $this->castType($target);
+        if ($sqlType === '') {
+            return $this->fail($node, 'cast ' . $node->targetType);
+        }
+
+        return new SqlPiece(
+            'cast(' . $operand->sql . ' as ' . $sqlType . ')',
+            $operand->bindings,
+            $target,
+            $operand->nullable,
+            null,
+            false,
+        );
+    }
+
+    private function castType(string $target): string {
+        if ($target === 'int' || $target === 'integer' || $target === 'bool' || $target === 'boolean') {
+            if ($this->isMysql()) {
+                return 'signed';
+            }
+            if ($this->driver === 'pgsql') {
+                return 'integer';
+            }
+
+            return 'integer';
+        }
+        if ($target === 'float' || $target === 'double') {
+            if ($this->isMysql()) {
+                return 'double';
+            }
+            if ($this->driver === 'pgsql') {
+                return 'double precision';
+            }
+
+            return 'real';
+        }
+        if ($target === 'string') {
+            if ($this->isMysql()) {
+                return 'char';
+            }
+            if ($this->driver === 'pgsql') {
+                return 'text';
+            }
+
+            return 'text';
+        }
+
+        return '';
+    }
+
+    private function isArrayNode(ExpressionNode $node): bool {
+        if ($node instanceof ConstantExpression && \is_array($node->value)) {
+            return true;
+        }
+
+        return $node instanceof ArrayExpression;
+    }
+
+    /**
+     * `x IN ()`. The value's SQL is dropped, so the bindings and recipes it added are dropped
+     * with it.
+     */
+    private function never(int $recipeMark): SqlPiece {
+        $this->recipes = \array_slice($this->recipes, 0, $recipeMark);
+
+        return new SqlPiece('0 = 1', [], 'bool', false, null, false);
+    }
+
+    private function addRecipe(BindingRecipe $recipe): void {
+        $this->recipes[] = $recipe;
+    }
+
+    private function marks(int $count): string {
+        array<int, string> $marks = [];
+        for (int $index = 0; $index < $count; $index++) {
+            $marks[] = '?';
+        }
+
+        return \implode(', ', $marks);
+    }
+
+    /**
+     * @param array<int, mixed> $left
+     * @param array<int, mixed> $right
+     * @return array<int, mixed>
+     */
+    private function append(array<int, mixed> $left, array<int, mixed> $right): array<int, mixed> {
+        foreach ($right as $binding) {
+            $left[] = $binding;
+        }
+
+        return $left;
+    }
+
+    private function capturedContext(PropertyAccessExpression|NullSafeAccessExpression $node): ?SqlPiece {
+        array<int, string> $parts = [];
+        ExpressionNode $current = $node;
+        bool $walking = true;
+        while ($walking) {
+            if ($current instanceof PropertyAccessExpression || $current instanceof NullSafeAccessExpression) {
+                $parts[] = $current->property;
+                $current = $current->object;
+            } else {
+                $walking = false;
+            }
+        }
+        return $this->contextConstant($current, $parts);
+    }
+
+    /**
+     * @param array<int, string> $parts
+     */
+    private function contextConstant(ExpressionNode $node, array<int, string> $parts): ?SqlPiece {
+        if (!($node instanceof ConstantExpression)) {
+            return null;
+        }
+
+        return $this->contextValue($node, $parts);
+    }
+
+    /**
+     * @param array<int, string> $parts
+     */
+    private function contextValue(ConstantExpression $node, array<int, string> $parts): ?SqlPiece {
+        if (!($node->value instanceof Context)) {
+            return null;
+        }
+        array<int, string> $ordered = [];
+        for (int $index = \count($parts) - 1; $index >= 0; $index--) {
+            $ordered[] = $parts[$index];
+        }
+        string $path = \implode('.', $ordered);
+        mixed $value = PropertyBag::read($this->context, $path);
+        $this->addRecipe(new BindingRecipe($this->source, $this->sourceIndex, 'context', 0, $path));
+
+        return new SqlPiece('?', [QueryPlan::scalar($value)], 'mixed', false, null, false);
+    }
+
+    private function instanceofCheck(InstanceofExpression $node): SqlPiece {
+        ?ModelMap $model = $this->joins->modelOf($node->operand);
+        if ($model === null || $model->discriminatorColumn === null) {
+            return $this->fail($node, 'instanceof ' . $node->targetType);
+        }
+        string $target = \ltrim($node->targetType, '\\');
+        string $current = \ltrim($model->class, '\\');
+        if ($target === $current || \is_subclass_of($current, $target)) {
+            return new SqlPiece('1 = 1', [], 'bool', false, null, false);
+        }
+        ModelMap $root = $model;
+        if ($model->rootClass !== null && $this->joins->contextMap()->hasModel($model->rootClass)) {
+            $root = $this->joins->contextMap()->model($model->rootClass);
+        }
+        // The target and every class derived from it.
+        array<int, string> $values = [];
+        foreach ($root->discriminatorTypes as $stored => $class) {
+            if (!\is_string($stored)) {
+                continue;
+            }
+            string $candidate = \ltrim($class, '\\');
+            if ($candidate === $target || \is_subclass_of($candidate, $target)) {
+                $values[] = $stored;
+            }
+        }
+        if (\count($values) === 0 || $model->discriminatorProperty === null) {
+            return new SqlPiece('0 = 1', [], 'bool', false, null, false);
+        }
+        ?ColumnRef $column = $this->joins->columnOn($node->operand, $model->discriminatorProperty);
+        if ($column === null) {
+            return $this->fail($node, 'instanceof ' . $node->targetType);
+        }
+        array<int, mixed> $bindings = [];
+        array<int, string> $marks = [];
+        foreach ($values as $value) {
+            $this->addRecipe(new BindingRecipe($this->source, $this->sourceIndex, 'fixed', 0, $value));
+            $bindings[] = $value;
+            $marks[] = '?';
+        }
+        if (\count($values) === 1) {
+            return new SqlPiece($column->sql . ' = ?', $bindings, 'bool', false, null, false);
+        }
+
+        return new SqlPiece($column->sql . ' in (' . \implode(', ', $marks) . ')', $bindings, 'bool', false, null, false);
+    }
+
+    private function jsonContains(MethodCallExpression|NullSafeMethodCallExpression $call): ?SqlPiece {
+        if (!($call->object instanceof PropertyAccessExpression) && !($call->object instanceof NullSafeAccessExpression)) {
+            return null;
+        }
+        ?ColumnRef $column = $this->joins->tryColumn($call->object);
+        if ($column === null || $column->type !== 'json') {
+            return null;
+        }
+        if (\count($call->arguments) !== 1) {
+            return $this->fail($call, 'method contains');
+        }
+        ?ExpressionNode $argument = null;
+        foreach ($call->arguments as $item) {
+            if ($item instanceof ExpressionNode) {
+                $argument = $item;
+            }
+            break;
+        }
+        if ($argument === null) {
+            return $this->fail($call, 'method contains');
+        }
+        SqlPiece $value = $this->translate($argument);
+        string $sql = 'exists (select 1 from json_each(' . $column->sql . ') where json_each.value = ' . $value->sql . ')';
+        if ($this->driver === 'mysql' || $this->driver === 'mariadb') {
+            $sql = 'json_contains(' . $column->sql . ', json_array(' . $value->sql . '))';
+        } elseif ($this->driver === 'pgsql') {
+            $sql = $column->sql . '::jsonb @> jsonb_build_array(' . $value->sql . ')';
+        }
+
+        return new SqlPiece($sql, $value->bindings, 'bool', false, null, false);
+    }
+}

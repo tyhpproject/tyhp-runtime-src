@@ -19,9 +19,9 @@ PACKAGE_VERSION_SUFFIX="${PACKAGE_VERSION_SUFFIX:-}"
 # php major : phpVersion CLI value : label
 # Each target uses the package's tyhp.json with --output:phpVersion=.
 # output.path interpolates {phpVersion.id} from that override.
-# This is the only list of PHP targets: per-PHP builds, published 80N.X.Y tags,
-# php_label_for_major, and the sibling constraints in matching_minor_constraint_for
-# all read it.
+# Default PHP targets. Per-PHP builds, published 80N.X.Y tags, php_label_for_major,
+# and matching_minor_constraint_for read it. set_package_dist_builds narrows this
+# for a package that does not publish every major (rhetoric: 803–805).
 DIST_BUILDS=(
   "802:8.2:PHP 8.2"
   "803:8.3:PHP 8.3"
@@ -35,7 +35,71 @@ DIST_BUILDS=(
 SINGLE_VERSION_PACKAGES=(compiler)
 
 # Packages emitted into dist/tyhp-<pkg>/<version>/ once per PHP major.
-DIST_PACKAGES=(core decimal async lambda parallel io)
+DIST_PACKAGES=(core decimal async lambda parallel io rhetoric)
+
+# Sets PACKAGE_DIST_BUILDS to the PHP targets for one package.
+# Unlisted packages use every DIST_BUILDS entry. rhetoric is PHP 8.3–8.5
+# because Laravel 13 requires PHP >= 8.3.
+set_package_dist_builds() {
+  case "$1" in
+    rhetoric)
+      PACKAGE_DIST_BUILDS=(
+        "803:8.3:PHP 8.3"
+        "804:8.4:PHP 8.4"
+        "805:8.5:PHP 8.5"
+      )
+      ;;
+    *)
+      PACKAGE_DIST_BUILDS=("${DIST_BUILDS[@]}")
+      ;;
+  esac
+}
+
+# "pkg:803,804,805" for packages that do not publish every DIST_BUILDS major.
+# Empty when every dist package uses DIST_BUILDS. check-version-bumps.php reads
+# this as CHECK_PACKAGE_PHP_MAJORS.
+restricted_package_php_majors() {
+  local spec=""
+  local pkg
+  local entry
+  local majors
+  local default=""
+
+  for entry in "${DIST_BUILDS[@]}"; do
+    if [[ -n "$default" ]]; then
+      default+=","
+    fi
+    default+="${entry%%:*}"
+  done
+
+  for pkg in "${DIST_PACKAGES[@]}"; do
+    set_package_dist_builds "$pkg"
+    majors=""
+    for entry in "${PACKAGE_DIST_BUILDS[@]}"; do
+      if [[ -n "$majors" ]]; then
+        majors+=","
+      fi
+      majors+="${entry%%:*}"
+    done
+    if [[ "$majors" == "$default" ]]; then
+      continue
+    fi
+    if [[ -n "$spec" ]]; then
+      spec+=";"
+    fi
+    spec+="${pkg}:${majors}"
+  done
+
+  printf '%s' "$spec"
+}
+
+# "8.3–8.5" for one package's own targets.
+package_php_range_label() {
+  set_package_dist_builds "$1"
+  local first="${PACKAGE_DIST_BUILDS[0]#*:}"
+  local last="${PACKAGE_DIST_BUILDS[${#PACKAGE_DIST_BUILDS[@]}-1]#*:}"
+  echo "${first%%:*}–${last%%:*}"
+}
 
 # Optional package name from the command line. Empty means build every package.
 SELECTED_PACKAGE=""
@@ -47,7 +111,7 @@ should_build_package() {
 _print_package_usage() {
   echo "Usage: $(basename "$0") [package]"
   echo "  package  Optional. One of: ${DIST_PACKAGES[*]} ${SINGLE_VERSION_PACKAGES[*]}"
-  echo "           If omitted, all packages are built. Dist packages still compile for every PHP version."
+  echo "           If omitted, all packages are built. Dist packages compile for each PHP version in their target list (rhetoric: 8.3–8.5)."
 }
 
 # Parse optional [package] from the invoking script's "$@". Exits on --help or invalid input.
@@ -155,13 +219,20 @@ read_package_source_version() {
 # Uses that package's own X.Y — not the package currently being built.
 matching_minor_constraint_for() {
   local dep_pkg="$1"
+  shift
   local parsed
   local x
   local entry
   local constraint=""
+  local -a entries
   parsed="$(_parse_package_source_version "$TYHP_PKG_DIR/$dep_pkg/composer.json")" || return 1
   IFS='|' read -r x _ _ _ <<< "$parsed"
-  for entry in "${DIST_BUILDS[@]}"; do
+  if [[ $# -eq 0 ]]; then
+    entries=("${DIST_BUILDS[@]}")
+  else
+    entries=("$@")
+  fi
+  for entry in "${entries[@]}"; do
     if [[ -n "$constraint" ]]; then
       constraint+=" || "
     fi
@@ -295,7 +366,8 @@ write_dist_composer_json() {
         }
     },
     "suggest": {
-        "ext-mbstring": "Unicode-aware string methods (length, substring, toUpper, \u2026); byte APIs are used when missing"
+        "ext-mbstring": "Unicode-aware string methods (length, substring, toUpper, \u2026); byte APIs are used when missing",
+        "ext-tyhp": "Faster Type::is, Type::parse, and Generic::bind. Install with: pie install tyhp/ext-tyhp"
     },
     "autoload": {
         "psr-4": {
@@ -341,7 +413,8 @@ EOF
             "Tyhp\\\\": "src/Tyhp/"
         },
         "files": [
-            "src/_functions.php"
+            "src/_functions.php",
+            "src/Tyhp/_functions.php"
         ]
     }
 }
@@ -412,6 +485,9 @@ EOF
     "require-dev": {
         "tyhpdef/php": "@dev"
     },
+    "suggest": {
+        "ext-tyhp": "Expression::fromClosure and PropertyPath::fromClosure read the closure through the module. Install with: pie install tyhp/ext-tyhp"
+    },
     "config": {
         "allow-plugins": {
             "tyhp/core": true
@@ -421,6 +497,9 @@ EOF
         "psr-4": {
             "Tyhp\\\\": "src/Tyhp/"
         },
+        "files": [
+            "src/_functions.php"
+        ],
         "classmap": [
             "php/EvalClosure.php"
         ]
@@ -471,6 +550,59 @@ EOF
 }
 EOF
       ;;
+    rhetoric)
+      local lambda_constraint
+      set_package_dist_builds "$pkg"
+      core_constraint="$(matching_minor_constraint_for core "${PACKAGE_DIST_BUILDS[@]}")"
+      lambda_constraint="$(matching_minor_constraint_for lambda "${PACKAGE_DIST_BUILDS[@]}")"
+      cat > "$out_dir/composer.json" <<EOF
+{
+    "name": "${composer_name}",
+    "description": "Tyhp Rhetoric (PHP ${php_label}) — Laravel database access for Tyhp",
+    "type": "library",
+    "license": "Apache-2.0",
+    "version": "${version}",
+    "extra": {
+        "tyhp": {
+            "interopContractVersion": ${interop_version},
+            "require": ${tyhp_require},
+            "package": ${tyhp_package}
+        },
+        "laravel": {
+            "providers": [
+                "Tyhp\\\\Rhetoric\\\\Laravel\\\\RhetoricServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "${php_c}",
+        "tyhp/core": "${core_constraint}",
+        "tyhp/lambda": "${lambda_constraint}",
+        "illuminate/database": "^13.0",
+        "illuminate/support": "^13.0",
+        "illuminate/console": "^13.0"
+    },
+    "require-dev": {
+        "tyhpdef/php": "@dev",
+        "tyhpdef/illuminate-database": "@dev",
+        "tyhpdef/illuminate-support": "@dev",
+        "tyhpdef/illuminate-console": "@dev"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "tyhp/core": true
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Tyhp\\\\": "src/Tyhp/"
+        }
+    }
+}
+EOF
+      ;;
     io)
       local async_constraint
       async_constraint="$(async_version_constraint)"
@@ -501,7 +633,8 @@ EOF
         "ext-pgsql": "Required by PostgresConnection",
         "ext-mysqli": "Required by MySqlConnection",
         "ext-pdo": "Required by PdoConnection",
-        "tyhp/parallel": "Runs PdoConnection, Dns, and Offload work in worker processes instead of blocking the event loop"
+        "ext-tyhp": "Dns::resolveAsync uses the module and falls back to Offload without it. Install with: pie install tyhp/ext-tyhp",
+        "tyhp/parallel": "Runs PdoConnection and Offload work in worker processes instead of blocking the event loop; Dns::resolveAsync uses Offload when ext-tyhp is absent"
     },
     "config": {
         "allow-plugins": {
@@ -534,6 +667,11 @@ write_dist_readme() {
   out_dir="$(dist_package_dir "$pkg" "$php_major")"
   version="$(package_version "$php_major")"
   php_label="$(php_label_for_major "$php_major")"
+
+  if [[ "$pkg" == "rhetoric" && -f "$SCRIPT_DIR/tyhp/rhetoric/README.md" ]]; then
+    cp "$SCRIPT_DIR/tyhp/rhetoric/README.md" "$out_dir/README.md"
+    return
+  fi
 
   cat > "$out_dir/README.md" <<EOF
 # ${composer_name}
@@ -619,6 +757,51 @@ copy_dist_cli() {
   chmod +x "$out_dir/bin/tyhp-parallel"
 }
 
+# Published config so the service provider can find rhetoric.php next to the package root.
+copy_dist_rhetoric_config() {
+  local pkg="$1"
+  local php_major="$2"
+  local out_dir
+  local src="$TYHP_PKG_DIR/rhetoric/config/rhetoric.php"
+
+  [[ "$pkg" == "rhetoric" ]] || return 0
+
+  if [[ ! -f "$src" ]]; then
+    echo "missing rhetoric config: $src" >&2
+    return 1
+  fi
+
+  out_dir="$(dist_package_dir "$pkg" "$php_major")"
+  mkdir -p "$out_dir/config"
+  cp "$src" "$out_dir/config/rhetoric.php"
+}
+
+# Published stubs so rhetoric:scaffold can find them next to the package root.
+copy_dist_rhetoric_stubs() {
+  local pkg="$1"
+  local php_major="$2"
+  local out_dir
+  local src="$TYHP_PKG_DIR/rhetoric/stubs"
+  local name
+
+  [[ "$pkg" == "rhetoric" ]] || return 0
+
+  if [[ ! -d "$src" ]]; then
+    echo "missing rhetoric stubs: $src" >&2
+    return 1
+  fi
+
+  out_dir="$(dist_package_dir "$pkg" "$php_major")"
+  mkdir -p "$out_dir/stubs"
+  for name in model.stub trait.stub context.stub mappings.stub; do
+    if [[ ! -f "$src/$name" ]]; then
+      echo "missing rhetoric stub: $src/$name" >&2
+      return 1
+    fi
+    cp "$src/$name" "$out_dir/stubs/$name"
+  done
+}
+
 # Hand-written PHP that compiles a lambda closure. Not emitted from Tyhp.
 copy_dist_eval_closure() {
   local pkg="$1"
@@ -680,6 +863,8 @@ finalize_dist_package() {
   copy_dist_plugin "$pkg" "$php_major"
   copy_dist_cli "$pkg" "$php_major"
   copy_dist_eval_closure "$pkg" "$php_major"
+  copy_dist_rhetoric_config "$pkg" "$php_major"
+  copy_dist_rhetoric_stubs "$pkg" "$php_major"
   cleanup_dist_build_artifacts "$pkg" "$php_major"
   link_dist_latest_major "$pkg" "$php_major"
 }
@@ -732,6 +917,34 @@ run_composer_update() {
   fi
 }
 
+# composer.json path-installs the package's lowest core. A later PHP target then
+# hides APIs whose tyhpdef is stamped for the other side of a version split.
+# Point the installed symlink at the matching build so the checker sees that API.
+align_installed_runtime() {
+  local pkg="$1"
+  local php_major="$2"
+  local dep
+  local vendor_dep
+  local target
+
+  # Rhetoric is the package that calls version-split core APIs (\Tyhp\Lazy).
+  # Other packages keep the core their composer.json path-installs.
+  if [[ "$pkg" != "rhetoric" ]]; then
+    return 0
+  fi
+
+  for dep in core lambda; do
+    if [[ "$pkg" == "$dep" ]]; then
+      continue
+    fi
+    vendor_dep="$TYHP_PKG_DIR/$pkg/vendor/tyhp/$dep"
+    target="$SCRIPT_DIR/dist/tyhp-${dep}/${php_major}.latest"
+    if [[ -L "$vendor_dep" && -d "$target" ]]; then
+      ln -sfn "$target" "$vendor_dep"
+    fi
+  done
+}
+
 run_tyhp_build() {
   local pkg="$1"
   local php_major="$2"
@@ -739,6 +952,7 @@ run_tyhp_build() {
   local label="$4"
   local code
 
+  align_installed_runtime "$pkg" "$php_major"
   echo "==> Building $pkg ($label) -> dist/tyhp-${pkg}/$(package_version "$php_major")/"
   set +e
   (cd "$TYHP_PKG_DIR/$pkg" && dotnet "$TYHP_DLL" build --clean \

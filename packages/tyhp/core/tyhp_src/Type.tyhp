@@ -2,11 +2,78 @@
 
 namespace Tyhp;
 
-class Type implements \Stringable
+/**
+ * Runtime description of a Tyhp type.
+ *
+ * `@template T` is a phantom parameter so `Type<int>` can name the value a factory
+ * describes. It is not a Tyhp generic on this class.
+ *
+ * @template T
+ * @phpstan-template T
+ * @psalm-template T
+ *
+ * @method static Type<string> string()
+ * @method static Type<int> int()
+ * @method static Type<float> float()
+ * @method static Type<bool> bool()
+ * @method static Type<null> null()
+ * @method static Type<void> void()
+ * @method static Type<mixed> mixed()
+ * @method static Type<never> never()
+ * @method static Type<array> array()
+ * @method static Type<object> object()
+ * @method static Type<callable> callable()
+ * @method static Type<iterable> iterable()
+ * @method static Type<resource> resource()
+ * @method static Type nullable(TypeLike|string $type)
+ * @method static Type list(TypeLike|string $value)
+ * @method static Type map(TypeLike|string $key, TypeLike|string $value)
+ * @method static Type struct(array<int|string, TypeLike|string>|string|null $name = null, array<int|string, TypeLike|string> $fields = [], array<int, int|string>|null $requiredKeys = null)
+ * @method static Type optional(TypeLike|string $type)
+ * @method static Type generic(string $generic, TypeLike|string ...$args)
+ * @method static Type union(TypeLike|string ...$types)
+ * @method static Type intersection(TypeLike|string ...$types)
+ * @method static Type parse(string $spelling)
+ * @method static Type of(mixed $value)
+ * @method static Type fromClassName(string $className)
+ */
+class Type implements \Stringable, TypeLike
 {
+    /** Documented as `use Tyhp\Type as T`. Each constant is the matching {@see BuiltIn} case. */
+    public const BuiltIn string = BuiltIn::string;
+
+    public const BuiltIn int = BuiltIn::int;
+
+    public const BuiltIn float = BuiltIn::float;
+
+    public const BuiltIn bool = BuiltIn::bool;
+
+    public const BuiltIn null = BuiltIn::null;
+
+    public const BuiltIn void = BuiltIn::void;
+
+    public const BuiltIn mixed = BuiltIn::mixed;
+
+    public const BuiltIn never = BuiltIn::never;
+
+    public const BuiltIn array = BuiltIn::array;
+
+    public const BuiltIn object = BuiltIn::object;
+
+    public const BuiltIn callable = BuiltIn::callable;
+
+    public const BuiltIn iterable = BuiltIn::iterable;
+
+    public const BuiltIn resource = BuiltIn::resource;
+
     private static array<string, self> $singletons = [];
 
     private static array<string, \Closure> $registry = [];
+
+    /// The exception a registered declaration's factory threw while {@see typeFromExtGraph()} built a
+    /// {@see ref()}. {@see parse()} rethrows it: the factory has already run, and running it again
+    /// through the PHP parser would not reproduce the failure.
+    private static ?\Throwable $extRefFailure = null;
 
     private static array<string, array<int, self>> $cachedTypes = [];
 
@@ -52,21 +119,45 @@ class Type implements \Stringable
     ): void {}
 
     /**
-     * Scalar factories and {@see nullable()} are dispatched here so an instance
-     * call such as `union()->int()` or `->nullable()` is not the static method.
-     * PHP uses one method slot for both forms.
+     * Scalar factories, {@see nullable()}, and {@see optional()} are dispatched here
+     * so an instance call such as `->nullable()` or `->optional($name, $type)` is not
+     * a static method. PHP uses one method slot for both forms. `nullable` stays
+     * magic on purpose: a real method would reject `Type::nullable($type)`.
      */
     public static function __callStatic(string $name, array<int, mixed> $arguments): self
     {
         if ($name === 'nullable') {
-            mixed $argument = $arguments[0] ?? null;
-            if (\count($arguments) !== 1 || !($argument instanceof self)) {
+            if (\count($arguments) !== 1) {
                 throw new Exceptions\InvalidTypeException(
                     'nullable() requires one Type argument.',
                 );
             }
 
-            return $argument->asNullable();
+            mixed $argument = $arguments[0];
+            if (!$argument instanceof TypeLike && !\is_string($argument)) {
+                throw new Exceptions\InvalidTypeException(
+                    'nullable() requires one Type argument.',
+                );
+            }
+
+            return self::requireType($argument)->asNullable();
+        }
+
+        if ($name === 'optional') {
+            if (\count($arguments) !== 1) {
+                throw new Exceptions\InvalidTypeException(
+                    'optional() requires one type argument.',
+                );
+            }
+
+            mixed $argument = $arguments[0];
+            if (!$argument instanceof TypeLike && !\is_string($argument)) {
+                throw new Exceptions\InvalidTypeException(
+                    'optional() requires one type argument.',
+                );
+            }
+
+            return self::optionalType(self::requireType($argument));
         }
 
         if (\count($arguments) !== 0) {
@@ -108,14 +199,19 @@ class Type implements \Stringable
         return self::$singletons[$name];
     }
 
-    public static function union(self ...$types): self
+    public static function union(TypeLike|string ...$types): self
     {
-        if (\count($types) === 0) {
+        array<self> $resolved = [];
+        foreach ($types as $type) {
+            $resolved[] = self::requireType($type);
+        }
+
+        if (\count($resolved) === 0) {
             return new self('union');
         }
 
         array<self|NamedType> $flattened = [];
-        foreach ($types as $type) {
+        foreach ($resolved as $type) {
             if ($type->kind === 'union') {
                 foreach ($type->typeArgs as $member) {
                     $flattened[] = $member;
@@ -144,14 +240,19 @@ class Type implements \Stringable
         return new self('union', null, $unique);
     }
 
-    public static function intersection(self ...$types): self
+    public static function intersection(TypeLike|string ...$types): self
     {
-        if (\count($types) === 0) {
+        array<self> $resolved = [];
+        foreach ($types as $type) {
+            $resolved[] = self::requireType($type);
+        }
+
+        if (\count($resolved) === 0) {
             return new self('intersection');
         }
 
         array<self|NamedType> $flattened = [];
-        foreach ($types as $type) {
+        foreach ($resolved as $type) {
             if ($type->kind === 'intersection') {
                 foreach ($type->typeArgs as $member) {
                     $flattened[] = $member;
@@ -187,8 +288,12 @@ class Type implements \Stringable
      * Unions and nullable types are unwrapped member by member. Every other type, including
      * `mixed` and `void`, is returned unchanged.
      */
-    public static function awaited(self $type): self
+    public static function awaited(TypeLike|string $type): self
     {
+        if (!$type instanceof self) {
+            return self::awaited(self::requireType($type));
+        }
+
         if ($type instanceof NamedType) {
             return self::awaited($type->getUnderlyingType());
         }
@@ -252,22 +357,173 @@ class Type implements \Stringable
             return self::awaited($type->typeArgs[0]);
         }
 
-        return self::mixed();
+        return self::scalar('mixed');
     }
 
-    public static fn generic(string $className, NamedType ...$params): self => new self('generic', $className, $params);
+    /**
+     * A generic type. Arguments are positional, named after the declared parameters,
+     * or mixed (named after positional). A {@see NamedType} is stored as given.
+     * `array` and `iterable` take one argument (`TValue`) or two (`TKey`, `TValue`).
+     *
+     * @template TClass of object
+     *
+     * @param class-string<TClass> $className
+     *
+     * @return self<TClass>
+     *
+     * @phpstan-template TClass of object
+     * @phpstan-param class-string<TClass> $className
+     * @phpstan-return self<TClass>
+     *
+     * @psalm-template TClass of object
+     * @psalm-param class-string<TClass> $className
+     * @psalm-return self<TClass>
+     */
+    public static function generic(string $className, TypeLike|string ...$params): self
+    {
+        string $normalized = \ltrim($className, '\\');
+        string $lower = \strtolower($normalized);
+        array<int, TypeLike|string> $positional = [];
+        array<string, TypeLike|string> $named = [];
+        array<int|string, mixed> $raw = [];
+        foreach ($params as $key => $param) {
+            $raw[$key] = $param;
+        }
+
+        foreach ($raw as $key => $param) {
+            if (!$param instanceof TypeLike && !\is_string($param)) {
+                throw new Exceptions\InvalidTypeException(
+                    'generic() type arguments must be a Type, BuiltIn, or class-string.',
+                );
+            }
+
+            if (\is_int($key)) {
+                $positional[] = $param;
+            } else {
+                $named[$key] = $param;
+            }
+        }
+
+        int $supplied = \count($positional) + \count($named);
+        if ($supplied === 0) {
+            // The builder form the compiler emits: `generic(X::class)->param('T', $t)`.
+            return new self('generic', $normalized, []);
+        }
+
+        if (($lower === 'array' || $lower === 'iterable') && $supplied > 2) {
+            throw new Exceptions\InvalidTypeException(
+                'Type "' . $normalized . '" takes at most two type arguments.',
+            );
+        }
+
+        ?array<int, string> $declared = self::declaredGenericNames($normalized, $supplied);
+        if ($declared === null) {
+            if ($named !== []) {
+                throw new Exceptions\InvalidTypeException(
+                    'Class "' . $normalized . '" has no type parameter names. Pass type arguments by position.',
+                );
+            }
+
+            array<int, NamedType> $plain = [];
+            foreach ($positional as $index => $param) {
+                $plain[] = self::asNamedArgument($param, 'T' . (string) $index);
+            }
+
+            return new self('generic', $normalized, $plain);
+        }
+
+        if (\count($positional) > \count($declared)) {
+            throw new Exceptions\InvalidTypeException(
+                'Generic type "' . $normalized . '" expects ' . (string) \count($declared)
+                . ' type argument(s), ' . (string) $supplied . ' given.',
+            );
+        }
+
+        array<int, ?NamedType> $slots = [];
+        foreach ($declared as $index => $declaredName) {
+            (void) $declaredName;
+            $slots[$index] = null;
+        }
+
+        foreach ($positional as $index => $param) {
+            $slots[$index] = self::asNamedArgument($param, $declared[$index] ?? ('T' . (string) $index));
+        }
+
+        foreach ($named as $parameterName => $param) {
+            int $slot = -1;
+            foreach ($declared as $index => $declaredName) {
+                if ($declaredName === $parameterName) {
+                    $slot = $index;
+                    break;
+                }
+            }
+
+            if ($slot < 0) {
+                throw new Exceptions\InvalidTypeException(
+                    'Unknown type parameter "' . $parameterName . '" for "' . $normalized . '".',
+                );
+            }
+
+            if ($slots[$slot] !== null) {
+                throw new Exceptions\InvalidTypeException(
+                    'Type parameter "' . $parameterName . '" is already filled by position.',
+                );
+            }
+
+            $slots[$slot] = self::asNamedArgument($param, $parameterName);
+        }
+
+        if ($supplied !== \count($declared)) {
+            throw new Exceptions\InvalidTypeException(
+                'Generic type "' . $normalized . '" expects ' . (string) \count($declared)
+                . ' type argument(s), ' . (string) $supplied . ' given.',
+            );
+        }
+
+        array<int, NamedType> $arguments = [];
+        foreach ($slots as $slot) {
+            if (!$slot instanceof NamedType) {
+                throw new Exceptions\InvalidTypeException(
+                    'Generic type "' . $normalized . '" expects ' . (string) \count($declared)
+                    . ' type argument(s), ' . (string) $supplied . ' given.',
+                );
+            }
+
+            $arguments[] = $slot;
+        }
+
+        return new self('generic', $normalized, $arguments);
+    }
 
     /**
      * A Tyhp struct shape: an associative array with named (or aliased) keys.
-     * `$fields` is PHP-key → field type. `$requiredKeys` must all be present on a value.
-     * Extra keys on a value are ignored.
+     * An array first argument is the field map. Every field is required unless it is
+     * wrapped in {@see optional()}. The name is optional (`name:` / `fields:`).
+     * The three-argument form still uses `$requiredKeys` as the required-key list,
+     * including an empty list. Extra keys on a value are ignored.
      */
     public static function struct(
-        ?string $name = null,
-        array<int|string, self> $fields = [],
-        array<int, int|string> $requiredKeys = [],
+        array<int|string, TypeLike|string>|string|null $name = null,
+        array<int|string, TypeLike|string> $fields = [],
+        ?array<int, int|string> $requiredKeys = null,
     ): self {
-        return new self('struct', $name, [], false, false, $fields, $requiredKeys);
+        if (\is_array($name)) {
+            if ($fields !== [] || $requiredKeys !== null) {
+                throw new Exceptions\InvalidTypeException(
+                    'struct() with an array field map takes no further arguments. Pass the name as struct(name: ..., fields: ...).',
+                );
+            }
+
+            return self::structFromFields(null, $name, null);
+        }
+
+        if (\is_string($name) || $name === null) {
+            return self::structFromFields($name, $fields, $requiredKeys);
+        }
+
+        throw new Exceptions\InvalidTypeException(
+            'struct() name must be a string or null.',
+        );
     }
 
     /**
@@ -333,25 +589,32 @@ class Type implements \Stringable
      * A placeholder is cached before the closure runs so a nested ref of the same
      * declaration does not recurse forever.
      */
-    public static function ref(string $refName, self ...$generics): self
+    public static function ref(string $refName, TypeLike|string ...$generics): self
     {
+        array<int, self> $resolved = [];
+        int $index = 0;
+        foreach ($generics as $generic) {
+            $resolved[$index] = self::requireType($generic);
+            $index = $index + 1;
+        }
+
         if (!\array_key_exists($refName, self::$registry)) {
             throw new Exceptions\InvalidTypeException(
                 'Unknown type declaration "' . $refName . '".',
             );
         }
 
-        ?self $cached = self::findCached($refName, $generics);
+        ?self $cached = self::findCached($refName, $resolved);
         if ($cached !== null) {
             return $cached;
         }
 
         self $placeholder = new self('ref', $refName, declaredName: $refName);
         $placeholder->placeholder = true;
-        self::storeCache($refName, $generics, $placeholder);
+        self::storeCache($refName, $resolved, $placeholder);
 
         \Closure $factory = self::$registry[$refName];
-        mixed $raw = $factory(...$generics);
+        mixed $raw = $factory(...$resolved);
         if (!$raw instanceof self) {
             throw new Exceptions\InvalidTypeException(
                 'Type declaration "' . $refName . '" did not return a Type.',
@@ -361,19 +624,37 @@ class Type implements \Stringable
         self $result = $raw->name($refName);
         $result = $result->immutable();
         $placeholder->linkForward($result);
-        self::replaceCache($refName, $generics, $result);
+        self::replaceCache($refName, $resolved, $result);
 
         return $result;
     }
 
-    public static function listOf(self $value): self
+    public static function listOf(TypeLike|string $value): self
     {
+        if (!$value instanceof self) {
+            return self::listOf(self::requireType($value));
+        }
+
         return self::generic('array', new NamedType('TValue', $value));
     }
 
-    public static function mapOf(self $key, self $value): self
+    public static function mapOf(TypeLike|string $key, TypeLike|string $value): self
     {
+        if (!$key instanceof self || !$value instanceof self) {
+            return self::mapOf(self::requireType($key), self::requireType($value));
+        }
+
         return self::generic('array', new NamedType('TKey', $key), new NamedType('TValue', $value));
+    }
+
+    public static function list(TypeLike|string $value): self
+    {
+        return self::listOf($value);
+    }
+
+    public static function map(TypeLike|string $key, TypeLike|string $value): self
+    {
+        return self::mapOf($key, $value);
     }
 
     public static function shape(?string $name = null): self
@@ -401,6 +682,40 @@ class Type implements \Stringable
     }
 
     public fn isImmutable(): bool => $this->immutable;
+
+    public function toType(): self
+    {
+        return $this;
+    }
+
+    /**
+     * The union of this type and `$others`. A member that is the same type as an earlier one
+     * adds nothing, so `int` or `int` is `int`.
+     */
+    public function or(TypeLike|string ...$others): self
+    {
+        array<self> $members = [$this->ready()];
+        foreach ($others as $other) {
+            self $candidate = self::requireType($other);
+            bool $seen = false;
+            foreach ($members as $member) {
+                if ($member->sameStructure($candidate)) {
+                    $seen = true;
+                    break;
+                }
+            }
+
+            if (!$seen) {
+                $members[] = $candidate;
+            }
+        }
+
+        if (\count($members) === 1) {
+            return $members[0];
+        }
+
+        return self::union(...$members);
+    }
 
     /**
      * A new type whose declaration name is `$name`. Scalar, class, and generic
@@ -431,31 +746,22 @@ class Type implements \Stringable
         return $target;
     }
 
-    public function field(int|string $name, self $type): self
+    public function field(int|string $name, TypeLike|string $type): self
     {
         self $current = $this->ready();
         if ($current->kind !== 'struct') {
             throw new Exceptions\InvalidTypeException('field() requires a struct type.');
         }
 
-        return $current->putStructField($name, $type, true);
+        return $current->putStructField($name, self::requireType($type), true);
     }
 
-    public function optional(int|string $name, self $type): self
+    public function param(string $name, TypeLike|string $type, bool $optional = false, bool $variadic = false): self
     {
-        self $current = $this->ready();
-        if ($current->kind !== 'struct') {
-            throw new Exceptions\InvalidTypeException('optional() requires a struct type.');
-        }
-
-        return $current->putStructField($name, $type, false);
-    }
-
-    public function param(string $name, self $type, bool $optional = false, bool $variadic = false): self
-    {
+        self $resolved = self::requireType($type);
         self $current = $this->ready();
         if ($current->kind === 'objectShape') {
-            return $current->putObjectShapeParam($name, $type, $optional, $variadic);
+            return $current->putObjectShapeParam($name, $resolved, $optional, $variadic);
         }
 
         if ($optional || $variadic) {
@@ -472,7 +778,7 @@ class Type implements \Stringable
 
         self $target = $current->edited();
         array<self|NamedType> $args = $target->typeArgs;
-        $args[] = new NamedType($name, $type);
+        $args[] = new NamedType($name, $resolved);
         $target->typeArgs = $args;
 
         return $target;
@@ -518,14 +824,15 @@ class Type implements \Stringable
      * Record the return type of the method started by {@see method()}.
      * An immutable receiver is copied.
      */
-    public function returns(self $type): self
+    public function returns(TypeLike|string $type): self
     {
+        self $resolved = self::requireType($type);
         self $current = $this->ready();
         if ($current->kind !== 'objectShape') {
             throw new Exceptions\InvalidTypeException('returns() requires an object shape.');
         }
 
-        return $current->putObjectShapeReturn($type);
+        return $current->putObjectShapeReturn($resolved);
     }
 
     public function property(string $name): self
@@ -547,6 +854,35 @@ class Type implements \Stringable
 
     public function __call(string $name, array<int, mixed> $arguments): self
     {
+        if ($name === 'optional') {
+            if (\count($arguments) !== 2) {
+                throw new Exceptions\InvalidTypeException(
+                    'optional() requires a field name and a type.',
+                );
+            }
+
+            mixed $fieldName = $arguments[0];
+            mixed $fieldType = $arguments[1];
+            if (!\is_int($fieldName) && !\is_string($fieldName)) {
+                throw new Exceptions\InvalidTypeException(
+                    'optional() requires a field name and a type.',
+                );
+            }
+
+            if (!$fieldType instanceof TypeLike && !\is_string($fieldType)) {
+                throw new Exceptions\InvalidTypeException(
+                    'optional() requires a field name and a type.',
+                );
+            }
+
+            self $current = $this->ready();
+            if ($current->kind !== 'struct') {
+                throw new Exceptions\InvalidTypeException('optional() requires a struct type.');
+            }
+
+            return $current->putStructField($fieldName, self::requireType($fieldType), false);
+        }
+
         if ($name === 'nullable') {
             if (\count($arguments) !== 0) {
                 throw new Exceptions\InvalidTypeException(
@@ -675,7 +1011,7 @@ class Type implements \Stringable
             }
 
             self $combined = match (true) {
-                \count($members) === 0 => self::mixed(),
+                \count($members) === 0 => self::scalar('mixed'),
                 \count($members) === 1 => $members[0],
                 default => self::union(...$members),
             };
@@ -696,14 +1032,14 @@ class Type implements \Stringable
 
             return \count($members) >= 2
                 ? self::intersection(...$members)
-                : ($members[0] ?? self::mixed());
+                : ($members[0] ?? self::scalar('mixed'));
         }
 
         if ($type instanceof \ReflectionNamedType) {
             return self::fromNamedReflectionType($type, $relativeClassName);
         }
 
-        return self::mixed();
+        return self::scalar('mixed');
     }
 
     private static function fromNamedReflectionType(
@@ -712,23 +1048,23 @@ class Type implements \Stringable
     ): self {
         string $name = $type->getName();
         self $result = match ($name) {
-            'string' => self::string(),
-            'int' => self::int(),
-            'float' => self::float(),
-            'bool' => self::bool(),
-            'array' => self::array(),
-            'object' => self::object(),
-            'callable' => self::callable(),
-            'iterable' => self::iterable(),
-            'void' => self::void(),
-            'never' => self::never(),
-            'mixed' => self::mixed(),
-            'null' => self::null(),
-            'false' => self::bool(),
-            'true' => self::bool(),
+            'string' => self::scalar('string'),
+            'int' => self::scalar('int'),
+            'float' => self::scalar('float'),
+            'bool' => self::scalar('bool'),
+            'array' => self::scalar('array'),
+            'object' => self::scalar('object'),
+            'callable' => self::scalar('callable'),
+            'iterable' => self::scalar('iterable'),
+            'void' => self::scalar('void'),
+            'never' => self::scalar('never'),
+            'mixed' => self::scalar('mixed'),
+            'null' => self::scalar('null'),
+            'false' => self::scalar('bool'),
+            'true' => self::scalar('bool'),
             'self', 'static' => $relativeClassName !== null
                 ? self::fromClassName($relativeClassName)
-                : self::object(),
+                : self::scalar('object'),
             'parent' => self::fromParentClassName($relativeClassName),
             default => self::fromClassName($name),
         };
@@ -743,7 +1079,7 @@ class Type implements \Stringable
     private static function fromParentClassName(?string $relativeClassName): self
     {
         if ($relativeClassName === null) {
-            return self::object();
+            return self::scalar('object');
         }
 
         string|false $parent = \get_parent_class($relativeClassName);
@@ -775,6 +1111,20 @@ class Type implements \Stringable
      */
     public static function parse(string $spelling): self
     {
+        if (ExtModule::available()) {
+            ?\Tyhp\ExtParseNode $graph = \Tyhp\Ext::typeParse($spelling);
+            if ($graph !== null) {
+                try {
+                    return self::typeFromExtGraph($graph);
+                } catch (Exceptions\InvalidTypeException $e) {
+                    if (self::$extRefFailure === $e) {
+                        self::$extRefFailure = null;
+                        throw $e;
+                    }
+                }
+            }
+        }
+
         array<int, string> $tokens = self::tokenizeSpelling($spelling);
         if (\count($tokens) === 0) {
             throw new Exceptions\InvalidTypeException('Type spelling is empty.');
@@ -852,7 +1202,7 @@ class Type implements \Stringable
 
         ?\ReflectionType $native = $property->getType();
         if ($native === null) {
-            return self::mixed();
+            return self::scalar('mixed');
         }
 
         return self::fromReflectionType($native, (string)$property->getDeclaringClass()->getName());
@@ -969,7 +1319,7 @@ class Type implements \Stringable
         }
 
         self $combined = match (\count($nonNull)) {
-            0 => self::null(),
+            0 => self::scalar('null'),
             1 => $nonNull[0],
             default => self::union(...$nonNull),
         };
@@ -1068,7 +1418,7 @@ class Type implements \Stringable
 
         ?self $builtin = match ($lower) {
             'string', 'int', 'float', 'bool', 'null', 'void', 'mixed', 'never', 'object', 'callable', 'resource' => self::scalar($lower),
-            'true', 'false' => self::bool(),
+            'true', 'false' => self::scalar('bool'),
             'decimal' => self::fromClassName('Tyhp\\Decimal'),
             default => null,
         };
@@ -1141,21 +1491,108 @@ class Type implements \Stringable
         $position++;
     }
 
+    /**
+     * Normalize a type argument. `null` stays `null`. A `Type` passes through.
+     * A {@see BuiltIn} becomes its `Type`. A string naming a loaded class, interface,
+     * or enum becomes {@see fromClassName()}. Any other string is a type spelling
+     * and must go through {@see parse()}.
+     *
+     * @return (
+     *     $type is null ? null :
+     *     $type is BuiltIn::string ? Type<string> :
+     *     $type is BuiltIn::int ? Type<int> :
+     *     $type is BuiltIn::float ? Type<float> :
+     *     $type is BuiltIn::bool ? Type<bool> :
+     *     $type is BuiltIn::null ? Type<null> :
+     *     $type is BuiltIn::void ? Type<void> :
+     *     $type is BuiltIn::mixed ? Type<mixed> :
+     *     $type is BuiltIn::never ? Type<never> :
+     *     $type is BuiltIn::array ? Type<array> :
+     *     $type is BuiltIn::object ? Type<object> :
+     *     $type is BuiltIn::callable ? Type<callable> :
+     *     $type is BuiltIn::iterable ? Type<iterable> :
+     *     $type is BuiltIn::resource ? Type<resource> :
+     *     Type|null
+     * )
+     *
+     * @phpstan-return (
+     *     $type is null ? null :
+     *     $type is BuiltIn::string ? Type<string> :
+     *     $type is BuiltIn::int ? Type<int> :
+     *     $type is BuiltIn::float ? Type<float> :
+     *     $type is BuiltIn::bool ? Type<bool> :
+     *     $type is BuiltIn::null ? Type<null> :
+     *     $type is BuiltIn::void ? Type<void> :
+     *     $type is BuiltIn::mixed ? Type<mixed> :
+     *     $type is BuiltIn::never ? Type<never> :
+     *     $type is BuiltIn::array ? Type<array> :
+     *     $type is BuiltIn::object ? Type<object> :
+     *     $type is BuiltIn::callable ? Type<callable> :
+     *     $type is BuiltIn::iterable ? Type<iterable> :
+     *     $type is BuiltIn::resource ? Type<resource> :
+     *     Type|null
+     * )
+     *
+     * @psalm-return (
+     *     $type is null ? null :
+     *     $type is BuiltIn::string ? Type<string> :
+     *     $type is BuiltIn::int ? Type<int> :
+     *     $type is BuiltIn::float ? Type<float> :
+     *     $type is BuiltIn::bool ? Type<bool> :
+     *     $type is BuiltIn::null ? Type<null> :
+     *     $type is BuiltIn::void ? Type<void> :
+     *     $type is BuiltIn::mixed ? Type<mixed> :
+     *     $type is BuiltIn::never ? Type<never> :
+     *     $type is BuiltIn::array ? Type<array> :
+     *     $type is BuiltIn::object ? Type<object> :
+     *     $type is BuiltIn::callable ? Type<callable> :
+     *     $type is BuiltIn::iterable ? Type<iterable> :
+     *     $type is BuiltIn::resource ? Type<resource> :
+     *     Type|null
+     * )
+     */
+    public static function arg(TypeLike|string|null $type): ?self
+    {
+        if ($type === null) {
+            return null;
+        }
+
+        if ($type instanceof self) {
+            return $type;
+        }
+
+        if ($type instanceof BuiltIn) {
+            return $type->toType();
+        }
+
+        if ($type instanceof TypeLike) {
+            return $type->toType();
+        }
+
+        if (\class_exists($type) || \interface_exists($type) || \enum_exists($type)) {
+            return self::fromClassName($type);
+        }
+
+        throw new Exceptions\InvalidTypeException(
+            'String "' . $type . '" is not a class, interface, or enum name. Use Type::parse() for a type spelling.',
+        );
+    }
+
     public static function of(mixed $value): self
     {
         if ($value === null) {
-            return self::null();
+            return self::scalar('null');
         }
 
         string $debugType = \get_debug_type($value);
 
         return match ($debugType) {
-            'string' => self::string(),
-            'int' => self::int(),
-            'float' => self::float(),
-            'bool' => self::bool(),
-            'array' => self::array(),
-            'resource', 'resource (closed)' => self::resource(),
+            'string' => self::scalar('string'),
+            'int' => self::scalar('int'),
+            'float' => self::scalar('float'),
+            'bool' => self::scalar('bool'),
+            'array' => self::scalar('array'),
+            'resource', 'resource (closed)' => self::scalar('resource'),
             default => \is_object($value)
                 ? self::resolveObjectType($value)
                 : self::fromClassName($debugType),
@@ -1253,8 +1690,19 @@ class Type implements \Stringable
         return self::is($value, typeof(TTarget));
     }
 
-    public static function is(mixed $value, self $type): bool
+    public static function is(mixed $value, TypeLike|string $type): bool
     {
+        if (!$type instanceof self) {
+            return self::is($value, self::requireType($type));
+        }
+
+        if (ExtModule::available()) {
+            ?bool $native = \Tyhp\Ext::typeIs($type, $value);
+            if ($native !== null) {
+                return $native;
+            }
+        }
+
         if ($type instanceof NamedType) {
             return self::is($value, $type->getUnderlyingType());
         }
@@ -1280,10 +1728,11 @@ class Type implements \Stringable
         };
     }
 
-    public static function check(mixed $value, self $type): void
+    public static function check(mixed $value, TypeLike|string $type): void
     {
-        if (!self::is($value, $type)) {
-            throw new \Tyhp\Exceptions\IncompatibleTypeException($type, self::of($value));
+        self $expected = self::requireType($type);
+        if (!self::is($value, $expected)) {
+            throw new \Tyhp\Exceptions\IncompatibleTypeException($expected, self::of($value));
         }
     }
 
@@ -1586,7 +2035,7 @@ class Type implements \Stringable
                 return false;
             }
 
-            self $shapeType = $types[$index] ?? self::mixed();
+            self $shapeType = $types[$index] ?? self::scalar('mixed');
             self $methodType = self::reflectionParameterType($parameter, $method);
             if (!self::signatureTypeAccepts($methodType, $shapeType)) {
                 return false;
@@ -1600,7 +2049,7 @@ class Type implements \Stringable
     {
         ?\ReflectionType $returnType = $method->getReturnType();
         if ($returnType === null) {
-            return self::mixed();
+            return self::scalar('mixed');
         }
 
         return self::fromReflectionType($returnType, $method->getDeclaringClass()->getName());
@@ -1610,7 +2059,7 @@ class Type implements \Stringable
     {
         ?\ReflectionType $parameterType = $parameter->getType();
         if ($parameterType === null) {
-            return self::mixed();
+            return self::scalar('mixed');
         }
 
         return self::fromReflectionType($parameterType, $method->getDeclaringClass()->getName());
@@ -1664,8 +2113,15 @@ class Type implements \Stringable
         return $type instanceof NamedType ? $type->getUnderlyingType() : $type;
     }
 
-    public static function compatible(self $broad, self $narrow): bool
+    public static function compatible(TypeLike|string $broad, TypeLike|string $narrow): bool
     {
+        if (!$broad instanceof self || !$narrow instanceof self) {
+            self $resolvedBroad = $broad instanceof self ? $broad : self::requireType($broad);
+            self $resolvedNarrow = $narrow instanceof self ? $narrow : self::requireType($narrow);
+
+            return self::compatible($resolvedBroad, $resolvedNarrow);
+        }
+
         if ($broad instanceof NamedType) {
             $broad = $broad->getUnderlyingType();
         }
@@ -2310,12 +2766,10 @@ class Type implements \Stringable
         }
 
         if ($left instanceof NamedType || $right instanceof NamedType) {
-            if (!$left instanceof NamedType || !$right instanceof NamedType) {
-                return false;
-            }
+            self $leftType = $left instanceof NamedType ? $left->getUnderlyingType() : $left;
+            self $rightType = $right instanceof NamedType ? $right->getUnderlyingType() : $right;
 
-            return $left->getParameterName() === $right->getParameterName()
-                && $left->getUnderlyingType()->sameStructure($right->getUnderlyingType(), $depth + 1);
+            return $leftType->sameStructure($rightType, $depth + 1);
         }
 
         if ($left->kind !== $right->kind || $left->name !== $right->name) {
@@ -2496,5 +2950,334 @@ class Type implements \Stringable
         }
 
         return $name;
+    }
+
+    private static function requireType(TypeLike|string $type): self
+    {
+        ?self $resolved = self::arg($type);
+        if ($resolved === null) {
+            throw new Exceptions\InvalidTypeException('A type argument is required.');
+        }
+
+        return $resolved;
+    }
+
+    private static function optionalType(self $inner): self
+    {
+        if ($inner->getKind() === 'optional') {
+            return $inner;
+        }
+
+        return new self('optional', null, [$inner]);
+    }
+
+    /**
+     * @param array<int|string, TypeLike|string> $fields
+     * @param array<int, int|string>|null $requiredKeys
+     */
+    private static function structFromFields(
+        ?string $name,
+        array<int|string, TypeLike|string> $fields,
+        ?array<int, int|string> $requiredKeys,
+    ): self {
+        array<int|string, self> $normalized = [];
+        array<int, int|string> $optionalKeys = [];
+        foreach ($fields as $key => $field) {
+            bool $optional = false;
+            self $fieldType = self::structFieldType($field, $optional);
+            $normalized[$key] = $fieldType;
+            if ($optional) {
+                $optionalKeys[] = $key;
+            }
+        }
+
+        array<int, int|string> $required = [];
+        if ($requiredKeys !== null) {
+            $required = $requiredKeys;
+        } else {
+            foreach ($normalized as $key => $fieldType) {
+                (void) $fieldType;
+                if (!\in_array($key, $optionalKeys, true)) {
+                    $required[] = $key;
+                }
+            }
+        }
+
+        return new self('struct', $name, [], false, false, $normalized, $required);
+    }
+
+    private static function structFieldType(TypeLike|string $field, bool &$optional): self
+    {
+        if ($field instanceof self && $field->getKind() === 'optional') {
+            $optional = true;
+            self|NamedType|null $inner = $field->typeArgs[0] ?? null;
+            if ($inner instanceof NamedType) {
+                return $inner->getUnderlyingType();
+            }
+
+            if ($inner instanceof self) {
+                return $inner;
+            }
+
+            return self::scalar('mixed');
+        }
+
+        $optional = false;
+
+        return self::requireType($field);
+    }
+
+    private static function asNamedArgument(TypeLike|string $param, string $declaredName): NamedType
+    {
+        if ($param instanceof NamedType) {
+            return $param;
+        }
+
+        return new NamedType($declaredName, self::requireType($param));
+    }
+
+    /**
+     * Declared type-parameter names, in order. Null when the class has no schema
+     * (a plain PHP class, or a name that is not loaded): callers are positional only.
+     *
+     * @return array<int, string>|null
+     */
+    private static function declaredGenericNames(string $className, int $supplied): ?array<int, string>
+    {
+        string $lower = \strtolower($className);
+        if ($lower === 'array' || $lower === 'iterable') {
+            if ($supplied === 1) {
+                return ['TValue'];
+            }
+
+            return ['TKey', 'TValue'];
+        }
+
+        if (!\class_exists($className) && !\interface_exists($className) && !\enum_exists($className)) {
+            return null;
+        }
+
+        ?array<int, string> $layout2 = self::layout2ParameterNames($className);
+        if ($layout2 !== null) {
+            return $layout2;
+        }
+
+        return self::layout1ParameterNames($className);
+    }
+
+    /**
+     * Parameter names of a layout-2 `new` binder, when that method is stamped.
+     *
+     * @return array<int, string>|null
+     */
+    private static function layout2ParameterNames(string $className): ?array<int, string>
+    {
+        if (!\method_exists($className, 'new')) {
+            return null;
+        }
+
+        \ReflectionMethod $method = new \ReflectionMethod($className, 'new');
+        if (!$method->isStatic()) {
+            return null;
+        }
+
+        ?GenericRuntime $info = self::genericRuntimeAttribute($method->getAttributes(GenericRuntime::class));
+        if ($info === null || !\in_array(2, $info->layouts, true)) {
+            return null;
+        }
+
+        array<int, string> $names = [];
+        foreach ($method->getParameters() as $parameter) {
+            // A trailing variadic only lets a child with fewer type parameters override the
+            // parent's method; it is not a type parameter.
+            if ($parameter->isVariadic()) {
+                break;
+            }
+
+            $names[] = $parameter->getName();
+        }
+
+        return $names;
+    }
+
+    /**
+     * Names from a layout-1 factory's `$__generic_*` parameters.
+     *
+     * @return array<int, string>|null
+     */
+    private static function layout1ParameterNames(string $className): ?array<int, string>
+    {
+        \ReflectionClass<object> $class = new \ReflectionClass($className);
+        ?GenericRuntime $info = self::genericRuntimeAttribute($class->getAttributes(GenericRuntime::class));
+        if ($info === null) {
+            return null;
+        }
+
+        ?string $factory = $info->factory;
+        if ($factory === null || $factory === '' || !\method_exists($className, $factory)) {
+            return null;
+        }
+
+        \ReflectionMethod $method = new \ReflectionMethod($className, $factory);
+        array<int, string> $names = [];
+        foreach ($method->getParameters() as $parameter) {
+            string $parameterName = $parameter->getName();
+            if (\str_starts_with($parameterName, '__generic_')) {
+                $names[] = \substr($parameterName, \strlen('__generic_'));
+            }
+        }
+
+        if ($names === []) {
+            return null;
+        }
+
+        return $names;
+    }
+
+    /**
+     * @param array<int, \ReflectionAttribute<GenericRuntime>> $attributes
+     */
+    private static function genericRuntimeAttribute(array<int, \ReflectionAttribute<GenericRuntime>> $attributes): ?GenericRuntime
+    {
+        foreach ($attributes as $attribute) {
+            object $instance = $attribute->newInstance();
+            if ($instance instanceof GenericRuntime) {
+                return $instance;
+            }
+        }
+
+        return null;
+    }
+
+    /// Build the `Type` `typeParse` would have described. `$node` is one graph object.
+    private static function typeFromExtGraph(\Tyhp\ExtParseNode $node): self
+    {
+        bool $nullable = $node->nullable;
+        self $type;
+        if ($node->kind === 'scalar') {
+            $type = self::scalar($node->name);
+        } elseif ($node->kind === 'class') {
+            $type = self::fromClassName($node->name);
+        } elseif ($node->kind === 'generic') {
+            $type = self::genericFromExtArgs($node->name, $node->args);
+        } elseif ($node->kind === 'unresolved') {
+            if ($node->form === 'name') {
+                array<int, self> $args = [];
+                foreach ($node->args as $arg) {
+                    $args[] = self::typeFromExtGraph($arg->type);
+                }
+                $type = self::unresolvedFromExtArgs($node->name, $node->form, $args);
+            } else {
+                array<int, self> $args = [];
+                foreach ($node->args as $arg) {
+                    $args[] = self::typeFromExtGraph($arg);
+                }
+                $type = self::unresolvedFromExtArgs($node->name, $node->form, $args);
+            }
+        } elseif ($node->kind === 'union' || $node->kind === 'intersection') {
+            $type = self::comboFromExtMembers($node->kind, $node->members);
+        } else {
+            throw new Exceptions\InvalidTypeException(
+                'Unknown type node "' . $node->kind . '".',
+            );
+        }
+
+        return $nullable ? $type->asNullable() : $type;
+    }
+
+    /**
+     * @param array<int, \Tyhp\ExtParseArg> $arguments
+     */
+    private static function genericFromExtArgs(string $name, array<int, \Tyhp\ExtParseArg> $arguments): self
+    {
+        array<int, self> $args = [];
+        foreach ($arguments as $arg) {
+            $args[] = self::typeFromExtGraph($arg->type);
+        }
+
+        int $count = \count($args);
+        if ($name === 'array') {
+            if ($count === 1) {
+                return self::listOf($args[0]);
+            }
+
+            if ($count === 2) {
+                return self::mapOf($args[0], $args[1]);
+            }
+        }
+
+        if ($name === 'iterable' && ($count === 1 || $count === 2)) {
+            if ($count === 1) {
+                return self::generic('iterable', new NamedType('TValue', $args[0]));
+            }
+
+            return self::generic(
+                'iterable',
+                new NamedType('TKey', $args[0]),
+                new NamedType('TValue', $args[1]),
+            );
+        }
+
+        throw new Exceptions\InvalidTypeException(
+            'Type "' . $name . '" takes at most two type arguments.',
+        );
+    }
+
+    /**
+     * @param array<int, self> $args
+     */
+    private static function unresolvedFromExtArgs(string $name, string $form, array<int, self> $args): self
+    {
+        if (\array_key_exists($name, self::$registry)) {
+            try {
+                return self::ref($name, ...$args);
+            } catch (\Throwable $e) {
+                if ($e instanceof Exceptions\InvalidTypeException) {
+                    self::$extRefFailure = $e;
+                }
+
+                throw $e;
+            }
+        }
+
+        if ($form === 'struct') {
+            return self::struct($name);
+        }
+
+        if ($form === 'object') {
+            return self::shape($name);
+        }
+
+        if ($form === 'callable') {
+            return self::callableShape($name);
+        }
+
+        if (\count($args) === 0) {
+            return self::fromClassName($name);
+        }
+
+        array<int, NamedType> $named = [];
+        foreach ($args as $index => $arg) {
+            $named[] = new NamedType('T' . (string) $index, $arg);
+        }
+
+        return self::generic($name, ...$named);
+    }
+
+    /**
+     * @param array<int, \Tyhp\ExtParseNode> $members
+     */
+    private static function comboFromExtMembers(string $kind, array<int, \Tyhp\ExtParseNode> $members): self
+    {
+        array<int, self> $types = [];
+        foreach ($members as $member) {
+            $types[] = self::typeFromExtGraph($member);
+        }
+
+        if ($kind === 'intersection') {
+            return self::intersection(...$types);
+        }
+
+        return self::union(...$types);
     }
 }

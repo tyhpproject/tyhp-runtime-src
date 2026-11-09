@@ -1,0 +1,251 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\StaticMethodCallExpression;
+
+final class MethodTranslatorRegistry {
+    private static ?MethodTranslatorRegistry $shared = null;
+
+    /** @var array<string, \Closure> */
+    private array<string, \Closure> $instance = [];
+
+    /** @var array<string, \Closure> */
+    private array<string, \Closure> $static = [];
+
+    /** @var array<string, array<string, string>> */
+    private array<string, array<string, string>> $functions = [];
+
+    public static function shared(): MethodTranslatorRegistry {
+        if (self::$shared !== null) {
+            return self::$shared;
+        }
+        MethodTranslatorRegistry $registry = new MethodTranslatorRegistry();
+        $registry->seed();
+        self::$shared = $registry;
+
+        return $registry;
+    }
+
+    public static function clear(): void {
+        self::$shared = null;
+    }
+
+    public function register(string $method, \Closure $translate): void {
+        $this->instance[\strtolower($method)] = $translate;
+    }
+
+    public function registerStatic(string $class, string $method, \Closure $translate): void {
+        $this->static[self::key($class, $method)] = $translate;
+    }
+
+    /**
+     * Maps one function name to the SQL for each grammar.
+     *
+     * Keys are driver names (`mysql`, `mariadb`, `pgsql`, `sqlite`, `sqlsrv`).
+     * Each value is the SQL call. `{0}`, `{1}`, … stand in for the arguments of
+     * `Sql::fn`, in order.
+     *
+     * @param array<string, string> $sqlByGrammar
+     */
+    public function registerFunction(string $name, array<string, string> $sqlByGrammar): void {
+        string $key = \strtolower(\trim($name));
+        if ($key === '' || \count($sqlByGrammar) === 0) {
+            throw new \InvalidArgumentException('registerFunction needs a name and SQL for at least one grammar.');
+        }
+        array<string, string> $checked = [];
+        foreach ($sqlByGrammar as $grammar => $sql) {
+            string $driver = \strtolower(\trim($grammar));
+            if ($driver === '' || $sql === '') {
+                throw new \InvalidArgumentException('registerFunction needs a grammar and its SQL.');
+            }
+            $checked[$driver] = $sql;
+        }
+        if (!isset($this->functions[$key])) {
+            $this->functions[$key] = [];
+        }
+        foreach ($checked as $driver => $sql) {
+            $this->functions[$key][$driver] = $sql;
+        }
+    }
+
+    public function functionMarker(string $name): string {
+        string $key = \strtolower($name);
+        if (!isset($this->functions[$key])) {
+            return 'fn:' . $key;
+        }
+
+        return 'fn:' . $key . ':' . \serialize($this->functions[$key]);
+    }
+
+    public function translate(Translator $translator, MethodCallExpression $call): SqlPiece {
+        string $name = \strtolower($call->method);
+        if (isset($this->instance[$name])) {
+            return $this->piece($this->instance[$name], $translator, $call);
+        }
+
+        return $translator->fail($call, 'method ' . $call->method);
+    }
+
+    public function translateStatic(Translator $translator, StaticMethodCallExpression $call): SqlPiece {
+        string $key = self::key($call->class, $call->method);
+        if (isset($this->static[$key])) {
+            return $this->piece($this->static[$key], $translator, $call);
+        }
+
+        return $translator->fail($call, 'method ' . $call->class . '::' . $call->method);
+    }
+
+    public static function isSql(string $class, string $method): bool {
+        return self::key($class, $method) === self::key(Sql::class, $method);
+    }
+
+    public static function key(string $class, string $method): string {
+        return \strtolower(\ltrim($class, '\\')) . '::' . \strtolower($method);
+    }
+
+    private function piece(\Closure $translate, Translator $translator, MethodCallExpression|StaticMethodCallExpression $call): SqlPiece {
+        mixed $piece = $translate($translator, $call);
+        if (!($piece instanceof SqlPiece)) {
+            throw new \TypeError('Method translator must return a SqlPiece.');
+        }
+
+        return $piece;
+    }
+
+    private function seed(): void {
+        $this->register('contains', fn (Translator $translator, MethodCallExpression $call): SqlPiece => $translator->stringLike($call, 'contains'));
+        $this->register('startswith', fn (Translator $translator, MethodCallExpression $call): SqlPiece => $translator->stringLike($call, 'prefix'));
+        $this->register('endswith', fn (Translator $translator, MethodCallExpression $call): SqlPiece => $translator->stringLike($call, 'suffix'));
+        $this->register('tolower', fn (Translator $translator, MethodCallExpression $call): SqlPiece => $translator->stringFunction($call, 'lower', 'string'));
+        $this->register('toupper', fn (Translator $translator, MethodCallExpression $call): SqlPiece => $translator->stringFunction($call, 'upper', 'string'));
+        $this->register('trim', fn (Translator $translator, MethodCallExpression $call): SqlPiece => $translator->trim($call));
+        $this->register('length', fn (Translator $translator, MethodCallExpression $call): SqlPiece => $translator->length($call));
+        $this->registerStatic(Sql::class, 'like', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->sqlLike($call));
+        $this->registerStatic(Sql::class, 'raw', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->sqlRaw($call));
+        $this->registerStatic(Sql::class, 'datediff', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->dateDiff($call));
+        $this->registerStatic(Sql::class, 'year', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->datePart($call, 'year'));
+        $this->registerStatic(Sql::class, 'month', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->datePart($call, 'month'));
+        $this->registerStatic(Sql::class, 'day', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->datePart($call, 'day'));
+        $this->registerStatic(Sql::class, 'abs', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->math($call, 'abs'));
+        $this->registerStatic(Sql::class, 'round', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->round($call));
+        $this->registerStatic(Sql::class, 'floor', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->math($call, 'floor'));
+        $this->registerStatic(Sql::class, 'ceiling', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $translator->math($call, 'ceil'));
+        $this->registerStatic(Sql::class, 'fn', fn (Translator $translator, StaticMethodCallExpression $call): SqlPiece => $this->translateFunction($translator, $call));
+    }
+
+    private function translateFunction(Translator $translator, StaticMethodCallExpression $call): SqlPiece {
+        if (\count($call->arguments) < 1) {
+            return $translator->fail($call, 'method Sql::fn');
+        }
+        \Tyhp\Expression\ExpressionNode $nameNode = $call->arguments[0];
+        if (!($nameNode instanceof \Tyhp\Expression\ConstantExpression) || !\is_string($nameNode->value) || $nameNode->value === '') {
+            return $translator->fail($call, 'method Sql::fn');
+        }
+        string $name = $nameNode->value;
+        string $key = \strtolower($name);
+        string $driver = \strtolower($translator->driverName());
+        if (!isset($this->functions[$key][$driver])) {
+            return $translator->fail($call, 'function ' . $name);
+        }
+        string $template = $this->functions[$key][$driver];
+        array<int, \Tyhp\Expression\ExpressionNode> $arguments = [];
+        for (int $index = 1; $index < \count($call->arguments); $index++) {
+            $arguments[] = $call->arguments[$index];
+        }
+
+        return $this->applyTemplate($translator, $call, $name, $template, $arguments);
+    }
+
+    /**
+     * @param array<int, \Tyhp\Expression\ExpressionNode> $arguments
+     */
+    private function applyTemplate(
+        Translator $translator,
+        StaticMethodCallExpression $call,
+        string $name,
+        string $template,
+        array<int, \Tyhp\Expression\ExpressionNode> $arguments,
+    ): SqlPiece {
+        array<int, int> $order = [];
+        int $length = \strlen($template);
+        int $index = 0;
+        while ($index < $length) {
+            if ($template[$index] !== '{') {
+                $index++;
+                continue;
+            }
+            int|false $end = \strpos($template, '}', $index);
+            if ($end === false) {
+                break;
+            }
+            string $digits = \substr($template, $index + 1, $end - $index - 1);
+            if (!self::digits($digits)) {
+                $index++;
+                continue;
+            }
+            $order[] = (int)$digits;
+            $index = $end + 1;
+        }
+        array<int, bool> $seen = [];
+        foreach ($order as $slot) {
+            if ($slot < 0 || $slot >= \count($arguments) || isset($seen[$slot])) {
+                return $translator->fail($call, 'function ' . $name);
+            }
+            $seen[$slot] = true;
+        }
+        if (\count($seen) !== \count($arguments)) {
+            return $translator->fail($call, 'function ' . $name);
+        }
+        array<int, SqlPiece> $pieces = [];
+        array<int, mixed> $bindings = [];
+        foreach ($order as $slot) {
+            SqlPiece $piece = $translator->translate($arguments[$slot]);
+            $pieces[$slot] = $piece;
+            foreach ($piece->bindings as $binding) {
+                $bindings[] = $binding;
+            }
+        }
+        // One pass, so an argument's SQL that contains `{1}` is not read as a slot.
+        string $sql = '';
+        int $cursor = 0;
+        while ($cursor < $length) {
+            if ($template[$cursor] === '{') {
+                int|false $close = \strpos($template, '}', $cursor);
+                if ($close !== false) {
+                    string $inside = \substr($template, $cursor + 1, $close - $cursor - 1);
+                    if (self::digits($inside)) {
+                        $sql .= $pieces[(int)$inside]->sql;
+                        $cursor = $close + 1;
+                        continue;
+                    }
+                }
+            }
+            $sql .= $template[$cursor];
+            $cursor++;
+        }
+        bool $nullable = false;
+        foreach ($pieces as $piece) {
+            if ($piece->nullable) {
+                $nullable = true;
+            }
+        }
+
+        return new SqlPiece($sql, $bindings, 'mixed', $nullable, null, false);
+    }
+
+    private static function digits(string $value): bool {
+        if ($value === '') {
+            return false;
+        }
+        for (int $index = 0; $index < \strlen($value); $index++) {
+            string $char = $value[$index];
+            if ($char < '0' || $char > '9') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

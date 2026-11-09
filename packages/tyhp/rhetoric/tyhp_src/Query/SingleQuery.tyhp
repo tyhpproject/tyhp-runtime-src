@@ -1,0 +1,456 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+
+/**
+ * Joins eager-loaded relations into the query that loads their parent, then
+ * splits the repeated parent rows back into a graph.
+ */
+final class SingleQuery {
+    /**
+     * @param array<int, IncludeSpec> $includes
+     */
+    public static function attach(
+        \Illuminate\Database\Query\Builder $builder,
+        Context $context,
+        ModelMap $root,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        string $driver,
+        array<int, IncludeSpec> $includes,
+    ): SingleQueryParts {
+        array<int, EagerSpan> $spans = [];
+        array<int, BindingRecipe> $recipes = [];
+        array<int, string> $selected = [];
+        int $alias = 0;
+        foreach ($includes as $includeIndex => $include) {
+            if (\count($include->path) === 0) {
+                continue;
+            }
+            ModelMap $current = $root;
+            string $parentName = $root->table;
+            bool $parentAlias = false;
+            int $parentSpan = -1;
+            foreach ($include->path as $depth => $property) {
+                if (!$current->hasRelation($property) || !$context->mapping()->hasModel($current->relation($property)->relatedClass)) {
+                    break;
+                }
+                RelationMap $relation = $current->relation($property);
+                ModelMap $related = $context->mapping()->model($relation->relatedClass);
+                string $name = 'rhetoric_e' . (string)$alias;
+                $alias++;
+                string $on = self::on($grammar, $relation, $current, $related, $parentName, $parentAlias, $name);
+                array<int, mixed> $bindings = [];
+                if ($relation->kind !== RelationKind::BelongsToMany) {
+                    SqlPiece $piece = self::rowConstraint($context, $related, $grammar, $driver, $include, $includeIndex, $name, $depth, $recipes);
+                    if ($piece->sql !== '') {
+                        $on .= ' and (' . $piece->sql . ')';
+                        $bindings = $piece->bindings;
+                    }
+                }
+                if ($relation->kind === RelationKind::BelongsToMany) {
+                    string $filter = '1 = 1';
+                    array<int, mixed> $filterBindings = [];
+                    SqlPiece $piece = self::rowConstraint($context, $related, $grammar, $driver, $include, $includeIndex, $name, $depth, $recipes);
+                    if ($piece->sql !== '') {
+                        $filter = $piece->sql;
+                        $filterBindings = $piece->bindings;
+                    }
+                    self::pivotJoin($builder, $grammar, $relation, $current, $parentName, $parentAlias, $name, $related, $filter, $filterBindings);
+                } else {
+                    $table = new \Illuminate\Database\Query\Expression<string>(
+                        $grammar->wrapTable($related->table) . ' as ' . $grammar->wrap($name),
+                    );
+                    $condition = $on;
+                    $bound = $bindings;
+                    (void)$builder->leftJoin($table, function (\Illuminate\Database\Query\JoinClause $clause) use ($condition, $bound): void {
+                        (void)$clause->whereRaw($condition, $bound);
+                    });
+                }
+                array<int, string> $columns = [];
+                foreach ($related->columns as $column) {
+                    $columns[] = $column->name;
+                    $selected[] = self::qualify($grammar, $name, $column->name)
+                        . ' as ' . $grammar->wrap(self::prefix($name) . $column->name);
+                }
+                string $key = $related->key !== null && \count($related->key->columns) > 0 ? $related->key->columns[0] : 'id';
+                $spans[] = new EagerSpan($property, $related->class, $relation->kind, self::prefix($name), $key, $columns, [], $parentSpan);
+                $parentSpan = \count($spans) - 1;
+                $current = $related;
+                $parentName = $name;
+                $parentAlias = true;
+            }
+        }
+        string $rootSelect = '';
+        foreach ($root->columns as $column) {
+            if ($rootSelect !== '') {
+                $rootSelect .= ', ';
+            }
+            // The root is a real table, so the grammar adds the connection's table prefix.
+            $rootSelect .= self::qualify($grammar, $root->table, $column->name, false) . ' as ' . $grammar->wrap($column->name);
+        }
+        if (\count($selected) > 0) {
+            $rootSelect .= ', ' . \implode(', ', $selected);
+        }
+
+        return new SingleQueryParts($spans, $recipes, $rootSelect);
+    }
+
+    /**
+     * @param array<int, object> $rows
+     * @param array<int, EagerSpan> $spans
+     * @return array<int, object>
+     */
+    public static function assemble(
+        Context $context,
+        ModelMap $root,
+        array<int, object> $rows,
+        array<int, EagerSpan> $spans,
+        QueryState $state,
+    ): array<int, object> {
+        array<string, object> $parents = [];
+        array<int, string> $order = [];
+        array<string, object> $seen = [];
+        /** @var array<int, array<string, array<string, object>>> $children */
+        array<int, array<string, array<string, object>>> $children = [];
+        string $rootKey = $root->key !== null && \count($root->key->properties) > 0 ? $root->key->properties[0] : 'id';
+        ColumnMap $rootColumn = $root->column($rootKey);
+        foreach ($rows as $row) {
+            object $parent = self::parent($context, $root, $row, $state->tracking, $seen, $rootKey, $rootColumn);
+            string $parentToken = self::token($rootColumn, PropertyBag::read($parent, $rootKey));
+            if (!isset($parents[$parentToken])) {
+                $parents[$parentToken] = $parent;
+                $order[] = $parentToken;
+            } else {
+                $parent = $parents[$parentToken];
+            }
+            array<int, string> $spanTokens = [];
+            foreach ($spans as $index => $span) {
+                if (!$context->mapping()->hasModel($span->relatedClass)) {
+                    continue;
+                }
+                ModelMap $related = $context->mapping()->model($span->relatedClass);
+                mixed $key = self::field($row, $span->prefix . $span->keyColumn);
+                if ($key === null) {
+                    $spanTokens[$index] = '';
+                    continue;
+                }
+                string $owner = $span->parent < 0 ? $parentToken : ($spanTokens[$span->parent] ?? '');
+                if ($owner === '') {
+                    $spanTokens[$index] = '';
+                    continue;
+                }
+                object $child = self::child($context, $related, $row, $span, $state->tracking, $seen);
+                string $childToken = self::token($related->column($related->key !== null ? $related->key->properties[0] : 'id'), $key);
+                $spanTokens[$index] = $childToken;
+                if (!isset($children[$index])) {
+                    $children[$index] = [];
+                }
+                if (!isset($children[$index][$owner])) {
+                    $children[$index][$owner] = [];
+                }
+                $children[$index][$owner][$childToken] = $child;
+            }
+            (void)$parent;
+        }
+        foreach ($spans as $index => $span) {
+            array<string, array<string, object>> $grouped = $children[$index] ?? [];
+            if ($span->parent < 0) {
+                foreach ($parents as $token => $parent) {
+                    self::assign($parent, $span, self::list($grouped[$token] ?? []));
+                    $context->markRelationLoaded($parent, $span->property);
+                    $context->tracker->captureRelation($parent, $span->property);
+                }
+                continue;
+            }
+            EagerSpan $ownerSpan = $spans[$span->parent];
+            array<string, array<string, object>> $owners = $children[$span->parent] ?? [];
+            foreach ($owners as $groups) {
+                foreach ($groups as $ownerToken => $owner) {
+                    self::assign($owner, $span, self::list($grouped[$ownerToken] ?? []));
+                    $context->markRelationLoaded($owner, $span->property);
+                    $context->tracker->captureRelation($owner, $span->property);
+                }
+            }
+            (void)$ownerSpan;
+        }
+        array<int, object> $result = [];
+        foreach ($order as $token) {
+            $result[] = $parents[$token];
+        }
+
+        return $result;
+    }
+
+    private static function on(
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        RelationMap $relation,
+        ModelMap $parent,
+        ModelMap $related,
+        string $parentName,
+        bool $parentAlias,
+        string $alias,
+    ): string {
+        if ($relation->kind === RelationKind::BelongsTo) {
+            string $foreign = $relation->foreignKeyColumn ?? 'id';
+            string $key = $related->key !== null && \count($related->key->columns) > 0 ? $related->key->columns[0] : 'id';
+
+            return self::qualify($grammar, $parentName, $foreign, $parentAlias) . ' = ' . self::qualify($grammar, $alias, $key);
+        }
+        string $foreign = $relation->foreignKeyColumn ?? 'id';
+        string $key = $parent->key !== null && \count($parent->key->columns) > 0 ? $parent->key->columns[0] : 'id';
+
+        return self::qualify($grammar, $alias, $foreign) . ' = ' . self::qualify($grammar, $parentName, $key, $parentAlias);
+    }
+
+    private static function pivotJoin(
+        \Illuminate\Database\Query\Builder $builder,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        RelationMap $relation,
+        ModelMap $parent,
+        string $parentName,
+        bool $parentAlias,
+        string $alias,
+        ModelMap $related,
+        string $filter,
+        array<int, mixed> $filterBindings,
+    ): void {
+        if ($relation->pivotTable === null || $relation->pivotForeignKey === null || $relation->pivotRelatedKey === null) {
+            return;
+        }
+        string $pivot = $alias . '_p';
+        string $parentKey = $parent->key !== null && \count($parent->key->columns) > 0 ? $parent->key->columns[0] : 'id';
+        string $on = self::qualify($grammar, $pivot, $relation->pivotForeignKey) . ' = ' . self::qualify($grammar, $parentName, $parentKey, $parentAlias);
+        $table = new \Illuminate\Database\Query\Expression<string>(
+            $grammar->wrapTable($relation->pivotTable) . ' as ' . $grammar->wrap($pivot),
+        );
+        (void)$builder->leftJoin($table, function (\Illuminate\Database\Query\JoinClause $clause) use ($on): void {
+            (void)$clause->whereRaw($on);
+        });
+        string $relatedKey = $related->key !== null && \count($related->key->columns) > 0 ? $related->key->columns[0] : 'id';
+        string $match = self::qualify($grammar, $alias, $relatedKey) . ' = ' . self::qualify($grammar, $pivot, $relation->pivotRelatedKey);
+        $relatedTable = new \Illuminate\Database\Query\Expression<string>(
+            $grammar->wrapTable($related->table) . ' as ' . $grammar->wrap($alias),
+        );
+        $bound = $filterBindings;
+        $extra = $filter;
+        (void)$builder->leftJoin($relatedTable, function (\Illuminate\Database\Query\JoinClause $clause) use ($match, $extra, $bound): void {
+            (void)$clause->whereRaw($match . ' and (' . $extra . ')', $bound);
+        });
+    }
+
+    /**
+     * @param array<int, BindingRecipe> $recipes
+     */
+    private static function rowConstraint(
+        Context $context,
+        ModelMap $related,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        string $driver,
+        IncludeSpec $include,
+        int $includeIndex,
+        string $alias,
+        int $depth,
+        array<int, BindingRecipe> &$recipes,
+    ): SqlPiece {
+        array<int, string> $parts = [];
+        array<int, mixed> $bindings = [];
+        if ($depth === 0 && $include->constrain !== null) {
+            SqlPiece $constraint = self::constraint($context, $related, $grammar, $driver, $include, $includeIndex, $alias, $recipes);
+            if ($constraint->sql !== '') {
+                $parts[] = $constraint->sql;
+                $bindings = $constraint->bindings;
+            }
+        }
+        SqlPiece $row = RowFilter::sql($related, $grammar, $alias, true, true, false, 'default');
+        if ($row->sql !== '') {
+            $parts[] = $row->sql;
+            foreach ($row->bindings as $binding) {
+                $bindings[] = $binding;
+                if (!\is_string($binding)) {
+                    throw new \LogicException('A fixed binding must be a string.');
+                }
+                $recipes[] = new BindingRecipe('include', $includeIndex, 'fixed', 0, $binding);
+            }
+        }
+        if (\count($parts) === 0) {
+            return new SqlPiece('', [], 'bool', false, null, false);
+        }
+
+        return new SqlPiece(\implode(' and ', $parts), $bindings, 'bool', false, null, false);
+    }
+
+    /**
+     * @param array<int, BindingRecipe> $recipes
+     */
+    private static function constraint(
+        Context $context,
+        ModelMap $related,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        string $driver,
+        IncludeSpec $include,
+        int $includeIndex,
+        string $alias,
+        array<int, BindingRecipe> &$recipes,
+    ): SqlPiece {
+        if ($include->constrain === null) {
+            return new SqlPiece('1 = 1', [], 'bool', false, null, false);
+        }
+        JoinSet $joins = new JoinSet($related, $context->mapping(), $grammar, $alias);
+        Translator $translator = new Translator(
+            $related,
+            $grammar,
+            $driver,
+            \Tyhp\Expression\ExpressionShape::of($include->constrain),
+            $include->constrain,
+            'include',
+            $includeIndex,
+            $joins,
+            $context,
+        );
+        SqlPiece $piece = $translator->translate($include->constrain->body);
+        foreach ($translator->recipes() as $recipe) {
+            $recipes[] = $recipe;
+        }
+
+        return $piece;
+    }
+
+    /**
+     * @param array<string, object> $seen
+     */
+    private static function parent(
+        Context $context,
+        ModelMap $map,
+        object $row,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+        string $keyProperty,
+        ColumnMap $keyColumn,
+    ): object {
+        mixed $fresh = Hydrator::model($map, $row, $context, $tracking === QueryTracking::Tracked);
+        if (!\is_object($fresh)) {
+            throw new \LogicException('Query row did not hydrate.');
+        }
+
+        return self::resolve($context, $map, $fresh, $tracking, $seen, $keyProperty, $keyColumn);
+    }
+
+    /**
+     * @param array<string, object> $seen
+     */
+    private static function child(
+        Context $context,
+        ModelMap $map,
+        object $row,
+        EagerSpan $span,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+    ): object {
+        array<string, mixed> $data = [];
+        foreach ($span->columns as $column) {
+            $data[$column] = self::field($row, $span->prefix . $column);
+        }
+        mixed $fresh = Hydrator::model($map, (object)$data, $context, $tracking === QueryTracking::Tracked);
+        if (!\is_object($fresh)) {
+            throw new \LogicException('Related row did not hydrate.');
+        }
+        string $keyProperty = $map->key !== null && \count($map->key->properties) > 0 ? $map->key->properties[0] : 'id';
+
+        return self::resolve($context, $map, $fresh, $tracking, $seen, $keyProperty, $map->column($keyProperty));
+    }
+
+    /**
+     * @param array<string, object> $seen
+     */
+    private static function resolve(
+        Context $context,
+        ModelMap $map,
+        object $fresh,
+        QueryTracking $tracking,
+        array<string, object> &$seen,
+        string $keyProperty,
+        ColumnMap $keyColumn,
+    ): object {
+        if ($tracking === QueryTracking::Untracked) {
+            return $fresh;
+        }
+        string $token = $map->class . ':' . self::token($keyColumn, PropertyBag::read($fresh, $keyProperty));
+        if ($tracking === QueryTracking::Identity) {
+            if (isset($seen[$token])) {
+                return $seen[$token];
+            }
+            $seen[$token] = $fresh;
+
+            return $fresh;
+        }
+        ?object $existing = $context->tracker->modelForKey($context->tracker->indexKey($map, $fresh) ?? '');
+        if ($existing !== null && ($context->tracker->indexKey($map, $fresh) ?? '') !== '') {
+            return $existing;
+        }
+        $context->tracker->track($map, $fresh, false);
+
+        return $fresh;
+    }
+
+    /**
+     * @param array<string, object> $grouped
+     * @return array<int, object>
+     */
+    private static function list(array<string, object> $grouped): array<int, object> {
+        array<int, object> $values = [];
+        foreach ($grouped as $value) {
+            $values[] = $value;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param array<int, object> $values
+     */
+    private static function assign(object $model, EagerSpan $span, array<int, object> $values): void {
+        if ($span->kind === RelationKind::HasMany || $span->kind === RelationKind::BelongsToMany) {
+            PropertyBag::write($model, $span->property, $values);
+
+            return;
+        }
+        PropertyBag::write($model, $span->property, $values[0] ?? null);
+    }
+
+    private static function token(ColumnMap $column, mixed $value): string {
+        return PropertyBag::keyToken($column->type, $value);
+    }
+
+    private static function field(object $row, string $name): mixed {
+        mixed $cast = (array)$row;
+        if (!\is_array($cast) || !\array_key_exists($name, $cast)) {
+            return null;
+        }
+
+        return $cast[$name];
+    }
+
+    private static function prefix(string $alias): string {
+        return $alias . '__';
+    }
+
+    private static function qualify(
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        string $name,
+        string $column,
+        bool $alias = true,
+    ): string {
+        if ($alias) {
+            return $grammar->wrap($name) . '.' . $grammar->wrap($column);
+        }
+
+        return $grammar->wrap($name . '.' . $column);
+    }
+}

@@ -22,4 +22,5 @@ for entry in "${DIST_BUILDS[@]}"; do
 done
 
 CHECK_DIST_PACKAGES="${DIST_PACKAGES[*]}" CHECK_PHP_MAJORS="$majors" \
+  CHECK_PACKAGE_PHP_MAJORS="$(restricted_package_php_majors)" \
   exec php "${SCRIPT_DIR}/../scripts/check-version-bumps.php" "$@"

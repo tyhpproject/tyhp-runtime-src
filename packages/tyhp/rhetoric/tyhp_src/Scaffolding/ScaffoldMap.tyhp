@@ -1,0 +1,201 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ContextMap;
+use Tyhp\Rhetoric\Mapping\ForeignKeyMap;
+use Tyhp\Rhetoric\Mapping\IndexMap;
+use Tyhp\Rhetoric\Mapping\KeyMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+
+final class ScaffoldMap {
+    public static function compile(ScaffoldPlan $plan): ContextMap {
+        array<string, ModelMap> $models = [];
+        foreach ($plan->models as $model) {
+            __ClassName $class = ClassNames::brand($model->className);
+            $models[$class] = self::model($plan, $model, $class);
+        }
+
+        return new ContextMap(ClassNames::brand($plan->contextClass), $models);
+    }
+
+    private static function model(ScaffoldPlan $plan, ScaffoldModel $model, __ClassName $class): ModelMap {
+        array<string, ColumnMap> $columns = [];
+        foreach ($model->columns as $column) {
+            $columns[$column->property] = new ColumnMap(
+                $column->property,
+                $column->name,
+                $column->type,
+                $column->nullable,
+                $column->maxLength,
+                $column->precision,
+                $column->scale,
+                self::generated($model, $column),
+                $column->comment,
+                null,
+                $column->hasDefault,
+                $column->hasDefault ? $column->default : null,
+                $column->text,
+                $column->blueprint,
+                null,
+            );
+        }
+        ?KeyMap $key = null;
+        if ($model->keyProperties !== []) {
+            $key = new KeyMap($model->keyProperties, self::names($model, $model->keyProperties), true);
+        }
+        array<int, IndexMap> $indexes = [];
+        foreach ($model->indexes as $index) {
+            $indexes[] = new IndexMap($index->properties, $index->columns, $index->unique, $index->name);
+        }
+        array<int, ForeignKeyMap> $foreignKeys = [];
+        array<string, RelationMap> $relations = [];
+        foreach ($model->relations as $relation) {
+            if ($relation->kind === RelationKind::BelongsTo && $relation->foreignKeyProperty !== null) {
+                ScaffoldColumn|null $foreign = $model->column($relation->foreignKeyProperty);
+                if ($foreign instanceof ScaffoldColumn) {
+                    $foreignKeys[] = new ForeignKeyMap(
+                        $model->table . '_' . $foreign->name . '_foreign',
+                        [$relation->foreignKeyProperty],
+                        [$foreign->name],
+                        ClassNames::brand($relation->relatedClass),
+                        self::table($plan, $relation->relatedClass),
+                        self::referenced($plan, $relation),
+                        $relation->onDelete,
+                    );
+                }
+            }
+            $relations[$relation->property] = self::relation($plan, $model, $relation);
+        }
+        array<int, KeyMap> $alternate = [];
+        array<int, array<string, mixed>> $seeds = [];
+
+        return new ModelMap(
+            $class,
+            $model->table,
+            $model->comment,
+            $columns,
+            $key,
+            $alternate,
+            $indexes,
+            $foreignKeys,
+            $relations,
+            false,
+            $seeds,
+        );
+    }
+
+    private static function relation(ScaffoldPlan $plan, ScaffoldModel $model, ScaffoldRelation $relation): RelationMap {
+        ?string $inverse = $relation->inverse !== '' ? $relation->inverse : null;
+        ?string $foreignColumn = null;
+        if ($relation->foreignKeyProperty !== null) {
+            if ($relation->kind === RelationKind::BelongsTo) {
+                $foreignColumn = $model->column($relation->foreignKeyProperty)?->name;
+            } else {
+                ?ScaffoldModel $related = $plan->model($relation->relatedClass);
+                $foreignColumn = $related?->column($relation->foreignKeyProperty)?->name;
+            }
+        }
+        ?string $pivotTable = null;
+        ?string $pivotForeign = null;
+        ?string $pivotRelated = null;
+        if ($relation->kind === RelationKind::BelongsToMany) {
+            $pivotTable = $relation->pivotTable ?? Naming::pivotTable($model->className, $relation->relatedClass);
+            string $relatedKey = 'id';
+            ?ScaffoldModel $related = $plan->model($relation->relatedClass);
+            if ($related !== null) {
+                $relatedKey = self::keyColumn($related);
+            }
+            $pivotForeign = $relation->pivotForeignKey ?? Naming::pivotForeignKey($model->className, self::keyColumn($model));
+            $pivotRelated = $relation->pivotRelatedKey ?? Naming::pivotForeignKey($relation->relatedClass, $relatedKey);
+        }
+
+        return new RelationMap(
+            $relation->property,
+            $relation->kind,
+            ClassNames::brand($relation->relatedClass),
+            $inverse,
+            $relation->foreignKeyProperty,
+            $foreignColumn,
+            $relation->onDelete,
+            $pivotTable,
+            $pivotForeign,
+            $pivotRelated,
+            null,
+        );
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function referenced(ScaffoldPlan $plan, ScaffoldRelation $relation): array<int, string> {
+        if ($relation->referencedColumn !== null) {
+            array<int, string> $columns = [$relation->referencedColumn];
+
+            return $columns;
+        }
+        ?ScaffoldModel $related = $plan->model($relation->relatedClass);
+        if ($related === null || $related->keyProperties === []) {
+            array<int, string> $id = ['id'];
+
+            return $id;
+        }
+
+        return self::names($related, $related->keyProperties);
+    }
+
+    /**
+     * @param array<int, string> $properties
+     * @return array<int, string>
+     */
+    private static function names(ScaffoldModel $model, array<int, string> $properties): array<int, string> {
+        array<int, string> $names = [];
+        foreach ($properties as $property) {
+            ?ScaffoldColumn $column = $model->column($property);
+            if ($column === null) {
+                throw new \InvalidArgumentException($model->className . ' has no column ' . $property . '.');
+            }
+            $names[] = $column->name;
+        }
+
+        return $names;
+    }
+
+    private static function keyColumn(ScaffoldModel $model): string {
+        string $property = $model->keyProperties[0] ?? '';
+        ?ScaffoldColumn $column = $model->column($property);
+        if ($column !== null) {
+            return $column->name;
+        }
+
+        return 'id';
+    }
+
+    private static function table(ScaffoldPlan $plan, string $className): string {
+        ?ScaffoldModel $model = $plan->model($className);
+        if ($model === null) {
+            return Naming::tableName($className);
+        }
+
+        return $model->table;
+    }
+
+    private static function generated(ScaffoldModel $model, ScaffoldColumn $column): bool {
+        if ($column->generated !== null) {
+            return $column->generated;
+        }
+        if ($model->keyless || $model->keyProperties !== ['id']) {
+            return false;
+        }
+
+        return $column->property === 'id'
+            && $column->name === 'id'
+            && $column->type === 'int'
+            && !$column->nullable
+            && $column->autoIncrement
+            && ($column->blueprint === null || $column->blueprint === '');
+    }
+}

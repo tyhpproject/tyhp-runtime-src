@@ -1,0 +1,80 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Tracking;
+
+final class TrackedEntry<T> {
+    public function __construct(
+        private Tracker $tracker,
+        private object $model,
+    ) {}
+
+    public TrackingState $state {
+        get => $this->record()->state;
+    }
+
+    public function isDirty(?\Tyhp\PropertyPath<callable(T): mixed> $property = null): bool {
+        TrackedRecord $record = $this->record();
+        if ($property === null) {
+            return $record->state === TrackingState::Added || $record->state === TrackingState::Dirty;
+        }
+        string $name = self::propertyName($property);
+        if ($record->state === TrackingState::Added) {
+            return $record->map->hasColumn($name);
+        }
+        if ($record->state !== TrackingState::Dirty && $record->state !== TrackingState::Clean) {
+            return false;
+        }
+        if ($record->forceDirty || isset($record->dirty[$name])) {
+            return $record->map->hasColumn($name);
+        }
+        if (!$record->map->hasColumn($name) || !\array_key_exists($name, $record->original)) {
+            return false;
+        }
+
+        return !PropertyBag::same(PropertyBag::read($record->model, $name), $record->original[$name]);
+    }
+
+    public function getOriginal(\Tyhp\PropertyPath<callable(T): mixed> $property): mixed {
+        TrackedRecord $record = $this->record();
+        if ($record->state === TrackingState::Untracked) {
+            throw new \LogicException('Untracked models have no original values.');
+        }
+        string $name = self::propertyName($property);
+        if (!\array_key_exists($name, $record->original)) {
+            throw new \InvalidArgumentException($record->map->class . ' has no original value for ' . $name . '.');
+        }
+
+        return $record->original[$name];
+    }
+
+    public function refresh(): void {
+        TrackedRecord $record = $this->record();
+        if ($record->state === TrackingState::Untracked || $record->state === TrackingState::Added) {
+            throw new \LogicException('Only a saved model can be refreshed.');
+        }
+        $this->tracker->refresh($record);
+    }
+
+    public function expire(): void {
+        TrackedRecord $record = $this->record();
+        if ($record->state === TrackingState::Untracked || $record->state === TrackingState::Added) {
+            throw new \LogicException('Only a saved model can be expired.');
+        }
+        $this->tracker->expire($record);
+    }
+
+    private function record(): TrackedRecord {
+        return $this->tracker->recordOrUntracked($this->model);
+    }
+
+    /**
+     * @param \Tyhp\PropertyPath<callable(T): mixed> $property
+     */
+    private static function propertyName(\Tyhp\PropertyPath<callable(T): mixed> $property): string {
+        if (\count($property->path) !== 1) {
+            throw new \InvalidArgumentException('Choose a mapped column.');
+        }
+
+        return $property->path[0];
+    }
+}

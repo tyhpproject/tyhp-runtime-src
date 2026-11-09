@@ -1,0 +1,174 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+final class MarkerRecord {
+    /**
+     * @param array<int, string> $deferred
+     */
+    public function __construct(
+        public ?string $hash,
+        public ?string $error,
+        public int $attempts,
+        public int $retryAt,
+        public array<int, string> $deferred,
+        public bool $blocked,
+    ) {}
+
+    public function failure(): bool {
+        return $this->error !== null;
+    }
+
+    public static function missing(): MarkerRecord {
+        return new MarkerRecord(null, null, 0, 0, [], false);
+    }
+}
+
+final class MarkerStore {
+    public function __construct(
+        private string $store,
+        private string $path,
+        private ?string $cacheStore,
+        private ?\Illuminate\Contracts\Container\Container $app,
+    ) {}
+
+    public static function open(AutoSettings $settings, ?\Illuminate\Contracts\Container\Container $app): MarkerStore {
+        return new MarkerStore($settings->markerStore, $settings->markerPath, $settings->markerCache, $app);
+    }
+
+    public function read(string $key): MarkerRecord {
+        mixed $value = null;
+        if ($this->store === 'apcu') {
+            $value = $this->apcuRead($key);
+        } elseif ($this->store === 'cache') {
+            $value = $this->cacheRead($key);
+        } else {
+            $value = PhpFile::read($this->file($key));
+        }
+        if (!\is_array($value)) {
+            return MarkerRecord::missing();
+        }
+        array<string, mixed> $data = [];
+        foreach ($value as $name => $item) {
+            if (\is_string($name)) {
+                $data[$name] = $item;
+            }
+        }
+        ?string $hash = null;
+        if (isset($data['hash']) && \is_string($data['hash']) && $data['hash'] !== '') {
+            $hash = $data['hash'];
+        }
+        ?string $error = null;
+        if (isset($data['error']) && \is_string($data['error']) && $data['error'] !== '') {
+            $error = $data['error'];
+        }
+        int $attempts = 0;
+        if (isset($data['attempts']) && \is_int($data['attempts'])) {
+            $attempts = $data['attempts'];
+        }
+        int $retryAt = 0;
+        if (isset($data['retry_at']) && \is_int($data['retry_at'])) {
+            $retryAt = $data['retry_at'];
+        }
+        array<int, string> $deferred = [];
+        if (isset($data['deferred']) && \is_array($data['deferred'])) {
+            foreach ($data['deferred'] as $name) {
+                if (\is_string($name) && $name !== '') {
+                    $deferred[] = $name;
+                }
+            }
+        }
+        bool $blocked = isset($data['blocked']) && $data['blocked'] === true;
+
+        return new MarkerRecord($hash, $error, $attempts, $retryAt, $deferred, $blocked);
+    }
+
+    /**
+     * @param array<int, string> $deferred
+     */
+    public function writeConfirmed(string $key, string $hash, array<int, string> $deferred, bool $blocked): void {
+        array<string, mixed> $payload = [
+            'hash' => $hash,
+            'deferred' => $deferred,
+            'blocked' => $blocked,
+        ];
+        $this->write($key, $payload);
+    }
+
+    public function writeFailure(string $key, string $error, int $attempts, int $retryAt): void {
+        array<string, mixed> $payload = [
+            'error' => $error,
+            'attempts' => $attempts,
+            'retry_at' => $retryAt,
+        ];
+        $this->write($key, $payload);
+    }
+
+    public function forget(string $key): void {
+        if ($this->store === 'apcu') {
+            if (\function_exists('apcu_delete')) {
+                \call_user_func('apcu_delete', $this->cacheKey($key));
+            }
+
+            return;
+        }
+        if ($this->store === 'cache') {
+            $this->repository()->forget($this->cacheKey($key));
+
+            return;
+        }
+        PhpFile::delete($this->file($key));
+    }
+
+    public function file(string $key): string {
+        return $this->path . '/' . $key . '.php';
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function write(string $key, array<string, mixed> $payload): void {
+        if ($this->store === 'apcu') {
+            if (!\function_exists('apcu_store')) {
+                throw new \RuntimeException('The apcu marker store needs the APCu extension.');
+            }
+            \call_user_func('apcu_store', $this->cacheKey($key), $payload);
+
+            return;
+        }
+        if ($this->store === 'cache') {
+            $this->repository()->forever($this->cacheKey($key), $payload);
+
+            return;
+        }
+        PhpFile::write($this->file($key), $payload);
+    }
+
+    private function apcuRead(string $key): mixed {
+        if (!\function_exists('apcu_fetch')) {
+            throw new \RuntimeException('The apcu marker store needs the APCu extension.');
+        }
+
+        return \call_user_func('apcu_fetch', $this->cacheKey($key));
+    }
+
+    private function cacheRead(string $key): mixed {
+        return $this->repository()->get($this->cacheKey($key));
+    }
+
+    private function repository(): \Illuminate\Contracts\Cache\Repository {
+        if ($this->app === null || !$this->app->bound('cache')) {
+            throw new \RuntimeException('The cache marker store needs a cache manager.');
+        }
+        mixed $cache = $this->app->get('cache');
+        if (!($cache instanceof \Illuminate\Contracts\Cache\Factory)) {
+            throw new \RuntimeException('The cache marker store needs a cache manager.');
+        }
+
+        return $cache->store($this->cacheStore);
+    }
+
+    private function cacheKey(string $key): string {
+        return 'rhetoric-marker:' . $key;
+    }
+}

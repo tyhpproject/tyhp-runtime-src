@@ -1,0 +1,92 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+final class PlannedMigration {
+    public function __construct(
+        public string $name,
+        public string $path,
+        public bool $deferred,
+        public bool $independent,
+    ) {}
+}
+
+final class RunPlan {
+    /**
+     * @param array<int, PlannedMigration> $run
+     * @param array<int, string> $deferredPending
+     */
+    public function __construct(
+        public array<int, PlannedMigration> $run,
+        public array<int, string> $deferredPending,
+        public bool $blocked,
+    ) {}
+}
+
+/**
+ * Decides which pending migrations the auto-migrator runs and which wait.
+ */
+final class RunPlanner {
+    /**
+     * @param array<int, PlannedMigration> $pending in migration order
+     */
+    public static function plan(array<int, PlannedMigration> $pending, bool $includeDeferred, ?string $only): RunPlan {
+        array<int, PlannedMigration> $window = $pending;
+        if ($only !== null && $only !== '') {
+            array<int, PlannedMigration> $from = [];
+            bool $seen = false;
+            foreach ($pending as $migration) {
+                if ($migration->name === $only) {
+                    $seen = true;
+                }
+                if ($seen) {
+                    $from[] = $migration;
+                }
+            }
+            if (!$seen) {
+                throw new \InvalidArgumentException('Pending migration ' . $only . ' was not found.');
+            }
+            $window = $from;
+        }
+        if ($includeDeferred) {
+            return new RunPlan($window, [], false);
+        }
+        array<int, PlannedMigration> $run = [];
+        array<int, string> $deferred = [];
+        bool $blocked = false;
+        bool $stopped = false;
+        foreach ($window as $migration) {
+            if ($stopped) {
+                if ($migration->deferred) {
+                    $deferred[] = $migration->name;
+                }
+                continue;
+            }
+            if ($migration->deferred && !$migration->independent) {
+                $deferred[] = $migration->name;
+                $stopped = true;
+                continue;
+            }
+            if ($migration->deferred && $migration->independent) {
+                $deferred[] = $migration->name;
+                continue;
+            }
+            $run[] = $migration;
+        }
+        if ($stopped) {
+            int $after = 0;
+            bool $passed = false;
+            foreach ($window as $migration) {
+                if ($passed) {
+                    $after++;
+                }
+                if ($migration->deferred && !$migration->independent) {
+                    $passed = true;
+                }
+            }
+            $blocked = $after > 0;
+        }
+
+        return new RunPlan($run, $deferred, $blocked);
+    }
+}

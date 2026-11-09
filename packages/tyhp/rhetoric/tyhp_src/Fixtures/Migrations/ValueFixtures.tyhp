@@ -1,0 +1,96 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures\Migrations;
+
+use Tyhp\Rhetoric\Attributes\Cast;
+use Tyhp\Rhetoric\Attributes\Table;
+use Tyhp\Rhetoric\Casts\BoolCast;
+use Tyhp\Rhetoric\Casts\Cast as ValueCast;
+use Tyhp\Rhetoric\Casts\DateTimeImmutableCast;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\Mapper;
+
+class Money {
+    public function __construct(
+        public int $cents,
+    ) {}
+}
+
+class MoneyCast extends ValueCast<Money, int> {
+    public function get(mixed $value): ?Money {
+        if ($value === null) {
+            return null;
+        }
+        if (!\is_int($value) && !\is_string($value)) {
+            throw new \InvalidArgumentException('A money column requires an int.');
+        }
+
+        return new Money((int)$value);
+    }
+
+    public function set(mixed $value): ?int {
+        if ($value === null) {
+            return null;
+        }
+        if (!($value instanceof Money)) {
+            throw new \InvalidArgumentException('A money column requires a Money.');
+        }
+
+        return $value->cents;
+    }
+}
+
+#[Table('prices')]
+class Priced {
+    public int $id = 0;
+
+    #[Cast(MoneyCast::class)]
+    public Money $price;
+}
+
+class PriceContext extends Context {
+    protected function map(Mapper $map): void {
+        $map->model<Priced>();
+    }
+}
+
+#[Table('billed')]
+class Billed {
+    public int $id = 0;
+
+    public Money $price;
+}
+
+class BilledContext extends Context {
+    protected function map(Mapper $map): void {
+        $map->model<Billed>()->column(fn (Billed $billed) => $billed->price)->cast(MoneyCast::class);
+    }
+}
+
+#[Table('flagged')]
+class Flagged {
+    public int $id = 0;
+
+    #[Cast(BoolCast::class)]
+    public bool $active = false;
+
+    #[Cast(DateTimeImmutableCast::class)]
+    public ?\DateTimeImmutable $seenAt = null;
+}
+
+class FlagContext extends Context {
+    protected function map(Mapper $map): void {
+        $map->model<Flagged>();
+    }
+}
+
+class SeedPaintedContext extends Context {
+    protected function map(Mapper $map): void {
+        $map->model<Painted>()->seed([
+            'id' => 1,
+            'color' => Color::Blue,
+            'paintedAt' => new \DateTimeImmutable('2020-01-02 03:04:05'),
+            'active' => true,
+        ]);
+    }
+}

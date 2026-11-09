@@ -1,0 +1,359 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+final class MigrationManifest {
+    /**
+     * @param array<string, mixed>|null $sets
+     */
+    private function __construct(
+        private ?string $path,
+        private ?array<string, mixed> $sets,
+    ) {}
+
+    public static function load(AutoSettings $settings, ?\Illuminate\Contracts\Container\Container $app): MigrationManifest {
+        string $path = self::pathFor($settings, $app);
+        mixed $loaded = PhpFile::read($path);
+        if (!\is_array($loaded)) {
+            return new MigrationManifest($path, null);
+        }
+        mixed $sets = null;
+        foreach ($loaded as $key => $value) {
+            if ($key === 'sets') {
+                $sets = $value;
+            }
+        }
+        if (!\is_array($sets)) {
+            return new MigrationManifest($path, null);
+        }
+        array<string, mixed> $parsed = [];
+        foreach ($sets as $name => $spec) {
+            if (\is_string($name)) {
+                $parsed[$name] = $spec;
+            }
+        }
+
+        return new MigrationManifest($path, $parsed);
+    }
+
+    public static function pathFor(AutoSettings $settings, ?\Illuminate\Contracts\Container\Container $app): string {
+        if ($settings->manifestPath !== null) {
+            return $settings->manifestPath;
+        }
+        ?string $located = self::locate($app);
+        if ($located !== null) {
+            return $located;
+        }
+
+        return 'bootstrap/cache/rhetoric-migrations.php';
+    }
+
+    public static function locate(?\Illuminate\Contracts\Container\Container $app): ?string {
+        if ($app === null) {
+            return null;
+        }
+        if ($app->bound('config')) {
+            mixed $config = $app->get('config');
+            if ($config instanceof \Illuminate\Contracts\Config\Repository) {
+                mixed $configured = $config->get('rhetoric.auto_migrate.manifest');
+                if (\is_string($configured) && $configured !== '') {
+                    return $configured;
+                }
+            }
+        }
+        if ($app->bound('path.bootstrap')) {
+            mixed $bootstrap = $app->get('path.bootstrap');
+            if (\is_string($bootstrap) && $bootstrap !== '') {
+                return \rtrim($bootstrap, '/\\') . '/cache/rhetoric-migrations.php';
+            }
+        }
+        if (\method_exists($app, 'bootstrapPath')) {
+            mixed $bootstrap = (new \ReflectionMethod($app, 'bootstrapPath'))->invoke($app, 'cache');
+            if (\is_string($bootstrap) && $bootstrap !== '') {
+                return \rtrim($bootstrap, '/\\') . '/rhetoric-migrations.php';
+            }
+        }
+
+        return null;
+    }
+
+    public static function forget(string $path): void {
+        PhpFile::delete($path);
+    }
+
+    public function exists(): bool {
+        return $this->sets !== null;
+    }
+
+    public function file(): ?string {
+        return $this->path;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    /**
+     * @return array<int|string, mixed>|null
+     */
+    private function spec(MigrationSet $set): ?array<int|string, mixed> {
+        if ($this->sets === null || !isset($this->sets[$set->name])) {
+            return null;
+        }
+        mixed $value = $this->sets[$set->name];
+        if (!\is_array($value)) {
+            return null;
+        }
+        array<int|string, mixed> $spec = [];
+        foreach ($value as $key => $item) {
+            if (\is_int($key) || \is_string($key)) {
+                $spec[$key] = $item;
+            }
+        }
+
+        return $spec;
+    }
+
+    private function rows(MigrationSet $set): array<int, array<string, mixed>> {
+        array<int, array<string, mixed>> $rows = [];
+        ?array<int|string, mixed> $spec = $this->spec($set);
+        if ($spec === null) {
+            return $rows;
+        }
+        mixed $migrations = null;
+        foreach ($spec as $key => $value) {
+            if ($key === 'migrations') {
+                $migrations = $value;
+            }
+        }
+        if (!\is_array($migrations)) {
+            return $rows;
+        }
+        foreach ($migrations as $migration) {
+            if (!\is_array($migration)) {
+                continue;
+            }
+            array<string, mixed> $row = [];
+            foreach ($migration as $key => $value) {
+                if (\is_string($key)) {
+                    $row[$key] = $value;
+                }
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function names(MigrationSet $set): array<int, string> {
+        array<int, string> $names = [];
+        foreach ($this->rows($set) as $migration) {
+            mixed $name = $migration['name'] ?? null;
+            if (\is_string($name) && $name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
+    }
+
+    public function hash(MigrationSet $set): string {
+        ?array<int|string, mixed> $spec = $this->spec($set);
+        if ($spec !== null) {
+            foreach ($spec as $key => $value) {
+                if ($key === 'hash' && \is_string($value) && $value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return self::directoryHash($set);
+    }
+
+    public function flag(MigrationSet $set, string $name): ?DeferredFlag {
+        ?array<int|string, mixed> $spec = $this->spec($set);
+        if ($spec === null) {
+            return null;
+        }
+        mixed $migrations = null;
+        foreach ($spec as $key => $value) {
+            if ($key === 'migrations') {
+                $migrations = $value;
+            }
+        }
+        if (!\is_array($migrations)) {
+            return null;
+        }
+        foreach ($migrations as $migration) {
+            if (!\is_array($migration)) {
+                continue;
+            }
+            mixed $migrationName = $migration['name'] ?? null;
+            if ($migrationName !== $name) {
+                continue;
+            }
+            bool $deferred = ($migration['deferred'] ?? null) === true;
+            bool $independent = ($migration['independent'] ?? null) === true;
+
+            return new DeferredFlag($deferred, $independent);
+        }
+
+        return new DeferredFlag(false, false);
+    }
+
+    /**
+     * @return array<int, PlannedMigration>
+     */
+    public function ordered(MigrationSet $set, array<string, string> $files): array<int, PlannedMigration> {
+        array<int, PlannedMigration> $ordered = [];
+        ?array<int|string, mixed> $spec = $this->spec($set);
+        if ($spec === null) {
+            return $ordered;
+        }
+        mixed $migrations = null;
+        foreach ($spec as $key => $value) {
+            if ($key === 'migrations') {
+                $migrations = $value;
+            }
+        }
+        if (!\is_array($migrations)) {
+            return $ordered;
+        }
+        foreach ($migrations as $migration) {
+            if (!\is_array($migration)) {
+                continue;
+            }
+            mixed $name = $migration['name'] ?? null;
+            if (!\is_string($name) || !isset($files[$name])) {
+                continue;
+            }
+            bool $deferred = ($migration['deferred'] ?? null) === true;
+            bool $independent = ($migration['independent'] ?? null) === true;
+            $ordered[] = new PlannedMigration($name, $files[$name], $deferred, $independent);
+        }
+
+        return $ordered;
+    }
+
+    /**
+     * @param array<string, MigrationSet> $sets
+     */
+    public static function write(string $path, array<string, MigrationSet> $sets): void {
+        array<string, mixed> $payload = ['sets' => []];
+        array<string, mixed> $encoded = [];
+        \Illuminate\Database\Migrations\Migrator $migrator = AutoMigrator::flagMigrator();
+        foreach ($sets as $name => $set) {
+            array<int, array<string, mixed>> $migrations = [];
+            array<string, string> $files = self::files($set);
+            foreach ($files as $migration => $file) {
+                DeferredFlag $flag = DeferredFlag::read($file, $migrator);
+                array<string, mixed> $row = [
+                    'name' => $migration,
+                    'deferred' => $flag->deferred,
+                    'independent' => $flag->independent,
+                ];
+                $migrations[] = $row;
+            }
+            array<string, mixed> $spec = [
+                'hash' => self::contentHash($set, $migrations),
+                'migrations' => $migrations,
+            ];
+            $encoded[$name] = $spec;
+        }
+        $payload['sets'] = $encoded;
+        PhpFile::write($path, $payload);
+    }
+
+    public static function directoryHash(MigrationSet $set): string {
+        array<int, string> $paths = $set->paths;
+        \sort($paths);
+        string $material = $set->name . "\0" . $set->table;
+        foreach ($paths as $path) {
+            int $mtime = 0;
+            if (\is_dir($path) || \is_file($path)) {
+                mixed $time = \filemtime($path);
+                if (\is_int($time)) {
+                    $mtime = $time;
+                }
+            }
+            $material .= "\0" . $path . "\0" . (string)$mtime;
+        }
+
+        return \hash('sha256', $material);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $migrations
+     */
+    private static function contentHash(MigrationSet $set, array<int, array<string, mixed>> $migrations): string {
+        array<int, string> $paths = $set->paths;
+        \sort($paths);
+        string $material = $set->name . "\0" . $set->table;
+        foreach ($paths as $path) {
+            $material .= "\0" . $path;
+        }
+        foreach ($migrations as $migration) {
+            string $name = '';
+            if (isset($migration['name']) && \is_string($migration['name'])) {
+                $name = $migration['name'];
+            }
+            string $deferred = ($migration['deferred'] ?? null) === true ? '1' : '0';
+            string $independent = ($migration['independent'] ?? null) === true ? '1' : '0';
+            $material .= "\0" . $name . "\0" . $deferred . "\0" . $independent;
+        }
+
+        return \hash('sha256', $material);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function files(MigrationSet $set): array<string, string> {
+        return self::scan($set->paths);
+    }
+
+    /**
+     * @param array<int, string> $paths
+     * @return array<string, string>
+     */
+    public static function scan(array<int, string> $paths): array<string, string> {
+        array<string, string> $files = [];
+        foreach ($paths as $path) {
+            if (\is_file($path) && \str_ends_with($path, '.php')) {
+                $files[self::nameOf($path)] = $path;
+                continue;
+            }
+            if (!\is_dir($path)) {
+                continue;
+            }
+            mixed $names = \scandir($path);
+            if (!\is_array($names)) {
+                continue;
+            }
+            foreach ($names as $name) {
+                if (!\is_string($name) || !\str_ends_with($name, '.php') || !\str_contains(\substr($name, 0, -4), '_')) {
+                    continue;
+                }
+                string $file = $path . '/' . $name;
+                if (!\is_file($file)) {
+                    continue;
+                }
+                $files[self::nameOf($file)] = $file;
+            }
+        }
+        \ksort($files);
+
+        return $files;
+    }
+
+    public static function nameOf(string $path): string {
+        string $base = \basename($path);
+        if (\str_ends_with($base, '.php')) {
+            return \substr($base, 0, -4);
+        }
+
+        return $base;
+    }
+}

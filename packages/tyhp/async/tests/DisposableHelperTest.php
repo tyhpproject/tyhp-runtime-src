@@ -136,6 +136,52 @@ final class DisposableHelperTest extends TestCase
 
         $this->assertSame('done', $result);
     }
+
+    public function testSkipsUninitializedGhost(): void
+    {
+        if (\PHP_VERSION_ID < 80400) {
+            $this->markTestSkipped('Uninitialized lazy objects require PHP 8.4.');
+        }
+
+        $initialized = false;
+        $ghost = (new \ReflectionClass(HelperLazyDisposable::class))->newLazyGhost(
+            static function (object $object) use (&$initialized): void {
+                $initialized = true;
+            }
+        );
+
+        Promise::run(function () use ($ghost): void {
+            Promise::_await(DisposableHelper::dispose($ghost));
+        });
+
+        $this->assertFalse($initialized);
+        $this->assertTrue((new \ReflectionClass($ghost))->isUninitializedLazyObject($ghost));
+    }
+
+    public function testDisposesInitializedGhostAndOrdinaryObject(): void
+    {
+        if (\PHP_VERSION_ID < 80400) {
+            $this->markTestSkipped('Uninitialized lazy objects require PHP 8.4.');
+        }
+
+        $initialized = false;
+        $ghost = (new \ReflectionClass(HelperLazyDisposable::class))->newLazyGhost(
+            static function (object $object) use (&$initialized): void {
+                $initialized = true;
+            }
+        );
+        $ghost->marker;
+        $this->assertTrue($initialized);
+
+        $ordinary = new HelperLazyDisposable();
+
+        Promise::run(function () use ($ghost, $ordinary): void {
+            Promise::_await(DisposableHelper::dispose($ordinary, $ghost));
+        });
+
+        $this->assertTrue($ghost->disposed);
+        $this->assertTrue($ordinary->disposed);
+    }
 }
 
 // ── Test helper classes ─────────────────────────────────────────────
@@ -168,6 +214,17 @@ class MockAsyncDisposable implements AsyncIsDisposable
     {
         $this->disposed = true;
         return Promise::resolve(null);
+    }
+}
+
+class HelperLazyDisposable implements IsDisposable
+{
+    public int $marker = 0;
+    public bool $disposed = false;
+
+    public function dispose(): void
+    {
+        $this->disposed = true;
     }
 }
 

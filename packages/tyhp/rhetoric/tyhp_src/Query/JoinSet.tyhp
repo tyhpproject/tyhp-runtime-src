@@ -1,0 +1,661 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Expression\ArrayAccessExpression;
+use Tyhp\Expression\ArrayExpression;
+use Tyhp\Expression\BinaryExpression;
+use Tyhp\Expression\CastExpression;
+use Tyhp\Expression\CoalesceExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\InstanceofExpression;
+use Tyhp\Expression\LambdaExpression;
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\NewExpression;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\NullSafeMethodCallExpression;
+use Tyhp\Expression\ParameterExpression;
+use Tyhp\Expression\PropertyAccessExpression;
+use Tyhp\Expression\StaticMethodCallExpression;
+use Tyhp\Expression\TernaryExpression;
+use Tyhp\Expression\UnaryExpression;
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ContextMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+
+/**
+ * One step of `$post->blog->name`, in source order.
+ */
+final class ChainLink {
+    public function __construct(
+        public string $property,
+        public bool $nullSafe,
+    ) {}
+}
+
+/**
+ * The model a navigation chain has reached, and the name SQL uses for it.
+ * A real table is prefixed by the grammar. A join alias is not.
+ */
+final class ParentSpot {
+    public function __construct(
+        public ModelMap $model,
+        public string $name,
+        public bool $alias,
+        public bool $opened,
+    ) {}
+}
+
+/**
+ * The column a chain resolves to.
+ */
+final class ColumnRef {
+    public function __construct(
+        public string $sql,
+        public ?string $token,
+        public string $type,
+        public bool $nullable,
+    ) {}
+}
+
+/**
+ * One implicit join. Pairs are already wrapped SQL fragments.
+ */
+final class JoinLink {
+    /**
+     * @param array<int, array<int, string>> $pairs
+     */
+    public function __construct(
+        public string $alias,
+        public string $table,
+        public bool $left,
+        public array<int, array<int, string>> $pairs,
+        public ModelMap $model,
+    ) {}
+}
+
+/**
+ * Reference navigations become joins. Collection navigations without a lambda
+ * become EXISTS or COUNT subqueries. Joins are recorded before any SQL is emitted
+ * so every column in that query can be qualified.
+ */
+final class JoinSet {
+    /** @var array<string, JoinLink> */
+    private array<string, JoinLink> $links = [];
+
+    /** @var array<int, string> */
+    private array<int, string> $order = [];
+
+    /** @var array<int, ParentSpot> */
+    private array<int, ParentSpot> $parameters = [];
+
+    private bool $qualify = false;
+
+    /** How many correlated subqueries enclose this one. */
+    private int $depth = 0;
+
+    public function __construct(
+        private ModelMap $root,
+        private ContextMap $map,
+        private \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        private ?string $rootAlias = null,
+        private ?string $localName = null,
+        private ?JoinSet $parentJoins = null,
+        private string $aliasPrefix = 'rhetoric_',
+    ) {
+        if ($parentJoins !== null) {
+            $this->depth = $parentJoins->depth + 1;
+        }
+    }
+
+    public function contextMap(): ContextMap {
+        return $this->map;
+    }
+
+    public function qualifies(): bool {
+        return $this->qualify;
+    }
+
+    public function tryColumn(PropertyAccessExpression|NullSafeAccessExpression $node): ?ColumnRef {
+        ?ParameterExpression $parameter = $this->anchor($node);
+        if ($parameter !== null && $this->localName !== null && $parameter->name !== $this->localName && $this->parentJoins !== null) {
+            return $this->parentJoins->tryColumn($node);
+        }
+        ?array<int, ChainLink> $chain = $this->chain($node);
+        if ($chain === null || $parameter === null) {
+            return null;
+        }
+
+        return $this->note($chain, $parameter);
+    }
+
+    public function modelOf(ExpressionNode $node): ?ModelMap {
+        if ($node instanceof ParameterExpression) {
+            return $this->start($node)->model;
+        }
+        if (!($node instanceof PropertyAccessExpression) && !($node instanceof NullSafeAccessExpression)) {
+            return null;
+        }
+        ?array<int, ChainLink> $chain = $this->chain($node);
+        ?ParameterExpression $parameter = $this->anchor($node);
+        if ($chain === null || $parameter === null) {
+            return null;
+        }
+        ?ParentSpot $spot = $this->locate($chain, $parameter);
+        if ($spot !== null) {
+            return $spot->model;
+        }
+        array<int, ChainLink> $prefix = [];
+        int $end = \count($chain) - 1;
+        for (int $index = 0; $index < $end; $index++) {
+            $prefix[] = $chain[$index];
+        }
+        ?ParentSpot $parent = $this->locate($prefix, $parameter);
+        if ($parent === null) {
+            return null;
+        }
+
+        return $parent->model;
+    }
+
+    public function columnOn(ExpressionNode $anchor, string $property): ?ColumnRef {
+        if ($anchor instanceof ParameterExpression) {
+            return $this->note([new ChainLink($property, false)], $anchor);
+        }
+        if (!($anchor instanceof PropertyAccessExpression) && !($anchor instanceof NullSafeAccessExpression)) {
+            return null;
+        }
+        ?array<int, ChainLink> $chain = $this->chain($anchor);
+        ?ParameterExpression $parameter = $this->anchor($anchor);
+        if ($chain === null || $parameter === null) {
+            return null;
+        }
+        $chain[] = new ChainLink($property, false);
+
+        return $this->note($chain, $parameter);
+    }
+
+    public function bindParameter(int $index, ModelMap $model, string $name, bool $alias): void {
+        $this->parameters[$index] = new ParentSpot($model, $name, $alias, false);
+        if ($alias) {
+            $this->qualify = true;
+        }
+    }
+
+    public function discover(ExpressionNode $node): void {
+        $this->walk($node);
+    }
+
+    public function finish(): void {
+        if (\count($this->links) > 0) {
+            $this->qualify = true;
+        }
+    }
+
+    public function forceQualify(): void {
+        $this->qualify = true;
+    }
+
+    public function joined(): bool {
+        return \count($this->links) > 0;
+    }
+
+    public function column(PropertyAccessExpression|NullSafeAccessExpression $node, Translator $translator): SqlPiece {
+        ?ParameterExpression $parameter = $this->anchor($node);
+        if ($parameter !== null && $this->localName !== null && $parameter->name !== $this->localName && $this->parentJoins !== null) {
+            return $this->parentJoins->column($node, $translator);
+        }
+        ?array<int, ChainLink> $chain = $this->chain($node);
+        if ($chain === null || $parameter === null) {
+            return $translator->fail($node, 'property ' . $node->property);
+        }
+        ?ColumnRef $column = $this->note($chain, $parameter);
+        if ($column === null) {
+            return $translator->fail($node, 'property ' . $node->property);
+        }
+
+        return new SqlPiece($column->sql, [], $column->type, $column->nullable, $column->token, false);
+    }
+
+    public function collection(MethodCallExpression|NullSafeMethodCallExpression $call, Translator $translator): ?SqlPiece {
+        string $name = \strtolower($call->method);
+        if ($name !== 'count' && $name !== 'countwhere' && $name !== 'exists') {
+            return null;
+        }
+        ?array<int, ChainLink> $chain = $this->chain($call->object);
+        if ($chain === null || \count($chain) === 0) {
+            return null;
+        }
+        ChainLink $last = $chain[\count($chain) - 1];
+        array<int, ChainLink> $prefix = [];
+        int $end = \count($chain) - 1;
+        for (int $index = 0; $index < $end; $index++) {
+            $prefix[] = $chain[$index];
+        }
+        ?ParameterExpression $parameter = $this->anchor($call->object);
+        if ($parameter === null) {
+            return null;
+        }
+        ?ParentSpot $spot = $this->locate($prefix, $parameter);
+        if ($spot === null || !$spot->model->hasRelation($last->property)) {
+            return null;
+        }
+        RelationMap $relation = $spot->model->relation($last->property);
+        if ($relation->kind !== RelationKind::HasMany && $relation->kind !== RelationKind::BelongsToMany) {
+            return null;
+        }
+        ?LambdaExpression $predicate = null;
+        if (\count($call->arguments) === 1) {
+            ExpressionNode $argument = $this->firstArgument($call);
+            if ($argument instanceof LambdaExpression) {
+                $predicate = $argument;
+            } else {
+                return $translator->fail($call, 'method ' . $call->method);
+            }
+        } elseif (\count($call->arguments) > 0) {
+            return $translator->fail($call, 'method ' . $call->method);
+        }
+
+        return $this->subquery($spot, $relation, $name, $translator, $call, $predicate);
+    }
+
+    public function rootSelect(): string {
+        array<int, string> $parts = [];
+        foreach ($this->root->columns as $column) {
+            $parts[] = $this->qualify($this->root->table, $column->name, false)
+                . ' as '
+                . $this->grammar->wrap($column->name);
+        }
+        if (\count($parts) === 0) {
+            return '*';
+        }
+
+        return \implode(', ', $parts);
+    }
+
+    public function apply(\Illuminate\Database\Query\Builder $builder): void {
+        foreach ($this->order as $path) {
+            JoinLink $link = $this->links[$path];
+            array<int, array<int, string>> $pairs = $link->pairs;
+            $on = function (\Illuminate\Database\Query\JoinClause $clause) use ($pairs): void {
+                foreach ($pairs as $pair) {
+                    (void)$clause->on(
+                        new \Illuminate\Database\Query\Expression<string>($pair[0]),
+                        '=',
+                        new \Illuminate\Database\Query\Expression<string>($pair[1]),
+                    );
+                }
+            };
+            // Raw, so the grammar prefixes the table but not the alias the ON and WHERE fragments already name.
+            $table = new \Illuminate\Database\Query\Expression<string>(
+                $this->grammar->wrapTable($link->table) . ' as ' . $this->grammar->wrap($link->alias),
+            );
+            if ($link->left) {
+                (void)$builder->leftJoin($table, $on);
+            } else {
+                (void)$builder->join($table, $on);
+            }
+        }
+    }
+
+    /**
+     * @param array<int, ChainLink> $chain
+     */
+    private function note(array<int, ChainLink> $chain, ParameterExpression $parameter): ?ColumnRef {
+        if (\count($chain) === 0) {
+            return null;
+        }
+        string $path = '';
+        bool $nullSafe = false;
+        foreach ($chain as $link) {
+            $path = $path === '' ? $link->property : $path . '.' . $link->property;
+            if ($link->nullSafe) {
+                $nullSafe = true;
+            }
+        }
+        ParentSpot $start = $this->start($parameter);
+        if ($start->model->hasColumn($path)) {
+            return $this->reference($start, $start->model->column($path), $nullSafe);
+        }
+        array<int, ChainLink> $prefix = [];
+        int $end = \count($chain) - 1;
+        for (int $index = 0; $index < $end; $index++) {
+            $prefix[] = $chain[$index];
+        }
+        ?ParentSpot $spot = $this->locate($prefix, $parameter);
+        if ($spot === null) {
+            return null;
+        }
+        ChainLink $last = $chain[$end];
+        if (!$spot->model->hasColumn($last->property)) {
+            return null;
+        }
+        ColumnMap $column = $spot->model->column($last->property);
+
+        return $this->reference($spot, $column, $last->nullSafe);
+    }
+
+    private function reference(ParentSpot $spot, ColumnMap $column, bool $nullSafe): ColumnRef {
+        bool $qualified = $spot->alias || $this->qualify;
+        string $sql = $qualified
+            ? $this->qualify($spot->name, $column->name, $spot->alias)
+            : $this->grammar->wrap($column->name);
+
+        return new ColumnRef(
+            $sql,
+            $qualified ? null : $column->name,
+            $column->json ? 'json' : $column->type,
+            $column->nullable || $spot->opened || $nullSafe,
+        );
+    }
+
+    /**
+     * @param array<int, ChainLink> $prefix
+     */
+    private function locate(array<int, ChainLink> $prefix, ParameterExpression $parameter): ?ParentSpot {
+        ParentSpot $spot = $this->start($parameter);
+        bool $throughLeft = false;
+        string $path = '';
+        foreach ($prefix as $index => $step) {
+            if (!$spot->model->hasRelation($step->property)) {
+                return null;
+            }
+            RelationMap $relation = $spot->model->relation($step->property);
+            if ($relation->kind === RelationKind::HasMany || $relation->kind === RelationKind::BelongsToMany) {
+                return null;
+            }
+            $path = $path === '' ? $step->property : $path . '.' . $step->property;
+            bool $nextNull = isset($prefix[$index + 1]) && $prefix[$index + 1]->nullSafe;
+            bool $left = $throughLeft || $step->nullSafe || $nextNull;
+            ?JoinLink $link = $this->ensure($path, $relation, $spot, $left);
+            if ($link === null) {
+                return null;
+            }
+            $spot = new ParentSpot($link->model, $link->alias, true, $link->left);
+            $throughLeft = $link->left;
+        }
+
+        return $spot;
+    }
+
+    private function start(ParameterExpression $parameter): ParentSpot {
+        if (isset($this->parameters[$parameter->index])) {
+            return $this->parameters[$parameter->index];
+        }
+
+        return $this->origin();
+    }
+
+    private function origin(): ParentSpot {
+        if ($this->rootAlias !== null) {
+            return new ParentSpot($this->root, $this->rootAlias, true, false);
+        }
+
+        return new ParentSpot($this->root, $this->root->table, false, false);
+    }
+
+    public function fragment(): string {
+        string $sql = '';
+        foreach ($this->order as $path) {
+            JoinLink $link = $this->links[$path];
+            array<int, string> $ons = [];
+            foreach ($link->pairs as $pair) {
+                $ons[] = $pair[0] . ' = ' . $pair[1];
+            }
+            string $kind = $link->left ? 'left join' : 'inner join';
+            $sql .= ' ' . $kind . ' ' . $this->grammar->wrapTable($link->table)
+                . ' as ' . $this->grammar->wrap($link->alias)
+                . ' on ' . \implode(' and ', $ons);
+        }
+
+        return $sql;
+    }
+
+    private function ensure(string $path, RelationMap $relation, ParentSpot $parent, bool $left): ?JoinLink {
+        if (isset($this->links[$path])) {
+            if ($left) {
+                $this->links[$path]->left = true;
+            }
+
+            return $this->links[$path];
+        }
+        if ($relation->foreignKeyColumn === null || !$this->map->hasModel($relation->relatedClass)) {
+            return null;
+        }
+        ModelMap $related = $this->map->model($relation->relatedClass);
+        if ($related->key === null || \count($related->key->columns) === 0) {
+            return null;
+        }
+        if ($parent->model->key === null || \count($parent->model->key->columns) === 0) {
+            return null;
+        }
+        string $alias = $this->aliasPrefix . (string)\count($this->order);
+        string $relatedKey = $related->key->columns[0];
+        string $parentKey = $parent->model->key->columns[0];
+        array<int, array<int, string>> $pairs = [];
+        if ($relation->kind === RelationKind::BelongsTo) {
+            $pairs[] = [
+                $this->qualify($parent->name, $relation->foreignKeyColumn, $parent->alias),
+                $this->qualify($alias, $relatedKey, true),
+            ];
+        } else {
+            $pairs[] = [
+                $this->qualify($alias, $relation->foreignKeyColumn, true),
+                $this->qualify($parent->name, $parentKey, $parent->alias),
+            ];
+        }
+        JoinLink $link = new JoinLink($alias, $related->table, $left, $pairs, $related);
+        $this->links[$path] = $link;
+        $this->order[] = $path;
+        $this->qualify = true;
+
+        return $link;
+    }
+
+    private function subquery(
+        ParentSpot $spot,
+        RelationMap $relation,
+        string $method,
+        Translator $translator,
+        MethodCallExpression|NullSafeMethodCallExpression $call,
+        ?LambdaExpression $predicate,
+    ): SqlPiece {
+        if ($spot->model->key === null || \count($spot->model->key->columns) === 0) {
+            return $translator->fail($call, 'method ' . $call->method);
+        }
+        ?string $table = null;
+        ?string $childColumn = null;
+        if ($relation->kind === RelationKind::HasMany) {
+            if ($relation->foreignKeyColumn === null || !$this->map->hasModel($relation->relatedClass)) {
+                return $translator->fail($call, 'method ' . $call->method);
+            }
+            $table = $this->map->model($relation->relatedClass)->table;
+            $childColumn = $relation->foreignKeyColumn;
+        } else {
+            if ($relation->pivotTable === null || $relation->pivotForeignKey === null) {
+                return $translator->fail($call, 'method ' . $call->method);
+            }
+            $table = $relation->pivotTable;
+            $childColumn = $relation->pivotForeignKey;
+        }
+        // A subquery inside another subquery needs its own alias, or its correlation would read its own row.
+        string $subAlias = $this->depth === 0 ? 'rhetoric_sq' : 'rhetoric_sq' . (string)$this->depth;
+        string $from = $this->grammar->wrapTable($table) . ' as ' . $this->grammar->wrap($subAlias);
+        string $where = $this->qualify($subAlias, $childColumn, true)
+            . ' = '
+            . $this->qualify($spot->name, $spot->model->key->columns[0], $spot->alias);
+        string $extraJoins = '';
+        array<int, mixed> $bindings = [];
+        if ($predicate !== null) {
+            if (!$this->map->hasModel($relation->relatedClass)) {
+                return $translator->fail($call, 'method ' . $call->method);
+            }
+            ModelMap $filtered = $this->map->model($relation->relatedClass);
+            string $alias = $subAlias;
+            if ($relation->kind === RelationKind::BelongsToMany) {
+                if ($relation->pivotRelatedKey === null || $filtered->key === null || \count($filtered->key->columns) === 0) {
+                    return $translator->fail($call, 'method ' . $call->method);
+                }
+                $alias = $subAlias . '_rel';
+                $extraJoins = ' inner join ' . $this->grammar->wrapTable($filtered->table)
+                    . ' as ' . $this->grammar->wrap($alias)
+                    . ' on ' . $this->qualify($alias, $filtered->key->columns[0], true)
+                    . ' = ' . $this->qualify($subAlias, $relation->pivotRelatedKey, true);
+            }
+            SqlPiece $filter = $translator->nested($predicate, $filtered, $alias);
+            $where .= ' and ' . $filter->sql;
+            $extraJoins .= $translator->nestedJoins;
+            $bindings = $filter->bindings;
+        }
+        string $select = $method === 'exists' ? '1' : 'count(*)';
+        string $sql = '(select ' . $select . ' from ' . $from . $extraJoins . ' where ' . $where . ')';
+        if ($method !== 'exists') {
+            return new SqlPiece($sql, $bindings, 'int', $spot->opened, null, false);
+        }
+
+        return new SqlPiece('exists ' . $sql, $bindings, 'bool', $spot->opened, null, false);
+    }
+
+    private function firstArgument(MethodCallExpression|NullSafeMethodCallExpression $call): ExpressionNode {
+        if ($call instanceof MethodCallExpression) {
+            return $call->arguments[0];
+        }
+
+        return $call->arguments[0];
+    }
+
+    private function anchor(ExpressionNode $node): ?ParameterExpression {
+        ExpressionNode $current = $node;
+        bool $walking = true;
+        while ($walking) {
+            if ($current instanceof PropertyAccessExpression || $current instanceof NullSafeAccessExpression) {
+                $current = $current->object;
+            } else {
+                $walking = false;
+            }
+        }
+        if ($current instanceof ParameterExpression) {
+            return $current;
+        }
+
+        return null;
+    }
+
+    /**
+     * Property names from the parameter out to the leaf. Null when the chain
+     * does not start at a lambda parameter.
+     *
+     * @return array<int, ChainLink>|null
+     */
+    private function chain(ExpressionNode $node): ?array<int, ChainLink> {
+        array<int, ChainLink> $reversed = [];
+        ExpressionNode $current = $node;
+        bool $walking = true;
+        while ($walking) {
+            if ($current instanceof PropertyAccessExpression) {
+                $reversed[] = new ChainLink($current->property, false);
+                $current = $current->object;
+            } elseif ($current instanceof NullSafeAccessExpression) {
+                $reversed[] = new ChainLink($current->property, true);
+                $current = $current->object;
+            } else {
+                $walking = false;
+            }
+        }
+        if (!($current instanceof ParameterExpression)) {
+            return null;
+        }
+        array<int, ChainLink> $ordered = [];
+        for (int $index = \count($reversed) - 1; $index >= 0; $index--) {
+            $ordered[] = $reversed[$index];
+        }
+
+        return $ordered;
+    }
+
+    /**
+     * A real table is wrapped so the grammar can prefix it. A join or subquery
+     * alias is wrapped as a bare identifier.
+     */
+    private function qualify(string $name, string $column, bool $alias): string {
+        if ($alias) {
+            return $this->grammar->wrap($name) . '.' . $this->grammar->wrap($column);
+        }
+
+        return $this->grammar->wrap($name . '.' . $column);
+    }
+
+    private function walk(ExpressionNode $node): void {
+        if ($node instanceof PropertyAccessExpression || $node instanceof NullSafeAccessExpression) {
+            ?array<int, ChainLink> $chain = $this->chain($node);
+            if ($chain !== null) {
+                ?ParameterExpression $parameter = $this->anchor($node);
+                if ($parameter !== null) {
+                    (void)$this->note($chain, $parameter);
+                }
+            }
+
+            return;
+        }
+        if ($node instanceof MethodCallExpression || $node instanceof NullSafeMethodCallExpression) {
+            $this->walk($node->object);
+            foreach ($node->arguments as $argument) {
+                if ($argument instanceof ExpressionNode) {
+                    $this->walk($argument);
+                }
+            }
+
+            return;
+        }
+        if ($node instanceof StaticMethodCallExpression || $node instanceof NewExpression) {
+            foreach ($node->arguments as $argument) {
+                if ($argument instanceof ExpressionNode) {
+                    $this->walk($argument);
+                }
+            }
+
+            return;
+        }
+        if ($node instanceof BinaryExpression || $node instanceof CoalesceExpression) {
+            $this->walk($node->left);
+            $this->walk($node->right);
+
+            return;
+        }
+        if ($node instanceof UnaryExpression || $node instanceof CastExpression || $node instanceof InstanceofExpression) {
+            $this->walk($node->operand);
+
+            return;
+        }
+        if ($node instanceof TernaryExpression) {
+            $this->walk($node->condition);
+            if ($node->ifTrue !== null) {
+                $this->walk($node->ifTrue);
+            }
+            $this->walk($node->ifFalse);
+
+            return;
+        }
+        if ($node instanceof ArrayAccessExpression) {
+            $this->walk($node->array);
+            $this->walk($node->index);
+
+            return;
+        }
+        if ($node instanceof ArrayExpression) {
+            foreach ($node->items as $item) {
+                if ($item->key !== null) {
+                    $this->walk($item->key);
+                }
+                $this->walk($item->value);
+            }
+
+            return;
+        }
+        if ($node instanceof LambdaExpression) {
+            return;
+        }
+    }
+}

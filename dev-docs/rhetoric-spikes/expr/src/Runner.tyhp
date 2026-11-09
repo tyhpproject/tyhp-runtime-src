@@ -1,0 +1,143 @@
+<?tyhp
+
+namespace Rhetoric\Spikes\Expr;
+
+use Tyhp\Expression;
+use Tyhp\Type;
+
+function takePost(Expression<callable(Post): mixed> $expr): Expression<callable(Post): mixed> {
+    return $expr;
+}
+
+function takePostBool(Expression<callable(Post): bool> $expr): Expression<callable(Post): bool> {
+    return $expr;
+}
+
+function takeBlog(Expression<callable(Blog): mixed> $expr): Expression<callable(Blog): mixed> {
+    return $expr;
+}
+
+final class Runner {
+    public static function main(): void {
+        self::spike1();
+        self::spike2();
+        self::spike4();
+        self::spike5();
+        self::spike6();
+        self::spike7();
+        self::spike8();
+        self::spike12();
+    }
+
+    private static function spike1(): void {
+        echo "=== spike 1 instance method control ===\n";
+        echo "extension startsWith is spike1/StartsWith.tyhp (emit TYHP5024); this is an ordinary method\n";
+        echo describeExpression(takePostBool(fn ($p) => $p->titleBox->startsWith('x')));
+        echo "\n";
+    }
+
+    private static function spike2(): void {
+        echo "=== spike 2 navigation ===\n";
+        echo "nullable chain is compiled in a separate probe; this process prints the chains that type-check\n";
+        echo "requiredBlog->name\n";
+        echo describeExpression(takePost(fn ($p) => $p->requiredBlog->name));
+        echo "\n";
+        echo "blog?->name\n";
+        echo describeExpression(takePost(fn ($p) => $p->blog?->name));
+        echo "\n";
+        echo 'fromProperty posts=' . (string) Type::fromProperty(Blog::class, 'posts') . "\n";
+        ?Type $element = Type::fromProperty(Blog::class, 'posts')->elementType();
+        echo 'elementType=' . ($element !== null ? (string) $element : 'null') . "\n";
+    }
+
+    private static function spike4(): void {
+        echo "=== spike 4 parameter inference ===\n";
+        Table<Post> $posts = new Table<Post>();
+        $posts->where(fn ($p) => $p->rating > 3);
+        if ($posts->lastWhere !== null) {
+            echo describeExpression($posts->lastWhere);
+            echo "\n";
+        }
+    }
+
+    private static function spike5(): void {
+        echo "=== spike 5 cross-call inference ===\n";
+        ModelMapper<Post> $mapper = new ModelMapper<Post>();
+        $relation = $mapper
+            ->belongsTo(fn ($p) => $p->blog)
+            ->inverseOf(fn ($b) => $b->posts);
+        echo "nav\n";
+        echo describeExpression($relation->nav);
+        echo "\n";
+        if ($relation->inverse !== null) {
+            echo "inverse\n";
+            echo describeExpression($relation->inverse);
+            echo "\n";
+        }
+    }
+
+    private static function spike6(): void {
+        echo "=== spike 6 two-parameter lambda ===\n";
+        Query<Post> $query = new Query<Post>();
+        $query->joinOn(fn ($p, $b) => $p->blogId === $b->id);
+        if ($query->join !== null) {
+            echo describeExpression($query->join);
+            echo "\n";
+        }
+    }
+
+    private static function spike7(): void {
+        echo "=== spike 7 plain fn passing expression fns ===\n";
+        Query<Post> $query = new Query<Post>();
+        $query->update(fn (Assignments<Post> $set) => $set->assign(
+            fn ($p) => $p->rating,
+            fn ($p) => $p->rating + 1,
+        ));
+        if ($query->assignments !== null) {
+            if ($query->assignments->column !== null) {
+                echo "column\n";
+                echo describeExpression($query->assignments->column);
+                echo "\n";
+            }
+            if ($query->assignments->value !== null) {
+                echo "value\n";
+                echo describeExpression($query->assignments->value);
+                echo "\n";
+            }
+        }
+    }
+
+    private static function spike8(): void {
+        echo "=== spike 8 captured this ===\n";
+        BlogContext $context = new BlogContext();
+        $context->map();
+        if ($context->scope !== null) {
+            echo "scope capturing this\n";
+            echo describeExpression($context->scope);
+            echo "\n";
+        }
+        if ($context->plainScope !== null) {
+            echo "scope without this\n";
+            echo describeExpression($context->plainScope);
+            echo "\n";
+        }
+    }
+
+    private static function spike12(): void {
+        echo "=== spike 12 struct property ===\n";
+        echo describeExpression(takeBlog(fn ($b) => $b->address->city));
+        echo "\n";
+        echo 'fromProperty address=' . (string) Type::fromProperty(Blog::class, 'address') . "\n";
+        \ReflectionProperty $property = new \ReflectionProperty(Blog::class, 'address');
+        ?\ReflectionType $native = $property->getType();
+        echo 'reflection type=' . ($native !== null ? (string) $native : 'none') . "\n";
+        foreach ($property->getAttributes() as $attribute) {
+            echo 'attribute ' . $attribute->getName();
+            mixed $args = $attribute->getArguments();
+            if (\is_array($args) && \array_key_exists(0, $args) && \is_string($args[0])) {
+                echo ' ' . $args[0];
+            }
+            echo "\n";
+        }
+    }
+}

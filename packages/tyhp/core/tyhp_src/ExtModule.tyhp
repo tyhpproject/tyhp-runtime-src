@@ -1,0 +1,37 @@
+<?tyhp
+
+namespace Tyhp;
+
+/**
+ * Whether `\Tyhp\Ext` is loaded and at least {@see MINIMUM_VERSION}.
+ *
+ * Checked once per process. Missing or older is false, with no warning.
+ * `Type::is`, `Type::parse`, and `Generic::bind` call this before `\Tyhp\Ext`.
+ */
+final class ExtModule
+{
+    /** Oldest `\Tyhp\Ext` this package calls. */
+    public const string MINIMUM_VERSION = '0.1.0';
+
+    private static ?bool $available = null;
+
+    public static function available(): bool
+    {
+        ?bool $cached = self::$available;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        bool $open = false;
+        if (\extension_loaded('tyhp')) {
+            string|false $version = \phpversion('tyhp');
+            if (\is_string($version)) {
+                $open = \version_compare($version, self::MINIMUM_VERSION, '>=');
+            }
+        }
+
+        self::$available = $open;
+
+        return $open;
+    }
+}

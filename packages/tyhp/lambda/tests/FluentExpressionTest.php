@@ -88,7 +88,7 @@ class FluentExpressionTest extends TestCase
         $expr = Expr::param('person', FluentPerson::class)
             ->age
             ->gte(18)
-            ->backedBy(fn (FluentPerson $person): bool => false);
+            ->backedBy()(fn (FluentPerson $person): bool => false);
 
         self::assertFalse($expr(new FluentPerson(40)));
         self::assertSame('bool', $expr->returnType);
@@ -134,7 +134,7 @@ class FluentExpressionTest extends TestCase
 
         $backed = PropertyPath::on(FluentPerson::class)
             ->age
-            ->backedBy(fn (FluentPerson $person): int => 7);
+            ->backedBy()(fn (FluentPerson $person): int => 7);
         self::assertSame('int', $backed->returnType);
         self::assertSame(7, $backed->getValue(new FluentPerson(36)));
 

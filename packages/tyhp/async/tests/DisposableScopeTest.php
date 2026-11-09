@@ -247,6 +247,53 @@ final class DisposableScopeTest extends TestCase
         $this->assertTrue($resource->disposed);
     }
 
+    public function testSkipsUninitializedGhost(): void
+    {
+        if (\PHP_VERSION_ID < 80400) {
+            $this->markTestSkipped('Uninitialized lazy objects require PHP 8.4.');
+        }
+
+        $initialized = false;
+        $ghost = (new \ReflectionClass(ScopeLazyDisposable::class))->newLazyGhost(
+            static function (object $object) use (&$initialized): void {
+                $initialized = true;
+            }
+        );
+
+        $scope = DisposableScope::create();
+        $scope->using($ghost);
+        $scope->dispose();
+
+        $this->assertFalse($initialized);
+        $this->assertTrue((new \ReflectionClass($ghost))->isUninitializedLazyObject($ghost));
+    }
+
+    public function testDisposesInitializedGhostAndOrdinaryObject(): void
+    {
+        if (\PHP_VERSION_ID < 80400) {
+            $this->markTestSkipped('Uninitialized lazy objects require PHP 8.4.');
+        }
+
+        $initialized = false;
+        $ghost = (new \ReflectionClass(ScopeLazyDisposable::class))->newLazyGhost(
+            static function (object $object) use (&$initialized): void {
+                $initialized = true;
+            }
+        );
+        $ghost->marker;
+        $this->assertTrue($initialized);
+        $this->assertFalse($ghost->disposed);
+
+        $ordinary = new ScopeLazyDisposable();
+        $scope = DisposableScope::create();
+        $scope->using($ghost);
+        $scope->using($ordinary);
+        $scope->dispose();
+
+        $this->assertTrue($ghost->disposed);
+        $this->assertTrue($ordinary->disposed);
+    }
+
     public function testPendingAsyncDisposeFromSyncLoopCallbackThrows(): void
     {
         $this->expectException(AsyncContextException::class);
@@ -353,5 +400,16 @@ class ScopePendingAsyncDisposable implements AsyncIsDisposable
     public function disposeAsync(): Promise
     {
         return (new Deferred())->getPromise();
+    }
+}
+
+class ScopeLazyDisposable implements IsDisposable
+{
+    public int $marker = 0;
+    public bool $disposed = false;
+
+    public function dispose(): void
+    {
+        $this->disposed = true;
     }
 }

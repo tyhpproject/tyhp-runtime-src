@@ -1,0 +1,61 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+/**
+ * Writes a PHP file that returns an array, then invalidates opcache so the next include sees it.
+ */
+final class PhpFile {
+    public static function read(string $path): mixed {
+        if (!\is_file($path)) {
+            return null;
+        }
+        try {
+            return (new \Illuminate\Filesystem\Filesystem())->getRequire($path);
+        } catch (\Throwable $exception) {
+            (void)$exception;
+
+            return null;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $value
+     */
+    public static function write(string $path, array<string, mixed> $value): void {
+        string $directory = \dirname($path);
+        if (!\is_dir($directory) && !\mkdir($directory, 0777, true) && !\is_dir($directory)) {
+            throw new \RuntimeException('Could not create ' . $directory . '.');
+        }
+        mixed $exported = \var_export($value, true);
+        if (!\is_string($exported)) {
+            throw new \RuntimeException('Could not export ' . $path . '.');
+        }
+        string $temporary = $path . '.' . \bin2hex(\random_bytes(4)) . '.tmp';
+        mixed $written = \file_put_contents($temporary, "<?php\n\nreturn " . $exported . ";\n");
+        if ($written === false) {
+            throw new \RuntimeException('Could not write ' . $path . '.');
+        }
+        if (!\rename($temporary, $path)) {
+            if (\is_file($temporary)) {
+                \unlink($temporary);
+            }
+            throw new \RuntimeException('Could not replace ' . $path . '.');
+        }
+        if (\function_exists('opcache_invalidate')) {
+            \call_user_func('opcache_invalidate', $path, true);
+        }
+    }
+
+    public static function delete(string $path): void {
+        if (!\is_file($path)) {
+            return;
+        }
+        if (!\unlink($path)) {
+            throw new \RuntimeException('Could not remove ' . $path . '.');
+        }
+        if (\function_exists('opcache_invalidate')) {
+            \call_user_func('opcache_invalidate', $path, true);
+        }
+    }
+}

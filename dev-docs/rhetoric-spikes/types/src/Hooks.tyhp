@@ -1,0 +1,78 @@
+<?tyhp
+
+namespace Rhetoric\Spikes\Types;
+
+class HookModel {
+    public string $backed = 'init' {
+        get => $this->backed;
+        set(string $value) {
+            $this->backed = $value;
+        }
+    }
+
+    public string $virtual {
+        get => 'virtual-value';
+    }
+}
+
+final class HookProbe {
+    public static function main(): void {
+        echo "=== spike 10 property hooks ===\n";
+        echo 'php=' . \PHP_VERSION . "\n";
+        \ReflectionClass $reflection = new \ReflectionClass(HookModel::class);
+        foreach (['backed', 'virtual'] as $name) {
+            \ReflectionProperty $property = $reflection->getProperty($name);
+            echo '-- ' . $name . "\n";
+            echo 'hasType=' . ($property->hasType() ? 'true' : 'false') . "\n";
+            ?\ReflectionType $type = $property->getType();
+            echo 'type=' . ($type !== null ? (string) $type : 'none') . "\n";
+            echo 'isVirtual=' . self::flag($property, 'isVirtual') . "\n";
+            echo 'isReadOnly=' . self::flag($property, 'isReadOnly') . "\n";
+            echo 'hasHooks=' . self::flag($property, 'hasHooks') . "\n";
+            echo 'isDynamic=' . self::flag($property, 'isDynamic') . "\n";
+            echo 'isDefault=' . ($property->isDefault() ? 'true' : 'false') . "\n";
+            if (\method_exists($property, 'getHooks')) {
+                mixed $hooks = $property->getHooks();
+                if (\is_array($hooks)) {
+                    foreach ($hooks as $hookName => $_) {
+                        echo 'hook ' . (string) $hookName . "\n";
+                    }
+                }
+            }
+            $attributes = $property->getAttributes();
+            foreach ($attributes as $attribute) {
+                echo 'attribute ' . $attribute->getName() . "\n";
+            }
+        }
+
+        HookModel $model = new HookModel();
+        echo 'read backed=' . $model->backed . "\n";
+        $model->backed = 'changed';
+        echo 'write backed=' . $model->backed . "\n";
+        echo 'read virtual=' . $model->virtual . "\n";
+        try {
+            $model->virtual = 'nope';
+            echo 'write virtual unexpectedly ok' . "\n";
+        } catch (\Throwable $e) {
+            echo 'write virtual failed ' . $e::class . ' ' . $e->getMessage() . "\n";
+        }
+    }
+
+    private static function flag(\ReflectionProperty $property, string $method): string {
+        if (!\method_exists($property, $method)) {
+            return 'missing';
+        }
+        try {
+            mixed $result = $property->{$method}();
+            if ($result === true) {
+                return 'true';
+            }
+            if ($result === false) {
+                return 'false';
+            }
+            return \get_debug_type($result);
+        } catch (\Throwable $e) {
+            return 'threw ' . $e::class . ' ' . $e->getMessage();
+        }
+    }
+}

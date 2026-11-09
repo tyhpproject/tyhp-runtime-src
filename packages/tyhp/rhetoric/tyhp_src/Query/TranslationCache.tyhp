@@ -1,0 +1,45 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+final class TranslationCache {
+    /** @var array<string, QueryPlan> */
+    private static array<string, QueryPlan> $plans = [];
+
+    private static int $misses = 0;
+
+    private static int $hits = 0;
+
+    public static function get(string $key): ?QueryPlan {
+        if (!isset(self::$plans[$key])) {
+            return null;
+        }
+
+        return self::$plans[$key];
+    }
+
+    public static function put(string $key, QueryPlan $plan): void {
+        if (!isset(self::$plans[$key])) {
+            self::$misses++;
+        }
+        self::$plans[$key] = $plan;
+    }
+
+    public static function misses(): int {
+        return self::$misses;
+    }
+
+    public static function hit(): void {
+        self::$hits++;
+    }
+
+    public static function hits(): int {
+        return self::$hits;
+    }
+
+    public static function clear(): void {
+        self::$plans = [];
+        self::$misses = 0;
+        self::$hits = 0;
+    }
+}

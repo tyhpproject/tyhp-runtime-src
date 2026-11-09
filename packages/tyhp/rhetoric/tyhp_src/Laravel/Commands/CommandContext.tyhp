@@ -1,0 +1,203 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationManifest;
+use Tyhp\Rhetoric\Migrations\MigrationWorkspace;
+
+final class CommandContext {
+    public static function resolve(\Illuminate\Console\Command $command, ?string $explicit): Context {
+        string $class = $explicit ?? self::configuredContext($command);
+        $class = \ltrim($class, '\\');
+        if ($class === '' || !\class_exists($class) || !\is_subclass_of($class, Context::class)) {
+            throw new \InvalidArgumentException($class . ' is not a context.');
+        }
+        \ReflectionProperty $laravel = new \ReflectionProperty($command, 'laravel');
+        if ($laravel->isInitialized($command)) {
+            mixed $container = $laravel->getValue($command);
+            if ($container instanceof \Psr\Container\ContainerInterface && $container->has($class)) {
+                mixed $resolved = $container->get($class);
+                if ($resolved instanceof Context) {
+                    return $resolved;
+                }
+            }
+        }
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+        object $instance = $reflection->newInstance();
+        if (!($instance instanceof Context)) {
+            throw new \InvalidArgumentException($class . ' is not a context.');
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Option, then config, then the application's database path (so the result does not depend on the working
+     * directory), then `database/` under the working directory.
+     */
+    public static function workspace(\Illuminate\Console\Command $command, ?string $snapshot, ?string $migrations): MigrationWorkspace {
+        ?string $database = self::databasePath($command);
+
+        return MigrationWorkspace::configure(
+            $snapshot ?? self::configured($command, 'rhetoric.snapshot_path') ?? ($database !== null ? $database . '/rhetoric' : null),
+            $migrations ?? self::configured($command, 'rhetoric.migrations_path') ?? ($database !== null ? $database . '/migrations' : null),
+        );
+    }
+
+    /**
+     * The application's migration repository, so the migrations table name and connection are the ones `migrate` uses.
+     */
+    public static function repository(\Illuminate\Console\Command $command): ?\Illuminate\Database\Migrations\MigrationRepositoryInterface {
+        \ReflectionProperty $laravel = new \ReflectionProperty($command, 'laravel');
+        if (!$laravel->isInitialized($command)) {
+            return null;
+        }
+        mixed $container = $laravel->getValue($command);
+        if (!($container instanceof \Psr\Container\ContainerInterface)) {
+            return null;
+        }
+        if ($container->has('migration.repository')) {
+            mixed $repository = $container->get('migration.repository');
+            if ($repository instanceof \Illuminate\Database\Migrations\MigrationRepositoryInterface) {
+                return $repository;
+            }
+        }
+        if (!$container->has('db')) {
+            return null;
+        }
+        mixed $database = $container->get('db');
+        if (!($database instanceof \Illuminate\Database\ConnectionResolverInterface)) {
+            return null;
+        }
+        string $table = 'migrations';
+        mixed $configured = self::value($command, 'database.migrations');
+        if (\is_array($configured)) {
+            $configured = $configured['table'] ?? null;
+        }
+        if (\is_string($configured) && $configured !== '') {
+            $table = $configured;
+        }
+
+        return new \Illuminate\Database\Migrations\DatabaseMigrationRepository($database, $table);
+    }
+
+    /**
+     * The application's database manager when there is one (a Laravel app does not set up Capsule), else Capsule.
+     */
+    public static function connection(\Illuminate\Console\Command $command, ?string $name): \Illuminate\Database\Connection {
+        ?\Illuminate\Contracts\Container\Container $container = self::container($command);
+        if ($container !== null && $container->bound('db')) {
+            mixed $database = $container->get('db');
+            if ($database instanceof \Illuminate\Database\ConnectionResolverInterface) {
+                \Illuminate\Database\ConnectionInterface $resolved = $database->connection($name);
+                if ($resolved instanceof \Illuminate\Database\Connection) {
+                    return $resolved;
+                }
+            }
+        }
+
+        return \Illuminate\Database\Capsule\Manager::connection($name);
+    }
+
+    /**
+     * The `stubs/rhetoric` folder that `vendor:publish --tag=rhetoric-stubs` writes, when it exists.
+     */
+    public static function publishedStubs(\Illuminate\Console\Command $command): ?string {
+        ?\Illuminate\Contracts\Container\Container $container = self::container($command);
+        if ($container === null || !$container->bound('path.base')) {
+            return null;
+        }
+        mixed $base = $container->get('path.base');
+        if (!\is_string($base) || $base === '') {
+            return null;
+        }
+        string $directory = \rtrim($base, '/\\') . '/stubs/rhetoric';
+        if (!\is_dir($directory)) {
+            return null;
+        }
+
+        return $directory;
+    }
+
+    public static function forgetManifest(\Illuminate\Console\Command $command): void {
+        ?string $path = MigrationManifest::locate(self::container($command));
+        if ($path !== null) {
+            MigrationManifest::forget($path);
+        }
+    }
+
+    public static function container(\Illuminate\Console\Command $command): ?\Illuminate\Contracts\Container\Container {
+        \ReflectionProperty $laravel = new \ReflectionProperty($command, 'laravel');
+        if (!$laravel->isInitialized($command)) {
+            return null;
+        }
+        mixed $container = $laravel->getValue($command);
+        if ($container instanceof \Illuminate\Contracts\Container\Container) {
+            return $container;
+        }
+
+        return null;
+    }
+
+    private static function databasePath(\Illuminate\Console\Command $command): ?string {
+        \ReflectionProperty $laravel = new \ReflectionProperty($command, 'laravel');
+        if (!$laravel->isInitialized($command)) {
+            return null;
+        }
+        mixed $container = $laravel->getValue($command);
+        if (!($container instanceof \Psr\Container\ContainerInterface) || !$container->has('path.database')) {
+            return null;
+        }
+        mixed $path = $container->get('path.database');
+        if (!\is_string($path) || $path === '') {
+            return null;
+        }
+
+        return \rtrim($path, '/\\');
+    }
+
+    private static function configuredContext(\Illuminate\Console\Command $command): string {
+        mixed $contexts = self::value($command, 'rhetoric.contexts');
+        if (!\is_array($contexts)) {
+            throw new \InvalidArgumentException('Pass --context. rhetoric.contexts is empty.');
+        }
+        array<int, string> $classes = [];
+        foreach ($contexts as $context) {
+            if (\is_string($context) && $context !== '') {
+                $classes[] = $context;
+            }
+        }
+        if (\count($classes) !== 1) {
+            throw new \InvalidArgumentException('Pass --context. rhetoric.contexts does not name one context.');
+        }
+
+        return $classes[0];
+    }
+
+    private static function configured(\Illuminate\Console\Command $command, string $key): ?string {
+        mixed $value = self::value($command, $key);
+        if (!\is_string($value) || $value === '') {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private static function value(\Illuminate\Console\Command $command, string $key): mixed {
+        \ReflectionProperty $laravel = new \ReflectionProperty($command, 'laravel');
+        if (!$laravel->isInitialized($command)) {
+            return null;
+        }
+        mixed $container = $laravel->getValue($command);
+        if (!($container instanceof \Psr\Container\ContainerInterface) || !$container->has('config')) {
+            return null;
+        }
+        mixed $config = $container->get('config');
+        if (!($config instanceof \Illuminate\Contracts\Config\Repository)) {
+            return null;
+        }
+
+        return $config->get($key);
+    }
+}

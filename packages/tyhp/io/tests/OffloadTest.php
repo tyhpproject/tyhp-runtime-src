@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Tyhp\Tests\Io;
 
 use PHPUnit\Framework\TestCase;
+use Tyhp\CancellationTokenSource;
 use Tyhp\EventLoop;
+use Tyhp\Exceptions\OperationCancelledException;
 use Tyhp\Exceptions\ParallelException;
+use Tyhp\ExtModule;
 use Tyhp\Io\Db\PdoConnection;
 use Tyhp\Io\Dns\Dns;
 use Tyhp\Io\Exceptions\DbException;
+use Tyhp\Io\Exceptions\IoException;
 use Tyhp\Io\Offload;
 use Tyhp\Parallel;
 use Tyhp\Promise;
@@ -35,7 +39,7 @@ final class OffloadTest extends TestCase
     public function testRunUsesAWorkerProcessWhenParallelIsAvailable(): void
     {
         $this->assertTrue(Offload::usesWorkers());
-        $pid = $this->await(Offload::runAsync(new PidJob()));
+        $pid = $this->await(Offload::runAsync(\Tyhp\Type::int())(new PidJob()));
 
         $this->assertNotSame(\getmypid(), $pid);
     }
@@ -43,8 +47,8 @@ final class OffloadTest extends TestCase
     public function testRunReturnsTheJobResult(): void
     {
         $results = $this->await(Promise::all([
-            Offload::runAsync(new SquareJob(3)),
-            Offload::runAsync(new SquareJob(4)),
+            Offload::runAsync(\Tyhp\Type::int())(new SquareJob(3)),
+            Offload::runAsync(\Tyhp\Type::int())(new SquareJob(4)),
         ]));
 
         $this->assertSame([9, 16], $results);
@@ -53,7 +57,7 @@ final class OffloadTest extends TestCase
     public function testJobExceptionsRejectWithParallelException(): void
     {
         try {
-            $this->await(Offload::runAsync(new ThrowingJob()));
+            $this->await(Offload::runAsync(\Tyhp\Type::int())(new ThrowingJob()));
             $this->fail('Expected ParallelException.');
         } catch (ParallelException $e) {
             $this->assertStringContainsString('job failed', $e->getMessage());
@@ -64,6 +68,60 @@ final class OffloadTest extends TestCase
     {
         $this->assertSame(['127.0.0.1'], $this->await(Dns::resolveAsync('127.0.0.1')));
         $this->assertContains('127.0.0.1', $this->await(Dns::resolveAsync('localhost')));
+    }
+
+    public function testResolveAsyncUsesTheExtensionWhenItIsLoaded(): void
+    {
+        $promise = Dns::resolveAsync('localhost');
+        $extension = $this->extensionPipeIsRegistered();
+        $parallel = $this->parallelHasWork();
+
+        if (ExtModule::available()) {
+            $this->assertTrue(Offload::usesWorkers());
+            $this->assertTrue($extension, 'The extension path registers its pipe before the event loop runs.');
+            $this->assertFalse($parallel, 'The extension path does not queue an Offload worker.');
+        } else {
+            $this->assertFalse($extension, 'Without the extension, resolveAsync does not register a Dns pipe.');
+            $this->assertTrue(Offload::usesWorkers());
+            $this->assertFalse($parallel, 'Offload does not queue a worker until the event loop starts the lookup.');
+        }
+
+        $this->assertContains('127.0.0.1', EventLoop::getInstance()->runUntilSettled($promise));
+    }
+
+    public function testResolveAsyncRejectsAnUnknownHost(): void
+    {
+        $host = 'tyhp-missing.invalid';
+        $message = 'Could not resolve host ' . $host . '.';
+
+        try {
+            $this->await(Dns::resolveAsync($host));
+            $this->fail('Expected the host to be unresolved.');
+        } catch (\Throwable $e) {
+            if (!Offload::usesWorkers()) {
+                $this->assertInstanceOf(IoException::class, $e);
+                $this->assertSame($message, $e->getMessage());
+            } else {
+                $this->assertInstanceOf(ParallelException::class, $e);
+                $this->assertStringStartsWith(IoException::class . ': ' . $message, $e->getMessage());
+                $this->assertSame(IoException::class, $e->getRemoteClass());
+                $remote = $e->getRemoteError();
+                $this->assertIsArray($remote);
+                $this->assertSame($message, $remote['message']);
+            }
+        }
+    }
+
+    public function testResolveAsyncRejectsWhenTheTokenIsCancelled(): void
+    {
+        $already = new CancellationTokenSource();
+        $already->cancel();
+        $this->assertResolveCancelled($already, '127.0.0.1');
+
+        $running = new CancellationTokenSource();
+        $promise = Dns::resolveAsync('127.0.0.1', $running->getToken());
+        $running->cancel();
+        $this->assertCancelled($promise);
     }
 
     public function testPdoQueriesAndTransactionsThroughWorkers(): void
@@ -139,5 +197,55 @@ final class OffloadTest extends TestCase
     private function await(Promise $promise): mixed
     {
         return EventLoop::getInstance()->runUntilSettled($promise);
+    }
+
+    private function assertResolveCancelled(CancellationTokenSource $source, string $host): void
+    {
+        $this->assertCancelled(Dns::resolveAsync($host, $source->getToken()));
+    }
+
+    private function assertCancelled(Promise $promise): void
+    {
+        try {
+            $this->await($promise);
+            $this->fail('Expected OperationCancelledException.');
+        } catch (OperationCancelledException $e) {
+            $this->assertTrue($e->getToken()->isCancellationRequested());
+        }
+    }
+
+    private function extensionPipeIsRegistered(): bool
+    {
+        $callbacks = (new \ReflectionProperty(EventLoop::class, 'readCallbacks'))->getValue(EventLoop::getInstance());
+        if (!\is_array($callbacks)) {
+            return false;
+        }
+        foreach ($callbacks as $callback) {
+            if (!$callback instanceof \Closure) {
+                continue;
+            }
+            $scope = (new \ReflectionFunction($callback))->getClosureScopeClass();
+            if ($scope !== null && $scope->getName() === Dns::class) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function parallelHasWork(): bool
+    {
+        $pool = (new \ReflectionProperty(\Tyhp\ParallelPool::class, 'instance'))->getValue(null);
+        if ($pool === null) {
+            return false;
+        }
+        foreach (['queue', 'running'] as $property) {
+            $jobs = (new \ReflectionProperty($pool, $property))->getValue($pool);
+            if (\is_array($jobs) && $jobs !== []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

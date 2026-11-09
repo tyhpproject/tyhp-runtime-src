@@ -1,0 +1,75 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Rhetoric\Mapping\ModelMap;
+
+/**
+ * Soft-delete and discriminator predicates for one model's rows.
+ */
+final class RowFilter {
+    public static function sql(
+        ModelMap $model,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        ?string $qualifier,
+        bool $alias,
+        bool $qualify,
+        bool $ignoreGlobalScopes,
+        string $trash,
+    ): SqlPiece {
+        array<int, string> $parts = [];
+        array<int, mixed> $bindings = [];
+        if ($model->softDeletes && $model->deletedAtColumn !== null) {
+            string $deleted = self::column($grammar, $qualifier, $model->deletedAtColumn, $alias, $qualify);
+            if ($trash === 'only') {
+                $parts[] = $deleted . ' is not null';
+            } elseif ($trash !== 'with' && !$ignoreGlobalScopes) {
+                $parts[] = $deleted . ' is null';
+            }
+        }
+        if ($model->discriminatorColumn !== null && $model->discriminatorValue !== null) {
+            string $column = self::column($grammar, $qualifier, $model->discriminatorColumn, $alias, $qualify);
+            // The model's own value, then the value of every class derived from it.
+            array<int, string> $values = [$model->discriminatorValue];
+            string $own = \ltrim($model->class, '\\');
+            foreach ($model->discriminatorTypes as $stored => $class) {
+                // PHP turns a numeric value such as '1' into an int key.
+                string $text = \strval($stored);
+                if ($text === $model->discriminatorValue || !\is_subclass_of(\ltrim($class, '\\'), $own)) {
+                    continue;
+                }
+                $values[] = $text;
+            }
+            if (\count($values) === 1) {
+                $parts[] = $column . ' = ?';
+            } else {
+                $parts[] = $column . ' in (' . \implode(', ', \array_fill(0, \count($values), '?')) . ')';
+            }
+            foreach ($values as $value) {
+                $bindings[] = $value;
+            }
+        }
+        if (\count($parts) === 0) {
+            return new SqlPiece('', [], 'bool', false, null, false);
+        }
+
+        return new SqlPiece(\implode(' and ', $parts), $bindings, 'bool', false, null, false);
+    }
+
+    private static function column(
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        ?string $qualifier,
+        string $column,
+        bool $alias,
+        bool $qualify,
+    ): string {
+        if (!$qualify || $qualifier === null || $qualifier === '') {
+            return $grammar->wrap($column);
+        }
+        if ($alias) {
+            return $grammar->wrap($qualifier) . '.' . $grammar->wrap($column);
+        }
+
+        return $grammar->wrap($qualifier . '.' . $column);
+    }
+}

@@ -1,0 +1,50 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Migrations\PendingReport;
+
+class PendingCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:pending');
+        $this->setDescription('Exit non-zero when the mapping differs from the snapshot.');
+        $this->addOption('context', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Context class');
+        $this->addOption('path', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Migrations directory');
+        $this->addOption('snapshot', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Snapshot directory');
+    }
+
+    public function handle(): int {
+        try {
+            PendingReport $report = CommandContext::workspace($this, $this->text('snapshot'), $this->text('path'))->pending(
+                CommandContext::resolve($this, $this->text('context')),
+            );
+            foreach ($report->warnings as $warning) {
+                $this->warn($warning);
+            }
+            if ($report->clean()) {
+                $this->info('Mapping matches the snapshot.');
+
+                return 0;
+            }
+            foreach ($report->reasons as $reason) {
+                $this->error($reason);
+            }
+
+            return 1;
+        } catch (\Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return 1;
+        }
+    }
+
+    private function text(string $option): ?string {
+        mixed $value = $this->option($option);
+        if (!\is_string($value) || $value === '') {
+            return null;
+        }
+
+        return $value;
+    }
+}
