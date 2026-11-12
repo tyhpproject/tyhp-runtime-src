@@ -644,7 +644,13 @@ EOF
     "autoload": {
         "psr-4": {
             "Tyhp\\\\": "src/Tyhp/"
-        }
+        },
+        "files": [
+            "src/Tyhp/Io/Process/_functions.php",
+            "src/Tyhp/Io/Http/_functions.php",
+            "src/Tyhp/Io/Db/_functions.php",
+            "src/Tyhp/Io/Redis/_functions.php"
+        ]
     }
 }
 EOF

@@ -37,6 +37,8 @@ Notable changes to the Tyhp runtime packages (`tyhp/*` and `tyhpdef/*`) built fr
 
 ### Fixed
 
+- `tyhp/io`: the dist package autoloads the struct type registration files (`src/Tyhp/Io/Process/_functions.php`, `src/Tyhp/Io/Http/_functions.php`, `src/Tyhp/Io/Db/_functions.php`, and `src/Tyhp/Io/Redis/_functions.php`).
+- `tyhp/io`: `Process::runAsync` reads `ProcessOptions` fields as array keys (`cwd`, `env`, `input`, `timeoutMs`).
 - `tyhp/core`: `Type::or()` of two identical types returns that type instead of throwing `InvalidTypeException`, so `#[\Tyhp\InferGeneric]` calls whose arguments share a result type infer it.
 - `tyhp/core`: the `_gnrc` root-function docblock names `_gnrc`, including the line about a global `_gnrc` already existing.
 - `tyhp/core`: the `GenericRuntime` attribute docblock describes a non-erased binder under its declared name (`layouts: [2]`, `Json::decode($type)($json)`), an `#[\Tyhp\InferGeneric]` `name__tyhpGeneric` companion (`layouts: [1]`), an erased method at layout 1, and a class factory at layout 1 (`new_<Mangled>__tyhpGeneric`). Supported callable layouts are `[1, 2]`. `Generic::bind` accepts both.
