@@ -19,6 +19,11 @@ Notable changes to the Tyhp runtime packages (`tyhp/*` and `tyhpdef/*`) built fr
 
 ### Changed
 
+- `tyhp/lambda`: struct construction now uses `new Name[...]`.
+- `tyhp/io`: struct construction now uses `new Name[...]`.
+- `tyhp/parallel`: struct construction now uses `new Name[...]`.
+- `tyhp/compiler`: struct construction now uses `new Name[...]`.
+- `tyhp/rhetoric`: struct construction now uses `new Name[...]`.
 - `tyhp/io`: `Dns::resolveAsync` uses the tyhp extension when it is loaded and at least 0.1.0. The lookup runs on a thread and the event loop waits on its pipe. A missing or older extension keeps Offload. An unresolved host rejects the same way with or without the extension: `IoException` with `Could not resolve host {host}.`, or, when `Offload::usesWorkers()` is true, a `ParallelException` whose remote class is `IoException`. A cancelled token rejects with `OperationCancelledException`. The package suggests `ext-tyhp` (`pie install tyhp/ext-tyhp`) and does not require it.
 - `tyhp/core`: `Type::is`, `Type::parse`, and `Generic::bind` call the `tyhp` extension when it is loaded and at least 0.1.0. A missing or older extension is ignored. The package suggests `ext-tyhp` (`pie install tyhp/ext-tyhp`) and does not require it.
 - `tyhp/core`: `_gnrc` type arguments are `\Tyhp\TypeLike|string|null`, the same as `Generic::bind()`. `Type::arg()` normalizes a `Type`, a `BuiltIn` such as `Type::int`, a class-string, or `null`.

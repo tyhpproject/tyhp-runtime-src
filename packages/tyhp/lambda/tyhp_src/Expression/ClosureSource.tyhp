@@ -249,7 +249,7 @@ internal final class ClosureSource {
 
         array<int, \Tyhp\ExtClosureCapture> $captures = [];
 
-        return new \Tyhp\ExtClosureLambda() with [
+        return new \Tyhp\ExtClosureLambda[
             kind => 'lambda',
             params => $names,
             captures => $captures,
@@ -454,7 +454,7 @@ internal final class ClosureSource {
         $this->expect(':');
         \Tyhp\ExtClosureNode $else = $this->parseTernary();
 
-        return new \Tyhp\ExtClosureTernary() with [
+        return new \Tyhp\ExtClosureTernary[
             kind => 'ternary',
             cond => $cond,
             then => $then,
@@ -471,7 +471,7 @@ internal final class ClosureSource {
             return $left;
         }
 
-        return new \Tyhp\ExtClosureCoalesce() with [
+        return new \Tyhp\ExtClosureCoalesce[
             kind => 'coalesce',
             left => $left,
             right => $this->parseCoalesce(),
@@ -632,7 +632,7 @@ internal final class ClosureSource {
             \Tyhp\ExtClosureUnaryOp $unaryOp = $this->is('!') ? '!' : '~';
             $this->index++;
 
-            return new \Tyhp\ExtClosureUnary() with [
+            return new \Tyhp\ExtClosureUnary[
                 kind => 'unary',
                 op => $unaryOp,
                 expr => $this->parseUnary(),
@@ -649,7 +649,7 @@ internal final class ClosureSource {
         if ($cast !== null) {
             $this->index++;
 
-            return new \Tyhp\ExtClosureCast() with [
+            return new \Tyhp\ExtClosureCast[
                 kind => 'cast',
                 type => $cast,
                 expr => $this->parseUnary(),
@@ -675,7 +675,7 @@ internal final class ClosureSource {
                 throw new \InvalidArgumentException(self::MSG_BODY);
             }
             string $class = $this->resolveClass($this->readQualified());
-            $expr = new \Tyhp\ExtClosureInstanceof() with [
+            $expr = new \Tyhp\ExtClosureInstanceof[
                 kind => 'instanceof',
                 expr => $expr,
                 class => $class,
@@ -698,7 +698,7 @@ internal final class ClosureSource {
                 $this->expect('[');
                 \Tyhp\ExtClosureNode $index = $this->parseExpression();
                 $this->expect(']');
-                $expr = new \Tyhp\ExtClosureIndex() with [
+                $expr = new \Tyhp\ExtClosureIndex[
                     kind => 'index',
                     object => $expr,
                     index => $index,
@@ -720,7 +720,7 @@ internal final class ClosureSource {
             $this->index++;
             if ($this->is('(')) {
                 array<int, \Tyhp\ExtClosureNode> $args = $this->parseArgs();
-                $expr = new \Tyhp\ExtClosureCall() with [
+                $expr = new \Tyhp\ExtClosureCall[
                     kind => $nullsafe ? 'nullsafe_call' : 'call',
                     object => $expr,
                     name => $member,
@@ -728,7 +728,7 @@ internal final class ClosureSource {
                 ];
                 continue;
             }
-            $expr = new \Tyhp\ExtClosureProp() with [
+            $expr = new \Tyhp\ExtClosureProp[
                 kind => $nullsafe ? 'nullsafe_prop' : 'prop',
                 object => $expr,
                 name => $member,
@@ -776,7 +776,7 @@ internal final class ClosureSource {
                 $args = $this->parseArgs();
             }
 
-            return new \Tyhp\ExtClosureNew() with [
+            return new \Tyhp\ExtClosureNew[
                 kind => 'new',
                 class => $class,
                 args => $args,
@@ -851,7 +851,7 @@ internal final class ClosureSource {
         string $member = $this->text();
         $this->index++;
         if ($this->is('(')) {
-            return new \Tyhp\ExtClosureStaticCall() with [
+            return new \Tyhp\ExtClosureStaticCall[
                 kind => 'static_call',
                 class => $class,
                 name => $member,
@@ -905,7 +905,7 @@ internal final class ClosureSource {
                 $key = $first;
                 $value = $this->parseExpression();
             }
-            $elements[] = new \Tyhp\ExtClosureElement() with [
+            $elements[] = new \Tyhp\ExtClosureElement[
                 key => $key,
                 value => $value,
             ];
@@ -956,7 +956,7 @@ internal final class ClosureSource {
             return $this->constNode($folded);
         }
 
-        return new \Tyhp\ExtClosureArray() with [
+        return new \Tyhp\ExtClosureArray[
             kind => 'array',
             elements => $elements,
         ];
@@ -995,13 +995,13 @@ internal final class ClosureSource {
             throw new \InvalidArgumentException(self::MSG_BODY);
         }
         if ($this->inCurrentScope($name)) {
-            return new \Tyhp\ExtClosureParam() with [
+            return new \Tyhp\ExtClosureParam[
                 kind => 'param',
                 name => $name,
             ];
         }
         if ($this->inScope($name)) {
-            return new \Tyhp\ExtClosureCapture() with [
+            return new \Tyhp\ExtClosureCapture[
                 kind => 'capture',
                 name => $name,
                 value => null,
@@ -1011,7 +1011,7 @@ internal final class ClosureSource {
             throw new \InvalidArgumentException(self::MSG_BODY);
         }
 
-        return new \Tyhp\ExtClosureCapture() with [
+        return new \Tyhp\ExtClosureCapture[
             kind => 'capture',
             name => $name,
             value => $this->copyValue($this->statics[$name]),
@@ -1109,7 +1109,7 @@ internal final class ClosureSource {
             }
         }
 
-        return new \Tyhp\ExtClosureBinary() with [
+        return new \Tyhp\ExtClosureBinary[
             kind => 'binary',
             op => $op,
             left => $left,
@@ -1118,7 +1118,7 @@ internal final class ClosureSource {
     }
 
     private function constNode(mixed $value): \Tyhp\ExtClosureNode {
-        return new \Tyhp\ExtClosureConst() with [
+        return new \Tyhp\ExtClosureConst[
             kind => 'const',
             value => $value,
         ];
