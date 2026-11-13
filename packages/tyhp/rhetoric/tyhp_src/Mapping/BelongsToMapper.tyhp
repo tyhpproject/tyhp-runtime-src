@@ -1,0 +1,40 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+use Tyhp\Rhetoric\OnDelete;
+
+final class BelongsToMapper<T, TRelated> {
+    public function __construct(
+        private ModelConfig $config,
+        private string $property,
+    ) {}
+
+    public function inverseOf<TValue>(\Tyhp\PropertyPath<callable(TRelated): TValue> $inverse): BelongsToMapper<T, TRelated> {
+        $this->relation()->inverseProperty = Paths::name($inverse);
+
+        return new BelongsToMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    public function foreignKey<TValue>(\Tyhp\PropertyPath<callable(T): TValue> $foreignKey): BelongsToMapper<T, TRelated> {
+        $this->relation()->foreignKeyProperty = Paths::name($foreignKey);
+
+        return new BelongsToMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    public function onDelete(OnDelete $onDelete): BelongsToMapper<T, TRelated> {
+        $this->relation()->onDelete = $onDelete;
+
+        return new BelongsToMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    public function referencedColumn(string $column): BelongsToMapper<T, TRelated> {
+        $this->relation()->referencedColumn = $column;
+
+        return new BelongsToMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    private function relation(): RelationConfig {
+        return $this->config->relations[$this->property];
+    }
+}

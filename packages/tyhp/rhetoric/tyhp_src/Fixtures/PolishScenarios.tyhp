@@ -1,0 +1,198 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+use Tyhp\Rhetoric\ContextFactory;
+use Tyhp\Rhetoric\Query\Hydrator;
+use Tyhp\Rhetoric\Query\TranslationCache;
+
+class PolishScenarios {
+    /**
+     * @return array<string, mixed>
+     */
+    public static function lengthPage(QueryContext $context, int $page, int $perPage): array<string, mixed> {
+        \Illuminate\Pagination\LengthAwarePaginator<int, Post> $result = $context->posts
+            ->orderBy(fn (Post $post) => $post->id)
+            ->paginate($perPage, 'page', $page);
+
+        return [
+            'total' => $result->total(),
+            'ids' => self::ids($result),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function filteredPage(QueryContext $context): array<string, mixed> {
+        \Illuminate\Pagination\LengthAwarePaginator<int, Post> $result = $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->orderBy(fn (Post $post) => $post->id)
+            ->paginate(1, 'page', 1);
+
+        return [
+            'total' => $result->total(),
+            'ids' => self::ids($result),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function simplePage(QueryContext $context, int $page, int $perPage): array<string, mixed> {
+        \Illuminate\Pagination\Paginator<int, Post> $result = $context->posts
+            ->orderBy(fn (Post $post) => $post->id)
+            ->simplePaginate($perPage, 'page', $page);
+
+        return [
+            'more' => $result->hasMorePages(),
+            'ids' => self::ids($result),
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, int>>
+     */
+    public static function cursorPages(QueryContext $context): array<int, array<int, int>> {
+        \Illuminate\Pagination\CursorPaginator<int, Post> $first = $context->posts
+            ->orderBy(fn (Post $post) => $post->id)
+            ->cursorPaginate(2);
+        ?\Illuminate\Pagination\Cursor $cursor = $first->nextCursor();
+        \Illuminate\Pagination\CursorPaginator<int, Post> $second = $context->posts
+            ->orderBy(fn (Post $post) => $post->id)
+            ->cursorPaginate(2, 'cursor', $cursor);
+        ?string $encoded = $cursor === null ? null : $cursor->encode();
+        \Illuminate\Pagination\CursorPaginator<int, Post> $fromEncoded = $context->posts
+            ->orderBy(fn (Post $post) => $post->id)
+            ->cursorPaginate(2, 'cursor', $encoded);
+
+        return [self::ids($first), self::ids($second), self::ids($fromEncoded)];
+    }
+
+    /**
+     * Every page of a cursor walk, each reached through the encoded cursor the page before it produced.
+     *
+     * @return array<int, array<int, int>>
+     */
+    public static function cursorWalk(QueryContext $context, string $order, int $size): array<int, array<int, int>> {
+        array<int, array<int, int>> $pages = [];
+        ?string $encoded = null;
+        for (int $round = 0; $round < 20; $round++) {
+            \Illuminate\Pagination\CursorPaginator<int, Post> $page = self::cursorQuery($context, $order)->cursorPaginate($size, 'cursor', $encoded);
+            $pages[] = self::ids($page);
+            ?\Illuminate\Pagination\Cursor $next = $page->nextCursor();
+            if ($next === null) {
+                break;
+            }
+            $encoded = $next->encode();
+        }
+
+        return $pages;
+    }
+
+    /**
+     * The second page of a cursor walk, then the page the second page's previous cursor points at.
+     *
+     * @return array<int, array<int, int>>
+     */
+    public static function cursorBack(QueryContext $context, string $order, int $size): array<int, array<int, int>> {
+        \Illuminate\Pagination\CursorPaginator<int, Post> $first = self::cursorQuery($context, $order)->cursorPaginate($size);
+        ?\Illuminate\Pagination\Cursor $next = $first->nextCursor();
+        if ($next === null) {
+            return [self::ids($first)];
+        }
+        \Illuminate\Pagination\CursorPaginator<int, Post> $second = self::cursorQuery($context, $order)->cursorPaginate($size, 'cursor', $next->encode());
+        ?\Illuminate\Pagination\Cursor $previous = $second->previousCursor();
+        if ($previous === null) {
+            return [self::ids($first), self::ids($second)];
+        }
+        \Illuminate\Pagination\CursorPaginator<int, Post> $back = self::cursorQuery($context, $order)->cursorPaginate($size, 'cursor', $previous->encode());
+
+        return [self::ids($first), self::ids($second), self::ids($back)];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function filtered(QueryContext $context, int $minimum, string $tag): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->posts->tag($tag)->where(fn (Post $post) => $post->rating >= $minimum)->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    private static function cursorQuery(QueryContext $context, string $order): \Tyhp\Rhetoric\Query\Query<Post> {
+        if ($order === 'rating') {
+            return $context->posts->orderBy(fn (Post $post) => $post->rating);
+        }
+        if ($order === 'ratingDesc') {
+            return $context->posts->orderByDesc(fn (Post $post) => $post->rating);
+        }
+        if ($order === 'published') {
+            return $context->posts->orderBy(fn (Post $post) => $post->publishedAt);
+        }
+        if ($order === 'ratingThenIdDesc') {
+            return $context->posts->orderBy(fn (Post $post) => $post->rating)->thenByDesc(fn (Post $post) => $post->id);
+        }
+
+        return $context->posts;
+    }
+
+    public static function taggedPage(QueryContext $context): void {
+        (void)$context->posts->tag('posts')->orderBy(fn (Post $post) => $post->id)->paginate(2, 'page', 1);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function repeatedReads(QueryContext $context): array<int, int> {
+        TranslationCache::clear();
+        Hydrator::resetProfile();
+        array<int, Post> $first = $context->posts->orderBy(fn (Post $post) => $post->id)->all();
+        int $misses = TranslationCache::misses();
+        array<int, Post> $second = $context->posts->orderBy(fn (Post $post) => $post->id)->all();
+        (void)$first;
+        (void)$second;
+
+        return [$misses, TranslationCache::misses(), TranslationCache::hits(), Hydrator::hydrated()];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function scopedTitles(AdvancedContext $context): array<int, string> {
+        array<int, string> $titles = [];
+        foreach ($context->scopedPosts->orderBy(fn (ScopedPost $post) => $post->id)->all() as $post) {
+            $titles[] = $post->title;
+        }
+
+        return $titles;
+    }
+
+    /**
+     * @return array<int, ConventionBlogContext>
+     */
+    public static function contexts(\Illuminate\Contracts\Container\Container $app): array<int, ConventionBlogContext> {
+        ContextFactory<ConventionBlogContext> $factory = new ContextFactory<ConventionBlogContext>($app);
+
+        return [$factory->create(), $factory->create()];
+    }
+
+    /**
+     * @param \Illuminate\Pagination\LengthAwarePaginator<int, Post>|\Illuminate\Pagination\Paginator<int, Post>|\Illuminate\Pagination\CursorPaginator<int, Post> $page
+     * @return array<int, int>
+     */
+    private static function ids(\Illuminate\Pagination\LengthAwarePaginator<int, Post>|\Illuminate\Pagination\Paginator<int, Post>|\Illuminate\Pagination\CursorPaginator<int, Post> $page): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($page as $post) {
+            if (!($post instanceof Post)) {
+                throw new \TypeError('A page item is not a post.');
+            }
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+}

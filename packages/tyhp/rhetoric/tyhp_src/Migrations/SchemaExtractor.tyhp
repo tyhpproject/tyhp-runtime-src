@@ -1,0 +1,552 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ContextMap;
+use Tyhp\Rhetoric\Mapping\ForeignKeyMap;
+use Tyhp\Rhetoric\Mapping\IndexMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+
+final class SchemaExtractor {
+    public static function extract(ContextMap $map): SnapshotDocument {
+        array<int, TableSpec> $tables = [];
+        foreach ($map->models as $model) {
+            if ($model->view) {
+                continue;
+            }
+            if ($model->rootClass !== null && \ltrim($model->rootClass, '\\') !== \ltrim($model->class, '\\')) {
+                continue;
+            }
+            $tables[] = self::model($map, $model);
+        }
+        foreach (self::pivots($map) as $pivot) {
+            $tables[] = $pivot;
+        }
+        \usort($tables, fn (TableSpec $left, TableSpec $right): int => $left->table <=> $right->table);
+
+        return new SnapshotDocument($map->contextClass, $tables);
+    }
+
+    private static function model(ContextMap $map, ModelMap $model): TableSpec {
+        array<int, ColumnSpec> $columns = [];
+        foreach ($model->columns as $column) {
+            $columns[] = self::column($map, $model, $column);
+        }
+        ?KeySpec $key = null;
+        if ($model->key !== null && $model->key->columns !== []) {
+            bool $generated = self::generatedKey($model, $columns);
+            $key = new KeySpec($model->key->columns, $generated);
+        }
+        array<int, IndexSpec> $indexes = [];
+        foreach ($model->indexes as $index) {
+            $indexes[] = self::index($model->table, $index);
+        }
+        foreach ($model->alternateKeys as $alternate) {
+            if ($alternate->columns === []) {
+                continue;
+            }
+            if (self::hasIndex($indexes, $alternate->columns, true)) {
+                continue;
+            }
+            $indexes[] = new IndexSpec(
+                self::indexName($model->table, $alternate->columns, true, null),
+                $alternate->columns,
+                true,
+            );
+        }
+        array<int, ForeignKeySpec> $foreignKeys = [];
+        foreach ($model->foreignKeys as $foreignKey) {
+            $foreignKeys[] = self::foreignKey($foreignKey);
+        }
+        bool $timestamps = $model->timestamps
+            && self::missing($columns, 'created_at')
+            && self::missing($columns, 'updated_at');
+
+        return new TableSpec(
+            $model->class,
+            $model->table,
+            $model->comment,
+            $timestamps,
+            false,
+            $columns,
+            $key,
+            $indexes,
+            $foreignKeys,
+            self::seeds($model),
+        );
+    }
+
+    private static function column(ContextMap $map, ModelMap $model, ColumnMap $column): ColumnSpec {
+        string $blueprint = self::blueprint($map, $model, $column);
+        ?int $length = $column->maxLength;
+        ?int $precision = $column->precision;
+        ?int $scale = $column->scale;
+        if ($blueprint === 'string') {
+            $length = $length ?? 255;
+        }
+        if ($blueprint === 'decimal') {
+            $precision = $precision ?? 8;
+            $scale = $scale ?? 2;
+        }
+        if ($blueprint === 'float' && $precision === null) {
+            $precision = 53;
+        }
+
+        mixed $default = $column->hasDefault ? $column->default : null;
+        if (\is_object($default)) {
+            // An enum case or a date is stored as the cast stores it, the same way it round-trips through the snapshot.
+            $default = PropertyBag::database($column, $default);
+        }
+
+        return new ColumnSpec(
+            $column->property,
+            $column->name,
+            \ltrim($column->type, '\\'),
+            $blueprint,
+            $column->nullable,
+            $length,
+            $precision,
+            $scale,
+            $column->generated,
+            $column->comment,
+            $column->hasDefault,
+            $default,
+        );
+    }
+
+    private static function blueprint(ContextMap $map, ModelMap $model, ColumnMap $column): string {
+        if ($column->json) {
+            return 'json';
+        }
+        if ($column->blueprintType !== null && $column->blueprintType !== '') {
+            return self::explicit($column->blueprintType, $column->generated);
+        }
+        if ($column->text) {
+            return 'text';
+        }
+        string $type = \ltrim($column->type, '\\');
+        if (self::isConventionId($model, $column)) {
+            return 'id';
+        }
+        ?string $stored = self::castStorage($column);
+        if ($stored !== null) {
+            // The column holds what the cast's set() returns, not the property's type.
+            $type = $stored;
+        }
+        if ($type === 'int' && self::referencesBigIncrement($map, $model, $column)) {
+            return 'foreignId';
+        }
+        if ($type === 'int') {
+            return $column->generated ? 'increments' : 'integer';
+        }
+        if ($type === 'string') {
+            return 'string';
+        }
+        if ($type === 'bool') {
+            return 'boolean';
+        }
+        if ($type === 'float') {
+            return $column->precision !== null ? 'float' : 'double';
+        }
+        if ($type === 'decimal' || $type === 'Tyhp\\Decimal' || \str_ends_with($type, '\\Decimal')) {
+            return 'decimal';
+        }
+        if (\str_contains($type, 'DateTime') || \str_contains($type, 'Carbon')) {
+            return 'dateTime';
+        }
+        if (\enum_exists($type)) {
+            \ReflectionEnum $enum = self::reflectEnum($type);
+            if ($enum->isBacked()) {
+                ?\ReflectionType $backing = $enum->getBackingType();
+                if ($backing instanceof \ReflectionNamedType && $backing->getName() === 'int') {
+                    return 'integer';
+                }
+            }
+
+            return 'string';
+        }
+
+        return 'string';
+    }
+
+    /**
+     * The scalar a user-chosen cast stores, read from the declared return type of its set() method.
+     * Null when no cast was named, when set() does not declare a single type, or for one of Rhetoric's built-in casts, whose property
+     * type already says how the column is stored (a bool property stays boolean, a date stays dateTime).
+     */
+    private static function castStorage(ColumnMap $column): ?string {
+        if ($column->castClass === null || !\class_exists($column->castClass) || !\method_exists($column->castClass, 'set')) {
+            return null;
+        }
+        if (\in_array(\ltrim($column->castClass, '\\'), self::builtInCasts(), true)) {
+            return null;
+        }
+        ?\ReflectionType $returned = (new \ReflectionMethod($column->castClass, 'set'))->getReturnType();
+        array<int, string> $names = [];
+        if ($returned instanceof \ReflectionNamedType) {
+            $names[] = $returned->getName();
+        } elseif ($returned instanceof \ReflectionUnionType) {
+            foreach ($returned->getTypes() as $member) {
+                if ($member instanceof \ReflectionNamedType) {
+                    $names[] = $member->getName();
+                }
+            }
+        }
+        array<int, string> $kept = [];
+        foreach ($names as $name) {
+            if ($name !== 'null') {
+                $kept[] = $name;
+            }
+        }
+        if (\count($kept) !== 1) {
+            return null;
+        }
+        string $only = \ltrim($kept[0] ?? '', '\\');
+        if ($only === 'mixed' || $only === 'array' || $only === 'object' || $only === 'iterable' || $only === 'void' || $only === 'never') {
+            return null;
+        }
+
+        return $only;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function builtInCasts(): array<int, string> {
+        return [
+            \Tyhp\Rhetoric\Casts\BoolCast::class,
+            \Tyhp\Rhetoric\Casts\DateTimeImmutableCast::class,
+            \Tyhp\Rhetoric\Casts\IntCast::class,
+            \Tyhp\Rhetoric\Casts\BackedEnumCast::class,
+        ];
+    }
+
+    private static function reflectEnum(string $class): \ReflectionEnum {
+        mixed $cases = \call_user_func([$class, 'cases']);
+        if (!\is_array($cases) || $cases === []) {
+            throw new \InvalidArgumentException($class . ' has no cases.');
+        }
+        mixed $case = $cases[0];
+        if (!($case instanceof \UnitEnum)) {
+            throw new \InvalidArgumentException($class . ' is not an enum.');
+        }
+
+        return new \ReflectionEnum($case);
+    }
+
+    private static function explicit(string $type, bool $generated): string {
+        if ($type === 'bigInteger' && $generated) {
+            return 'bigIncrements';
+        }
+        if ($type === 'integer' && $generated) {
+            return 'increments';
+        }
+        if ($type === 'bigIncrements' || $type === 'id') {
+            return 'id';
+        }
+
+        return $type;
+    }
+
+    private static function isConventionId(ModelMap $model, ColumnMap $column): bool {
+        if ($model->key === null || \count($model->key->properties) !== 1) {
+            return false;
+        }
+        if (($model->key->properties[0] ?? '') !== $column->property) {
+            return false;
+        }
+
+        return $column->generated && !$column->nullable && \ltrim($column->type, '\\') === 'int';
+    }
+
+    private static function referencesBigIncrement(ContextMap $map, ModelMap $model, ColumnMap $column): bool {
+        foreach ($model->foreignKeys as $foreignKey) {
+            if (\count($foreignKey->columns) !== 1 || ($foreignKey->columns[0] ?? '') !== $column->name) {
+                continue;
+            }
+            if (\count($foreignKey->referencedColumns) !== 1) {
+                continue;
+            }
+            ?ModelMap $referenced = self::modelByTable($map, $foreignKey->referencedTable);
+            if ($referenced === null) {
+                continue;
+            }
+            ?ColumnMap $key = self::columnByName($referenced, $foreignKey->referencedColumns[0] ?? '');
+            if ($key !== null && self::isConventionId($referenced, $key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<int, ColumnSpec> $columns
+     */
+    private static function generatedKey(ModelMap $model, array<int, ColumnSpec> $columns): bool {
+        if ($model->key === null || \count($model->key->columns) !== 1) {
+            return false;
+        }
+        string $name = $model->key->columns[0] ?? '';
+        foreach ($columns as $column) {
+            if ($column->name !== $name) {
+                continue;
+            }
+
+            return $column->generated
+                && ($column->blueprint === 'id' || $column->blueprint === 'increments' || $column->blueprint === 'bigIncrements');
+        }
+
+        return false;
+    }
+
+    private static function index(string $table, IndexMap $index): IndexSpec {
+        return new IndexSpec(
+            self::indexName($table, $index->columns, $index->unique, $index->name),
+            $index->columns,
+            $index->unique,
+        );
+    }
+
+    private static function foreignKey(ForeignKeyMap $foreignKey): ForeignKeySpec {
+        return new ForeignKeySpec(
+            $foreignKey->name !== ''
+                ? $foreignKey->name
+                : self::foreignKeyName($foreignKey->referencedTable, $foreignKey->columns, null),
+            $foreignKey->columns,
+            $foreignKey->referencedTable,
+            $foreignKey->referencedColumns,
+            $foreignKey->onDelete->value,
+        );
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function seeds(ModelMap $model): array<int, array<string, mixed>> {
+        array<int, array<string, mixed>> $rows = [];
+        foreach ($model->seeds as $row) {
+            array<string, mixed> $normalized = [];
+            foreach ($row as $key => $value) {
+                string $column = $key;
+                ?ColumnMap $mapped = $model->hasColumn($key) ? $model->column($key) : self::columnByName($model, $key);
+                mixed $stored = $value;
+                if ($mapped !== null) {
+                    // The row is written with DB::table, so it holds what the cast stores rather than the model's value.
+                    $column = $mapped->name;
+                    $stored = PropertyBag::database($mapped, $value);
+                }
+                $normalized[$column] = $stored;
+            }
+            $rows[] = $normalized;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, TableSpec>
+     */
+    private static function pivots(ContextMap $map): array<int, TableSpec> {
+        array<string, TableSpec> $pivots = [];
+        foreach ($map->models as $model) {
+            foreach ($model->relations as $relation) {
+                if ($relation->kind !== RelationKind::BelongsToMany) {
+                    continue;
+                }
+                ?TableSpec $pivot = self::pivot($map, $model, $relation);
+                if ($pivot === null) {
+                    continue;
+                }
+                if (isset($pivots[$pivot->table])) {
+                    if (!self::sameEdges($pivots[$pivot->table], $pivot)) {
+                        throw new \InvalidArgumentException('Pivot table ' . $pivot->table . ' is declared with two different shapes.');
+                    }
+                    continue;
+                }
+                $pivots[$pivot->table] = $pivot;
+            }
+        }
+        array<int, TableSpec> $list = [];
+        foreach ($pivots as $pivot) {
+            $list[] = $pivot;
+        }
+
+        return $list;
+    }
+
+    private static function pivot(ContextMap $map, ModelMap $model, RelationMap $relation): ?TableSpec {
+        if ($relation->pivotTable === null || $relation->pivotForeignKey === null || $relation->pivotRelatedKey === null) {
+            return null;
+        }
+        if (!$map->hasModel($relation->relatedClass)) {
+            return null;
+        }
+        ModelMap $related = $map->model($relation->relatedClass);
+        string $ownerReference = $model->key?->columns[0] ?? 'id';
+        string $relatedReference = $related->key?->columns[0] ?? 'id';
+        ColumnSpec $owner = self::pivotColumn($model, $relation->pivotForeignKey, $ownerReference);
+        ColumnSpec $other = self::pivotColumn($related, $relation->pivotRelatedKey, $relatedReference);
+        array<int, ColumnSpec> $columns = [$owner, $other];
+        \usort($columns, fn (ColumnSpec $left, ColumnSpec $right): int => $left->name <=> $right->name);
+        array<int, string> $primary = [];
+        foreach ($columns as $column) {
+            $primary[] = $column->name;
+        }
+        array<int, ForeignKeySpec> $foreignKeys = [
+            new ForeignKeySpec(
+                self::foreignKeyName($relation->pivotTable, [$relation->pivotForeignKey], null),
+                [$relation->pivotForeignKey],
+                $model->table,
+                [$ownerReference],
+                'restrict',
+            ),
+            new ForeignKeySpec(
+                self::foreignKeyName($relation->pivotTable, [$relation->pivotRelatedKey], null),
+                [$relation->pivotRelatedKey],
+                $related->table,
+                [$relatedReference],
+                'restrict',
+            ),
+        ];
+        \usort($foreignKeys, fn (ForeignKeySpec $left, ForeignKeySpec $right): int => $left->name <=> $right->name);
+
+        return new TableSpec(
+            '',
+            $relation->pivotTable,
+            null,
+            false,
+            true,
+            $columns,
+            new KeySpec($primary, false),
+            [],
+            $foreignKeys,
+            [],
+        );
+    }
+
+    private static function pivotColumn(ModelMap $referenced, string $name, string $referencedColumn): ColumnSpec {
+        string $blueprint = 'foreignId';
+        ?ColumnMap $key = self::columnByName($referenced, $referencedColumn);
+        if ($key === null || !self::isConventionId($referenced, $key)) {
+            $blueprint = 'integer';
+            if ($key !== null && \ltrim($key->type, '\\') === 'string') {
+                $blueprint = 'string';
+            }
+        }
+        ?int $length = $blueprint === 'string' ? ($key?->maxLength ?? 255) : null;
+
+        return new ColumnSpec(
+            $name,
+            $name,
+            $blueprint === 'string' ? 'string' : 'int',
+            $blueprint,
+            false,
+            $length,
+            null,
+            null,
+            false,
+            null,
+            false,
+            null,
+        );
+    }
+
+    private static function sameEdges(TableSpec $left, TableSpec $right): bool {
+        return self::edgeSet($left) === self::edgeSet($right)
+            && self::columnSet($left) === self::columnSet($right);
+    }
+
+    private static function edgeSet(TableSpec $table): string {
+        array<int, string> $edges = [];
+        foreach ($table->foreignKeys as $foreignKey) {
+            $edges[] = \implode(',', $foreignKey->columns) . '>' . $foreignKey->referencedTable . '.' . \implode(',', $foreignKey->referencedColumns);
+        }
+        \sort($edges);
+
+        return \implode('|', $edges);
+    }
+
+    private static function columnSet(TableSpec $table): string {
+        array<int, string> $names = [];
+        foreach ($table->columns as $column) {
+            $names[] = $column->name . ':' . $column->blueprint;
+        }
+        \sort($names);
+
+        return \implode('|', $names);
+    }
+
+    /**
+     * @param array<int, IndexSpec> $indexes
+     * @param array<int, string> $columns
+     */
+    private static function hasIndex(array<int, IndexSpec> $indexes, array<int, string> $columns, bool $unique): bool {
+        foreach ($indexes as $index) {
+            if ($index->unique === $unique && $index->columns === $columns) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<int, ColumnSpec> $columns
+     */
+    private static function missing(array<int, ColumnSpec> $columns, string $name): bool {
+        foreach ($columns as $column) {
+            if ($column->name === $name) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<int, string> $columns
+     */
+    public static function indexName(string $table, array<int, string> $columns, bool $unique, ?string $name): string {
+        if ($name !== null && $name !== '') {
+            return $name;
+        }
+
+        return $table . '_' . \implode('_', $columns) . '_' . ($unique ? 'unique' : 'index');
+    }
+
+    /**
+     * @param array<int, string> $columns
+     */
+    public static function foreignKeyName(string $table, array<int, string> $columns, ?string $name): string {
+        if ($name !== null && $name !== '') {
+            return $name;
+        }
+
+        return $table . '_' . \implode('_', $columns) . '_foreign';
+    }
+
+    private static function modelByTable(ContextMap $map, string $table): ?ModelMap {
+        foreach ($map->models as $model) {
+            if ($model->table === $table) {
+                return $model;
+            }
+        }
+
+        return null;
+    }
+
+    private static function columnByName(ModelMap $model, string $name): ?ColumnMap {
+        foreach ($model->columns as $column) {
+            if ($column->name === $name) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+}

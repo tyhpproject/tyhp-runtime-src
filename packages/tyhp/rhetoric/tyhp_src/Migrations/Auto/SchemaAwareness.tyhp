@@ -1,0 +1,206 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Migrations\MigrationWorkspace;
+use Tyhp\Rhetoric\Migrations\SnapshotDocument;
+use Tyhp\Rhetoric\Migrations\SnapshotStore;
+
+/**
+ * Answers schemaHas from applied Rhetoric migrations and their snapshot history.
+ */
+final class SchemaAwareness {
+    /** @var array<string, string> */
+    private static array<string, string> $landed = [];
+
+    /** @var array<string, bool> */
+    private static array<string, bool> $answers = [];
+
+    public static function has(Context $context, string $model, string $property): bool {
+        string $class = \ltrim($model, '\\');
+        if (!isset($context->mapping()->models[$class])) {
+            throw new \InvalidArgumentException($class . ' is not a mapped model.');
+        }
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $context->mapping()->models[$class];
+        if (!$map->hasColumn($property)) {
+            throw new \InvalidArgumentException($class . ' has no mapped column ' . $property . '.');
+        }
+        string $column = $map->column($property)->name;
+        string $identity = self::identity($context);
+        if (!isset(self::$landed[$identity])) {
+            self::$landed[$identity] = self::landedHash($context);
+        }
+        string $key = $identity . "\0" . self::$landed[$identity] . "\0" . $map->table . "\0" . $property . "\0" . $column;
+        if (isset(self::$answers[$key])) {
+            return self::$answers[$key];
+        }
+        bool $present = self::columnLanded($context, self::$landed[$identity], $map->table, $property, $column);
+        self::$answers[$key] = $present;
+
+        return $present;
+    }
+
+    public static function forget(): void {
+        self::$landed = [];
+        self::$answers = [];
+    }
+
+    private static function columnLanded(Context $context, string $hash, string $table, string $property, string $column): bool {
+        if ($hash === '') {
+            return false;
+        }
+        SnapshotStore $store = self::snapshots($context);
+        if (!$store->hasHistory($hash)) {
+            return false;
+        }
+        SnapshotDocument $document = $store->recorded($hash);
+        ?\Tyhp\Rhetoric\Migrations\TableSpec $spec = $document->table($table);
+        if ($spec === null) {
+            return false;
+        }
+        foreach ($spec->columns as $stored) {
+            if ($stored->property === $property || $stored->name === $column) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function landedHash(Context $context): string {
+        array<string, bool> $ran = self::ran($context);
+        string $hash = '';
+        foreach (self::files($context) as $file) {
+            if (isset($ran[$file->name])) {
+                $hash = $file->header->snapshot;
+            }
+        }
+
+        return $hash;
+    }
+
+    /**
+     * @return array<int, \Tyhp\Rhetoric\Migrations\MigrationFile>
+     */
+    private static function files(Context $context): array<int, \Tyhp\Rhetoric\Migrations\MigrationFile> {
+        SnapshotStore $store = self::snapshots($context);
+        array<int, \Tyhp\Rhetoric\Migrations\MigrationFile> $files = [];
+        foreach (self::paths($context) as $path) {
+            MigrationWorkspace $workspace = new MigrationWorkspace($store, $path);
+            foreach ($workspace->filesFor($context::class) as $file) {
+                $files[] = $file;
+            }
+        }
+        \usort($files, function (\Tyhp\Rhetoric\Migrations\MigrationFile $left, \Tyhp\Rhetoric\Migrations\MigrationFile $right): int {
+            if ($left->name === $right->name) {
+                return 0;
+            }
+            if ($left->name < $right->name) {
+                return -1;
+            }
+
+            return 1;
+        });
+
+        return $files;
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private static function ran(Context $context): array<string, bool> {
+        array<string, bool> $ran = [];
+        \Illuminate\Database\Connection $connection = $context->connection();
+        string $table = self::table($context);
+        try {
+            mixed $rows = $connection->table($table)->get();
+            if ($rows instanceof \Traversable || \is_array($rows)) {
+                foreach ($rows as $row) {
+                    if (!\is_object($row)) {
+                        continue;
+                    }
+                    mixed $vars = \get_object_vars($row);
+                    if (\is_array($vars) && isset($vars['migration']) && \is_string($vars['migration'])) {
+                        $ran[$vars['migration']] = true;
+                    }
+                }
+            }
+        } catch (\Throwable $exception) {
+            (void)$exception;
+        }
+
+        return $ran;
+    }
+
+    private static function table(Context $context): string {
+        AutoSettings $settings = AutoMigrator::currentSettings();
+        foreach ($settings->sets as $set) {
+            if ($set->context === $context::class) {
+                return $set->table;
+            }
+        }
+        ?string $name = $context->connection()->getName();
+        if ($name !== null && isset($settings->connections[$name])) {
+            string $setName = $settings->connections[$name];
+            if (isset($settings->sets[$setName])) {
+                return $settings->sets[$setName]->table;
+            }
+        }
+
+        return 'migrations';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function paths(Context $context): array<int, string> {
+        AutoSettings $settings = AutoMigrator::currentSettings();
+        foreach ($settings->sets as $set) {
+            if ($set->context === $context::class && $set->paths !== []) {
+                return $set->paths;
+            }
+        }
+        ?string $name = $context->connection()->getName();
+        if ($name !== null && isset($settings->connections[$name]) && isset($settings->sets[$settings->connections[$name]])) {
+            MigrationSet $set = $settings->sets[$settings->connections[$name]];
+            if ($set->paths !== []) {
+                return $set->paths;
+            }
+        }
+        return ['database/migrations'];
+    }
+
+    private static function snapshots(Context $context): SnapshotStore {
+        AutoSettings $settings = AutoMigrator::currentSettings();
+        if ($settings->snapshotPath !== null) {
+            return new SnapshotStore($settings->snapshotPath);
+        }
+        ?\Illuminate\Contracts\Container\Container $app = AutoMigrator::container();
+        if ($app !== null && $app->bound('path.database')) {
+            mixed $database = $app->get('path.database');
+            if (\is_string($database) && $database !== '') {
+                return new SnapshotStore(\rtrim($database, '/\\') . '/rhetoric');
+            }
+        }
+        (void)$context;
+
+        return new SnapshotStore('database/rhetoric');
+    }
+
+    private static function identity(Context $context): string {
+        \Illuminate\Database\Connection $connection = $context->connection();
+        mixed $config = $connection->getConfig(null);
+        string $database = '';
+        string $driver = $connection->getDriverName();
+        if (\is_array($config)) {
+            mixed $name = $config['database'] ?? null;
+            if (\is_string($name)) {
+                $database = $name;
+            }
+        }
+        ?string $connectionName = $connection->getName();
+
+        return ($connectionName ?? '') . "\0" . $driver . "\0" . $database . "\0" . $context::class;
+    }
+}

@@ -1,0 +1,67 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+enum OperationKind: string {
+    case CreateTable = 'createTable';
+    case DropTable = 'dropTable';
+    case AddColumn = 'addColumn';
+    case DropColumn = 'dropColumn';
+    case AlterColumn = 'alterColumn';
+    case RenameColumn = 'renameColumn';
+    case AddIndex = 'addIndex';
+    case DropIndex = 'dropIndex';
+    case AddForeignKey = 'addForeignKey';
+    case DropForeignKey = 'dropForeignKey';
+    case AddTimestamps = 'addTimestamps';
+    case DropTimestamps = 'dropTimestamps';
+    case SeedInsert = 'seedInsert';
+    case SeedDelete = 'seedDelete';
+}
+
+final class Operation {
+    public function __construct(
+        public OperationKind $kind,
+        public string $table,
+        public bool $reversible = true,
+        public string $warning = '',
+        public ?ColumnSpec $column = null,
+        public ?ColumnSpec $previous = null,
+        public ?string $fromName = null,
+        public ?string $toName = null,
+        public ?IndexSpec $index = null,
+        public ?ForeignKeySpec $foreignKey = null,
+        public ?TableSpec $defined = null,
+        public ?array<string, mixed> $row = null,
+    ) {}
+}
+
+final class MigrationPlan {
+    public function __construct(
+        public array<int, Operation> $operations,
+        public array<int, string> $warnings,
+    ) {}
+
+    public function reversible(): bool {
+        foreach ($this->operations as $operation) {
+            if (!$operation->reversible) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function losesData(): bool {
+        foreach ($this->operations as $operation) {
+            if ($operation->kind === OperationKind::DropTable || $operation->kind === OperationKind::DropColumn || $operation->kind === OperationKind::DropTimestamps) {
+                return true;
+            }
+            if ($operation->kind === OperationKind::AlterColumn && $operation->warning !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

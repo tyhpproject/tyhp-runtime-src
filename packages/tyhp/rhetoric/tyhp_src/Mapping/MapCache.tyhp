@@ -1,0 +1,39 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+final class MapCache {
+    private static array<string, ContextMap> $maps = [];
+
+    public static function remember(__ClassName $contextClass, \Closure $factory): ContextMap {
+        if (isset(self::$maps[$contextClass])) {
+            return self::$maps[$contextClass];
+        }
+
+        mixed $built = $factory();
+        if (!($built instanceof ContextMap)) {
+            throw new \TypeError('Mapping factory must return a ContextMap.');
+        }
+
+        self::$maps[$contextClass] = $built;
+
+        return $built;
+    }
+
+    public static function store(__ClassName $contextClass, ContextMap $map): void {
+        self::$maps[$contextClass] = $map;
+        string $trimmed = \ltrim($contextClass, '\\');
+        if ($trimmed !== $contextClass) {
+            self::$maps[$trimmed] = $map;
+        }
+    }
+
+    public static function forget(string $contextClass): void {
+        unset(self::$maps[$contextClass]);
+        unset(self::$maps[\ltrim($contextClass, '\\')]);
+    }
+
+    public static function clear(): void {
+        self::$maps = [];
+    }
+}

@@ -1,0 +1,271 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+/**
+ * Applies the same operations a generated migration would, without Artisan.
+ */
+final class SchemaApplier {
+    /**
+     * @param array<int, Operation> $operations
+     */
+    public static function apply(\Illuminate\Database\Connection $connection, array<int, Operation> $operations): void {
+        \Illuminate\Database\Schema\Builder $schema = $connection->getSchemaBuilder();
+        foreach ($operations as $operation) {
+            self::one($connection, $schema, $operation);
+        }
+    }
+
+    private static function one(
+        \Illuminate\Database\Connection $connection,
+        \Illuminate\Database\Schema\Builder $schema,
+        Operation $operation,
+    ): void {
+        if ($operation->kind === OperationKind::CreateTable) {
+            if ($operation->defined === null) {
+                throw new \InvalidArgumentException('A create table operation needs a table definition.');
+            }
+            TableSpec $defined = $operation->defined;
+            $schema->create($operation->table, function (\Illuminate\Database\Schema\Blueprint $table) use ($defined): void {
+                self::fill($table, $defined);
+            });
+
+            return;
+        }
+        if ($operation->kind === OperationKind::DropTable) {
+            $schema->dropIfExists($operation->table);
+
+            return;
+        }
+        if ($operation->kind === OperationKind::AddColumn || $operation->kind === OperationKind::AlterColumn) {
+            if ($operation->column === null) {
+                throw new \InvalidArgumentException('A column operation needs a column.');
+            }
+            ColumnSpec $column = $operation->column;
+            bool $change = $operation->kind === OperationKind::AlterColumn;
+            $schema->table($operation->table, function (\Illuminate\Database\Schema\Blueprint $table) use ($column, $change): void {
+                self::column($table, $column, $change);
+            });
+
+            return;
+        }
+        if ($operation->kind === OperationKind::DropColumn) {
+            if ($operation->column === null) {
+                throw new \InvalidArgumentException('A drop column operation needs a column.');
+            }
+            string $name = $operation->column->name;
+            $schema->table($operation->table, function (\Illuminate\Database\Schema\Blueprint $table) use ($name): void {
+                $table->dropColumn($name);
+            });
+
+            return;
+        }
+        if ($operation->kind === OperationKind::RenameColumn) {
+            if ($operation->fromName === null || $operation->toName === null) {
+                throw new \InvalidArgumentException('A rename operation needs both names.');
+            }
+            string $from = $operation->fromName;
+            string $to = $operation->toName;
+            $schema->table($operation->table, function (\Illuminate\Database\Schema\Blueprint $table) use ($from, $to): void {
+                $table->renameColumn($from, $to);
+            });
+
+            return;
+        }
+        if ($operation->kind === OperationKind::AddIndex || $operation->kind === OperationKind::DropIndex) {
+            if ($operation->index === null) {
+                throw new \InvalidArgumentException('An index operation needs an index.');
+            }
+            IndexSpec $index = $operation->index;
+            bool $add = $operation->kind === OperationKind::AddIndex;
+            $schema->table($operation->table, function (\Illuminate\Database\Schema\Blueprint $table) use ($index, $add): void {
+                if ($add) {
+                    if ($index->unique) {
+                        $table->unique($index->columns, $index->name);
+                    } else {
+                        $table->index($index->columns, $index->name);
+                    }
+
+                    return;
+                }
+                if ($index->unique) {
+                    $table->dropUnique($index->name);
+                } else {
+                    $table->dropIndex($index->name);
+                }
+            });
+
+            return;
+        }
+        if ($operation->kind === OperationKind::AddForeignKey || $operation->kind === OperationKind::DropForeignKey) {
+            if ($operation->foreignKey === null) {
+                throw new \InvalidArgumentException('A foreign key operation needs a foreign key.');
+            }
+            ForeignKeySpec $foreignKey = $operation->foreignKey;
+            bool $add = $operation->kind === OperationKind::AddForeignKey;
+            string $owner = $operation->table;
+            $schema->table($owner, function (\Illuminate\Database\Schema\Blueprint $table) use ($foreignKey, $add, $owner): void {
+                if (!$add) {
+                    if (ColumnBlueprint::conventional($owner, $foreignKey)) {
+                        $table->dropForeign($foreignKey->columns);
+                    } else {
+                        $table->dropForeign($foreignKey->name);
+                    }
+
+                    return;
+                }
+                self::foreign($table, $owner, $foreignKey);
+            });
+
+            return;
+        }
+        if ($operation->kind === OperationKind::AddTimestamps || $operation->kind === OperationKind::DropTimestamps) {
+            bool $add = $operation->kind === OperationKind::AddTimestamps;
+            $schema->table($operation->table, function (\Illuminate\Database\Schema\Blueprint $table) use ($add): void {
+                if ($add) {
+                    $table->timestamps();
+                } else {
+                    $table->dropTimestamps();
+                }
+            });
+
+            return;
+        }
+        if ($operation->kind === OperationKind::SeedInsert) {
+            self::seed($connection, $operation, true);
+
+            return;
+        }
+        if ($operation->kind === OperationKind::SeedDelete) {
+            self::seed($connection, $operation, false);
+
+            return;
+        }
+
+        throw new \InvalidArgumentException('Unknown migration operation.');
+    }
+
+    private static function fill(\Illuminate\Database\Schema\Blueprint $table, TableSpec $defined): void {
+        foreach ($defined->columns as $column) {
+            self::column($table, $column, false);
+        }
+        if ($defined->key !== null && !$defined->key->generated && $defined->key->columns !== []) {
+            $table->primary($defined->key->columns);
+        }
+        foreach ($defined->indexes as $index) {
+            if ($index->unique) {
+                $table->unique($index->columns, $index->name);
+            } else {
+                $table->index($index->columns, $index->name);
+            }
+        }
+        if ($defined->timestamps) {
+            $table->timestamps();
+        }
+        if ($defined->comment !== null) {
+            $table->comment($defined->comment);
+        }
+    }
+
+    private static function column(\Illuminate\Database\Schema\Blueprint $table, ColumnSpec $column, bool $change): void {
+        \Illuminate\Database\Schema\ColumnDefinition $defined = self::define($table, $column);
+        if ($column->nullable) {
+            $defined->nullable(true);
+        } elseif ($change) {
+            $defined->nullable(false);
+        }
+        if ($column->hasDefault) {
+            $defined->default($column->default);
+        }
+        if ($column->comment !== null) {
+            $defined->set('comment', $column->comment);
+        }
+        if ($change) {
+            $defined->change();
+        }
+    }
+
+    private static function define(\Illuminate\Database\Schema\Blueprint $table, ColumnSpec $column): \Illuminate\Database\Schema\ColumnDefinition {
+        string $name = $column->name;
+        if ($column->blueprint === 'id') {
+            return $name === 'id' ? $table->id() : $table->id($name);
+        }
+        if ($column->blueprint === 'increments') {
+            return $table->increments($name);
+        }
+        if ($column->blueprint === 'bigIncrements') {
+            return $table->bigIncrements($name);
+        }
+        if ($column->blueprint === 'integer') {
+            return $table->integer($name);
+        }
+        if ($column->blueprint === 'bigInteger') {
+            return $table->bigInteger($name);
+        }
+        if ($column->blueprint === 'foreignId') {
+            return $table->foreignId($name);
+        }
+        if ($column->blueprint === 'string') {
+            return $table->string($name, $column->maxLength ?? 255);
+        }
+        if ($column->blueprint === 'text') {
+            return $table->text($name);
+        }
+        if ($column->blueprint === 'json') {
+            return $table->json($name);
+        }
+        if ($column->blueprint === 'boolean') {
+            return $table->boolean($name);
+        }
+        if ($column->blueprint === 'double') {
+            return $table->double($name);
+        }
+        if ($column->blueprint === 'float') {
+            return $table->float($name, $column->precision ?? 53);
+        }
+        if ($column->blueprint === 'decimal') {
+            return $table->decimal($name, $column->precision ?? 8, $column->scale ?? 2);
+        }
+        if ($column->blueprint === 'dateTime') {
+            return $table->dateTime($name);
+        }
+        if ($column->blueprint === 'timestamp') {
+            return $table->timestamp($name);
+        }
+
+        return $table->string($name, 255);
+    }
+
+    private static function foreign(\Illuminate\Database\Schema\Blueprint $table, string $owner, ForeignKeySpec $foreignKey): void {
+        \Illuminate\Database\Schema\ForeignKeyDefinition $foreign = ColumnBlueprint::conventional($owner, $foreignKey)
+            ? $table->foreign($foreignKey->columns)
+            : $table->foreign($foreignKey->columns, $foreignKey->name);
+        if (\count($foreignKey->referencedColumns) === 1) {
+            $foreign->set('references', $foreignKey->referencedColumns[0] ?? '');
+        } else {
+            $foreign->set('references', $foreignKey->referencedColumns);
+        }
+        $foreign->on($foreignKey->referencedTable);
+    }
+
+    private static function seed(\Illuminate\Database\Connection $connection, Operation $operation, bool $insert): void {
+        if ($operation->row === null) {
+            throw new \InvalidArgumentException('A seed operation needs a row.');
+        }
+        \Illuminate\Database\Query\Builder $query = $connection->table($operation->table);
+        if ($insert) {
+            $query->insert($operation->row);
+
+            return;
+        }
+        array<string, mixed> $row = $operation->row;
+        foreach ($row as $column => $value) {
+            if ($value === null) {
+                $query = $query->whereNull($column);
+            } else {
+                $query = $query->where($column, '=', $value);
+            }
+        }
+        $query->delete();
+    }
+}

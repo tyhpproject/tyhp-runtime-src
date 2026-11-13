@@ -1,0 +1,260 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+final class ReadColumn {
+    public function __construct(
+        public string $name,
+        public string $typeName,
+        public string $type,
+        public bool $nullable,
+        public bool $autoIncrement,
+        public mixed $default,
+        public ?string $comment,
+    ) {}
+}
+
+final class ReadIndex {
+    public function __construct(
+        public string $name,
+        public array<int, string> $columns,
+        public bool $unique,
+        public bool $primary,
+    ) {}
+}
+
+final class ReadForeignKey {
+    public function __construct(
+        public array<int, string> $columns,
+        public string $foreignTable,
+        public array<int, string> $foreignColumns,
+        public string $onDelete,
+    ) {}
+}
+
+final class ReadTable {
+    public function __construct(
+        public string $name,
+        public ?string $comment,
+        public bool $view,
+        public array<int, ReadColumn> $columns,
+        public array<int, ReadIndex> $indexes,
+        public array<int, ReadForeignKey> $foreignKeys,
+    ) {}
+}
+
+final class ReadSchema {
+    public function __construct(
+        public array<int, ReadTable> $tables,
+    ) {}
+
+    public function named(string $name): ?ReadTable {
+        foreach ($this->tables as $table) {
+            if ($table->name === $name) {
+                return $table;
+            }
+        }
+
+        return null;
+    }
+}
+
+final class SchemaReader {
+    /**
+     * @param array<int, string> $tables empty reads every table and view
+     * @param array<int, string> $exclude
+     */
+    public static function read(
+        \Illuminate\Database\Connection $connection,
+        ?string $schema,
+        array<int, string> $tables,
+        array<int, string> $exclude,
+    ): ReadSchema {
+        \Illuminate\Database\Schema\Builder $builder = $connection->getSchemaBuilder();
+        string $prefix = $connection->getTablePrefix();
+        array<string, bool> $wanted = self::set($tables);
+        array<string, bool> $skipped = self::set($exclude);
+        array<int, ReadTable> $read = [];
+        foreach ($builder->getTables($schema) as $table) {
+            ?ReadTable $one = self::table($builder, $prefix, $table->name, $table->comment, false, $wanted, $skipped);
+            if ($one !== null) {
+                $read[] = $one;
+            }
+        }
+        foreach ($builder->getViews($schema) as $view) {
+            ?ReadTable $one = self::table($builder, $prefix, $view->name, null, true, $wanted, $skipped);
+            if ($one !== null) {
+                $read[] = $one;
+            }
+        }
+
+        return new ReadSchema($read);
+    }
+
+    /**
+     * @param array<string, bool> $wanted
+     * @param array<string, bool> $skipped
+     */
+    private static function table(
+        \Illuminate\Database\Schema\Builder $builder,
+        string $prefix,
+        string $reported,
+        ?string $comment,
+        bool $view,
+        array<string, bool> $wanted,
+        array<string, bool> $skipped,
+    ): ?ReadTable {
+        // Laravel adds the prefix to every schema call, so a table without it cannot be read through this connection.
+        if ($prefix !== '' && (!\str_starts_with($reported, $prefix) || $reported === $prefix)) {
+            return null;
+        }
+        string $name = self::unprefix($reported, $prefix);
+        if ($name === '' || \str_starts_with($name, 'sqlite_')) {
+            return null;
+        }
+        if ($wanted !== [] && !isset($wanted[$name])) {
+            return null;
+        }
+        if (isset($skipped[$name])) {
+            return null;
+        }
+        array<int, ReadColumn> $columns = self::columns($builder, $name);
+        array<int, ReadIndex> $indexes = [];
+        array<int, ReadForeignKey> $foreignKeys = [];
+        if (!$view) {
+            $indexes = self::indexes($builder, $name, $prefix);
+            $foreignKeys = self::foreignKeys($builder, $name, $prefix);
+        }
+
+        return new ReadTable($name, $comment, $view, $columns, $indexes, $foreignKeys);
+    }
+
+    /**
+     * @return array<int, ReadColumn>
+     */
+    private static function columns(\Illuminate\Database\Schema\Builder $builder, string $table): array<int, ReadColumn> {
+        try {
+            array<int, \Illuminate\Database\DatabaseColumnInfo> $rows = $builder->getColumns($table);
+            array<int, ReadColumn> $columns = [];
+            foreach ($rows as $row) {
+                $columns[] = new ReadColumn(
+                    $row->name,
+                    \strtolower($row->type_name),
+                    \strtolower($row->type),
+                    $row->nullable,
+                    $row->auto_increment,
+                    $row->default,
+                    $row->comment,
+                );
+            }
+
+            return $columns;
+        } catch (\Throwable $exception) {
+            throw new \RuntimeException('Could not read columns for ' . $table . ': ' . $exception->getMessage());
+        }
+    }
+
+    /**
+     * @return array<int, ReadIndex>
+     */
+    private static function indexes(
+        \Illuminate\Database\Schema\Builder $builder,
+        string $table,
+        string $prefix,
+    ): array<int, ReadIndex> {
+        try {
+            array<int, \Illuminate\Database\DatabaseIndexInfo> $rows = $builder->getIndexes($table);
+            array<int, ReadIndex> $indexes = [];
+            foreach ($rows as $row) {
+                $indexes[] = new ReadIndex(
+                    self::unprefix($row->name, $prefix),
+                    self::strings($row->columns),
+                    $row->unique,
+                    $row->primary,
+                );
+            }
+
+            return $indexes;
+        } catch (\Throwable $exception) {
+            throw new \RuntimeException('Could not read indexes for ' . $table . ': ' . $exception->getMessage());
+        }
+    }
+
+    /**
+     * @return array<int, ReadForeignKey>
+     */
+    private static function foreignKeys(
+        \Illuminate\Database\Schema\Builder $builder,
+        string $table,
+        string $prefix,
+    ): array<int, ReadForeignKey> {
+        try {
+            array<int, \Illuminate\Database\DatabaseForeignKeyInfo> $rows = $builder->getForeignKeys($table);
+            array<int, ReadForeignKey> $keys = [];
+            foreach ($rows as $row) {
+                string $foreign = self::unprefix(self::bare($row->foreign_table), $prefix);
+                string $onDelete = $row->on_delete ?? '';
+                $keys[] = new ReadForeignKey(
+                    self::strings($row->columns),
+                    $foreign,
+                    self::strings($row->foreign_columns),
+                    \strtolower($onDelete),
+                );
+            }
+
+            return $keys;
+        } catch (\Throwable $exception) {
+            throw new \RuntimeException('Could not read foreign keys for ' . $table . ': ' . $exception->getMessage());
+        }
+    }
+
+    /**
+     * @param array<int, string> $values
+     * @return array<int, string>
+     */
+    private static function strings(array<int, string> $values): array<int, string> {
+        array<int, string> $copy = [];
+        foreach ($values as $value) {
+            $copy[] = $value;
+        }
+
+        return $copy;
+    }
+
+    private static function bare(string $name): string {
+        int|false $dot = \strrpos($name, '.');
+        if ($dot === false) {
+            return $name;
+        }
+
+        return \substr($name, $dot + 1);
+    }
+
+    private static function unprefix(string $name, string $prefix): string {
+        if ($prefix === '' || !\str_starts_with($name, $prefix)) {
+            return $name;
+        }
+        string $bare = \substr($name, \strlen($prefix));
+        if ($bare === '') {
+            return $name;
+        }
+
+        return $bare;
+    }
+
+    /**
+     * @param array<int, string> $names
+     * @return array<string, bool>
+     */
+    private static function set(array<int, string> $names): array<string, bool> {
+        array<string, bool> $set = [];
+        foreach ($names as $name) {
+            string $trimmed = \trim($name);
+            if ($trimmed !== '') {
+                $set[$trimmed] = true;
+            }
+        }
+
+        return $set;
+    }
+}

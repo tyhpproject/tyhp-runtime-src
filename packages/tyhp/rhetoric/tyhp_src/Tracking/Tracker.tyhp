@@ -1,0 +1,982 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Tracking;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+
+final class Tracker {
+    /** @var array<int, TrackedRecord> */
+    private array<int, TrackedRecord> $records = [];
+
+    /** @var array<string, TrackedRecord> */
+    private array<string, TrackedRecord> $byKey = [];
+
+    /** @var array<int, PivotEdit> */
+    private array<int, PivotEdit> $pivotEdits = [];
+
+    /** @var array<string, bool> */
+    private array<string, bool> $pivotSeen = [];
+
+    public function __construct(
+        private Context $context,
+    ) {}
+
+    public function detectChanges(): void {
+        $this->adoptReferences();
+        $this->pivotEdits = [];
+        $this->pivotSeen = [];
+        // Reset every flag before any sync runs: a principal that syncs first marks its dependents, and a
+        // reset made when the dependent itself syncs would erase that mark.
+        foreach ($this->records as $record) {
+            if ($record->state === TrackingState::Clean || $record->state === TrackingState::Dirty) {
+                $record->relationDirty = false;
+            }
+        }
+        array<int, bool> $synced = [];
+        bool $pending = true;
+        while ($pending) {
+            array<int, TrackedRecord> $batch = [];
+            foreach ($this->records as $record) {
+                int $id = \spl_object_id($record->model);
+                if (isset($synced[$id])) {
+                    continue;
+                }
+                $batch[] = $record;
+            }
+            if (\count($batch) === 0) {
+                $pending = false;
+                continue;
+            }
+            foreach ($batch as $record) {
+                $synced[\spl_object_id($record->model)] = true;
+                $this->syncRelations($record);
+                $this->compare($record);
+            }
+        }
+        // A later principal can write a foreign key onto a row that was already compared.
+        foreach ($this->records as $record) {
+            $this->compare($record);
+        }
+    }
+
+    /**
+     * @return array<int, PivotEdit>
+     */
+    public function pivotEdits(): array<int, PivotEdit> {
+        return $this->pivotEdits;
+    }
+
+    public function clearPivotEdits(): void {
+        $this->pivotEdits = [];
+        $this->pivotSeen = [];
+    }
+
+    public function captureRelation(object $model, string $property): void {
+        ?TrackedRecord $record = $this->recordFor($model);
+        if ($record === null || !$record->map->hasRelation($property)) {
+            return;
+        }
+        $record->relationMembers[$property] = $this->readMembers($model, $record->map->relation($property));
+    }
+
+    public function captureAll(object $model): void {
+        ?TrackedRecord $record = $this->recordFor($model);
+        if ($record === null) {
+            return;
+        }
+        foreach ($record->map->relations as $relation) {
+            $record->relationMembers[$relation->property] = $this->readMembers($model, $relation);
+        }
+    }
+
+    public function clear(): void {
+        $this->records = [];
+        $this->byKey = [];
+        $this->pivotEdits = [];
+        $this->pivotSeen = [];
+    }
+
+    #[\Tyhp\InferGeneric]
+    public function entry<T>(T $model): TrackedEntry<T> {
+        if (!\is_object($model)) {
+            throw new \InvalidArgumentException('entry() requires a model.');
+        }
+
+        return new TrackedEntry<T>($this, $model);
+    }
+
+    public function recordOrUntracked(object $model): TrackedRecord {
+        ?TrackedRecord $record = $this->recordFor($model);
+        if ($record !== null) {
+            return $record;
+        }
+
+        return new TrackedRecord($model, $this->requireMap($model), TrackingState::Untracked, [], false, []);
+    }
+
+    public function add(ModelMap $map, object $model): void {
+        ?TrackedRecord $existing = $this->recordFor($model);
+        if ($existing !== null) {
+            if ($existing->state === TrackingState::Added) {
+                return;
+            }
+            throw new \InvalidArgumentException($map->class . ' is already tracked.');
+        }
+        $this->store($this->make($map, $model, TrackingState::Added, false));
+    }
+
+    public function track(ModelMap $map, mixed $model, bool $dirty): void {
+        if (!\is_object($model)) {
+            throw new \InvalidArgumentException('A model must be an object.');
+        }
+        ?TrackedRecord $existing = $this->recordFor($model);
+        if ($existing !== null) {
+            if ($existing->state === TrackingState::Added || $existing->state === TrackingState::Deleted) {
+                return;
+            }
+            if ($dirty) {
+                $existing->state = TrackingState::Dirty;
+                $existing->forceDirty = true;
+                $existing->dirty = $this->allColumns($map);
+            }
+
+            return;
+        }
+        TrackingState $state = $dirty ? TrackingState::Dirty : TrackingState::Clean;
+        $this->store($this->make($map, $model, $state, $dirty));
+    }
+
+    public function remove(ModelMap $map, object $model): void {
+        ?TrackedRecord $existing = $this->recordFor($model);
+        if ($existing !== null) {
+            if ($existing->state === TrackingState::Added) {
+                $this->forget($existing);
+
+                return;
+            }
+            if ($existing->state === TrackingState::Deleted) {
+                return;
+            }
+            $existing->state = TrackingState::Deleted;
+
+            return;
+        }
+        if ($map->key === null || PropertyBag::temporary($map, $model)) {
+            throw new \InvalidArgumentException($map->class . ' is not tracked.');
+        }
+        $this->store($this->make($map, $model, TrackingState::Deleted, false));
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    public function stored(ModelMap $map, array<int, mixed> $parts): ?object {
+        string $key = self::identity($map->class, self::normalize($map, $parts));
+        if (!isset($this->byKey[$key])) {
+            return null;
+        }
+
+        return $this->byKey[$key]->model;
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    public function storedState(ModelMap $map, array<int, mixed> $parts): ?TrackingState {
+        string $key = self::identity($map->class, self::normalize($map, $parts));
+        if (!isset($this->byKey[$key])) {
+            return null;
+        }
+
+        return $this->byKey[$key]->state;
+    }
+
+    public function indexKey(ModelMap $map, mixed $model): ?string {
+        if (!\is_object($model) || $map->key === null || PropertyBag::temporary($map, $model)) {
+            return null;
+        }
+        array<int, mixed> $parts = [];
+        foreach ($map->key->properties as $property) {
+            $parts[] = PropertyBag::raw($model, $property);
+        }
+
+        return self::identity($map->class, self::normalize($map, $parts));
+    }
+
+    public function modelForKey(string $key): ?object {
+        if (!isset($this->byKey[$key])) {
+            return null;
+        }
+
+        return $this->byKey[$key]->model;
+    }
+
+    /**
+     * @return array<int, TrackedRecord>
+     */
+    public function records(): array<int, TrackedRecord> {
+        array<int, TrackedRecord> $list = [];
+        foreach ($this->records as $record) {
+            $list[] = $record;
+        }
+
+        return $list;
+    }
+
+    public function remember(TrackedRecord $record): void {
+        ?string $key = $this->indexKey($record->map, $record->model);
+        if ($key === null) {
+            return;
+        }
+        if (isset($this->byKey[$key]) && $this->byKey[$key]->model !== $record->model) {
+            throw new \InvalidArgumentException($record->map->class . ' is already tracked for this key.');
+        }
+        $this->byKey[$key] = $record;
+    }
+
+    public function forget(TrackedRecord $record): void {
+        int $id = \spl_object_id($record->model);
+        unset($this->records[$id]);
+        ?string $key = $this->indexKey($record->map, $record->model);
+        if ($key !== null && isset($this->byKey[$key]) && $this->byKey[$key]->model === $record->model) {
+            unset($this->byKey[$key]);
+        }
+        $record->state = TrackingState::Untracked;
+    }
+
+    public function acceptRestored(object $model): void {
+        ?TrackedRecord $record = $this->recordFor($model);
+        if ($record === null || $record->state === TrackingState::Untracked) {
+            return;
+        }
+        $record->state = TrackingState::Clean;
+        $record->forceDirty = false;
+        $record->dirty = [];
+        $record->original = PropertyBag::snapshot($record->map, $record->model);
+        $this->remember($record);
+    }
+
+    public function refresh(TrackedRecord $record): void {
+        if ($record->map->key === null) {
+            throw new \LogicException($record->map->class . ' has no key.');
+        }
+        array<int, mixed> $normal = $this->keyParts($record);
+        array<string, object> $navigations = $this->navigations($record);
+        $this->context->ghosts()->release($record->model);
+        \Tyhp\Lazy::reset($record->model, function (object $model) use ($record, $normal): void {
+            $this->context->ghosts()->reload($record->map, $model, $normal);
+        }, $this->resetOption());
+        if (\Tyhp\Lazy::isLazy($record->model)) {
+            // A reset instance has lost its key and its navigations. Put them back so a failed load leaves a usable ghost.
+            $this->restoreKey($record, $normal);
+            $this->restoreNavigations($record, $navigations);
+        }
+        \Tyhp\Lazy::initialize($record->model);
+        $record->original = PropertyBag::capture($record->map, $record->model);
+        $record->dirty = [];
+        $record->forceDirty = false;
+        $record->relationDirty = false;
+        $record->state = TrackingState::Clean;
+        $this->remember($record);
+    }
+
+    public function expire(TrackedRecord $record): void {
+        if ($record->map->key === null) {
+            throw new \LogicException($record->map->class . ' has no key.');
+        }
+        array<int, mixed> $normal = $this->keyParts($record);
+        array<string, object> $navigations = $this->navigations($record);
+        $this->context->ghosts()->release($record->model);
+        \Tyhp\Lazy::reset($record->model, function (object $model) use ($record, $normal): void {
+            $this->context->ghosts()->reload($record->map, $model, $normal);
+        }, $this->resetOption());
+        if (\Tyhp\Lazy::isLazy($record->model)) {
+            $this->restoreKey($record, $normal);
+            $this->restoreNavigations($record, $navigations);
+            $record->original = [];
+            $record->dirty = [];
+            $record->forceDirty = false;
+            $record->relationDirty = false;
+            $record->relationMembers = [];
+            $record->state = TrackingState::Clean;
+
+            return;
+        }
+        $record->original = PropertyBag::capture($record->map, $record->model);
+        $record->dirty = [];
+        $record->forceDirty = false;
+        $record->relationDirty = false;
+        $record->state = TrackingState::Clean;
+        $this->remember($record);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function keyParts(TrackedRecord $record): array<int, mixed> {
+        array<int, mixed> $parts = [];
+        if ($record->map->key === null) {
+            return $parts;
+        }
+        foreach ($record->map->key->properties as $property) {
+            $parts[] = PropertyBag::raw($record->model, $property);
+        }
+
+        return self::normalize($record->map, $parts);
+    }
+
+    /**
+     * The objects a record's navigations hold, so a reset can hand the same ones back.
+     *
+     * @return array<string, object>
+     */
+    private function navigations(TrackedRecord $record): array<string, object> {
+        array<string, object> $held = [];
+        foreach ($record->map->relations as $relation) {
+            mixed $value = PropertyBag::raw($record->model, $relation->property);
+            if (\is_object($value)) {
+                $held[$relation->property] = $value;
+            }
+        }
+
+        return $held;
+    }
+
+    /**
+     * @param array<string, object> $held
+     */
+    private function restoreNavigations(TrackedRecord $record, array<string, object> $held): void {
+        foreach ($held as $property => $value) {
+            PropertyBag::write($record->model, $property, $value);
+        }
+    }
+
+    /**
+     * @param array<int, mixed> $normal
+     */
+    private function restoreKey(TrackedRecord $record, array<int, mixed> $normal): void {
+        if ($record->map->key === null) {
+            return;
+        }
+        foreach ($record->map->key->properties as $index => $property) {
+            if (\array_key_exists($index, $normal)) {
+                PropertyBag::write($record->model, $property, $normal[$index]);
+            }
+        }
+    }
+
+    #[\Tyhp\Php(">=8.4")]
+    private function resetOption(): int {
+        return \ReflectionClass::SKIP_DESTRUCTOR;
+    }
+
+    #[\Tyhp\Php("<8.4")]
+    private function resetOption(): int {
+        return 0;
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     * @return array<int, mixed>
+     */
+    public function normalizeKey(ModelMap $map, array<int, mixed> $parts): array<int, mixed> {
+        return self::normalize($map, $parts);
+    }
+
+    public function modelForRow(ModelMap $map, object $row): ?object {
+        ?array<int, mixed> $parts = $this->partsFromRow($map, $row);
+        if ($parts === null) {
+            return null;
+        }
+
+        return $this->stored($map, $parts);
+    }
+
+    /**
+     * @return ?array<int, mixed>
+     */
+    public function partsFromRow(ModelMap $map, object $row): ?array<int, mixed> {
+        if ($map->key === null) {
+            return null;
+        }
+        mixed $cast = (array)$row;
+        if (!\is_array($cast)) {
+            return null;
+        }
+        array<int, mixed> $parts = [];
+        foreach ($map->key->columns as $column) {
+            if (!\array_key_exists($column, $cast)) {
+                return null;
+            }
+            $parts[] = $cast[$column];
+        }
+
+        return $parts;
+    }
+
+    public function finish(object $model): void {
+        ?TrackedRecord $record = $this->recordFor($model);
+        if ($record === null) {
+            return;
+        }
+        array<string, mixed> $read = $record->original;
+        $record->original = PropertyBag::capture($record->map, $model);
+        // A column the ghost held before it loaded keeps the value it was read with, so a change made in
+        // the meantime is still a change.
+        foreach ($read as $property => $value) {
+            if (\array_key_exists($property, $record->original)) {
+                $record->original[$property] = $value;
+            }
+        }
+        $record->dirty = [];
+        $record->forceDirty = false;
+        if ($record->state === TrackingState::Clean || $record->state === TrackingState::Dirty) {
+            $record->state = TrackingState::Clean;
+            $record->relationDirty = false;
+        }
+        foreach ($record->map->relations as $relation) {
+            $record->relationMembers[$relation->property] = $this->readMembers($model, $relation);
+        }
+        $this->remember($record);
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    public static function identity(string $class, array<int, mixed> $parts): string {
+        array<int, string> $tokens = [\ltrim($class, '\\')];
+        foreach ($parts as $part) {
+            if ($part === null) {
+                $tokens[] = 'n';
+                continue;
+            }
+            if (\is_bool($part)) {
+                $tokens[] = $part ? 'b1' : 'b0';
+                continue;
+            }
+            if (\is_int($part)) {
+                $tokens[] = 'i:' . (string)$part;
+                continue;
+            }
+            if (\is_string($part)) {
+                $tokens[] = 's:' . $part;
+                continue;
+            }
+            if (\is_float($part)) {
+                $tokens[] = 'f:' . (string)$part;
+                continue;
+            }
+            if (\is_object($part)) {
+                $tokens[] = 'o:' . (string)\spl_object_id($part);
+                continue;
+            }
+            $tokens[] = 'x';
+        }
+
+        return \implode("\0", $tokens);
+    }
+
+    /**
+     * Key values from a caller or a row arrive as ints or strings. They are converted to the key
+     * property's own type so '7' and 7 meet on an int key while '007' and '7' stay apart on a string key.
+     *
+     * @param array<int, mixed> $parts
+     * @return array<int, mixed>
+     */
+    private static function normalize(ModelMap $map, array<int, mixed> $parts): array<int, mixed> {
+        array<int, mixed> $normal = [];
+        foreach ($parts as $index => $part) {
+            mixed $value = $part;
+            if ($map->key !== null && isset($map->key->properties[$index]) && $map->hasColumn($map->key->properties[$index])) {
+                string $type = \ltrim($map->column($map->key->properties[$index])->type, '?\\');
+                if ($type === 'string' && (\is_int($part) || \is_float($part))) {
+                    $value = (string)$part;
+                } elseif ($type === 'int' && \is_string($part)) {
+                    ?int $integer = self::integerString($part);
+                    if ($integer !== null) {
+                        $value = $integer;
+                    }
+                }
+            }
+            $normal[] = $value;
+        }
+
+        return $normal;
+    }
+
+    /**
+     * The integer a string spells out, or null when the string is anything else (a decimal, a trailing
+     * newline, or a number too large for an int).
+     */
+    private static function integerString(string $text): ?int {
+        if (\preg_match('/^-?[0-9]+\z/', $text) !== 1) {
+            return null;
+        }
+        bool $negative = \str_starts_with($text, '-');
+        string $digits = \ltrim($negative ? \substr($text, 1) : $text, '0');
+        if ($digits === '') {
+            $digits = '0';
+        }
+        int $integer = (int)$text;
+        if ((string)$integer !== (($negative && $digits !== '0') ? '-' . $digits : $digits)) {
+            return null;
+        }
+
+        return $integer;
+    }
+
+    private function make(ModelMap $map, object $model, TrackingState $state, bool $dirty): TrackedRecord {
+        if (\Tyhp\Lazy::isLazy($model)) {
+            array<string, bool> $columns = $dirty ? $this->allColumns($map) : [];
+
+            return new TrackedRecord($model, $map, $state, PropertyBag::snapshot($map, $model), $dirty, $columns, [], false);
+        }
+        array<string, bool> $columns = $dirty ? $this->allColumns($map) : [];
+        array<string, array<int, object>> $members = [];
+        foreach ($map->relations as $relation) {
+            $members[$relation->property] = $this->readMembers($model, $relation);
+        }
+
+        return new TrackedRecord($model, $map, $state, PropertyBag::snapshot($map, $model), $dirty, $columns, $members, false);
+    }
+
+    private function store(TrackedRecord $record): void {
+        $this->records[\spl_object_id($record->model)] = $record;
+        $this->remember($record);
+    }
+
+    private function recordFor(object $model): ?TrackedRecord {
+        int $id = \spl_object_id($model);
+        if (!isset($this->records[$id])) {
+            return null;
+        }
+
+        return $this->records[$id];
+    }
+
+    private function requireMap(object $model): ModelMap {
+        string $name = $model::class;
+        if (\class_exists($name) && $this->context->mapping()->hasModel($name)) {
+            return $this->context->mapping()->model($name);
+        }
+
+        throw new \InvalidArgumentException($name . ' is not a mapped model.');
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function allColumns(ModelMap $map): array<string, bool> {
+        array<string, bool> $names = [];
+        foreach ($map->columns as $column) {
+            $names[$column->property] = true;
+        }
+
+        return $names;
+    }
+
+    private function compare(TrackedRecord $record): void {
+        // A ghost is compared on the columns it holds. Reading the rest would load it.
+        bool $ghost = \Tyhp\Lazy::isLazy($record->model);
+        if ($record->state !== TrackingState::Clean && $record->state !== TrackingState::Dirty) {
+            return;
+        }
+        if (!$record->forceDirty) {
+            $record->dirty = [];
+        }
+        bool $dirty = $record->forceDirty || $record->relationDirty;
+        foreach ($record->map->columns as $column) {
+            if ($column->shadow) {
+                // A shadow column has no property, so the snapshot never holds it and it cannot change.
+                continue;
+            }
+            if ($ghost && (!PropertyBag::held($record->model, $column->property) || !\array_key_exists($column->property, $record->original))) {
+                continue;
+            }
+            mixed $current = PropertyBag::read($record->model, $column->property);
+            bool $known = \array_key_exists($column->property, $record->original);
+            mixed $original = $known ? $record->original[$column->property] : null;
+            if (!$known || !PropertyBag::same($current, $original)) {
+                $record->dirty[$column->property] = true;
+                $dirty = true;
+            }
+        }
+        $record->state = $dirty ? TrackingState::Dirty : TrackingState::Clean;
+    }
+
+    private function adoptReferences(): void {
+        array<int, bool> $seen = [];
+        array<int, TrackedRecord> $queue = [];
+        foreach ($this->records as $record) {
+            $queue[] = $record;
+        }
+        int $index = 0;
+        while ($index < \count($queue)) {
+            TrackedRecord $record = $queue[$index];
+            $index++;
+            int $id = \spl_object_id($record->model);
+            if (isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            if ($record->state === TrackingState::Deleted || $record->state === TrackingState::Untracked) {
+                continue;
+            }
+            foreach ($record->map->relations as $relation) {
+                foreach ($this->readMembers($record->model, $relation) as $value) {
+                    $this->adoptMember($value, $relation->relatedClass, $queue);
+                }
+            }
+        }
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    private function readMembers(object $model, RelationMap $relation): array<int, object> {
+        if (\Tyhp\Lazy::isLazy($model)) {
+            return [];
+        }
+        mixed $value = PropertyBag::read($model, $relation->property);
+        if ($value instanceof \Tyhp\Rhetoric\LazyCollection) {
+            if (!$value->isLoaded()) {
+                return [];
+            }
+            array<int, object> $loaded = [];
+            foreach ($value->values() as $item) {
+                if (\is_object($item)) {
+                    $loaded[] = $item;
+                }
+            }
+
+            return $loaded;
+        }
+        array<int, object> $members = [];
+        if ($relation->kind === RelationKind::BelongsTo || $relation->kind === RelationKind::HasOne) {
+            if (\is_object($value)) {
+                $members[] = $value;
+            }
+
+            return $members;
+        }
+        if (!\is_array($value)) {
+            return $members;
+        }
+        foreach ($value as $item) {
+            if (\is_object($item)) {
+                $members[] = $item;
+            }
+        }
+
+        return $members;
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $queue
+     */
+    private function adoptMember(object $value, __ClassName $relatedClass, array<int, TrackedRecord> &$queue): void {
+        if ($this->recordFor($value) !== null) {
+            return;
+        }
+        if (!\is_a($value, $relatedClass) || !$this->context->mapping()->hasModel($relatedClass)) {
+            return;
+        }
+        ModelMap $map = $this->context->mapping()->model($relatedClass);
+        if ($map->key === null || PropertyBag::temporary($map, $value)) {
+            $this->add($map, $value);
+        } else {
+            $this->track($map, $value, false);
+        }
+        ?TrackedRecord $created = $this->recordFor($value);
+        if ($created !== null) {
+            $queue[] = $created;
+        }
+    }
+
+    private function syncRelations(TrackedRecord $record): void {
+        if ($record->state === TrackingState::Deleted || $record->state === TrackingState::Untracked) {
+            return;
+        }
+        foreach ($record->map->relations as $relation) {
+            array<int, object> $current = $this->readMembers($record->model, $relation);
+            array<int, object> $previous = $record->relationMembers[$relation->property] ?? [];
+            if ($relation->kind === RelationKind::BelongsTo || $relation->kind === RelationKind::HasOne) {
+                $this->syncReference($record, $relation, $previous, $current);
+            } elseif ($relation->kind === RelationKind::HasMany) {
+                $this->syncCollection($record, $relation, $previous, $current);
+            } elseif ($relation->kind === RelationKind::BelongsToMany) {
+                $this->syncPivot($record, $relation, $previous, $current);
+            }
+        }
+    }
+
+    /**
+     * @param array<int, object> $previous
+     * @param array<int, object> $current
+     */
+    private function syncReference(
+        TrackedRecord $record,
+        RelationMap $relation,
+        array<int, object> $previous,
+        array<int, object> $current,
+    ): void {
+        ?object $before = $previous[0] ?? null;
+        ?object $after = $current[0] ?? null;
+        if ($before === $after) {
+            return;
+        }
+        if ($relation->kind === RelationKind::BelongsTo) {
+            if ($after !== null) {
+                $this->alignForeignKey($record, $after, $relation->foreignKeyProperty);
+            } elseif ($before !== null && $relation->foreignKeyProperty !== null && $this->columnNullable($record, $relation->foreignKeyProperty)) {
+                PropertyBag::write($record->model, $relation->foreignKeyProperty, null);
+            }
+
+            return;
+        }
+        if ($after !== null) {
+            $this->bindDependent($record, $after, $relation);
+        }
+        if ($before !== null && $before !== $after) {
+            $this->unbindDependent($record, $before, $relation);
+        }
+    }
+
+    /**
+     * @param array<int, object> $previous
+     * @param array<int, object> $current
+     */
+    private function syncCollection(
+        TrackedRecord $record,
+        RelationMap $relation,
+        array<int, object> $previous,
+        array<int, object> $current,
+    ): void {
+        array<int, bool> $before = [];
+        foreach ($previous as $item) {
+            $before[\spl_object_id($item)] = true;
+        }
+        array<int, bool> $after = [];
+        foreach ($current as $item) {
+            $after[\spl_object_id($item)] = true;
+            if (!isset($before[\spl_object_id($item)])) {
+                $this->bindDependent($record, $item, $relation);
+            }
+        }
+        foreach ($previous as $item) {
+            if (!isset($after[\spl_object_id($item)])) {
+                $this->unbindDependent($record, $item, $relation);
+            }
+        }
+    }
+
+    /**
+     * @param array<int, object> $previous
+     * @param array<int, object> $current
+     */
+    private function syncPivot(
+        TrackedRecord $record,
+        RelationMap $relation,
+        array<int, object> $previous,
+        array<int, object> $current,
+    ): void {
+        if ($relation->pivotTable === null || $relation->pivotForeignKey === null || $relation->pivotRelatedKey === null) {
+            return;
+        }
+        // A new row has no pivot rows yet, so every member it holds is an insert even when it was
+        // assigned before the row was added.
+        array<int, object> $known = [];
+        if ($record->state !== TrackingState::Added) {
+            $known = $previous;
+        }
+        array<int, bool> $before = [];
+        foreach ($known as $item) {
+            $before[\spl_object_id($item)] = true;
+        }
+        array<int, bool> $after = [];
+        bool $changed = false;
+        foreach ($current as $item) {
+            int $id = \spl_object_id($item);
+            $after[$id] = true;
+            if (!isset($before[$id])) {
+                array<int, TrackedRecord> $queue = [];
+                $this->adoptMember($item, $relation->relatedClass, $queue);
+                $this->rememberPivot($record, $item, $relation, true);
+                $changed = true;
+            }
+        }
+        foreach ($known as $item) {
+            if (!isset($after[\spl_object_id($item)])) {
+                $this->rememberPivot($record, $item, $relation, false);
+                $changed = true;
+            }
+        }
+        if ($changed && ($record->state === TrackingState::Clean || $record->state === TrackingState::Dirty)) {
+            $record->relationDirty = true;
+        }
+    }
+
+    private function bindDependent(TrackedRecord $principal, object $dependent, RelationMap $relation): void {
+        array<int, TrackedRecord> $queue = [];
+        $this->adoptMember($dependent, $relation->relatedClass, $queue);
+        ?TrackedRecord $child = $this->recordFor($dependent);
+        if ($child === null || $relation->foreignKeyProperty === null) {
+            return;
+        }
+        if ($relation->inverseProperty !== null && $child->map->hasRelation($relation->inverseProperty)) {
+            RelationMap $inverse = $child->map->relation($relation->inverseProperty);
+            if ($inverse->kind === RelationKind::BelongsTo || $inverse->kind === RelationKind::HasOne) {
+                mixed $current = PropertyBag::read($dependent, $inverse->property);
+                if ($current === null) {
+                    PropertyBag::write($dependent, $inverse->property, $principal->model);
+                    $this->captureRelation($dependent, $inverse->property);
+                } elseif ($current !== $principal->model) {
+                    // The row was taken out of the other principal's collection and put into this one: a move.
+                    // An explicit navigation to a principal that never held it still wins.
+                    if (!\is_object($current) || !$this->previouslyHeld($current, $relation, $dependent)) {
+                        return;
+                    }
+                    PropertyBag::write($dependent, $inverse->property, $principal->model);
+                    $this->captureRelation($dependent, $inverse->property);
+                }
+            }
+        }
+        $this->alignForeignKey($child, $principal->model, $relation->foreignKeyProperty);
+    }
+
+    private function unbindDependent(TrackedRecord $principal, object $dependent, RelationMap $relation): void {
+        if ($relation->foreignKeyProperty === null || !$this->context->mapping()->hasModel($relation->relatedClass)) {
+            return;
+        }
+        array<int, TrackedRecord> $queue = [];
+        $this->adoptMember($dependent, $relation->relatedClass, $queue);
+        ?TrackedRecord $child = $this->recordFor($dependent);
+        if ($child === null) {
+            return;
+        }
+        if ($this->movedElsewhere($principal, $child, $relation)) {
+            return;
+        }
+        if ($this->columnNullable($child, $relation->foreignKeyProperty)) {
+            PropertyBag::write($dependent, $relation->foreignKeyProperty, null);
+
+            return;
+        }
+        $this->remove($child->map, $dependent);
+    }
+
+    /**
+     * Whether $principal's collection held $dependent when it was last captured.
+     */
+    private function previouslyHeld(object $principal, RelationMap $relation, object $dependent): bool {
+        ?TrackedRecord $record = $this->recordFor($principal);
+        if ($record === null) {
+            return false;
+        }
+        array<int, object> $held = $record->relationMembers[$relation->property] ?? [];
+        foreach ($held as $member) {
+            if ($member === $dependent) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * A row that left one principal's collection is not removed or detached when it now belongs to another
+     * principal: through its own navigation, or through another principal's collection.
+     */
+    private function movedElsewhere(TrackedRecord $principal, TrackedRecord $child, RelationMap $relation): bool {
+        if ($relation->inverseProperty !== null && $child->map->hasRelation($relation->inverseProperty)) {
+            RelationMap $inverse = $child->map->relation($relation->inverseProperty);
+            if ($inverse->kind === RelationKind::BelongsTo || $inverse->kind === RelationKind::HasOne) {
+                mixed $owner = PropertyBag::read($child->model, $inverse->property);
+                if (\is_object($owner) && $owner !== $principal->model) {
+                    return true;
+                }
+            }
+        }
+        foreach ($this->records as $other) {
+            if (
+                $other->model === $principal->model
+                || $other->map->class !== $principal->map->class
+                || $other->state === TrackingState::Deleted
+                || $other->state === TrackingState::Untracked
+            ) {
+                continue;
+            }
+            foreach ($this->readMembers($other->model, $relation) as $member) {
+                if ($member === $child->model) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function alignForeignKey(TrackedRecord $dependent, object $principal, ?string $property): void {
+        if ($property === null || !$dependent->map->hasColumn($property)) {
+            return;
+        }
+        ?TrackedRecord $principalRecord = $this->recordFor($principal);
+        if ($principalRecord === null && !$this->context->mapping()->hasModel($principal::class)) {
+            return;
+        }
+        ModelMap $principalMap = $principalRecord !== null
+            ? $principalRecord->map
+            : $this->context->mapping()->model($principal::class);
+        if ($principalMap->key === null || \count($principalMap->key->properties) === 0) {
+            return;
+        }
+        if (PropertyBag::temporary($principalMap, $principal)) {
+            // A row marked on an earlier pass is Dirty now, and the reset above cleared its mark, so mark it again.
+            if ($dependent->state === TrackingState::Clean || $dependent->state === TrackingState::Dirty) {
+                $dependent->relationDirty = true;
+            }
+
+            return;
+        }
+        mixed $key = PropertyBag::raw($principal, $principalMap->key->properties[0]);
+        mixed $current = PropertyBag::raw($dependent->model, $property);
+        if (!PropertyBag::same($current, $key)) {
+            PropertyBag::write($dependent->model, $property, $key);
+        }
+    }
+
+    private function columnNullable(TrackedRecord $record, string $property): bool {
+        if (!$record->map->hasColumn($property)) {
+            return false;
+        }
+
+        return $record->map->column($property)->nullable;
+    }
+
+    private function rememberPivot(TrackedRecord $owner, object $related, RelationMap $relation, bool $insert): void {
+        if ($relation->pivotTable === null || $relation->pivotForeignKey === null || $relation->pivotRelatedKey === null) {
+            return;
+        }
+        int $left = \spl_object_id($owner->model);
+        int $right = \spl_object_id($related);
+        string $pair = $left < $right
+            ? (string)$left . ':' . (string)$right
+            : (string)$right . ':' . (string)$left;
+        string $token = $relation->pivotTable . '|' . $pair . '|' . ($insert ? '1' : '0');
+        if (isset($this->pivotSeen[$token])) {
+            return;
+        }
+        $this->pivotSeen[$token] = true;
+        $this->pivotEdits[] = new PivotEdit(
+            $owner->model,
+            $related,
+            $relation->pivotTable,
+            $relation->pivotForeignKey,
+            $relation->pivotRelatedKey,
+            $insert,
+        );
+    }
+}

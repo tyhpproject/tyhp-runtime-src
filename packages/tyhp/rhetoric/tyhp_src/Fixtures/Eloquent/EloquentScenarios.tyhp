@@ -1,0 +1,169 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures\Eloquent;
+
+use Tyhp\Rhetoric\EloquentQuery;
+
+final class EloquentScenarios {
+    /**
+     * @return array<int, int>
+     */
+    public static function titledIds(string $connection, string $title): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => $article->title === $title)
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    public static function firstTitled(string $connection, string $title): ?Article {
+        return EloquentQuery::on<Article>($connection)
+            ->where(fn (Article $article) => $article->title === $title)
+            ->first();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function highRatedIds(string $connection): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => ($article->title === 'Alpha' || $article->title === 'Beta') && $article->rating >= 4)
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function missingPublishedIds(string $connection): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => $article->publishedAt === null)
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function notInstantIds(string $connection, string $instant): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => $article->publishedAt !== $instant)
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function titlePrefixIds(string $connection, string $prefix): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => $article->title->startsWith($prefix))
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function titleContainsIds(string $connection, string $needle): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => $article->title->contains($needle))
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function titleLacksIds(string $connection, string $needle): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => !$article->title->contains($needle))
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    /**
+     * @param array<int, int> $ids
+     * @return array<int, int>
+     */
+    public static function amongIds(string $connection, array<int, int> $ids): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->where(fn (Article $article) => $ids->contains($article->id))
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function byRatingIds(string $connection): array<int, int> {
+        return self::ids(
+            EloquentQuery::on<Article>($connection)
+                ->orderByDesc(fn (Article $article) => $article->rating)
+                ->orderBy(fn (Article $article) => $article->id),
+        );
+    }
+
+    public static function headlineSql(string $connection, string $value): string {
+        return EloquentQuery::on<Article>($connection)
+            ->where(fn (Article $article) => $article->customHeadline === $value)
+            ->builder()
+            ->getQuery()
+            ->toSql();
+    }
+
+    public static function publishedSql(string $connection): string {
+        return EloquentQuery::on<Article>($connection)
+            ->orderBy(fn (Article $article) => $article->publishedAt)
+            ->builder()
+            ->getQuery()
+            ->toSql();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function untouchedSql(string $connection): array<int, string> {
+        EloquentQuery<Article> $open = EloquentQuery::on<Article>($connection);
+        EloquentQuery<Article> $filtered = $open->where(fn (Article $article) => $article->title === 'Tyhp');
+
+        return [
+            $open->builder()->getQuery()->toSql(),
+            $filtered->builder()->getQuery()->toSql(),
+        ];
+    }
+
+    public static function bad(string $connection): void {
+        (void)EloquentQuery::on<Article>($connection)->where(fn (Article $article) => $article->title . 'x' === 'y');
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function ids(EloquentQuery<Article> $query): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($query->get() as $article) {
+            if (!($article is Article)) {
+                throw new \TypeError('The query returned ' . $article::class . '.');
+            }
+            mixed $id = $article->getAttribute('id');
+            if (\is_string($id) && \is_numeric($id)) {
+                $ids[] = (int)$id;
+                continue;
+            }
+            if (!\is_int($id)) {
+                throw new \TypeError('The query returned a non-numeric id.');
+            }
+            $ids[] = $id;
+        }
+
+        return $ids;
+    }
+}

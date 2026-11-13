@@ -1,0 +1,300 @@
+<?tyhpdef
+/**
+ * LAYER 3 (hand overlay) — Tyhp-authored. Never regenerated.
+ * Path: _tyhpdef/overlays/*.tyhpdef (not under overlays/stubs/)
+ * Narrows \Tyhp\Ext to the parse graph, the closure opcode graph, the bind
+ * type arguments, and DNS results. `typeIs` takes any object and `bindGet` /
+ * `bindPut` take any target, as the extension does, so those parameters stay
+ * as reflected.
+ */
+
+namespace Tyhp {
+    type ExtParseScalarName =
+        'string'|'int'|'float'|'bool'|'null'|'void'|'mixed'|'never'
+        |'object'|'callable'|'resource'|'array'|'iterable';
+
+    type ExtParseArg = struct {
+        string $name;
+        ExtParseNode $type;
+    };
+
+    type ExtParseScalar = struct {
+        'scalar' $kind;
+        ExtParseScalarName $name;
+        bool $nullable;
+    };
+
+    type ExtParseClass = struct {
+        'class' $kind;
+        'Tyhp\\Decimal' $name;
+        bool $nullable;
+    };
+
+    /**
+     * A name the extension does not resolve. Type arguments are `{name, type}`
+     * pairs (`T0`, `T1`, …). No type arguments is an empty list.
+     */
+    type ExtParseUnresolvedName = struct {
+        'unresolved' $kind;
+        'name' $form;
+        string $name;
+        bool $nullable;
+        array<int, ExtParseArg> $args;
+    };
+
+    /**
+     * `struct Name`, `object Name`, or `callable Name`. Arguments are type
+     * nodes, not `{name, type}` pairs.
+     */
+    type ExtParseUnresolvedForm = struct {
+        'unresolved' $kind;
+        'struct'|'object'|'callable' $form;
+        string $name;
+        bool $nullable;
+        array<int, ExtParseNode> $args;
+    };
+
+    /**
+     * `array` / `iterable` with one or two arguments. One argument is named
+     * `TValue`. Two arguments are `TKey` then `TValue`.
+     */
+    type ExtParseGeneric = struct {
+        'generic' $kind;
+        'array'|'iterable' $name;
+        bool $nullable;
+        array<int, ExtParseArg> $args;
+    };
+
+    type ExtParseCombo = struct {
+        'union'|'intersection' $kind;
+        bool $nullable;
+        array<int, ExtParseNode> $members;
+    };
+
+    type ExtParseNode =
+        ExtParseScalar
+        |ExtParseClass
+        |ExtParseUnresolvedName
+        |ExtParseUnresolvedForm
+        |ExtParseGeneric
+        |ExtParseCombo;
+
+    type ExtClosureBinaryOp =
+        '+'|'-'|'*'|'/'|'%'|'**'|'.'|'<<'|'>>'|'|'|'&'|'^'|'xor'
+        |'<'|'<='|'>'|'>='|'=='|'!='|'==='|'!=='|'<=>'
+        |'&&'|'||';
+
+    type ExtClosureUnaryOp = '~'|'!';
+
+    type ExtClosureCastType = 'int'|'float'|'string'|'bool'|'array'|'object';
+
+    type ExtClosureParam = struct {
+        'param' $kind;
+        string $name;
+    };
+
+    type ExtClosureConst = struct {
+        'const' $kind;
+        mixed $value;
+    };
+
+    type ExtClosureCapture = struct {
+        'capture' $kind;
+        string $name;
+        mixed $value;
+    };
+
+    type ExtClosureProp = struct {
+        'prop'|'nullsafe_prop' $kind;
+        ExtClosureNode $object;
+        string $name;
+    };
+
+    type ExtClosureIndex = struct {
+        'index' $kind;
+        ExtClosureNode $object;
+        ExtClosureNode $index;
+    };
+
+    type ExtClosureBinary = struct {
+        'binary' $kind;
+        ExtClosureBinaryOp $op;
+        ExtClosureNode $left;
+        ExtClosureNode $right;
+    };
+
+    type ExtClosureUnary = struct {
+        'unary' $kind;
+        ExtClosureUnaryOp $op;
+        ExtClosureNode $expr;
+    };
+
+    type ExtClosureTernary = struct {
+        'ternary' $kind;
+        ExtClosureNode $cond;
+        ?ExtClosureNode $then;
+        ExtClosureNode $else;
+    };
+
+    type ExtClosureCoalesce = struct {
+        'coalesce' $kind;
+        ExtClosureNode $left;
+        ExtClosureNode $right;
+    };
+
+    type ExtClosureCast = struct {
+        'cast' $kind;
+        ExtClosureCastType $type;
+        ExtClosureNode $expr;
+    };
+
+    type ExtClosureInstanceof = struct {
+        'instanceof' $kind;
+        ExtClosureNode $expr;
+        string|ExtClosureNode $class;
+    };
+
+    type ExtClosureNew = struct {
+        'new' $kind;
+        string $class;
+        array<int, ExtClosureNode> $args;
+    };
+
+    type ExtClosureCall = struct {
+        'call'|'nullsafe_call' $kind;
+        ExtClosureNode $object;
+        string $name;
+        array<int, ExtClosureNode> $args;
+    };
+
+    type ExtClosureStaticCall = struct {
+        'static_call' $kind;
+        string $class;
+        string $name;
+        array<int, ExtClosureNode> $args;
+    };
+
+    type ExtClosureElement = struct {
+        ?ExtClosureNode $key;
+        ExtClosureNode $value;
+    };
+
+    type ExtClosureArray = struct {
+        'array' $kind;
+        array<int, ExtClosureElement> $elements;
+    };
+
+    /**
+     * `params` is the list of parameter names. `captures` is the list of
+     * capture nodes. `body` is the returned expression.
+     */
+    type ExtClosureLambda = struct {
+        'lambda' $kind;
+        array<int, string> $params;
+        array<int, ExtClosureCapture> $captures;
+        ExtClosureNode $body;
+    };
+
+    type ExtClosureNode =
+        ExtClosureParam
+        |ExtClosureConst
+        |ExtClosureCapture
+        |ExtClosureProp
+        |ExtClosureIndex
+        |ExtClosureBinary
+        |ExtClosureUnary
+        |ExtClosureTernary
+        |ExtClosureCoalesce
+        |ExtClosureCast
+        |ExtClosureInstanceof
+        |ExtClosureNew
+        |ExtClosureCall
+        |ExtClosureStaticCall
+        |ExtClosureArray
+        |ExtClosureLambda;
+
+    type ExtDnsStarted = struct {
+        int $id;
+        resource $pipe;
+    };
+
+    type ExtDnsAddresses = struct {
+        true $ok;
+        array<int, string> $addresses;
+    };
+
+    type ExtDnsFailure = struct {
+        false $ok;
+        'unresolved'|'cancelled' $reason;
+        string $message;
+    };
+
+    type ExtDnsTaken = ExtDnsAddresses|ExtDnsFailure;
+
+    // The public surface of `\Tyhp\Type`. The cache keeps a `toType()` result
+    // only when it is a `\Tyhp\Type`.
+    type ExtBindType = object {
+        public function getKind(): string;
+        public function getName(): ?string;
+        public function isNullable(): bool;
+        public function isReadOnly(): bool;
+    };
+
+    // An object `bindGet` / `bindPut` can normalize. The cache calls public
+    // `toType()` with no arguments.
+    type ExtBindObject = object {
+        public function toType(): ExtBindType;
+    };
+
+    // @overlay-against: class Ext
+    partial class Ext {
+        // `decimal` is the class node with `nullable` false. `?decimal`,
+        // `null|decimal`, and `decimal|null` are that node with `nullable` true.
+        // @overlay-against: function typeParse(string $spelling): ?array
+        public static function typeParse('decimal' $spelling): struct {
+            'class' $kind;
+            'Tyhp\\Decimal' $name;
+            false $nullable;
+        };
+
+        // @overlay-against: function typeParse(string $spelling): ?array
+        public static function typeParse('?decimal'|'null|decimal'|'decimal|null' $spelling): struct {
+            'class' $kind;
+            'Tyhp\\Decimal' $name;
+            true $nullable;
+        };
+
+        // @overlay-against: function typeParse(string $spelling): ?array
+        public static function typeParse(string $spelling): ?ExtParseNode;
+
+        // `$target` stays `mixed`: a target the cache cannot key is declined
+        // (`null` from `bindGet`, nothing stored by `bindPut`). Each type
+        // argument is `null`, a class / interface / enum name, or an object
+        // with public `toType()`. Variadic named arguments give string keys;
+        // the cache reads values only.
+        // @overlay-against: function bindGet(mixed $target, array $typeArguments): ?\Closure
+        public static function bindGet(
+            mixed $target,
+            array<int|string, null|string|ExtBindObject> $typeArguments
+        ): ?\Closure;
+
+        // @overlay-against: function bindPut(mixed $target, array $typeArguments, \Closure $bound): void
+        public static function bindPut(
+            mixed $target,
+            array<int|string, null|string|ExtBindObject> $typeArguments,
+            \Closure $bound
+        ): void;
+
+        // @overlay-against: function closureTree(\Closure $fn, string $mode): array
+        public static function closureTree(\Closure $fn, 'expression'|'property-path' $mode): ExtClosureNode;
+
+        // @overlay-against: function dnsStart(string $host): array
+        public static function dnsStart(string $host): ExtDnsStarted;
+
+        // @overlay-against: function dnsTake(int $id): array
+        public static function dnsTake(int $id): ExtDnsTaken;
+
+        // @overlay-against: function dnsCancel(int $id): void
+        public static function dnsCancel(int $id): void;
+    }
+}

@@ -30,7 +30,7 @@ class ExpressionShapeTest extends TestCase
         $build = static fn(int $minAge): Expression => Expr::param('u', ShapePerson::class)
             ->age
             ->gt($minAge)
-            ->backedBy(fn(ShapePerson $u): bool => $u->age > $minAge);
+            ->backedBy()(fn(ShapePerson $u): bool => $u->age > $minAge);
 
         $adult = $build(18);
         $senior = $build(65);
@@ -249,7 +249,7 @@ class ExpressionShapeTest extends TestCase
     public function testPropertyPathKeysFollowTheSegments(): void
     {
         $city = new PropertyPath('App\\Person', 'string', ['address', 'city']);
-        $sameCity = PropertyPath::from('App\\Person', ['address', 'city'], fn(object $p): string => $p->address->city);
+        $sameCity = PropertyPath::from()('App\\Person', ['address', 'city'], fn(object $p): string => $p->address->city);
         $zip = new PropertyPath('App\\Person', 'string', ['address', 'zip']);
         $nullSafeCity = new PropertyPath('App\\Person', 'string', ['address', 'city'], nullSafeFlags: [false, true]);
 

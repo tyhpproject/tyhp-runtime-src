@@ -1,0 +1,136 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric;
+
+use Tyhp\Rhetoric\Query\Query;
+use Tyhp\Rhetoric\Query\QueryState;
+
+class Table<T> extends Query<T> {
+    public function __construct(Context $context) {
+        parent::__construct($context, T::class, QueryState::empty());
+    }
+
+    public function add(T $model): void {
+        $this->context->tracker->add($this->sourceMap(), $this->object($model));
+    }
+
+    /**
+     * @param array<int, T> $models
+     */
+    public function addMany(array<int, T> $models): void {
+        foreach ($models as $model) {
+            $this->add($model);
+        }
+    }
+
+    public function track(T $model): void {
+        $this->context->tracker->track($this->sourceMap(), $this->object($model), false);
+    }
+
+    public function trackAsDirty(T $model): void {
+        $this->context->tracker->track($this->sourceMap(), $this->object($model), true);
+    }
+
+    public function remove(T $model): void {
+        $this->context->tracker->remove($this->sourceMap(), $this->object($model));
+    }
+
+    /**
+     * @param array<int, T> $models
+     */
+    public function removeMany(array<int, T> $models): void {
+        foreach ($models as $model) {
+            $this->remove($model);
+        }
+    }
+
+    public function reference(mixed $id): T {
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $this->sourceMap();
+        array<int, mixed> $parts = [];
+        if (\is_array($id)) {
+            foreach ($id as $part) {
+                $parts[] = $part;
+            }
+        } else {
+            $parts[] = $id;
+        }
+        mixed $ghost = $this->context->ghosts()->reference($map, $parts);
+        if (!($ghost is T)) {
+            throw new \TypeError('Reference is not the model type.');
+        }
+
+        return $ghost;
+    }
+
+    public function find(mixed $id): ?T {
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $this->sourceMap();
+        if ($map->key === null) {
+            throw new \LogicException($map->class . ' has no key.');
+        }
+        array<int, mixed> $parts = [];
+        if (\is_array($id)) {
+            foreach ($id as $part) {
+                $parts[] = $part;
+            }
+        } else {
+            $parts[] = $id;
+        }
+        if ($this->context->tracker->storedState($map, $parts) === \Tyhp\Rhetoric\Tracking\TrackingState::Deleted) {
+            return null;
+        }
+        ?object $tracked = $this->context->tracker->stored($map, $parts);
+        if ($tracked is T) {
+            return $tracked;
+        }
+        \Illuminate\Database\Connection $connection = $this->context->connection();
+        // The same row filters as a query: global scopes, soft deletes, and a derived type's discriminator.
+        \Illuminate\Database\Query\Builder $builder = (new \Tyhp\Rhetoric\Query\QueryCompiler())->writeTarget(
+            $this->context,
+            $this->readSource(),
+            $this->readState(),
+        );
+        foreach ($map->key->columns as $index => $column) {
+            if (!\array_key_exists($index, $parts)) {
+                throw new \InvalidArgumentException('Key value is missing.');
+            }
+            $builder = $builder->where($column, '=', $parts[$index]);
+        }
+        ?array<int, string> $loaded = \Tyhp\Rhetoric\Query\Hydrator::selectedColumns($this->context, $map);
+        if ($loaded !== null) {
+            $builder = $builder->select($loaded);
+        }
+        $builder = $builder->limit(1);
+        mixed $selected = $connection->select($builder->toSql(), $builder->getBindings());
+        if (!\is_array($selected) || \count($selected) === 0) {
+            return null;
+        }
+        mixed $row = $selected[0];
+        if (!\is_object($row)) {
+            return null;
+        }
+        mixed $model = \Tyhp\Rhetoric\Query\Hydrator::model($map, $row, $this->context, true);
+        if (!($model is T)) {
+            throw new \TypeError('Hydrated value is not the query result type.');
+        }
+        $this->context->tracker->track($map, $model, false);
+
+        return $model;
+    }
+
+    public function findOrFail(mixed $id): T {
+        ?T $found = $this->find($id);
+        if ($found === null) {
+            throw new \Illuminate\Database\RecordsNotFoundException();
+        }
+
+        return $found;
+    }
+
+    private function object(T $model): object {
+        if (!\is_object($model)) {
+            throw new \InvalidArgumentException('A model must be an object.');
+        }
+
+        return $model;
+    }
+}

@@ -1,0 +1,300 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric;
+
+class Context {
+    // Laravel connection name. Null uses the default connection.
+    protected ?string $connection = null;
+
+    private ?\Tyhp\Rhetoric\Tracking\Tracker $tracked = null;
+
+    private ?\Tyhp\Rhetoric\Tracking\Ghosts $ghosts = null;
+
+    private ?\SplObjectStorage $loadedRelations = null;
+
+    private bool $lazyLoads = false;
+
+    private bool $lazyPrevented = false;
+
+    private bool $closed = false;
+
+    public \Tyhp\Rhetoric\Tracking\Tracker $tracker {
+        get {
+            if ($this->tracked === null) {
+                $this->tracked = new \Tyhp\Rhetoric\Tracking\Tracker($this);
+            }
+
+            return $this->tracked;
+        }
+    }
+
+    public function connection(): \Illuminate\Database\Connection {
+        \Illuminate\Database\Connection $connection = $this->openConnection();
+        \Tyhp\Rhetoric\Observers\QueryHooks::install($this, $connection);
+
+        return $connection;
+    }
+
+    /**
+     * The application's database manager when there is one (a Laravel app does not set up Capsule), else Capsule.
+     */
+    private function openConnection(): \Illuminate\Database\Connection {
+        \Illuminate\Contracts\Container\Container $container = \Illuminate\Container\Container::getInstance();
+        if ($container->bound('db')) {
+            mixed $database = $container->get('db');
+            if ($database instanceof \Illuminate\Database\ConnectionResolverInterface) {
+                \Illuminate\Database\ConnectionInterface $resolved = $database->connection($this->connection);
+                if ($resolved instanceof \Illuminate\Database\Connection) {
+                    return $resolved;
+                }
+            }
+        }
+
+        return \Illuminate\Database\Capsule\Manager::connection($this->connection);
+    }
+
+    public function restore(object $model): void {
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $this->mapping()->model($model::class);
+        if (!$map->softDeletes || $map->deletedAtColumn === null) {
+            throw new \LogicException($map->class . ' does not use soft deletes.');
+        }
+        if ($map->key === null) {
+            throw new \LogicException($map->class . ' has no key.');
+        }
+        \Tyhp\Rhetoric\Observers\ObserverDispatcher::fire($map, 'restoring', $model);
+        \Illuminate\Database\Query\Builder $builder = $this->connection()->table($map->table);
+        foreach ($map->key->properties as $index => $property) {
+            string $column = $map->key->columns[$index];
+            $builder = $builder->where(
+                $column,
+                '=',
+                \Tyhp\Rhetoric\Tracking\PropertyBag::database($map->column($property), \Tyhp\Rhetoric\Tracking\PropertyBag::read($model, $property)),
+            );
+        }
+        (void)$builder->update([$map->deletedAtColumn => null]);
+        if ($map->deletedAtProperty !== null) {
+            \Tyhp\Rhetoric\Tracking\PropertyBag::write($model, $map->deletedAtProperty, null);
+        }
+        \Tyhp\Rhetoric\Observers\ObserverDispatcher::fire($map, 'restored', $model);
+        $this->tracker->acceptRestored($model);
+    }
+
+    public function lazyLoading(bool $enabled = true): void {
+        $this->lazyLoads = $enabled;
+    }
+
+    public function preventLazyLoading(bool $prevent = true): void {
+        $this->lazyPrevented = $prevent;
+    }
+
+    public function close(): void {
+        $this->closed = true;
+    }
+
+    public function loadsLazily(): bool {
+        return $this->lazyLoads;
+    }
+
+    public function preventsLazyLoading(): bool {
+        return $this->lazyPrevented;
+    }
+
+    public function isClosed(): bool {
+        return $this->closed;
+    }
+
+    public function ghosts(): \Tyhp\Rhetoric\Tracking\Ghosts {
+        if ($this->ghosts === null) {
+            $this->ghosts = new \Tyhp\Rhetoric\Tracking\Ghosts($this);
+        }
+
+        return $this->ghosts;
+    }
+
+    #[\Tyhp\InferGeneric]
+    public function entry<T>(T $model): \Tyhp\Rhetoric\Tracking\TrackedEntry<T> {
+        return $this->tracker->entry<T>($model);
+    }
+
+    public function save(): int {
+        return (new \Tyhp\Rhetoric\Persistence\SavePipeline())->save($this);
+    }
+
+    public function load<T, TValue>(T $model, \Tyhp\PropertyPath<callable(T): TValue> $navigation): void {
+        $this->loadPath($model, $this->segmentsOf($navigation), false);
+    }
+
+    public function loadMissing<T, TValue>(T $model, \Tyhp\PropertyPath<callable(T): TValue> $navigation): void {
+        $this->loadPath($model, $this->segmentsOf($navigation), true);
+    }
+
+    public function relationLoaded(object $model, string $property): bool {
+        \SplObjectStorage $loaded = $this->loadedRelations();
+        if (!$loaded->offsetExists($model)) {
+            return false;
+        }
+        mixed $flags = $loaded->offsetGet($model);
+        if (!\is_array($flags)) {
+            return false;
+        }
+
+        return isset($flags[$property]);
+    }
+
+    public function markRelationLoaded(object $model, string $property): void {
+        \SplObjectStorage $loaded = $this->loadedRelations();
+        array<string, bool> $flags = [];
+        if ($loaded->offsetExists($model)) {
+            mixed $existing = $loaded->offsetGet($model);
+            if (\is_array($existing)) {
+                foreach ($existing as $name => $flag) {
+                    if (\is_string($name) && $flag === true) {
+                        $flags[$name] = true;
+                    }
+                }
+            }
+        }
+        $flags[$property] = true;
+        $loaded->offsetSet($model, $flags);
+    }
+
+    public function transaction<TReturn>(\Closure $callback, int $attempts = 1): TReturn {
+        return $this->connection()->transaction<TReturn>($callback, $attempts);
+    }
+
+    /**
+     * @param array<int, mixed> $bindings
+     */
+    public function statement(string $sql, array<int, mixed> $bindings = []): bool {
+        return $this->connection()->statement($sql, $bindings);
+    }
+
+    /**
+     * @param array<int, mixed> $bindings
+     */
+    public function affectingStatement(string $sql, array<int, mixed> $bindings = []): int {
+        return $this->connection()->affectingStatement($sql, $bindings);
+    }
+
+    /**
+     * @param array<int, mixed> $bindings
+     * @return array<int, T>
+     */
+    public function select<T>(string $sql, array<int, mixed> $bindings = []): array<int, T> {
+        mixed $selected = $this->connection()->select($sql, $bindings);
+        if (!\is_array($selected)) {
+            throw new \LogicException('Query did not return rows.');
+        }
+        array<int, T> $rows = [];
+        foreach ($selected as $row) {
+            if (!($row is T)) {
+                throw new \TypeError('Selected row is not the requested type.');
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    protected function table<T>(): Table<T> {
+        return new Table<T>($this);
+    }
+
+    public function createSchema(): void {
+        \Tyhp\Rhetoric\Migrations\SchemaApplier::apply(
+            $this->connection(),
+            \Tyhp\Rhetoric\Migrations\MapDiffer::diff(
+                \Tyhp\Rhetoric\Migrations\SnapshotDocument::empty(static::class),
+                \Tyhp\Rhetoric\Migrations\SchemaExtractor::extract($this->mapping()),
+                [],
+            )->operations,
+        );
+    }
+
+    public function schemaHas<T, TValue>(\Tyhp\PropertyPath<callable(T): TValue> $property): bool {
+        if (\count($property->parameters) !== 1) {
+            throw new \InvalidArgumentException('schemaHas names one column.');
+        }
+        string $model = \ltrim($property->parameters[0]->paramType, '\\?');
+        array<int, string> $segments = [];
+        foreach ($property->getSegments() as $segment) {
+            $segments[] = $segment;
+        }
+        if (\count($segments) !== 1) {
+            throw new \InvalidArgumentException('schemaHas names one column.');
+        }
+
+        return \Tyhp\Rhetoric\Migrations\Auto\SchemaAwareness::has($this, $model, $segments[0]);
+    }
+
+    public function dropSchema(): void {
+        \Tyhp\Rhetoric\Migrations\MigrationPlan $plan = \Tyhp\Rhetoric\Migrations\MapDiffer::diff(
+            \Tyhp\Rhetoric\Migrations\SnapshotDocument::empty(static::class),
+            \Tyhp\Rhetoric\Migrations\SchemaExtractor::extract($this->mapping()),
+            [],
+        );
+        \Tyhp\Rhetoric\Migrations\SchemaApplier::apply(
+            $this->connection(),
+            \Tyhp\Rhetoric\Migrations\MapDiffer::invert($plan->operations),
+        );
+    }
+
+    public function mapping(): \Tyhp\Rhetoric\Mapping\ContextMap {
+        return \Tyhp\Rhetoric\Mapping\MapCache::remember(static::class, fn () => $this->buildMapping());
+    }
+
+    protected function map(\Tyhp\Rhetoric\Mapping\Mapper $map): void {
+        (void)$map;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function segmentsOf<TCallable extends callable>(\Tyhp\PropertyPath<TCallable> $navigation): array<int, string> {
+        array<int, string> $path = [];
+        foreach ($navigation->getSegments() as $segment) {
+            $path[] = $segment;
+        }
+        if (\count($path) === 0) {
+            throw new \InvalidArgumentException('A navigation path is required.');
+        }
+
+        return $path;
+    }
+
+    /**
+     * @param array<int, string> $path
+     */
+    private function loadPath<T>(T $model, array<int, string> $path, bool $missing): void {
+        if (!\is_object($model)) {
+            throw new \InvalidArgumentException('load() requires a model.');
+        }
+        if (!$this->mapping()->hasModel($model::class)) {
+            throw new \InvalidArgumentException($model::class . ' is not a mapped model.');
+        }
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $this->mapping()->model($model::class);
+        \Tyhp\Rhetoric\Query\QueryTracking $tracking = \Tyhp\Rhetoric\Query\QueryTracking::Untracked;
+        if ($this->tracker->recordOrUntracked($model)->state !== \Tyhp\Rhetoric\Tracking\TrackingState::Untracked) {
+            $tracking = \Tyhp\Rhetoric\Query\QueryTracking::Tracked;
+        }
+        array<int, object> $models = [$model];
+        array<int, array<int, string>> $paths = [$path];
+        array<string, object> $seen = [];
+        \Tyhp\Rhetoric\Query\EagerLoader::load($this, $models, $map, $paths, $tracking, $missing, $seen);
+    }
+
+    private function loadedRelations(): \SplObjectStorage {
+        if ($this->loadedRelations === null) {
+            $this->loadedRelations = new \SplObjectStorage();
+        }
+
+        return $this->loadedRelations;
+    }
+
+    private function buildMapping(): \Tyhp\Rhetoric\Mapping\ContextMap {
+        \Tyhp\Rhetoric\Mapping\Mapper $mapper = new \Tyhp\Rhetoric\Mapping\Mapper();
+        $this->map($mapper);
+
+        return $mapper->build($this);
+    }
+}

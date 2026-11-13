@@ -1,0 +1,163 @@
+<?tyhp
+
+namespace Tyhp;
+
+/**
+ * PHP 8.4 lazy objects.
+ *
+ * `ghost` keeps identity. The instance stays uninitialized until something reads
+ * it, then the initializer runs on that same instance. `proxy` forwards to a
+ * separate instance the factory returns.
+ *
+ * Builds whose `output.phpVersion` is 8.4 or newer call the native reflection
+ * APIs. Builds for 8.2 and 8.3 construct eagerly: the initializer or factory
+ * runs before the call returns, and the object is not lazy.
+ *
+ * `T` names the class of the instance. It does not carry that class's own type
+ * arguments, so neither `ghost` nor `proxy` binds a generic class's type
+ * arguments. The initializer or factory decides how the instance is
+ * constructed; a `new` inside it binds as an ordinary `new` does.
+ *
+ * On the 8.2 and 8.3 builds, `proxy` is not a proxy: the caller receives the
+ * factory's return value immediately. `reset` runs the initializer on the
+ * existing instance and does not make it lazy. `preset` writes through
+ * `ReflectionProperty::setValue`.
+ */
+final class Lazy
+{
+    private function __construct() {}
+
+    /**
+     * @param $initializer Runs on the ghost when it initializes. An exception it
+     *                     throws propagates and leaves the object lazy.
+     * @param $options     Forwarded to `ReflectionClass::newLazyGhost`.
+     */
+    #[\Tyhp\Php(">=8.4")]
+    public static function ghost<T extends object>(
+        callable(T): void $initializer,
+        int $options = 0,
+    ): T {
+        return (new \ReflectionClass<T>(T::class))->newLazyGhost($initializer, $options);
+    }
+
+    /**
+     * Eager stand-in for {@see ghost}. The initializer runs before this returns.
+     */
+    #[\Tyhp\Php("<8.4")]
+    public static function ghost<T extends object>(
+        callable(T): void $initializer,
+        int $options = 0,
+    ): T {
+        (void)$options;
+        T $object = (new \ReflectionClass<T>(T::class))->newInstanceWithoutConstructor();
+        $initializer($object);
+
+        return $object;
+    }
+
+    /**
+     * @param $factory Returns the real instance. It is not invoked until the proxy initializes.
+     * @param $options Forwarded to `ReflectionClass::newLazyProxy`.
+     */
+    #[\Tyhp\InferGeneric]
+    #[\Tyhp\Php(">=8.4")]
+    public static function proxy<T extends object>(
+        callable(T): T $factory,
+        int $options = 0,
+    ): T {
+        return (new \ReflectionClass<T>(T::class))->newLazyProxy($factory, $options);
+    }
+
+    /**
+     * Eager stand-in for {@see proxy}. Calls `$factory` immediately and returns
+     * that value. The result is not a proxy.
+     */
+    #[\Tyhp\InferGeneric]
+    #[\Tyhp\Php("<8.4")]
+    public static function proxy<T extends object>(
+        callable(T): T $factory,
+        int $options = 0,
+    ): T {
+        (void)$options;
+        T $shell = (new \ReflectionClass<T>(T::class))->newInstanceWithoutConstructor();
+
+        return $factory($shell);
+    }
+
+    #[\Tyhp\Php(">=8.4")]
+    public static function isLazy(object $object): bool
+    {
+        return (new \ReflectionClass($object))->isUninitializedLazyObject($object);
+    }
+
+    #[\Tyhp\Php("<8.4")]
+    public static function isLazy(object $object): bool
+    {
+        (void)$object;
+
+        return false;
+    }
+
+    #[\Tyhp\Php(">=8.4")]
+    public static function initialize<T>(T $object): T
+    {
+        mixed $value = $object;
+        if ($value is object) {
+            (new \ReflectionClass($value))->initializeLazyObject($value);
+        }
+
+        return $object;
+    }
+
+    #[\Tyhp\Php("<8.4")]
+    public static function initialize<T>(T $object): T
+    {
+        return $object;
+    }
+
+    /**
+     * @param $options Forwarded to `ReflectionClass::resetAsLazyGhost`, including
+     *                 `ReflectionClass::SKIP_DESTRUCTOR` when the caller wants it.
+     */
+    #[\Tyhp\InferGeneric]
+    #[\Tyhp\Php(">=8.4")]
+    public static function reset<T extends object>(
+        T $object,
+        callable(T): void $initializer,
+        int $options = 0,
+    ): void {
+        (new \ReflectionClass<T>($object))->resetAsLazyGhost($object, $initializer, $options);
+    }
+
+    /**
+     * Runs `$initializer` on `$object` immediately. The instance does not become lazy.
+     */
+    #[\Tyhp\InferGeneric]
+    #[\Tyhp\Php("<8.4")]
+    public static function reset<T extends object>(
+        T $object,
+        callable(T): void $initializer,
+        int $options = 0,
+    ): void {
+        (void)$options;
+        $initializer($object);
+    }
+
+    #[\Tyhp\Php(">=8.4")]
+    public static function preset<T extends object>(
+        T $object,
+        __PropertyName<T> $property,
+        mixed $value,
+    ): void {
+        (new \ReflectionProperty($object, $property))->setRawValueWithoutLazyInitialization($object, $value);
+    }
+
+    #[\Tyhp\Php("<8.4")]
+    public static function preset<T extends object>(
+        T $object,
+        __PropertyName<T> $property,
+        mixed $value,
+    ): void {
+        (new \ReflectionProperty($object, $property))->setValue($object, $value);
+    }
+}

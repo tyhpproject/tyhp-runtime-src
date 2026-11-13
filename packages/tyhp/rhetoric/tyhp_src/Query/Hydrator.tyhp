@@ -1,0 +1,452 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Expression\NewExpression;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+
+final class Hydrator {
+    /** @var array<string, \ReflectionClass> */
+    private static array<string, \ReflectionClass> $reflections = [];
+
+    /** @var array<string, \ReflectionProperty> */
+    private static array<string, \ReflectionProperty> $reflectedProperties = [];
+
+    /**
+     * Held by the map itself, so a map built after another was released never inherits its answers.
+     *
+     * @var ?\WeakMap<ModelMap, array<string, bool>>
+     */
+    private static ?\WeakMap<ModelMap, array<string, bool>> $boundConstructors = null;
+
+    private static int $hydrated = 0;
+
+    public static function hydrated(): int {
+        return self::$hydrated;
+    }
+
+    public static function resetProfile(): void {
+        self::$hydrated = 0;
+    }
+
+    /**
+     * @param array<int, object> $rows
+     * @return array<int, mixed>
+     */
+    public static function models(ModelMap $map, array<int, object> $rows, ?Context $context = null): array<int, mixed> {
+        array<int, mixed> $models = [];
+        foreach ($rows as $row) {
+            $models[] = self::model($map, $row, $context, false);
+        }
+
+        return $models;
+    }
+
+    public static function model(ModelMap $map, object $row, ?Context $context = null, bool $reuse = false): mixed {
+        self::$hydrated++;
+        if ($reuse && $context !== null) {
+            ?object $existing = $context->tracker->modelForRow($map, $row);
+            if ($existing !== null) {
+                if (\Tyhp\Lazy::isLazy($existing)) {
+                    $context->ghosts()->fill($map, $existing, $row);
+                }
+
+                return $existing;
+            }
+        }
+        array<string, mixed> $data = self::values($row);
+        string $class = self::concrete($map, $data);
+        if ($context !== null && $context->loadsLazily() && $map->key !== null && self::hasDeferred($map) && !self::carriesDeferred($map, $data) && $context->ghosts()->defers()) {
+            object $ghost = $context->ghosts()->partial($map, $class, $row);
+            $context->ghosts()->wire($map, $ghost);
+
+            return $ghost;
+        }
+        \ReflectionClass $ref = self::reflect($class);
+        ?\ReflectionMethod $constructor = $ref->getConstructor();
+        if ($constructor !== null && self::binds($map, $constructor)) {
+            array<int, mixed> $args = [];
+            array<string, bool> $used = [];
+            foreach ($constructor->getParameters() as $parameter) {
+                string $name = $parameter->getName();
+                if ($map->hasColumn($name)) {
+                    $used[$name] = true;
+                    ColumnMap $column = $map->column($name);
+                    $args[] = self::coerce(self::inbound($column, self::read($data, $column)), $parameter->getType());
+                    continue;
+                }
+                if ($parameter->isDefaultValueAvailable()) {
+                    $args[] = $parameter->getDefaultValue();
+                    continue;
+                }
+                if ($parameter->allowsNull()) {
+                    $args[] = null;
+                    continue;
+                }
+                throw new \LogicException($map->class . ' constructor parameter ' . $name . ' is not a mapped column.');
+            }
+            object $instance = $ref->newInstanceArgs($args);
+            self::assignRest($map, $ref, $instance, $data, $used, false);
+            if ($context !== null) {
+                $context->ghosts()->wire($map, $instance);
+            }
+
+            return $instance;
+        }
+
+        object $instance = $ref->newInstanceWithoutConstructor();
+        self::assignRest($map, $ref, $instance, $data, [], false);
+        if ($context !== null) {
+            $context->ghosts()->wire($map, $instance);
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Writes a row onto an instance. `$skipDeferred` leaves the deferred columns alone and `$onlyDeferred`
+     * writes nothing else, so a ghost that already holds its other columns keeps any change made to them.
+     */
+    public static function apply(ModelMap $map, object $instance, object $row, bool $skipDeferred, bool $onlyDeferred = false): void {
+        \ReflectionClass $ref = self::reflect($instance::class);
+        self::assignRest($map, $ref, $instance, self::values($row), [], $skipDeferred, $onlyDeferred);
+    }
+
+    public static function hasDeferred(ModelMap $map): bool {
+        foreach ($map->columns as $column) {
+            if ($column->deferred && !$column->shadow) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The columns a model query selects when lazy loading leaves the deferred ones for the first touch,
+     * or null when the query selects every column.
+     *
+     * @return ?array<int, string>
+     */
+    public static function selectedColumns(Context $context, ModelMap $map): ?array<int, string> {
+        if (!$context->loadsLazily() || $map->key === null || $map->discriminatorColumn !== null || !self::hasDeferred($map) || !$context->ghosts()->defers()) {
+            return null;
+        }
+        array<int, string> $names = [];
+        array<string, bool> $seen = [];
+        foreach ($map->columns as $column) {
+            if ($column->deferred || isset($seen[$column->name])) {
+                continue;
+            }
+            $seen[$column->name] = true;
+            $names[] = $column->name;
+        }
+
+        return $names;
+    }
+
+    /**
+     * Whether a row already holds every deferred column, so there is nothing left to load later.
+     */
+    public static function carriesDeferred(ModelMap $map, array<string, mixed> $data): bool {
+        foreach ($map->columns as $column) {
+            if ($column->deferred && !$column->shadow && !\array_key_exists($column->name, $data)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static function construct(QueryState $state, QueryPlan $plan, object $row): mixed {
+        if ($state->projection === null || !($state->projection->body instanceof NewExpression)) {
+            throw new \LogicException('Constructor projection is missing.');
+        }
+        array<string, mixed> $data = self::values($row);
+        array<int, mixed> $args = [];
+        \ReflectionClass $ref = self::reflect($state->projection->body->class);
+        array<int, \ReflectionParameter> $parameters = $ref->getConstructor()?->getParameters() ?? [];
+        int $index = 0;
+        foreach ($plan->aliases as $alias) {
+            mixed $value = $data[$alias] ?? null;
+            ?\ReflectionType $type = isset($parameters[$index]) ? $parameters[$index]->getType() : null;
+            $args[] = self::coerce($value, $type);
+            $index++;
+        }
+
+        return $ref->newInstanceArgs($args);
+    }
+
+    public static function listed(QueryPlan $plan, object $row): mixed {
+        array<string, mixed> $data = self::values($row);
+        array<int|string, mixed> $result = [];
+        foreach ($plan->aliases as $index => $alias) {
+            mixed $label = $plan->labels[$index] ?? $index;
+            mixed $value = $data[$alias] ?? null;
+            if (\is_int($label) || \is_string($label)) {
+                $result[$label] = $value;
+            }
+        }
+
+        return $result;
+    }
+
+    public static function scalar(QueryPlan $plan, object $row): mixed {
+        array<string, mixed> $data = self::values($row);
+        string $alias = $plan->aliases[0] ?? 'scalar';
+        if (!\array_key_exists($alias, $data)) {
+            return null;
+        }
+
+        return $data[$alias];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function values(object $row): array<string, mixed> {
+        mixed $cast = (array)$row;
+        if (!\is_array($cast)) {
+            throw new \LogicException('Query row was not an object.');
+        }
+        array<string, mixed> $data = [];
+        foreach ($cast as $key => $value) {
+            if (\is_string($key)) {
+                $data[$key] = $value;
+            }
+        }
+
+        return $data;
+    }
+
+    private static function binds(ModelMap $map, \ReflectionMethod $constructor): bool {
+        ?\WeakMap<ModelMap, array<string, bool>> $store = self::$boundConstructors;
+        if ($store === null) {
+            $store = new \WeakMap<ModelMap, array<string, bool>>();
+            self::$boundConstructors = $store;
+        }
+        string $key = $constructor->getDeclaringClass()->getName();
+        array<string, bool> $known = $store[$map] ?? [];
+        if (\array_key_exists($key, $known)) {
+            return $known[$key];
+        }
+        bool $matched = false;
+        bool $bindable = true;
+        foreach ($constructor->getParameters() as $parameter) {
+            if ($map->hasColumn($parameter->getName())) {
+                $matched = true;
+                continue;
+            }
+            if ($parameter->isOptional() || $parameter->allowsNull()) {
+                continue;
+            }
+            $bindable = false;
+            break;
+        }
+        bool $binds = $bindable && $matched;
+        $known[$key] = $binds;
+        $store[$map] = $known;
+
+        return $binds;
+    }
+
+    private static function reflect(string $class): \ReflectionClass {
+        string $name = \ltrim($class, '\\');
+        if (!isset(self::$reflections[$name])) {
+            self::$reflections[$name] = new \ReflectionClass($name);
+        }
+
+        return self::$reflections[$name];
+    }
+
+    private static function reflectedProperty(\ReflectionClass $ref, string $property): \ReflectionProperty {
+        string $key = $ref->getName() . "\0" . $property;
+        if (!isset(self::$reflectedProperties[$key])) {
+            self::$reflectedProperties[$key] = $ref->getProperty($property);
+        }
+
+        return self::$reflectedProperties[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, bool> $used
+     */
+    private static function assignRest(
+        ModelMap $map,
+        \ReflectionClass $ref,
+        object $instance,
+        array<string, mixed> $data,
+        array<string, bool> $used,
+        bool $skipDeferred,
+        bool $onlyDeferred = false,
+    ): void {
+        array<string, array<string, mixed>> $owners = [];
+        foreach ($map->columns as $column) {
+            if ($column->shadow || isset($used[$column->property]) || !\array_key_exists($column->name, $data)) {
+                continue;
+            }
+            if ($skipDeferred && $column->deferred) {
+                continue;
+            }
+            if ($onlyDeferred && !$column->deferred) {
+                continue;
+            }
+            mixed $value = self::coerce(self::inbound($column, self::read($data, $column)), null);
+            if (\str_contains($column->property, '.')) {
+                self::put($owners, $column->property, $value);
+                continue;
+            }
+            if (!$ref->hasProperty($column->property)) {
+                continue;
+            }
+            \ReflectionProperty $property = self::reflectedProperty($ref, $column->property);
+            if ($property->isReadOnly() && PropertyBag::holds($instance, $property)) {
+                continue;
+            }
+            if ($column->json && \is_array($value)) {
+                $value = self::inflate($ref, $column->property, $value);
+            }
+            PropertyBag::write($instance, $column->property, self::coerce($value, $property->getType()));
+        }
+        foreach ($owners as $name => $bag) {
+            if (!$ref->hasProperty($name)) {
+                continue;
+            }
+            \ReflectionProperty $property = self::reflectedProperty($ref, $name);
+            if ($property->isReadOnly() && PropertyBag::holds($instance, $property)) {
+                continue;
+            }
+            mixed $value = self::inflate($ref, $name, $bag);
+            PropertyBag::write($instance, $name, $value);
+        }
+    }
+
+    private static function concrete(ModelMap $map, array<string, mixed> $data): string {
+        if ($map->discriminatorColumn === null || \count($map->discriminatorTypes) === 0) {
+            return $map->class;
+        }
+        mixed $value = $data[$map->discriminatorColumn] ?? null;
+        if (!\is_string($value) && !\is_int($value)) {
+            return $map->class;
+        }
+        string $token = (string)$value;
+        if (!isset($map->discriminatorTypes[$token])) {
+            return $map->class;
+        }
+        // A derived model's query also returns the classes derived from it, never an unrelated one.
+        string $candidate = $map->discriminatorTypes[$token];
+        string $own = \ltrim($map->class, '\\');
+        if (\ltrim($candidate, '\\') === $own || \is_subclass_of(\ltrim($candidate, '\\'), $own)) {
+            return $candidate;
+        }
+
+        return $map->class;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $owners
+     */
+    private static function put(array<string, array<string, mixed>> &$owners, string $path, mixed $value): void {
+        array<int, string> $parts = \explode('.', $path);
+        string $owner = $parts[0] ?? '';
+        if ($owner === '' || \count($parts) < 2) {
+            return;
+        }
+        if (!isset($owners[$owner])) {
+            $owners[$owner] = [];
+        }
+        array<string, mixed> $cursor = $owners[$owner];
+        self::putAt($cursor, \implode('.', \array_slice($parts, 1)), $value);
+        $owners[$owner] = $cursor;
+    }
+
+    /**
+     * @param array<string, mixed> $bag
+     */
+    private static function putAt(array<string, mixed> &$bag, string $path, mixed $value): void {
+        array<int, string> $parts = \explode('.', $path);
+        string $first = $parts[0] ?? '';
+        if ($first === '') {
+            return;
+        }
+        if (\count($parts) === 1) {
+            $bag[$first] = $value;
+
+            return;
+        }
+        array<string, mixed> $child = [];
+        if (isset($bag[$first]) && \is_array($bag[$first])) {
+            foreach ($bag[$first] as $key => $item) {
+                if (\is_string($key)) {
+                    $child[$key] = $item;
+                }
+            }
+        }
+        self::putAt($child, \implode('.', \array_slice($parts, 1)), $value);
+        $bag[$first] = $child;
+    }
+
+    /**
+     * @param array<string, mixed> $value
+     */
+    private static function inflate(\ReflectionClass $owner, string $property, array<string, mixed> $value): mixed {
+        if (!$owner->hasProperty($property)) {
+            return $value;
+        }
+        ?\ReflectionType $type = $owner->getProperty($property)->getType();
+        if (!($type instanceof \ReflectionNamedType) || $type->isBuiltin()) {
+            return $value;
+        }
+        mixed $name = $type->getName();
+        if (!\is_string($name) || !\class_exists($name)) {
+            return $value;
+        }
+        \ReflectionClass $ref = new \ReflectionClass($name);
+        object $instance = $ref->newInstanceWithoutConstructor();
+        foreach ($value as $field => $fieldValue) {
+            if (!$ref->hasProperty($field)) {
+                continue;
+            }
+            $ref->getProperty($field)->setValue($instance, $fieldValue);
+        }
+
+        return $instance;
+    }
+
+    private static function inbound(ColumnMap $column, mixed $value): mixed {
+        return PropertyBag::inbound($column, $value);
+    }
+
+    private static function read(array<string, mixed> $data, ColumnMap $column): mixed {
+        if (!\array_key_exists($column->name, $data)) {
+            return null;
+        }
+
+        return $data[$column->name];
+    }
+
+    private static function coerce(mixed $value, ?\ReflectionType $type): mixed {
+        if ($value === null || !($type instanceof \ReflectionNamedType) || !$type->isBuiltin()) {
+            return $value;
+        }
+        string $name = $type->getName();
+        if ($name === 'int' && \is_numeric($value)) {
+            return (int)$value;
+        }
+        if ($name === 'float' && \is_numeric($value)) {
+            return (float)$value;
+        }
+        if ($name === 'string' && (\is_string($value) || \is_int($value) || \is_float($value))) {
+            return (string)$value;
+        }
+        if ($name === 'bool') {
+            return $value === true || $value === 1 || $value === '1';
+        }
+
+        return $value;
+    }
+}

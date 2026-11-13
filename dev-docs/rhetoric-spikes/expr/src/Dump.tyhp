@@ -1,0 +1,107 @@
+<?tyhp
+
+namespace Rhetoric\Spikes\Expr;
+
+use Tyhp\Expression;
+use Tyhp\Expression\ArrayAccessExpression;
+use Tyhp\Expression\BinaryExpression;
+use Tyhp\Expression\ConstantExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\LambdaExpression;
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\ParameterExpression;
+use Tyhp\Expression\PropertyAccessExpression;
+use Tyhp\Expression\UnaryExpression;
+
+function describeExpression<TCallable extends callable>(Expression<TCallable> $expr): string {
+    string $out = 'returnType=' . $expr->returnType;
+    foreach ($expr->parameters as $parameter) {
+        $out .= "\n" . 'param ' . $parameter->name . ' index=' . (string) $parameter->index . ' paramType=' . $parameter->paramType;
+    }
+    $out .= "\n" . describeNode($expr->body, 0);
+    return $out;
+}
+
+function describeNode(ExpressionNode $node, int $indent): string {
+    string $pad = \str_repeat('  ', $indent);
+    string $line = $pad . $node->nodeType . ' type=' . $node->type;
+
+    if ($node instanceof MethodCallExpression) {
+        $line .= ' method=' . $node->method . ' receiverType=' . $node->object->type;
+        $line .= "\n" . describeNode($node->object, $indent + 1);
+        foreach ($node->arguments as $argument) {
+            $line .= "\n" . describeNode($argument, $indent + 1);
+        }
+        return $line;
+    }
+
+    if ($node instanceof PropertyAccessExpression) {
+        $line .= ' property=' . $node->property;
+        return $line . "\n" . describeNode($node->object, $indent + 1);
+    }
+
+    if ($node instanceof NullSafeAccessExpression) {
+        $line .= ' property=' . $node->property;
+        return $line . "\n" . describeNode($node->object, $indent + 1);
+    }
+
+    if ($node instanceof BinaryExpression) {
+        $line .= ' operator=' . $node->operator;
+        return $line
+            . "\n" . describeNode($node->left, $indent + 1)
+            . "\n" . describeNode($node->right, $indent + 1);
+    }
+
+    if ($node instanceof UnaryExpression) {
+        $line .= ' operator=' . $node->operator;
+        return $line . "\n" . describeNode($node->operand, $indent + 1);
+    }
+
+    if ($node instanceof ArrayAccessExpression) {
+        return $line
+            . "\n" . describeNode($node->array, $indent + 1)
+            . "\n" . describeNode($node->index, $indent + 1);
+    }
+
+    if ($node instanceof LambdaExpression) {
+        $line .= ' lambdaReturn=' . $node->returnType;
+        foreach ($node->parameters as $parameter) {
+            $line .= "\n" . $pad . '  lambdaParam ' . $parameter->name . ' paramType=' . $parameter->paramType;
+        }
+        return $line . "\n" . describeNode($node->body, $indent + 1);
+    }
+
+    if ($node instanceof ParameterExpression) {
+        return $line . ' name=' . $node->name . ' paramType=' . $node->paramType;
+    }
+
+    if ($node instanceof ConstantExpression) {
+        return $line . ' value=' . describeValue($node->value);
+    }
+
+    return $line;
+}
+
+function describeValue(mixed $value): string {
+    if ($value === null) {
+        return 'null';
+    }
+    if (\is_object($value)) {
+        return 'object ' . $value::class;
+    }
+    if (\is_bool($value)) {
+        return $value ? 'true' : 'false';
+    }
+    if (\is_int($value) || \is_float($value)) {
+        return (string) $value;
+    }
+    if (\is_string($value)) {
+        ?string $exported = \var_export($value, true);
+        return $exported !== null ? $exported : 'null';
+    }
+    if (\is_array($value)) {
+        return 'array(count=' . (string) \count($value) . ')';
+    }
+    return \get_debug_type($value);
+}

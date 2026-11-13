@@ -1,0 +1,47 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+class Conventions {
+    public function tableName(__ClassName $modelClass): string {
+        return \Illuminate\Support\Str::snake(
+            \Illuminate\Support\Str::pluralStudly($this->classBasename($modelClass)),
+        );
+    }
+
+    public function columnName(string $property): string {
+        return \Illuminate\Support\Str::snake($property);
+    }
+
+    public function foreignKeyProperty(string $relation): string {
+        return $relation . 'Id';
+    }
+
+    public function modelKeyProperty(__ClassName $modelClass): string {
+        return \lcfirst($this->classBasename($modelClass)) . 'Id';
+    }
+
+    public function pivotTable(__ClassName $leftClass, __ClassName $rightClass): string {
+        array<int, string> $names = [
+            \Illuminate\Support\Str::snake($this->classBasename($leftClass)),
+            \Illuminate\Support\Str::snake($this->classBasename($rightClass)),
+        ];
+        \sort($names);
+
+        return \implode('_', $names);
+    }
+
+    public function pivotForeignKey(__ClassName $modelClass, string $keyColumn): string {
+        return \Illuminate\Support\Str::snake($this->classBasename($modelClass)) . '_' . $keyColumn;
+    }
+
+    protected function classBasename(__ClassName $class): string {
+        string $name = \ltrim($class, '\\');
+        int|false $pos = \strrpos($name, '\\');
+        if ($pos === false) {
+            return $name;
+        }
+
+        return \substr($name, $pos + 1);
+    }
+}

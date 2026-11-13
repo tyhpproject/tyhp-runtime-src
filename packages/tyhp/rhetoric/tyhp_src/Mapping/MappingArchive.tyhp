@@ -1,0 +1,746 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Migrations\Auto\PhpFile;
+use Tyhp\Rhetoric\Observers\QueryInterceptor;
+use Tyhp\Rhetoric\OnDelete;
+
+/**
+ * The mapping file `rhetoric:cache` writes and the service provider reads.
+ * A context that cannot be stored is built again the first time it is used.
+ */
+final class MappingArchive {
+    public static function install(?\Illuminate\Contracts\Container\Container $app): void {
+        ?string $path = self::locate($app);
+        if ($path === null || !\is_file($path)) {
+            return;
+        }
+        try {
+            (void)self::load($path);
+        } catch (\Throwable $error) {
+            (void)$error;
+        }
+    }
+
+    public static function pathFor(?\Illuminate\Contracts\Container\Container $app): string {
+        ?string $located = self::locate($app);
+        if ($located !== null) {
+            return $located;
+        }
+
+        return 'bootstrap/cache/rhetoric-mapping.php';
+    }
+
+    public static function locate(?\Illuminate\Contracts\Container\Container $app): ?string {
+        if ($app === null) {
+            return null;
+        }
+        if ($app->bound('config')) {
+            mixed $config = $app->get('config');
+            if ($config instanceof \Illuminate\Contracts\Config\Repository) {
+                mixed $configured = $config->get('rhetoric.mapping_cache');
+                if (\is_string($configured) && $configured !== '') {
+                    return $configured;
+                }
+            }
+        }
+        if ($app->bound('path.bootstrap')) {
+            mixed $bootstrap = $app->get('path.bootstrap');
+            if (\is_string($bootstrap) && $bootstrap !== '') {
+                return \rtrim($bootstrap, '/\\') . '/cache/rhetoric-mapping.php';
+            }
+        }
+        if (\method_exists($app, 'bootstrapPath')) {
+            mixed $bootstrap = (new \ReflectionMethod($app, 'bootstrapPath'))->invoke($app, 'cache');
+            if (\is_string($bootstrap) && $bootstrap !== '') {
+                return \rtrim($bootstrap, '/\\') . '/rhetoric-mapping.php';
+            }
+        }
+
+        return null;
+    }
+
+    public static function forget(string $path): void {
+        PhpFile::delete($path);
+    }
+
+    /**
+     * Writes one file for the configured contexts. Returns warnings for contexts that were not stored.
+     *
+     * @return array<int, string>
+     */
+    public static function capture(\Illuminate\Contracts\Container\Container $app): array<int, string> {
+        array<int, string> $warnings = [];
+        array<string, mixed> $contexts = [];
+        foreach (self::configured($app) as $class) {
+            try {
+                // A mapping the application loaded from the earlier cache is not the one the code describes.
+                MapCache::forget($class);
+                Context $context = self::construct($class);
+                $contexts[$context::class] = self::exportMap($context->mapping());
+            } catch (\Throwable $error) {
+                (void)$error;
+                $warnings[] = $class . ' was not written into the mapping cache.';
+                $contexts[$class] = ['mode' => 'live'];
+            }
+        }
+        self::writeFile(self::pathFor($app), $contexts);
+
+        return $warnings;
+    }
+
+    /**
+     * @param array<int, ContextMap> $maps
+     */
+    public static function write(string $path, array<int, ContextMap> $maps): void {
+        array<string, mixed> $contexts = [];
+        foreach ($maps as $map) {
+            $contexts[$map->contextClass] = self::exportMap($map);
+        }
+        self::writeFile($path, $contexts);
+    }
+
+    public static function load(string $path): int {
+        mixed $loaded = PhpFile::read($path);
+        if (!\is_array($loaded)) {
+            return 0;
+        }
+        mixed $version = $loaded['version'] ?? null;
+        if ($version !== 1) {
+            return 0;
+        }
+        mixed $contexts = $loaded['contexts'] ?? null;
+        if (!\is_array($contexts)) {
+            return 0;
+        }
+        int $stored = 0;
+        foreach ($contexts as $name => $spec) {
+            if (!\is_string($name) || !\is_array($spec)) {
+                continue;
+            }
+            try {
+                ?ContextMap $map = self::importMap($spec);
+                if ($map !== null) {
+                    MapCache::store($map->contextClass, $map);
+                    $stored++;
+                }
+            } catch (\Throwable $error) {
+                (void)$error;
+            }
+        }
+
+        return $stored;
+    }
+
+    /**
+     * @param array<string, mixed> $contexts
+     */
+    private static function writeFile(string $path, array<string, mixed> $contexts): void {
+        array<string, mixed> $document = [
+            'version' => 1,
+            'contexts' => $contexts,
+        ];
+        PhpFile::write($path, $document);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function configured(\Illuminate\Contracts\Container\Container $app): array<int, string> {
+        array<int, string> $classes = [];
+        if (!$app->bound('config')) {
+            return $classes;
+        }
+        mixed $config = $app->get('config');
+        if (!($config instanceof \Illuminate\Contracts\Config\Repository)) {
+            return $classes;
+        }
+        mixed $contexts = $config->get('rhetoric.contexts', []);
+        if (!\is_array($contexts)) {
+            return $classes;
+        }
+        foreach ($contexts as $class) {
+            if (!\is_string($class) || $class === '' || !\class_exists($class) || !\is_a($class, Context::class, true)) {
+                continue;
+            }
+            $classes[] = \ltrim($class, '\\');
+        }
+
+        return $classes;
+    }
+
+    private static function construct(string $class): Context {
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+        object $instance = $reflection->newInstance();
+        if (!($instance instanceof Context)) {
+            throw new \InvalidArgumentException($class . ' is not a context.');
+        }
+
+        return $instance;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function exportMap(ContextMap $map): array<string, mixed> {
+        array<string, mixed> $models = [];
+        foreach ($map->models as $model) {
+            $models[$model->class] = self::exportModel($model);
+        }
+        array<string, mixed> $exported = [
+            'mode' => 'map',
+            'context' => $map->contextClass,
+            'interceptors' => self::exportInterceptors($map->interceptors),
+            'models' => $models,
+        ];
+        mixed $plain = self::scalars($exported);
+        if (!\is_array($plain)) {
+            throw new \RuntimeException('The mapping cache could not be written.');
+        }
+        array<string, mixed> $document = [];
+        foreach ($plain as $key => $value) {
+            if (\is_string($key)) {
+                $document[$key] = $value;
+            }
+        }
+
+        return $document;
+    }
+
+    /**
+     * @param array<int, QueryInterceptor> $interceptors
+     * @return array<int, string>
+     */
+    private static function exportInterceptors(array<int, QueryInterceptor> $interceptors): array<int, string> {
+        array<int, string> $names = [];
+        foreach ($interceptors as $interceptor) {
+            string $name = $interceptor::class;
+            if (\str_contains($name, "\0") || \str_contains($name, '@')) {
+                throw new \RuntimeException('An interceptor cannot be stored.');
+            }
+            \ReflectionClass $reflection = new \ReflectionClass($name);
+            ?\ReflectionMethod $constructor = $reflection->getConstructor();
+            if ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0) {
+                throw new \RuntimeException('An interceptor cannot be stored.');
+            }
+            $names[] = $name;
+        }
+
+        return $names;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function exportModel(ModelMap $model): array<string, mixed> {
+        array<string, mixed> $columns = [];
+        foreach ($model->columns as $column) {
+            $columns[$column->property] = [
+                'property' => $column->property,
+                'name' => $column->name,
+                'type' => $column->type,
+                'nullable' => $column->nullable,
+                'maxLength' => $column->maxLength,
+                'precision' => $column->precision,
+                'scale' => $column->scale,
+                'generated' => $column->generated,
+                'comment' => $column->comment,
+                'hasDefault' => $column->hasDefault,
+                'default' => $column->default,
+                'text' => $column->text,
+                'blueprintType' => $column->blueprintType,
+                'castClass' => $column->castClass,
+                'json' => $column->json,
+                'shadow' => $column->shadow,
+                'concurrency' => $column->concurrency,
+                'rowVersion' => $column->rowVersion,
+                'deferred' => $column->deferred,
+            ];
+        }
+        array<int, mixed> $alternate = [];
+        foreach ($model->alternateKeys as $key) {
+            $alternate[] = self::exportKey($key);
+        }
+        array<int, mixed> $indexes = [];
+        foreach ($model->indexes as $index) {
+            $indexes[] = [
+                'properties' => $index->properties,
+                'columns' => $index->columns,
+                'unique' => $index->unique,
+                'name' => $index->name,
+            ];
+        }
+        array<int, mixed> $foreignKeys = [];
+        foreach ($model->foreignKeys as $foreignKey) {
+            $foreignKeys[] = [
+                'name' => $foreignKey->name,
+                'properties' => $foreignKey->properties,
+                'columns' => $foreignKey->columns,
+                'referencedClass' => $foreignKey->referencedClass,
+                'referencedTable' => $foreignKey->referencedTable,
+                'referencedColumns' => $foreignKey->referencedColumns,
+                'onDelete' => $foreignKey->onDelete->value,
+            ];
+        }
+        array<string, mixed> $relations = [];
+        foreach ($model->relations as $relation) {
+            $relations[$relation->property] = [
+                'property' => $relation->property,
+                'kind' => $relation->kind->value,
+                'relatedClass' => $relation->relatedClass,
+                'inverseProperty' => $relation->inverseProperty,
+                'foreignKeyProperty' => $relation->foreignKeyProperty,
+                'foreignKeyColumn' => $relation->foreignKeyColumn,
+                'onDelete' => $relation->onDelete->value,
+                'pivotTable' => $relation->pivotTable,
+                'pivotForeignKey' => $relation->pivotForeignKey,
+                'pivotRelatedKey' => $relation->pivotRelatedKey,
+                'pivotClass' => $relation->pivotClass,
+            ];
+        }
+        array<int, string> $scopes = [];
+        foreach ($model->globalScopes as $scope) {
+            $scopes[] = ExpressionArchive::export($scope);
+        }
+
+        return [
+            'class' => $model->class,
+            'table' => $model->table,
+            'comment' => $model->comment,
+            'columns' => $columns,
+            'key' => $model->key === null ? null : self::exportKey($model->key),
+            'alternateKeys' => $alternate,
+            'indexes' => $indexes,
+            'foreignKeys' => $foreignKeys,
+            'relations' => $relations,
+            'timestamps' => $model->timestamps,
+            'seeds' => $model->seeds,
+            'scopes' => $scopes,
+            'softDeletes' => $model->softDeletes,
+            'deletedAtProperty' => $model->deletedAtProperty,
+            'deletedAtColumn' => $model->deletedAtColumn,
+            'readOnly' => $model->readOnly,
+            'view' => $model->view,
+            'discriminatorProperty' => $model->discriminatorProperty,
+            'discriminatorColumn' => $model->discriminatorColumn,
+            'discriminatorValue' => $model->discriminatorValue,
+            'rootClass' => $model->rootClass,
+            'discriminatorTypes' => $model->discriminatorTypes,
+            'observers' => $model->observers,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function exportKey(KeyMap $key): array<string, mixed> {
+        return [
+            'properties' => $key->properties,
+            'columns' => $key->columns,
+            'primary' => $key->primary,
+        ];
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function importMap(array<int|string, mixed> $spec): ?ContextMap {
+        if (($spec['mode'] ?? null) !== 'map') {
+            return null;
+        }
+        mixed $context = $spec['context'] ?? null;
+        if (!\is_string($context) || $context === '') {
+            throw new \RuntimeException('The mapping cache has no context.');
+        }
+        array<string, ModelMap> $models = [];
+        mixed $listed = $spec['models'] ?? null;
+        if (!\is_array($listed)) {
+            throw new \RuntimeException('The mapping cache has no models.');
+        }
+        foreach ($listed as $model) {
+            if (!\is_array($model)) {
+                throw new \RuntimeException('The mapping cache has a model that is not a map.');
+            }
+            ModelMap $imported = self::importModel($model);
+            $models[$imported->class] = $imported;
+        }
+
+        return new ContextMap(self::className($context), $models, self::importInterceptors($spec['interceptors'] ?? null));
+    }
+
+    /**
+     * @return array<int, QueryInterceptor>
+     */
+    private static function importInterceptors(mixed $listed): array<int, QueryInterceptor> {
+        array<int, QueryInterceptor> $interceptors = [];
+        if ($listed === null) {
+            return $interceptors;
+        }
+        if (!\is_array($listed)) {
+            throw new \RuntimeException('The mapping cache has an interceptor that is not a class.');
+        }
+        foreach ($listed as $name) {
+            if (!\is_string($name) || !\class_exists($name)) {
+                throw new \RuntimeException('The mapping cache has an interceptor that is not a class.');
+            }
+            object $instance = (new \ReflectionClass($name))->newInstance();
+            if (!($instance instanceof QueryInterceptor)) {
+                throw new \RuntimeException($name . ' is not a query interceptor.');
+            }
+            $interceptors[] = $instance;
+        }
+
+        return $interceptors;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function importModel(array<int|string, mixed> $spec): ModelMap {
+        string $class = self::text($spec, 'class');
+        array<string, ColumnMap> $columns = [];
+        mixed $listed = $spec['columns'] ?? null;
+        if (!\is_array($listed)) {
+            throw new \RuntimeException($class . ' has no columns in the mapping cache.');
+        }
+        foreach ($listed as $column) {
+            if (!\is_array($column)) {
+                throw new \RuntimeException($class . ' has a column that is not a map.');
+            }
+            ColumnMap $columnMap = self::importColumn($column);
+            $columns[$columnMap->property] = $columnMap;
+        }
+        array<int, KeyMap> $alternate = [];
+        foreach (self::rows($spec, 'alternateKeys') as $alternateKey) {
+            $alternate[] = self::importKey($alternateKey);
+        }
+        array<int, IndexMap> $indexes = [];
+        foreach (self::rows($spec, 'indexes') as $index) {
+            $indexes[] = new IndexMap(
+                self::strings($index, 'properties'),
+                self::strings($index, 'columns'),
+                self::flag($index, 'unique'),
+                self::optionalText($index, 'name'),
+            );
+        }
+        array<int, ForeignKeyMap> $foreignKeys = [];
+        foreach (self::rows($spec, 'foreignKeys') as $foreignKey) {
+            $foreignKeys[] = new ForeignKeyMap(
+                self::text($foreignKey, 'name'),
+                self::strings($foreignKey, 'properties'),
+                self::strings($foreignKey, 'columns'),
+                self::className(self::text($foreignKey, 'referencedClass')),
+                self::text($foreignKey, 'referencedTable'),
+                self::strings($foreignKey, 'referencedColumns'),
+                self::onDelete(self::text($foreignKey, 'onDelete')),
+            );
+        }
+        array<string, RelationMap> $relations = [];
+        mixed $relationList = $spec['relations'] ?? null;
+        if (\is_array($relationList)) {
+            foreach ($relationList as $relation) {
+                if (!\is_array($relation)) {
+                    throw new \RuntimeException($class . ' has a relation that is not a map.');
+                }
+                RelationMap $relationMap = self::importRelation($relation);
+                $relations[$relationMap->property] = $relationMap;
+            }
+        }
+        array<int, \Tyhp\Expression> $scopes = [];
+        mixed $scopeList = $spec['scopes'] ?? null;
+        if (\is_array($scopeList)) {
+            foreach ($scopeList as $scope) {
+                if (!\is_string($scope)) {
+                    throw new \RuntimeException($class . ' has a scope that is not stored text.');
+                }
+                $scopes[] = ExpressionArchive::import($scope);
+            }
+        }
+        array<string, __ClassName> $types = [];
+        mixed $discriminatorTypes = $spec['discriminatorTypes'] ?? null;
+        if (\is_array($discriminatorTypes)) {
+            foreach ($discriminatorTypes as $token => $type) {
+                if (\is_string($token) && \is_string($type)) {
+                    $types[$token] = self::className($type);
+                }
+            }
+        }
+        ?KeyMap $primaryKey = null;
+        mixed $primary = $spec['key'] ?? null;
+        if (\is_array($primary)) {
+            $primaryKey = self::importKey($primary);
+        }
+
+        return new ModelMap(
+            self::className($class),
+            self::text($spec, 'table'),
+            self::optionalText($spec, 'comment'),
+            $columns,
+            $primaryKey,
+            $alternate,
+            $indexes,
+            $foreignKeys,
+            $relations,
+            self::flag($spec, 'timestamps'),
+            self::seeds($spec),
+            $scopes,
+            self::flag($spec, 'softDeletes'),
+            self::optionalText($spec, 'deletedAtProperty'),
+            self::optionalText($spec, 'deletedAtColumn'),
+            self::flag($spec, 'readOnly'),
+            self::flag($spec, 'view'),
+            self::optionalText($spec, 'discriminatorProperty'),
+            self::optionalText($spec, 'discriminatorColumn'),
+            self::optionalText($spec, 'discriminatorValue'),
+            self::optionalClass(self::optionalText($spec, 'rootClass')),
+            $types,
+            self::classNames($spec, 'observers'),
+        );
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function importColumn(array<int|string, mixed> $spec): ColumnMap {
+        string $type = self::text($spec, 'type');
+        ?string $castClass = self::optionalText($spec, 'castClass');
+
+        return new ColumnMap(
+            self::text($spec, 'property'),
+            self::text($spec, 'name'),
+            $type,
+            self::flag($spec, 'nullable'),
+            self::optionalInt($spec, 'maxLength'),
+            self::optionalInt($spec, 'precision'),
+            self::optionalInt($spec, 'scale'),
+            self::flag($spec, 'generated'),
+            self::optionalText($spec, 'comment'),
+            CastSlot::forType($type, $castClass),
+            self::flag($spec, 'hasDefault'),
+            $spec['default'] ?? null,
+            self::flag($spec, 'text'),
+            self::optionalText($spec, 'blueprintType'),
+            $castClass,
+            self::flag($spec, 'json'),
+            self::flag($spec, 'shadow'),
+            self::flag($spec, 'concurrency'),
+            self::flag($spec, 'rowVersion'),
+            self::flag($spec, 'deferred'),
+        );
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function importKey(array<int|string, mixed> $spec): KeyMap {
+        return new KeyMap(
+            self::strings($spec, 'properties'),
+            self::strings($spec, 'columns'),
+            self::flag($spec, 'primary'),
+        );
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function importRelation(array<int|string, mixed> $spec): RelationMap {
+        ?RelationKind $kind = RelationKind::tryFrom(self::text($spec, 'kind'));
+        if ($kind === null) {
+            throw new \RuntimeException('A relation kind is not valid.');
+        }
+
+        return new RelationMap(
+            self::text($spec, 'property'),
+            $kind,
+            self::className(self::text($spec, 'relatedClass')),
+            self::optionalText($spec, 'inverseProperty'),
+            self::optionalText($spec, 'foreignKeyProperty'),
+            self::optionalText($spec, 'foreignKeyColumn'),
+            self::onDelete(self::text($spec, 'onDelete')),
+            self::optionalText($spec, 'pivotTable'),
+            self::optionalText($spec, 'pivotForeignKey'),
+            self::optionalText($spec, 'pivotRelatedKey'),
+            self::optionalClass(self::optionalText($spec, 'pivotClass')),
+        );
+    }
+
+    private static function onDelete(string $value): OnDelete {
+        ?OnDelete $onDelete = OnDelete::tryFrom($value);
+        if ($onDelete === null) {
+            throw new \RuntimeException('A delete behavior is not valid.');
+        }
+
+        return $onDelete;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function text(array<int|string, mixed> $spec, string $key): string {
+        mixed $value = $spec[$key] ?? null;
+        if (!\is_string($value)) {
+            throw new \RuntimeException('The mapping cache is missing ' . $key . '.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function optionalText(array<int|string, mixed> $spec, string $key): ?string {
+        if (!\array_key_exists($key, $spec) || $spec[$key] === null) {
+            return null;
+        }
+        mixed $value = $spec[$key];
+        if (!\is_string($value)) {
+            throw new \RuntimeException('The mapping cache has a ' . $key . ' that is not text.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function optionalInt(array<int|string, mixed> $spec, string $key): ?int {
+        if (!\array_key_exists($key, $spec) || $spec[$key] === null) {
+            return null;
+        }
+        mixed $value = $spec[$key];
+        if (!\is_int($value)) {
+            throw new \RuntimeException('The mapping cache has a ' . $key . ' that is not an integer.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     */
+    private static function flag(array<int|string, mixed> $spec, string $key): bool {
+        return ($spec[$key] ?? null) === true;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     * @return array<int, string>
+     */
+    private static function strings(array<int|string, mixed> $spec, string $key): array<int, string> {
+        mixed $value = $spec[$key] ?? null;
+        if (!\is_array($value)) {
+            throw new \RuntimeException('The mapping cache is missing ' . $key . '.');
+        }
+        array<int, string> $list = [];
+        foreach ($value as $item) {
+            if (!\is_string($item)) {
+                throw new \RuntimeException('The mapping cache has a ' . $key . ' entry that is not text.');
+            }
+            $list[] = $item;
+        }
+
+        return $list;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     * @return array<int, __ClassName>
+     */
+    private static function classNames(array<int|string, mixed> $spec, string $key): array<int, __ClassName> {
+        array<int, __ClassName> $names = [];
+        foreach (self::strings($spec, $key) as $name) {
+            $names[] = self::className($name);
+        }
+
+        return $names;
+    }
+
+    private static function className(string $name): __ClassName {
+        string $class = \ltrim($name, '\\');
+        if ($class === '' || !\class_exists($class)) {
+            throw new \RuntimeException($class . ' is not a class.');
+        }
+
+        return $class;
+    }
+
+    private static function optionalClass(?string $name): ?__ClassName {
+        if ($name === null || $name === '') {
+            return null;
+        }
+
+        return self::className($name);
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     * @return array<int, array<int|string, mixed>>
+     */
+    private static function rows(array<int|string, mixed> $spec, string $key): array<int, array<int|string, mixed>> {
+        mixed $value = $spec[$key] ?? null;
+        if (!\is_array($value)) {
+            return [];
+        }
+        array<int, array<int|string, mixed>> $rows = [];
+        foreach ($value as $row) {
+            if (!\is_array($row)) {
+                throw new \RuntimeException('The mapping cache has a ' . $key . ' entry that is not a map.');
+            }
+            array<int|string, mixed> $fields = [];
+            foreach ($row as $field => $item) {
+                if (\is_int($field) || \is_string($field)) {
+                    $fields[$field] = $item;
+                }
+            }
+            $rows[] = $fields;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<int|string, mixed> $spec
+     * @return array<int, array<string, mixed>>
+     */
+    private static function seeds(array<int|string, mixed> $spec): array<int, array<string, mixed>> {
+        array<int, array<string, mixed>> $seeds = [];
+        mixed $listed = $spec['seeds'] ?? null;
+        if (!\is_array($listed)) {
+            return $seeds;
+        }
+        foreach ($listed as $row) {
+            if (!\is_array($row)) {
+                throw new \RuntimeException('A seed row is not a map.');
+            }
+            array<string, mixed> $fields = [];
+            foreach ($row as $column => $value) {
+                if (\is_string($column)) {
+                    $fields[$column] = $value;
+                }
+            }
+            $seeds[] = $fields;
+        }
+
+        return $seeds;
+    }
+
+    private static function scalars(mixed $value): mixed {
+        if ($value === null || \is_bool($value) || \is_int($value) || \is_float($value) || \is_string($value)) {
+            return $value;
+        }
+        if (!\is_array($value)) {
+            throw new \RuntimeException('The mapping cache cannot store ' . \get_debug_type($value) . '.');
+        }
+        array<int|string, mixed> $copy = [];
+        foreach ($value as $key => $item) {
+            if (!\is_int($key) && !\is_string($key)) {
+                throw new \RuntimeException('The mapping cache cannot store this key.');
+            }
+            $copy[$key] = self::scalars($item);
+        }
+
+        return $copy;
+    }
+}

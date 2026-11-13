@@ -24,7 +24,7 @@ class TestAccessorClass
     public function registerTestAccessor(string $property, Type $type, mixed ...$arguments): void
     {
         $this->tyhpBootTraits();
-        $this->__tyhpPropertyHook->register__tyhpGeneric($type)($property, $this, ...$arguments);
+        $this->__tyhpPropertyHook->register($type)($property, $this, ...$arguments);
     }
 
     public function getTestBacking(string $property): mixed
@@ -142,7 +142,7 @@ class TestAccessorProtectedDescendant extends TestAccessorProtectedAncestor
     {
         $this->tyhpBootTraits();
         $stored = $initial;
-        $this->__tyhpPropertyHook->register__tyhpGeneric(Type::string())(
+        $this->__tyhpPropertyHook->register(Type::string())(
             'descendantOwn',
             $this,
             get: static function () use (&$stored): string {
@@ -189,7 +189,7 @@ class TestAccessorClassWithOwnGet
     public function registerTestAccessor(string $property, Type $type, mixed ...$arguments): void
     {
         $this->tyhpBootTraits();
-        $this->__tyhpPropertyHook->register__tyhpGeneric($type)($property, $this, ...$arguments);
+        $this->__tyhpPropertyHook->register($type)($property, $this, ...$arguments);
     }
 
     public function __get(string $name): mixed
@@ -809,5 +809,33 @@ class PropertyAccessorTest extends TestCase
         self::assertSame('hi', $host->label);
         $host->label = 'hello';
         self::assertSame('HELLO', $host->label);
+    }
+
+    public function testHookBagReportsBackedAndVirtualProperties(): void
+    {
+        $obj = new TestAccessorClass();
+        $obj->registerTestAccessor(
+            'title',
+            Type::string(),
+            backed: true,
+            defaultValue: 'a',
+            declaringClass: TestAccessorClass::class,
+        );
+        $obj->registerTestAccessor(
+            'label',
+            Type::int(),
+            get: fn (): int => 1,
+            declaringClass: TestAccessorClass::class,
+        );
+
+        $bag = $obj->tyhpPropertyHooks();
+        self::assertNotNull($bag);
+        self::assertEqualsCanonicalizing(['title', 'label'], $bag->hookedProperties());
+        self::assertTrue($bag->isBackedProperty('title'));
+        self::assertFalse($bag->isBackedProperty('label'));
+        self::assertNull($bag->isBackedProperty('missing'));
+        self::assertSame('string', (string) $bag->propertyType('title'));
+        self::assertSame('int', (string) $bag->propertyType('label'));
+        self::assertNull($bag->propertyType('missing'));
     }
 }

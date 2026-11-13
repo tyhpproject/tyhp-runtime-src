@@ -1,0 +1,67 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+use Tyhp\Rhetoric\OnDelete;
+
+final class HasMapper<T, TRelated> {
+    public function __construct(
+        private ModelConfig $config,
+        private string $property,
+    ) {}
+
+    public function inverseOf<TValue>(\Tyhp\PropertyPath<callable(TRelated): TValue> $inverse): HasMapper<T, TRelated> {
+        $this->relation()->inverseProperty = Paths::name($inverse);
+
+        return new HasMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    public function foreignKey<TValue>(\Tyhp\PropertyPath<callable(TRelated): TValue> $foreignKey): HasMapper<T, TRelated> {
+        $this->relation()->foreignKeyProperty = Paths::name($foreignKey);
+
+        return new HasMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    public function onDelete(OnDelete $onDelete): HasMapper<T, TRelated> {
+        $this->relation()->onDelete = $onDelete;
+
+        return new HasMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    /**
+     * The pivot row is read and written as TPivot. Only belongsToMany uses it.
+     */
+    public function pivotTable(string $table): HasMapper<T, TRelated> {
+        $this->manyToMany()->pivotTable = $table;
+
+        return new HasMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    public function pivotColumns(string $foreignKey, string $relatedKey): HasMapper<T, TRelated> {
+        RelationConfig $relation = $this->manyToMany();
+        $relation->pivotForeignKey = $foreignKey;
+        $relation->pivotRelatedKey = $relatedKey;
+
+        return new HasMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    public function using<TPivot>(): HasMapper<T, TRelated> {
+        RelationConfig $relation = $this->manyToMany();
+        $relation->pivotClass = TPivot::class;
+
+        return new HasMapper<T, TRelated>($this->config, $this->property);
+    }
+
+    private function relation(): RelationConfig {
+        return $this->config->relations[$this->property];
+    }
+
+    private function manyToMany(): RelationConfig {
+        RelationConfig $relation = $this->relation();
+        if ($relation->kind !== RelationKind::BelongsToMany) {
+            throw new \InvalidArgumentException('belongsToMany is required.');
+        }
+
+        return $relation;
+    }
+}

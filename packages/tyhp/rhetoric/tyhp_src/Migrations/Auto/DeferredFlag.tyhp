@@ -1,0 +1,38 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+final class DeferredFlag {
+    public function __construct(
+        public bool $deferred,
+        public bool $independent,
+    ) {}
+
+    /**
+     * Reads the flags from the instance Laravel's own migrator resolves, so a migration file is loaded
+     * the same way here as when it runs (anonymous, named class, or a file that returns an instance).
+     */
+    public static function read(string $path, \Illuminate\Database\Migrations\Migrator $migrator): DeferredFlag {
+        try {
+            mixed $resolved = (new \ReflectionMethod($migrator, 'resolvePath'))->invoke($migrator, $path);
+            if (!\is_object($resolved)) {
+                return new DeferredFlag(false, false);
+            }
+
+            return new DeferredFlag(self::truth($resolved, 'deferred'), self::truth($resolved, 'independent'));
+        } catch (\Throwable $exception) {
+            (void)$exception;
+
+            return new DeferredFlag(false, false);
+        }
+    }
+
+    private static function truth(object $instance, string $property): bool {
+        if (!\property_exists($instance, $property)) {
+            return false;
+        }
+        mixed $value = (new \ReflectionProperty($instance, $property))->getValue($instance);
+
+        return $value === true;
+    }
+}

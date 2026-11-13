@@ -1,0 +1,149 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Scaffolding\ScaffoldOptions;
+use Tyhp\Rhetoric\Scaffolding\ScaffoldResult;
+use Tyhp\Rhetoric\Scaffolding\Scaffolder;
+use Tyhp\Rhetoric\Scaffolding\Naming;
+
+class ScaffoldCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:scaffold');
+        $this->setDescription('Read a database and write Tyhp models, a context, and mappings.');
+        $this->addOption('connection', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Laravel connection name');
+        $this->addOption('schema', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Database schema');
+        $this->addOption('tables', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Comma-separated tables and views to read');
+        $this->addOption('exclude', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Comma-separated tables and views to skip');
+        $this->addOption('context', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Context class');
+        $this->addOption('namespace', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Namespace for the models');
+        $this->addOption('output', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Directory for the Tyhp files');
+        $this->addOption('attributes', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Write attributes on the models');
+        $this->addOption('fluent', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Write a fluent mapping');
+        $this->addOption('no-pluralize', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Use the table name as the model name');
+        $this->addOption('force', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Write model and context classes again');
+        $this->addOption('baseline', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Write a snapshot of the mapping without a migration');
+        $this->addOption('snapshot', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Snapshot directory');
+        $this->addOption('eloquent', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Write Eloquent models whose properties read and write attributes. Requires PHP 8.4 or newer.');
+    }
+
+    public function handle(): int {
+        try {
+            if ($this->flag('attributes') && $this->flag('fluent')) {
+                $this->error('Choose attributes or fluent.');
+
+                return 1;
+            }
+            if ($this->flag('eloquent') && $this->flag('fluent')) {
+                $this->error('Choose eloquent or fluent.');
+
+                return 1;
+            }
+            if ($this->flag('eloquent') && $this->flag('baseline')) {
+                $this->error('Eloquent models do not write a snapshot.');
+
+                return 1;
+            }
+            ?string $context = $this->text('context');
+            if ($context === null) {
+                $this->error('A context class is required.');
+
+                return 1;
+            }
+            string $namespace = \trim($this->text('namespace') ?? '', '\\');
+            string $contextClass = \ltrim($context, '\\');
+            if (!\str_contains($contextClass, '\\')) {
+                $contextClass = $namespace === '' ? $contextClass : $namespace . '\\' . $contextClass;
+            }
+            if ($namespace === '') {
+                $namespace = Naming::namespaceOf($contextClass);
+            }
+            ?string $output = $this->text('output');
+            if ($output === null) {
+                mixed $cwd = \getcwd();
+                if (!\is_string($cwd) || $cwd === '') {
+                    $this->error('An output directory is required.');
+
+                    return 1;
+                }
+                $output = $cwd;
+            }
+            ScaffoldOptions $options = new ScaffoldOptions(
+                $contextClass,
+                $namespace,
+                $output,
+                !$this->flag('fluent'),
+                !$this->flag('no-pluralize'),
+                $this->flag('force'),
+                $this->text('connection'),
+                $this->text('schema'),
+                $this->csv('tables'),
+                $this->csv('exclude'),
+                CommandContext::publishedStubs($this),
+                $this->flag('eloquent'),
+            );
+            ?string $snapshot = null;
+            if ($this->flag('baseline')) {
+                $snapshot = CommandContext::workspace($this, $this->text('snapshot'), null)->snapshots()->path($contextClass);
+                $snapshot = \dirname($snapshot);
+            }
+            ScaffoldResult $result = Scaffolder::run(
+                CommandContext::connection($this, $options->connection),
+                $options,
+                $snapshot,
+            );
+            foreach ($result->files as $file) {
+                if ($file->skipped) {
+                    $this->line('Left ' . $file->path . ' in place.');
+                    continue;
+                }
+                $this->info('Wrote ' . $file->path);
+            }
+            if ($result->snapshotPath !== null) {
+                $this->info('Wrote ' . $result->snapshotPath);
+            }
+
+            return 0;
+        } catch (\Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return 1;
+        }
+    }
+
+    private function flag(string $option): bool {
+        return $this->option($option) === true;
+    }
+
+    private function text(string $option): ?string {
+        mixed $value = $this->option($option);
+        if (!\is_string($value) || $value === '') {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function csv(string $option): array<int, string> {
+        ?string $text = $this->text($option);
+        if ($text === null) {
+            return [];
+        }
+        array<int, string> $names = [];
+        foreach (\explode(',', $text) as $part) {
+            if (!\is_string($part)) {
+                continue;
+            }
+            string $trimmed = \trim($part);
+            if ($trimmed !== '') {
+                $names[] = $trimmed;
+            }
+        }
+
+        return $names;
+    }
+}

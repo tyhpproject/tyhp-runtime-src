@@ -1,0 +1,1458 @@
+<?tyhp
+
+namespace Tyhp\Expression;
+
+/**
+ * Tokenizes a closure into the node `\Tyhp\Ext::closureTree` returns.
+ * Unary `+` and `-` are multiply by `1` and `-1`. A literal `1 + 2` is `3`.
+ * `and` / `or` are `&&` / `||`, and `<>` is `!=`.
+ */
+internal final class ClosureSource {
+    private const string MSG_BODY = 'closureTree cannot read this closure body';
+    private const string MSG_USE = 'closureTree does not accept use bindings; write an arrow function';
+    private const string MSG_NO_RETURN = 'closureTree needs a closure body that returns an expression';
+
+    /** @var array<int, \PhpToken> */
+    private array<int, \PhpToken> $tokens = [];
+    private int $index = 0;
+    private string $namespace = '';
+    /** @var array<string, string> */
+    private array<string, string> $uses = [];
+    /** @var array<string, mixed> */
+    private array<string, mixed> $statics = [];
+    private string $file = '';
+    /** @var array<int, array<string, bool>> */
+    private array<int, array<string, bool>> $scopes = [];
+
+    public static function parse(\Closure $fn): \Tyhp\ExtClosureNode {
+        ClosureSource $parser = new ClosureSource();
+
+        return $parser->parseClosure($fn);
+    }
+
+    private function parseClosure(\Closure $fn): \Tyhp\ExtClosureNode {
+        \ReflectionFunction $reflection = new \ReflectionFunction($fn);
+        string|false $file = $reflection->getFileName();
+        if (!($file is string) || !\is_file($file)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        string|false $source = \file_get_contents($file);
+        if (!($source is string)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        $this->file = $file;
+        $this->tokens = \PhpToken::tokenize($source);
+        $this->statics = $reflection->getStaticVariables();
+        $this->scanNamespace();
+
+        array<int, string> $expected = [];
+        foreach ($reflection->getParameters() as $parameter) {
+            $expected[] = $parameter->getName();
+        }
+
+        int|false $startLine = $reflection->getStartLine();
+        int|false $endLine = $reflection->getEndLine();
+        if (!($startLine is int) || !($endLine is int)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        int $start = $startLine;
+        int $end = $endLine;
+        int $matchAt = -1;
+        $this->index = 0;
+        while (!$this->eof()) {
+            int $line = $this->tokenLine();
+            if ($line < $start || $line > $end) {
+                $this->index++;
+                continue;
+            }
+            if (!$this->isFnStart()) {
+                $this->index++;
+                continue;
+            }
+
+            int $at = $this->index;
+            array<int, string>|null $names = $this->peekParamNames();
+            if ($names === null || $names !== $expected) {
+                $this->index = $at + 1;
+                continue;
+            }
+
+            // Reflection gives lines, not offsets. Two closures on these lines that take the
+            // same parameters cannot be told apart, and the wrong one must not be read.
+            if ($matchAt >= 0) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            $matchAt = $at;
+            $this->index = $at + 1;
+        }
+
+        if ($matchAt < 0) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        $this->index = $matchAt;
+
+        return $this->parseLambda(true);
+    }
+
+    private function scanNamespace(): void {
+        int $depth = 0;
+        $this->index = 0;
+        try {
+            while (!$this->eof()) {
+                if ($this->is('{')) {
+                    $depth++;
+                    $this->index++;
+                    continue;
+                }
+                if ($this->is('}')) {
+                    $depth--;
+                    $this->index++;
+                    continue;
+                }
+                if ($depth === 0 && $this->eat(\T_NAMESPACE)) {
+                    if (!$this->is('{') && $this->startsName()) {
+                        $this->namespace = \ltrim($this->readQualified(), '\\');
+                    }
+                    continue;
+                }
+                if ($depth === 0 && $this->eat(\T_USE)) {
+                    $this->readUse();
+                    continue;
+                }
+                $this->index++;
+            }
+        } catch (\Throwable $e) {
+            (void)$e;
+        }
+        $this->index = 0;
+    }
+
+    private function readUse(): void {
+        if ($this->eat(\T_FUNCTION) || $this->eat(\T_CONST)) {
+            $this->skipStatement();
+            return;
+        }
+
+        string $prefix = '';
+        if ($this->startsName()) {
+            $prefix = $this->readQualified();
+        }
+        if ($this->eat('{')) {
+            while (!$this->is('}')) {
+                string $name = $this->readQualified();
+                string $alias = $name;
+                if ($this->eat(\T_AS)) {
+                    $alias = $this->readQualified();
+                }
+                $this->uses[$this->leaf($alias)] = \ltrim($this->joinName($prefix, $name), '\\');
+                if (!$this->eat(',')) {
+                    break;
+                }
+            }
+            $this->eat('}');
+            $this->eat(';');
+            return;
+        }
+
+        string $alias = $prefix;
+        if ($this->eat(\T_AS)) {
+            $alias = $this->readQualified();
+        }
+        if ($prefix !== '') {
+            $this->uses[$this->leaf($alias)] = \ltrim($prefix, '\\');
+        }
+        $this->eat(';');
+    }
+
+    private function skipStatement(): void {
+        while (!$this->eof() && !$this->eat(';')) {
+            $this->index++;
+        }
+    }
+
+    private function isFnStart(): bool {
+        if ($this->is(\T_FN)) {
+            return true;
+        }
+        if (!$this->is(\T_FUNCTION)) {
+            return false;
+        }
+
+        return $this->lookaheadIs('(') || $this->lookaheadIs('&') || $this->lookaheadIs(\T_ELLIPSIS);
+    }
+
+    /**
+     * @return array<int, string>|null
+     */
+    private function peekParamNames(): array<int, string>|null {
+        int $saved = $this->index;
+        array<int, array<string, bool>> $scopes = $this->scopes;
+        try {
+            if ($this->eat(\T_FN) || $this->eat(\T_FUNCTION)) {
+                if ($this->is('&') && $this->lookaheadIs('(')) {
+                    $this->index++;
+                }
+                return $this->parseParamList();
+            }
+        } catch (\Throwable $e) {
+            (void)$e;
+        } finally {
+            $this->index = $saved;
+            $this->scopes = $scopes;
+        }
+
+        return null;
+    }
+
+    private function parseLambda(bool $root): \Tyhp\ExtClosureNode {
+        bool $arrow = $this->eat(\T_FN);
+        if (!$arrow) {
+            $this->expect(\T_FUNCTION);
+            if ($this->is('&') && $this->lookaheadIs('(')) {
+                $this->index++;
+            }
+        }
+
+        array<int, string> $names = $this->parseParamList();
+        if ($this->is(\T_USE)) {
+            throw new \InvalidArgumentException(self::MSG_USE);
+        }
+        ?string $declared = $this->readReturnType();
+
+        array<string, bool> $scope = [];
+        foreach ($names as $name) {
+            $scope[$name] = true;
+        }
+        $this->scopes[] = $scope;
+
+        \Tyhp\ExtClosureNode $body;
+        if ($arrow) {
+            $this->expect(\T_DOUBLE_ARROW);
+            $body = $this->parseExpression();
+        } elseif ($this->eat(\T_DOUBLE_ARROW)) {
+            $body = $this->parseExpression();
+        } else {
+            $body = $this->parseReturnBlock();
+        }
+        $this->checkReturnType($declared, $body);
+
+        int $last = \count($this->scopes) - 1;
+        if ($last >= 0) {
+            unset($this->scopes[$last]);
+            $this->scopes = \array_values($this->scopes);
+        }
+
+        if ($root) {
+            return $body;
+        }
+
+        array<int, \Tyhp\ExtClosureCapture> $captures = [];
+
+        return new \Tyhp\ExtClosureLambda[
+            kind => 'lambda',
+            params => $names,
+            captures => $captures,
+            body => $body,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseParamList(): array<int, string> {
+        $this->expect('(');
+        array<int, string> $names = [];
+        if ($this->eat(')')) {
+            return $names;
+        }
+        while (true) {
+            $this->skipParamType();
+            if ($this->is('&') || $this->is(\T_ELLIPSIS)) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            $names[] = $this->expectVariable();
+            if ($this->is('=')) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            if ($this->eat(')')) {
+                return $names;
+            }
+            $this->expect(',');
+        }
+        throw new \InvalidArgumentException(self::MSG_BODY);
+    }
+
+    private function skipParamType(): void {
+        while (true) {
+            if ($this->is(\T_VARIABLE) || $this->is(\T_ELLIPSIS) || $this->is(')') || $this->is('=')) {
+                return;
+            }
+            if ($this->is('&') && $this->lookaheadVariable()) {
+                return;
+            }
+            if ($this->eof()) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            if ($this->is('(')) {
+                $this->skipBalanced('(', ')');
+                continue;
+            }
+            $this->index++;
+        }
+    }
+
+    private function readReturnType(): ?string {
+        if (!$this->eat(':')) {
+            return null;
+        }
+        string $spelled = '';
+        while (!$this->is(\T_DOUBLE_ARROW) && !$this->is('{') && !$this->eof()) {
+            $spelled .= $this->text();
+            $this->index++;
+        }
+
+        return $spelled;
+    }
+
+    /**
+     * PHP emits no return check for `mixed`, or for a literal the type already contains. Any
+     * other declared return type adds an opcode `closureTree` does not read, so it is rejected.
+     *
+     * @param \Tyhp\ExtClosureNode $body
+     */
+    private function checkReturnType(?string $declared, \Tyhp\ExtClosureNode $body): void {
+        if ($declared === null) {
+            return;
+        }
+        string $type = \strtolower($declared);
+        if ($type === 'mixed') {
+            return;
+        }
+        if ($body->kind !== 'const') {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        string $members = $type;
+        if (\str_starts_with($type, '?')) {
+            $members = \ltrim($type, '?') . '|null';
+        }
+        array<int, string> $kinds = $this->literalKinds($body->value);
+        foreach (\explode('|', $members) as $member) {
+            if (\in_array($member, $kinds, true)) {
+                return;
+            }
+        }
+
+        throw new \InvalidArgumentException(self::MSG_BODY);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function literalKinds(mixed $value): array<int, string> {
+        if ($value === null) {
+            return ['null'];
+        }
+        if ($value === true) {
+            return ['true', 'bool'];
+        }
+        if ($value === false) {
+            return ['false', 'bool'];
+        }
+        if ($value is int) {
+            return ['int'];
+        }
+        if ($value is float) {
+            return ['float'];
+        }
+        if ($value is string) {
+            return ['string'];
+        }
+        if (\is_array($value)) {
+            return ['array', 'iterable'];
+        }
+
+        return [];
+    }
+
+    private function parseReturnBlock(): \Tyhp\ExtClosureNode {
+        $this->expect('{');
+        if ($this->eat('}')) {
+            throw new \InvalidArgumentException(self::MSG_NO_RETURN);
+        }
+        if (!$this->eat(\T_RETURN)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        if ($this->is(';')) {
+            throw new \InvalidArgumentException(self::MSG_NO_RETURN);
+        }
+        \Tyhp\ExtClosureNode $expr = $this->parseExpression();
+        $this->expect(';');
+        $this->expect('}');
+
+        return $expr;
+    }
+
+    private function parseExpression(): \Tyhp\ExtClosureNode {
+        \Tyhp\ExtClosureNode $expr = $this->parseOr();
+        if ($this->isAssignment()) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        return $expr;
+    }
+
+    private function parseLeft(
+        \Closure<callable(): \Tyhp\ExtClosureNode> $higher,
+        \Closure<callable(): ?\Tyhp\ExtClosureBinaryOp> $op,
+    ): \Tyhp\ExtClosureNode {
+        \Tyhp\ExtClosureNode $left = $higher();
+        while (true) {
+            ?\Tyhp\ExtClosureBinaryOp $operator = $op();
+            if ($operator === null) {
+                return $left;
+            }
+            $this->index++;
+            \Tyhp\ExtClosureNode $right = $higher();
+            $left = $this->binary($operator, $left, $right);
+        }
+        throw new \InvalidArgumentException(self::MSG_BODY);
+    }
+
+    private function parseOr(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseXor(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is(\T_LOGICAL_OR) ? '||' : null,
+        );
+    }
+
+    private function parseXor(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseAndWord(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is(\T_LOGICAL_XOR) ? 'xor' : null,
+        );
+    }
+
+    private function parseAndWord(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseTernary(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is(\T_LOGICAL_AND) ? '&&' : null,
+        );
+    }
+
+    private function parseTernary(): \Tyhp\ExtClosureNode {
+        \Tyhp\ExtClosureNode $cond = $this->parseCoalesce();
+        if (!$this->eat('?')) {
+            return $cond;
+        }
+
+        ?\Tyhp\ExtClosureNode $then = null;
+        if (!$this->is(':')) {
+            $then = $this->parseCoalesce();
+        }
+        $this->expect(':');
+        \Tyhp\ExtClosureNode $else = $this->parseTernary();
+
+        return new \Tyhp\ExtClosureTernary[
+            kind => 'ternary',
+            cond => $cond,
+            then => $then,
+            else => $else,
+        ];
+    }
+
+    private function parseCoalesce(): \Tyhp\ExtClosureNode {
+        \Tyhp\ExtClosureNode $left = $this->parseLogicalOr();
+        if ($this->is(\T_COALESCE_EQUAL)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        if (!$this->eat(\T_COALESCE)) {
+            return $left;
+        }
+
+        return new \Tyhp\ExtClosureCoalesce[
+            kind => 'coalesce',
+            left => $left,
+            right => $this->parseCoalesce(),
+        ];
+    }
+
+    private function parseLogicalOr(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseLogicalAnd(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is(\T_BOOLEAN_OR) ? '||' : null,
+        );
+    }
+
+    private function parseLogicalAnd(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseBitOr(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is(\T_BOOLEAN_AND) ? '&&' : null,
+        );
+    }
+
+    private function parseBitOr(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseBitXor(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is('|') ? '|' : null,
+        );
+    }
+
+    private function parseBitXor(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseBitAnd(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is('^') ? '^' : null,
+        );
+    }
+
+    private function parseBitAnd(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseEquality(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->is('&') ? '&' : null,
+        );
+    }
+
+    private function parseEquality(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseRelational(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->equalityOp(),
+        );
+    }
+
+    private function equalityOp(): ?\Tyhp\ExtClosureBinaryOp {
+        if ($this->is(\T_IS_EQUAL)) {
+            return '==';
+        }
+        if ($this->is(\T_IS_NOT_EQUAL)) {
+            return '!=';
+        }
+        if ($this->is(\T_IS_IDENTICAL)) {
+            return '===';
+        }
+        if ($this->is(\T_IS_NOT_IDENTICAL)) {
+            return '!==';
+        }
+        if ($this->is(\T_SPACESHIP)) {
+            return '<=>';
+        }
+
+        return null;
+    }
+
+    private function parseRelational(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseInstanceof(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->relationalOp(),
+        );
+    }
+
+    private function relationalOp(): ?\Tyhp\ExtClosureBinaryOp {
+        if ($this->is('<')) {
+            return '<';
+        }
+        if ($this->is('>')) {
+            return '>';
+        }
+        if ($this->is(\T_IS_SMALLER_OR_EQUAL)) {
+            return '<=';
+        }
+        if ($this->is(\T_IS_GREATER_OR_EQUAL)) {
+            return '>=';
+        }
+
+        return null;
+    }
+
+    private function parseShift(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseAdd(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->shiftOp(),
+        );
+    }
+
+    private function shiftOp(): ?\Tyhp\ExtClosureBinaryOp {
+        if ($this->is(\T_SL)) {
+            return '<<';
+        }
+        if ($this->is(\T_SR)) {
+            return '>>';
+        }
+
+        return null;
+    }
+
+    private function parseAdd(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseMul(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->addOp(),
+        );
+    }
+
+    private function addOp(): ?\Tyhp\ExtClosureBinaryOp {
+        if ($this->is('+')) {
+            return '+';
+        }
+        if ($this->is('-')) {
+            return '-';
+        }
+        if ($this->is('.')) {
+            return '.';
+        }
+
+        return null;
+    }
+
+    private function parseMul(): \Tyhp\ExtClosureNode {
+        return $this->parseLeft(
+            fn(): \Tyhp\ExtClosureNode => $this->parseUnary(),
+            fn(): ?\Tyhp\ExtClosureBinaryOp => $this->mulOp(),
+        );
+    }
+
+    private function mulOp(): ?\Tyhp\ExtClosureBinaryOp {
+        if ($this->is('*')) {
+            return '*';
+        }
+        if ($this->is('/')) {
+            return '/';
+        }
+        if ($this->is('%')) {
+            return '%';
+        }
+
+        return null;
+    }
+
+    private function parseUnary(): \Tyhp\ExtClosureNode {
+        if ($this->is(\T_INC) || $this->is(\T_DEC) || $this->is('@')) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        if ($this->is('!') || $this->is('~')) {
+            \Tyhp\ExtClosureUnaryOp $unaryOp = $this->is('!') ? '!' : '~';
+            $this->index++;
+
+            return new \Tyhp\ExtClosureUnary[
+                kind => 'unary',
+                op => $unaryOp,
+                expr => $this->parseUnary(),
+            ];
+        }
+        if ($this->is('+') || $this->is('-')) {
+            '+'|'-' $sign = $this->is('-') ? '-' : '+';
+            $this->index++;
+
+            return $this->unaryPlusMinus($sign, $this->parsePow());
+        }
+
+        ?\Tyhp\ExtClosureCastType $cast = $this->castName();
+        if ($cast !== null) {
+            $this->index++;
+
+            return new \Tyhp\ExtClosureCast[
+                kind => 'cast',
+                type => $cast,
+                expr => $this->parseUnary(),
+            ];
+        }
+
+        return $this->parsePow();
+    }
+
+    private function parsePow(): \Tyhp\ExtClosureNode {
+        \Tyhp\ExtClosureNode $left = $this->parsePostfix();
+        if (!$this->eat(\T_POW)) {
+            return $left;
+        }
+
+        return $this->binary('**', $left, $this->parseUnary());
+    }
+
+    private function parseInstanceof(): \Tyhp\ExtClosureNode {
+        \Tyhp\ExtClosureNode $expr = $this->parseShift();
+        while ($this->eat(\T_INSTANCEOF)) {
+            if ($this->is(\T_VARIABLE) || $this->is('(') || $this->is('$') || $this->is(\T_CLASS)) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            string $class = $this->resolveClass($this->readQualified());
+            $expr = new \Tyhp\ExtClosureInstanceof[
+                kind => 'instanceof',
+                expr => $expr,
+                class => $class,
+            ];
+        }
+
+        return $expr;
+    }
+
+    private function parsePostfix(): \Tyhp\ExtClosureNode {
+        \Tyhp\ExtClosureNode $expr = $this->parsePrimary();
+        while (true) {
+            bool $nullsafe = false;
+            if ($this->is(\T_OBJECT_OPERATOR)) {
+                $this->index++;
+            } elseif ($this->is(\T_NULLSAFE_OBJECT_OPERATOR)) {
+                $this->index++;
+                $nullsafe = true;
+            } elseif ($this->is('[')) {
+                $this->expect('[');
+                \Tyhp\ExtClosureNode $index = $this->parseExpression();
+                $this->expect(']');
+                $expr = new \Tyhp\ExtClosureIndex[
+                    kind => 'index',
+                    object => $expr,
+                    index => $index,
+                ];
+                continue;
+            } elseif ($this->is(\T_INC) || $this->is(\T_DEC)) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            } else {
+                break;
+            }
+
+            if ($this->is(\T_VARIABLE) || $this->is('{') || $this->is('$')) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            if (!$this->is(\T_STRING)) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            string $member = $this->text();
+            $this->index++;
+            if ($this->is('(')) {
+                array<int, \Tyhp\ExtClosureNode> $args = $this->parseArgs();
+                $expr = new \Tyhp\ExtClosureCall[
+                    kind => $nullsafe ? 'nullsafe_call' : 'call',
+                    object => $expr,
+                    name => $member,
+                    args => $args,
+                ];
+                continue;
+            }
+            $expr = new \Tyhp\ExtClosureProp[
+                kind => $nullsafe ? 'nullsafe_prop' : 'prop',
+                object => $expr,
+                name => $member,
+            ];
+        }
+
+        return $expr;
+    }
+
+    private function parsePrimary(): \Tyhp\ExtClosureNode {
+        if (
+            $this->is(\T_CLONE) || $this->is(\T_THROW) || $this->is(\T_MATCH)
+            || $this->is(\T_ISSET) || $this->is(\T_EMPTY) || $this->is(\T_UNSET)
+            || $this->is(\T_INCLUDE) || $this->is(\T_INCLUDE_ONCE)
+            || $this->is(\T_REQUIRE) || $this->is(\T_REQUIRE_ONCE)
+            || $this->is(\T_EVAL) || $this->is(\T_YIELD) || $this->is(\T_YIELD_FROM)
+            || $this->is(\T_PRINT) || $this->is(\T_EXIT) || $this->is(\T_ELLIPSIS)
+            || $this->is('`') || $this->is('@')
+        ) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        if ($this->is(\T_FN) || ($this->is(\T_STATIC) && $this->lookaheadIs(\T_FN))) {
+            if ($this->is(\T_STATIC)) {
+                $this->index++;
+            }
+
+            return $this->parseLambda(false);
+        }
+        if ($this->is(\T_FUNCTION) || ($this->is(\T_STATIC) && $this->lookaheadIs(\T_FUNCTION))) {
+            if ($this->is(\T_STATIC)) {
+                $this->index++;
+            }
+
+            return $this->parseLambda(false);
+        }
+
+        if ($this->eat(\T_NEW)) {
+            if ($this->is(\T_CLASS) || $this->is(\T_VARIABLE) || $this->is('(') || $this->is('$')) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            string $class = $this->resolveClass($this->readQualified());
+            array<int, \Tyhp\ExtClosureNode> $args = [];
+            if ($this->is('(')) {
+                $args = $this->parseArgs();
+            }
+
+            return new \Tyhp\ExtClosureNew[
+                kind => 'new',
+                class => $class,
+                args => $args,
+            ];
+        }
+
+        if ($this->is(\T_ARRAY) || $this->is('[')) {
+            return $this->parseArray();
+        }
+
+        if ($this->is(\T_CONSTANT_ENCAPSED_STRING)) {
+            string $text = $this->text();
+            $this->index++;
+
+            return $this->constNode($this->stringValue($text));
+        }
+        if ($this->is(\T_LNUMBER)) {
+            string $text = $this->text();
+            $this->index++;
+
+            return $this->constNode($this->intValue($text));
+        }
+        if ($this->is(\T_DNUMBER)) {
+            string $text = $this->text();
+            $this->index++;
+
+            return $this->constNode((float)\str_replace('_', '', $text));
+        }
+        if ($this->is(\T_VARIABLE)) {
+            return $this->variable($this->expectVariable());
+        }
+
+        ?\Tyhp\ExtClosureNode $magic = $this->magicConstant();
+        if ($magic !== null) {
+            return $magic;
+        }
+
+        if ($this->eat('(')) {
+            \Tyhp\ExtClosureNode $inner = $this->parseExpression();
+            $this->expect(')');
+
+            return $inner;
+        }
+
+        if ($this->startsName()) {
+            string $name = $this->readQualified();
+            if ($this->is(\T_PAAMAYIM_NEKUDOTAYIM)) {
+                return $this->parseClassMember($name);
+            }
+            if ($this->is('(')) {
+                return $this->parseFunctionCall($name);
+            }
+
+            return $this->bareConstant($name);
+        }
+
+        throw new \InvalidArgumentException(self::MSG_BODY);
+    }
+
+    private function parseClassMember(string $name): \Tyhp\ExtClosureNode {
+        $this->expect(\T_PAAMAYIM_NEKUDOTAYIM);
+        string $class = $this->resolveClass($name);
+        if ($this->eat(\T_CLASS)) {
+            return $this->constNode($class);
+        }
+        if ($this->is(\T_VARIABLE) || $this->is('{') || $this->is('$')) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        if (!$this->is(\T_STRING)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        string $member = $this->text();
+        $this->index++;
+        if ($this->is('(')) {
+            return new \Tyhp\ExtClosureStaticCall[
+                kind => 'static_call',
+                class => $class,
+                name => $member,
+                args => $this->parseArgs(),
+            ];
+        }
+
+        if (\strtolower($member) === 'class') {
+            return $this->constNode($class);
+        }
+        string $constant = $class . '::' . $member;
+        if (!\defined($constant)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        return $this->constNode(\constant($constant));
+    }
+
+    private function parseFunctionCall(string $name): \Tyhp\ExtClosureNode {
+        if (\strtolower($this->leaf($name)) !== 'is_null') {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        $this->expect('(');
+        \Tyhp\ExtClosureNode $arg = $this->parseExpression();
+        if (!$this->eat(')')) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        return $this->binary('===', $arg, $this->constNode(null));
+    }
+
+    private function parseArray(): \Tyhp\ExtClosureNode {
+        bool $short = $this->eat('[');
+        if (!$short) {
+            $this->expect(\T_ARRAY);
+            $this->expect('(');
+        }
+        string $close = $short ? ']' : ')';
+        array<int, \Tyhp\ExtClosureElement> $elements = [];
+        if ($this->eat($close)) {
+            return $this->arrayNode($elements);
+        }
+        while (true) {
+            if ($this->is(\T_ELLIPSIS) || $this->is('&')) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            \Tyhp\ExtClosureNode $first = $this->parseExpression();
+            ?\Tyhp\ExtClosureNode $key = null;
+            \Tyhp\ExtClosureNode $value = $first;
+            if ($this->eat(\T_DOUBLE_ARROW)) {
+                $key = $first;
+                $value = $this->parseExpression();
+            }
+            $elements[] = new \Tyhp\ExtClosureElement[
+                key => $key,
+                value => $value,
+            ];
+            if ($this->eat($close)) {
+                break;
+            }
+            $this->expect(',');
+            if ($this->eat($close)) {
+                break;
+            }
+        }
+
+        return $this->arrayNode($elements);
+    }
+
+    /**
+     * PHP folds an array literal whose keys and values are all literals into one constant, and
+     * `closureTree` reports that constant. Any other array stays an `array` node.
+     *
+     * @param array<int, \Tyhp\ExtClosureElement> $elements
+     */
+    private function arrayNode(array<int, \Tyhp\ExtClosureElement> $elements): \Tyhp\ExtClosureNode {
+        array<mixed> $folded = [];
+        bool $literal = true;
+        foreach ($elements as $element) {
+            \Tyhp\ExtClosureNode $item = $element->value;
+            if ($item->kind !== 'const') {
+                $literal = false;
+                break;
+            }
+            ?\Tyhp\ExtClosureNode $keyNode = $element->key;
+            if ($keyNode === null) {
+                $folded[] = $item->value;
+                continue;
+            }
+            if ($keyNode->kind !== 'const') {
+                $literal = false;
+                break;
+            }
+            mixed $name = $keyNode->value;
+            if (!($name is int) && !($name is string)) {
+                $literal = false;
+                break;
+            }
+            $folded[$name] = $item->value;
+        }
+        if ($literal) {
+            return $this->constNode($folded);
+        }
+
+        return new \Tyhp\ExtClosureArray[
+            kind => 'array',
+            elements => $elements,
+        ];
+    }
+
+    /**
+     * @return array<int, \Tyhp\ExtClosureNode>
+     */
+    private function parseArgs(): array<int, \Tyhp\ExtClosureNode> {
+        $this->expect('(');
+        array<int, \Tyhp\ExtClosureNode> $args = [];
+        if ($this->eat(')')) {
+            return $args;
+        }
+        while (true) {
+            if ($this->is(\T_ELLIPSIS) || $this->is('&')) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            if ($this->is(\T_STRING) && $this->lookaheadIs(':')) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            $args[] = $this->parseExpression();
+            if ($this->eat(')')) {
+                return $args;
+            }
+            $this->expect(',');
+            if ($this->eat(')')) {
+                return $args;
+            }
+        }
+        throw new \InvalidArgumentException(self::MSG_BODY);
+    }
+
+    private function variable(string $name): \Tyhp\ExtClosureNode {
+        if ($name === 'this') {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        if ($this->inCurrentScope($name)) {
+            return new \Tyhp\ExtClosureParam[
+                kind => 'param',
+                name => $name,
+            ];
+        }
+        if ($this->inScope($name)) {
+            return new \Tyhp\ExtClosureCapture[
+                kind => 'capture',
+                name => $name,
+                value => null,
+            ];
+        }
+        if (!\array_key_exists($name, $this->statics)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        return new \Tyhp\ExtClosureCapture[
+            kind => 'capture',
+            name => $name,
+            value => $this->copyValue($this->statics[$name]),
+        ];
+    }
+
+    private function bareConstant(string $name): \Tyhp\ExtClosureNode {
+        string $lower = \strtolower($this->leaf($name));
+        if ($lower === 'true') {
+            return $this->constNode(true);
+        }
+        if ($lower === 'false') {
+            return $this->constNode(false);
+        }
+        if ($lower === 'null') {
+            return $this->constNode(null);
+        }
+
+        string $constant = \ltrim($name, '\\');
+        if ($this->namespace !== '' && !\str_contains($constant, '\\') && !\defined($constant)) {
+            string $namespaced = $this->namespace . '\\' . $constant;
+            if (\defined($namespaced)) {
+                $constant = $namespaced;
+            }
+        }
+        if (!\defined($constant)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        return $this->constNode(\constant($constant));
+    }
+
+    private function magicConstant(): \Tyhp\ExtClosureNode|null {
+        if ($this->is(\T_LINE)) {
+            int $line = $this->tokenLine();
+            $this->index++;
+
+            return $this->constNode($line);
+        }
+        if ($this->is(\T_FILE)) {
+            $this->index++;
+
+            return $this->constNode($this->file);
+        }
+        if ($this->is(\T_DIR)) {
+            $this->index++;
+
+            return $this->constNode(\dirname($this->file));
+        }
+        if ($this->is(\T_NS_C)) {
+            $this->index++;
+
+            return $this->constNode($this->namespace);
+        }
+
+        return null;
+    }
+
+    private function unaryPlusMinus('+'|'-' $op, \Tyhp\ExtClosureNode $expr): \Tyhp\ExtClosureNode {
+        int $factor = $op === '-' ? -1 : 1;
+        if ($expr->kind === 'const') {
+            mixed $value = $expr->value;
+            if ($value is int) {
+                return $this->constNode($value * $factor);
+            }
+            if ($value is float) {
+                return $this->constNode($value * (float)$factor);
+            }
+        }
+
+        return $this->binary('*', $expr, $this->constNode($factor));
+    }
+
+    private function binary(
+        \Tyhp\ExtClosureBinaryOp $op,
+        \Tyhp\ExtClosureNode $left,
+        \Tyhp\ExtClosureNode $right,
+    ): \Tyhp\ExtClosureNode {
+        if ($left->kind === 'const' && $right->kind === 'const') {
+            mixed $l = $left->value;
+            mixed $r = $right->value;
+            if ($l is int && $r is int) {
+                if ($op === '+') {
+                    return $this->constNode($l + $r);
+                }
+                if ($op === '-') {
+                    return $this->constNode($l - $r);
+                }
+                if ($op === '*') {
+                    return $this->constNode($l * $r);
+                }
+            }
+            if ($op === '.' && $l is string && $r is string) {
+                return $this->constNode($l . $r);
+            }
+        }
+
+        return new \Tyhp\ExtClosureBinary[
+            kind => 'binary',
+            op => $op,
+            left => $left,
+            right => $right,
+        ];
+    }
+
+    private function constNode(mixed $value): \Tyhp\ExtClosureNode {
+        return new \Tyhp\ExtClosureConst[
+            kind => 'const',
+            value => $value,
+        ];
+    }
+
+    private function copyValue(mixed $value): mixed {
+        if (!\is_array($value)) {
+            return $value;
+        }
+        array<mixed> $copy = [];
+        foreach ($value as $key => $item) {
+            $copy[$key] = $this->copyValue($item);
+        }
+
+        return $copy;
+    }
+
+    private function resolveClass(string $name): string {
+        if (\str_starts_with($name, '\\')) {
+            return \ltrim($name, '\\');
+        }
+        string $first = $name;
+        string $rest = '';
+        int|false $slash = \strpos($name, '\\');
+        if ($slash !== false) {
+            string|false $head = \substr($name, 0, $slash);
+            string|false $tail = \substr($name, $slash);
+            if ($head is string) {
+                $first = $head;
+            }
+            if ($tail is string) {
+                $rest = $tail;
+            }
+        }
+        if (\array_key_exists($first, $this->uses)) {
+            return $this->uses[$first] . $rest;
+        }
+        if ($this->namespace !== '') {
+            return $this->namespace . '\\' . $name;
+        }
+
+        return $name;
+    }
+
+    private function startsName(): bool {
+        return $this->is(\T_STRING)
+            || $this->is(\T_NS_SEPARATOR)
+            || $this->is(\T_NAME_FULLY_QUALIFIED)
+            || $this->is(\T_NAME_QUALIFIED)
+            || $this->is(\T_NAME_RELATIVE);
+    }
+
+    private function readQualified(): string {
+        if ($this->is(\T_NAME_FULLY_QUALIFIED) || $this->is(\T_NAME_QUALIFIED) || $this->is(\T_NAME_RELATIVE)) {
+            string $text = $this->text();
+            $this->index++;
+            if (\str_starts_with($text, 'namespace\\')) {
+                string|false $tail = \substr($text, 10);
+                string $rest = $tail is string ? $tail : '';
+                if ($this->namespace === '') {
+                    return '\\' . $rest;
+                }
+
+                return $this->namespace . '\\' . $rest;
+            }
+
+            return $text;
+        }
+        string $name = '';
+        if ($this->eat(\T_NS_SEPARATOR)) {
+            $name = '\\';
+        }
+        if (!$this->is(\T_STRING)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        $name .= $this->text();
+        $this->index++;
+        while ($this->eat(\T_NS_SEPARATOR)) {
+            if (!$this->is(\T_STRING)) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            $name .= '\\' . $this->text();
+            $this->index++;
+        }
+
+        return $name;
+    }
+
+    private function leaf(string $name): string {
+        int|false $slash = \strrpos($name, '\\');
+        if ($slash === false) {
+            return $name;
+        }
+        string|false $tail = \substr($name, $slash + 1);
+
+        return $tail is string ? $tail : $name;
+    }
+
+    private function joinName(string $prefix, string $name): string {
+        string $head = \trim($prefix, '\\');
+        string $tail = \ltrim($name, '\\');
+        if ($head === '') {
+            return $tail;
+        }
+        if ($tail === '') {
+            return $head;
+        }
+
+        return $head . '\\' . $tail;
+    }
+
+    private function castName(): ?\Tyhp\ExtClosureCastType {
+        if ($this->is(\T_INT_CAST)) {
+            return 'int';
+        }
+        if ($this->is(\T_DOUBLE_CAST)) {
+            return 'float';
+        }
+        if ($this->is(\T_STRING_CAST)) {
+            return 'string';
+        }
+        if ($this->is(\T_BOOL_CAST)) {
+            return 'bool';
+        }
+        if ($this->is(\T_ARRAY_CAST)) {
+            return 'array';
+        }
+        if ($this->is(\T_OBJECT_CAST)) {
+            return 'object';
+        }
+        if ($this->is(\T_UNSET_CAST)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        return null;
+    }
+
+    private function isAssignment(): bool {
+        return $this->is('=')
+            || $this->is(\T_PLUS_EQUAL)
+            || $this->is(\T_MINUS_EQUAL)
+            || $this->is(\T_MUL_EQUAL)
+            || $this->is(\T_DIV_EQUAL)
+            || $this->is(\T_MOD_EQUAL)
+            || $this->is(\T_POW_EQUAL)
+            || $this->is(\T_CONCAT_EQUAL)
+            || $this->is(\T_AND_EQUAL)
+            || $this->is(\T_OR_EQUAL)
+            || $this->is(\T_XOR_EQUAL)
+            || $this->is(\T_SL_EQUAL)
+            || $this->is(\T_SR_EQUAL)
+            || $this->is(\T_COALESCE_EQUAL);
+    }
+
+    private function stringValue(string $text): string {
+        if (\strlen($text) < 2) {
+            return $text;
+        }
+        string $quote = $text[0];
+        string|false $inner = \substr($text, 1, -1);
+        if (!($inner is string)) {
+            return '';
+        }
+        if ($quote === "'") {
+            return \str_replace(['\\\\', "\\'"], ['\\', "'"], $inner);
+        }
+
+        return \stripcslashes($inner);
+    }
+
+    private function intValue(string $text): int {
+        string $plain = \str_replace('_', '', $text);
+        if (\str_starts_with($plain, '0x') || \str_starts_with($plain, '0X')) {
+            string|false $digits = \substr($plain, 2);
+
+            return \intval($digits is string ? $digits : '0', 16);
+        }
+        if (\str_starts_with($plain, '0b') || \str_starts_with($plain, '0B')) {
+            string|false $digits = \substr($plain, 2);
+
+            return \intval($digits is string ? $digits : '0', 2);
+        }
+        if (\str_starts_with($plain, '0o') || \str_starts_with($plain, '0O')) {
+            string|false $digits = \substr($plain, 2);
+
+            return \intval($digits is string ? $digits : '0', 8);
+        }
+
+        return (int)$plain;
+    }
+
+    private function expectVariable(): string {
+        if (!$this->is(\T_VARIABLE)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        string $text = $this->text();
+        $this->index++;
+        if (!\str_starts_with($text, '$')) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+        string|false $name = \substr($text, 1);
+        if (!($name is string) || $name === '') {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+
+        return $name;
+    }
+
+    private function inCurrentScope(string $name): bool {
+        int $depth = \count($this->scopes) - 1;
+        if ($depth < 0) {
+            return false;
+        }
+
+        return ($this->scopes[$depth][$name] ?? false) === true;
+    }
+
+    private function inScope(string $name): bool {
+        int $depth = \count($this->scopes) - 1;
+        while ($depth >= 0) {
+            if (($this->scopes[$depth][$name] ?? false) === true) {
+                return true;
+            }
+            $depth--;
+        }
+
+        return false;
+    }
+
+    private function skipBalanced(string $open, string $close): void {
+        $this->expect($open);
+        int $depth = 1;
+        while ($depth > 0) {
+            if ($this->eof()) {
+                throw new \InvalidArgumentException(self::MSG_BODY);
+            }
+            if ($this->is($open)) {
+                $depth++;
+            } elseif ($this->is($close)) {
+                $depth--;
+            }
+            $this->index++;
+        }
+    }
+
+    private function lookaheadIs(int|string $kind): bool {
+        int $saved = $this->index;
+        $this->index++;
+        bool $match = $this->kind() === $kind;
+        $this->index = $saved;
+
+        return $match;
+    }
+
+    private function lookaheadVariable(): bool {
+        int $saved = $this->index;
+        $this->index++;
+        bool $match = $this->is(\T_VARIABLE) || $this->is(\T_ELLIPSIS);
+        $this->index = $saved;
+
+        return $match;
+    }
+
+    private function tokenLine(): int {
+        ?\PhpToken $token = $this->current();
+        if ($token === null) {
+            return 0;
+        }
+
+        return $token->line;
+    }
+
+    private function eof(): bool {
+        return $this->current() === null;
+    }
+
+    private function skip(): void {
+        while ($this->index < \count($this->tokens)) {
+            \PhpToken $token = $this->tokens[$this->index];
+            if ($token->is(\T_WHITESPACE) || $token->is(\T_COMMENT) || $token->is(\T_DOC_COMMENT)) {
+                $this->index++;
+                continue;
+            }
+
+            return;
+        }
+    }
+
+    private function current(): ?\PhpToken {
+        $this->skip();
+        if ($this->index >= \count($this->tokens)) {
+            return null;
+        }
+
+        return $this->tokens[$this->index];
+    }
+
+    private function kind(): int|string {
+        ?\PhpToken $token = $this->current();
+        if ($token === null) {
+            return '';
+        }
+        if (\strlen($token->text) === 1 && $token->id < 256) {
+            return $token->text;
+        }
+
+        return $token->id;
+    }
+
+    private function text(): string {
+        ?\PhpToken $token = $this->current();
+        if ($token === null) {
+            return '';
+        }
+
+        return $token->text;
+    }
+
+    private function is(int|string $kind): bool {
+        return $this->kind() === $kind;
+    }
+
+    private function eat(int|string $kind): bool {
+        if ($this->kind() !== $kind) {
+            return false;
+        }
+        $this->index++;
+
+        return true;
+    }
+
+    private function expect(int|string $kind): void {
+        if (!$this->eat($kind)) {
+            throw new \InvalidArgumentException(self::MSG_BODY);
+        }
+    }
+}

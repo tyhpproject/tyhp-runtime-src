@@ -2,7 +2,7 @@
 /**
  * AUTO-GENERATED, DO NOT EDIT
  * Compiler: 805.1.2.0
- * Generated: 2026-11-04T15:00:22.3152770Z
+ * Generated: 2026-11-12T15:13:22.1198890Z
  */
 namespace Tyhp\Io {
     /**
@@ -27,7 +27,7 @@ namespace Tyhp\Io {
         * Resolves with the job's result. In a worker, a job that throws rejects
         * with ParallelException, and a cancelled token stops the worker.
         */
-        #[\Tyhp\GenericRuntime(erased: false, binder: "runAsync__tyhpGeneric", layouts: [1], compiler: "805.1.2.0")]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "runAsync", layouts: [2], compiler: "805.1.2.0")]
         async public static function runAsync<T extends void|mixed>(\Tyhp\Io\OffloadJob<T> $job, ?\Tyhp\CancellationToken $token = null): T;
         /**
         * Returns true when runAsync() sends jobs to tyhp/parallel workers.
@@ -141,12 +141,12 @@ namespace Tyhp\Io\Db {
         * Returns every row as T. Throws IncompatibleTypeException for the first row
         * that does not match T.
         */
-        #[\Tyhp\GenericRuntime(erased: false, binder: "rowsAs__tyhpGeneric", layouts: [1], compiler: "805.1.2.0")]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "rowsAs", layouts: [2], compiler: "805.1.2.0")]
         public function rowsAs<T extends struct>(): array<int, T>;
         /**
         * Returns the first row as T, or null when there are no rows.
         */
-        #[\Tyhp\GenericRuntime(erased: false, binder: "firstAs__tyhpGeneric", layouts: [1], compiler: "805.1.2.0")]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "firstAs", layouts: [2], compiler: "805.1.2.0")]
         public function firstAs<T extends struct>(): ?T;
     }
     /**
@@ -170,16 +170,22 @@ namespace Tyhp\Io\Db {
 }
 namespace Tyhp\Io\Dns {
     /**
-    * Host name resolution through the system resolver, run with Offload.
+    * Host name resolution through the system resolver.
+    *
+    * The tyhp extension runs the lookup on a thread and the event loop waits on
+    * its pipe when that extension is loaded. Otherwise the lookup runs with Offload.
     */
     final class Dns {
         /**
         * Resolves $host to its IPv4 addresses (including /etc/hosts entries) followed
-        * by any IPv6 addresses from DNS. An IP address resolves to itself. Rejects
-        * with IoException when nothing resolves and the lookup runs in this
-        * process. When Offload runs it in a tyhp/parallel worker
-        * (Offload::usesWorkers()), a failure, including nothing resolving, rejects
-        * with ParallelException instead.
+        * by any IPv6 addresses from DNS. An IP address resolves to itself.
+        * The tyhp extension performs the lookup when it is loaded and at least
+        * {@see ExtModule::MINIMUM_VERSION}. A missing or older extension uses Offload.
+        * Rejects with IoException when nothing resolves and Offload::usesWorkers()
+        * is false. When Offload::usesWorkers() is true, nothing resolving rejects
+        * with ParallelException whose getRemoteClass() is IoException, with or
+        * without the extension. A cancelled token rejects with
+        * OperationCancelledException.
         */
         public static function resolveAsync(string $host, ?\Tyhp\CancellationToken $token = null): \Tyhp\Promise<array<int, string>>;
     }
@@ -250,7 +256,7 @@ namespace Tyhp\Io\File {
         * Reads the file and decodes it as JSON into T. Throws \JsonException for
         * invalid JSON and IncompatibleTypeException when the value does not match T.
         */
-        #[\Tyhp\GenericRuntime(erased: false, binder: "readJsonAsync__tyhpGeneric", layouts: [1], compiler: "805.1.2.0")]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "readJsonAsync", layouts: [2], compiler: "805.1.2.0")]
         async public static function readJsonAsync<T extends struct>(string $path, ?\Tyhp\CancellationToken $token = null): T;
         /**
         * Creates or truncates the file, then writes $contents.
@@ -298,7 +304,7 @@ namespace Tyhp\Io\Http {
         * Decodes the body as JSON into T. Throws \JsonException for invalid JSON and
         * IncompatibleTypeException when the value does not match T.
         */
-        #[\Tyhp\GenericRuntime(erased: false, binder: "json__tyhpGeneric", layouts: [1], compiler: "805.1.2.0")]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "json", layouts: [2], compiler: "805.1.2.0")]
         public function json<T extends struct>(): T;
         /**
         * Returns this response, or throws HttpStatusException when the status is not 2xx.
@@ -352,7 +358,7 @@ namespace Tyhp\Io\Http {
         * Accept: application/json unless $headers sets an Accept header (the name
         * is matched case-insensitively).
         */
-        #[\Tyhp\GenericRuntime(erased: false, binder: "getJsonAsync__tyhpGeneric", layouts: [1], compiler: "805.1.2.0")]
+        #[\Tyhp\GenericRuntime(erased: false, binder: "getJsonAsync", layouts: [2], compiler: "805.1.2.0")]
         async public function getJsonAsync<T extends struct>(string $url, array<string, string> $headers = [], ?\Tyhp\CancellationToken $token = null): T;
     }
 }

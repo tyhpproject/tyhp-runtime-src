@@ -66,6 +66,7 @@ final class PropertyAccessorObject
         return isset($this->accessors[$declaringClass]);
     }
 
+    #[\Tyhp\InferGeneric]
     public function register<TType>(
         string $property,
         object $host,
@@ -246,6 +247,38 @@ final class PropertyAccessorObject
     public function has(string $property): bool
     {
         return isset($this->live[$property]);
+    }
+
+    /// Hooked property names registered on this object.
+    public function hookedProperties(): array<int, string>
+    {
+        array<int, string> $names = [];
+        foreach ($this->live as $name => $accessor) {
+            (void)$accessor;
+            $names[] = $name;
+        }
+
+        return $names;
+    }
+
+    /// True when the live hook stores a value, false when it is virtual, null when absent.
+    public function isBackedProperty(string $property): ?bool
+    {
+        if (!isset($this->live[$property])) {
+            return null;
+        }
+
+        return $this->live[$property]->isBacked();
+    }
+
+    /// Declared type of a hooked property, or null when it is not registered.
+    public function propertyType(string $property): ?Type
+    {
+        if (!isset($this->live[$property])) {
+            return null;
+        }
+
+        return $this->live[$property]->getType();
     }
 
     public function get(string $property): mixed

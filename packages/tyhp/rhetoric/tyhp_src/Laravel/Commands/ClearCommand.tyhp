@@ -1,0 +1,40 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Mapping\MappingArchive;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationManifest;
+
+class ClearCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:clear');
+        $this->setDescription('Remove the migration manifest and the mapping cache.');
+    }
+
+    public function handle(): int {
+        try {
+            ?\Illuminate\Contracts\Container\Container $container = CommandContext::container($this);
+            ?string $path = MigrationManifest::locate($container);
+            if ($path === null) {
+                $this->info('No migration manifest path is configured.');
+            } else {
+                MigrationManifest::forget($path);
+                $this->info($path);
+            }
+            ?string $mapping = MappingArchive::locate($container);
+            if ($mapping === null) {
+                $this->info('No mapping cache path is configured.');
+            } else {
+                MappingArchive::forget($mapping);
+                $this->info($mapping);
+            }
+
+            return 0;
+        } catch (\Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return 1;
+        }
+    }
+}

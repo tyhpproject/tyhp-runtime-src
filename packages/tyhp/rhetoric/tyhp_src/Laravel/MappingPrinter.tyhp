@@ -1,0 +1,129 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel;
+
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ContextMap;
+use Tyhp\Rhetoric\Mapping\ForeignKeyMap;
+use Tyhp\Rhetoric\Mapping\IndexMap;
+use Tyhp\Rhetoric\Mapping\KeyMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+
+final class MappingPrinter {
+    public static function render(ContextMap $map): string {
+        array<int, string> $lines = [];
+        $lines[] = $map->contextClass;
+        foreach ($map->models as $model) {
+            $lines[] = '';
+            $lines[] = $model->class;
+            $lines[] = 'Table: ' . $model->table;
+            if ($model->view) {
+                $lines[] = 'View: ' . $model->table;
+            }
+            if ($model->softDeletes && $model->deletedAtColumn !== null) {
+                $lines[] = 'Soft deletes: ' . $model->deletedAtColumn;
+            }
+            if ($model->discriminatorColumn !== null) {
+                string $value = $model->discriminatorValue ?? '';
+                $lines[] = 'Discriminator: ' . $model->discriminatorColumn . ($value === '' ? '' : ' = ' . $value);
+            }
+            $lines[] = 'Columns:';
+            foreach ($model->columns as $column) {
+                $lines[] = '  ' . self::column($model, $column);
+            }
+            $lines[] = 'Key: ' . self::key($model->key);
+            $lines[] = 'Indexes:';
+            foreach ($model->indexes as $index) {
+                $lines[] = '  ' . self::index($index);
+            }
+            $lines[] = 'Foreign keys:';
+            foreach ($model->foreignKeys as $foreignKey) {
+                $lines[] = '  ' . self::foreignKey($foreignKey);
+            }
+            $lines[] = 'Relations:';
+            foreach ($model->relations as $relation) {
+                $lines[] = '  ' . self::relation($relation);
+            }
+        }
+
+        return \implode("\n", $lines);
+    }
+
+    private static function column(ModelMap $model, ColumnMap $column): string {
+        string $text = $column->property . ' ' . $column->name . ' ' . $column->type;
+        if ($column->nullable) {
+            $text .= ' nullable';
+        }
+        if ($model->key !== null && \in_array($column->property, $model->key->properties, true)) {
+            $text .= ' key';
+        }
+        if ($column->generated) {
+            $text .= ' generated';
+        }
+        if ($column->maxLength !== null) {
+            $text .= ' length=' . (string)$column->maxLength;
+        }
+        if ($column->precision !== null) {
+            $text .= ' precision=' . (string)$column->precision . ',' . (string)($column->scale ?? 0);
+        }
+
+        return $text;
+    }
+
+    private static function key(?KeyMap $key): string {
+        if ($key === null) {
+            return 'none';
+        }
+
+        return \implode(', ', $key->columns);
+    }
+
+    private static function index(IndexMap $index): string {
+        string $text = \implode(', ', $index->columns);
+        if ($index->unique) {
+            $text .= ' unique';
+        }
+        if ($index->name !== null) {
+            $text .= ' ' . $index->name;
+        }
+
+        return $text;
+    }
+
+    private static function foreignKey(ForeignKeyMap $foreignKey): string {
+        return \implode(', ', $foreignKey->columns)
+            . ' -> '
+            . $foreignKey->referencedTable
+            . '.'
+            . \implode(', ', $foreignKey->referencedColumns)
+            . ' '
+            . $foreignKey->onDelete->value;
+    }
+
+    private static function relation(RelationMap $relation): string {
+        string $text = $relation->property
+            . ' '
+            . $relation->kind->value
+            . ' '
+            . $relation->relatedClass
+            . ' inverse='
+            . ($relation->inverseProperty ?? '')
+            . ' fk='
+            . ($relation->foreignKeyColumn ?? '')
+            . ' onDelete='
+            . $relation->onDelete->value;
+        if ($relation->pivotTable !== null) {
+            $text .= ' pivot=' . $relation->pivotTable
+                . ' '
+                . ($relation->pivotForeignKey ?? '')
+                . ' '
+                . ($relation->pivotRelatedKey ?? '');
+        }
+        if ($relation->pivotClass !== null) {
+            $text .= ' using=' . $relation->pivotClass;
+        }
+
+        return $text;
+    }
+}

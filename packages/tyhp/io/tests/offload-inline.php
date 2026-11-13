@@ -11,7 +11,7 @@ use Tyhp\Io\Offload;
 require __DIR__ . '/bootstrap.php';
 
 $loop = EventLoop::getInstance();
-$pid = $loop->runUntilSettled(Offload::runAsync(new PidJob()));
+$pid = $loop->runUntilSettled(Offload::runAsync(\Tyhp\Type::int())(new PidJob()));
 
 $db = new PdoConnection(['dsn' => 'sqlite::memory:', 'username' => null, 'password' => null, 'attributes' => []]);
 $results = $loop->runUntilSettled($db->transactionAsync([

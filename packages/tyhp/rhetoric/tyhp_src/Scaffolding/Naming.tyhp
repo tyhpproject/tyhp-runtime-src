@@ -1,0 +1,190 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+final class Naming {
+    public static function tableName(string $class): string {
+        return \Illuminate\Support\Str::snake(\Illuminate\Support\Str::pluralStudly(self::basename($class)));
+    }
+
+    public static function columnName(string $property): string {
+        return \Illuminate\Support\Str::snake($property);
+    }
+
+    public static function modelKeyProperty(string $class): string {
+        return \lcfirst(self::basename($class)) . 'Id';
+    }
+
+    public static function pivotTable(string $leftClass, string $rightClass): string {
+        array<int, string> $names = [
+            \Illuminate\Support\Str::snake(self::basename($leftClass)),
+            \Illuminate\Support\Str::snake(self::basename($rightClass)),
+        ];
+        \sort($names);
+
+        return \implode('_', $names);
+    }
+
+    public static function pivotForeignKey(string $class, string $keyColumn): string {
+        return \Illuminate\Support\Str::snake(self::basename($class)) . '_' . $keyColumn;
+    }
+
+    public static function className(string $table, bool $pluralize): string {
+        string $base = $pluralize ? \Illuminate\Support\Str::singular($table) : $table;
+        string $name = self::studly($base);
+        if (self::reservedClass($name)) {
+            return $name . 'Model';
+        }
+
+        return $name;
+    }
+
+    /**
+     * Words PHP or Tyhp will not accept as a class name (a `matches` table singularizes to `Match`).
+     */
+    public static function reservedClass(string $name): bool {
+        array<string, bool> $reserved = [
+            '__halt_compiler' => true,
+            'abstract' => true,
+            'and' => true,
+            'array' => true,
+            'as' => true,
+            'bool' => true,
+            'break' => true,
+            'callable' => true,
+            'case' => true,
+            'catch' => true,
+            'class' => true,
+            'clone' => true,
+            'const' => true,
+            'continue' => true,
+            'declare' => true,
+            'default' => true,
+            'die' => true,
+            'do' => true,
+            'echo' => true,
+            'else' => true,
+            'elseif' => true,
+            'empty' => true,
+            'enddeclare' => true,
+            'endfor' => true,
+            'endforeach' => true,
+            'endif' => true,
+            'endswitch' => true,
+            'endwhile' => true,
+            'eval' => true,
+            'exit' => true,
+            'extends' => true,
+            'false' => true,
+            'final' => true,
+            'finally' => true,
+            'float' => true,
+            'fn' => true,
+            'for' => true,
+            'foreach' => true,
+            'function' => true,
+            'global' => true,
+            'goto' => true,
+            'if' => true,
+            'implements' => true,
+            'include' => true,
+            'include_once' => true,
+            'instanceof' => true,
+            'insteadof' => true,
+            'int' => true,
+            'interface' => true,
+            'is' => true,
+            'isset' => true,
+            'iterable' => true,
+            'list' => true,
+            'match' => true,
+            'mixed' => true,
+            'namespace' => true,
+            'never' => true,
+            'new' => true,
+            'null' => true,
+            'object' => true,
+            'or' => true,
+            'parent' => true,
+            'print' => true,
+            'private' => true,
+            'protected' => true,
+            'public' => true,
+            'readonly' => true,
+            'require' => true,
+            'require_once' => true,
+            'return' => true,
+            'self' => true,
+            'static' => true,
+            'string' => true,
+            'switch' => true,
+            'throw' => true,
+            'trait' => true,
+            'true' => true,
+            'try' => true,
+            'unset' => true,
+            'use' => true,
+            'var' => true,
+            'void' => true,
+            'while' => true,
+            'xor' => true,
+            'yield' => true,
+        ];
+
+        return isset($reserved[\strtolower($name)]);
+    }
+
+    public static function property(string $column): string {
+        return self::camel($column);
+    }
+
+    public static function camel(string $value): string {
+        mixed $camel = \Illuminate\Support\Str::camel($value);
+        if (!\is_string($camel) || !self::ident($camel)) {
+            return 'column';
+        }
+
+        return $camel;
+    }
+
+    public static function studly(string $value): string {
+        mixed $studly = \Illuminate\Support\Str::studly($value);
+        if (!\is_string($studly) || !self::ident($studly)) {
+            return 'Model';
+        }
+
+        return $studly;
+    }
+
+    public static function basename(string $class): string {
+        string $name = \ltrim($class, '\\');
+        int|false $pos = \strrpos($name, '\\');
+        if ($pos === false) {
+            return $name;
+        }
+
+        return \substr($name, $pos + 1);
+    }
+
+    public static function namespaceOf(string $class): string {
+        string $name = \ltrim($class, '\\');
+        int|false $pos = \strrpos($name, '\\');
+        if ($pos === false) {
+            return '';
+        }
+
+        return \substr($name, 0, $pos);
+    }
+
+    public static function qualify(string $namespace, string $short): string {
+        if ($namespace === '') {
+            return $short;
+        }
+
+        return $namespace . '\\' . $short;
+    }
+
+    public static function ident(string $name): bool {
+        return \preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) === 1;
+    }
+}

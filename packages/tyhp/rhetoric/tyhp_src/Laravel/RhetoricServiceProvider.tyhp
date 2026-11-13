@@ -1,0 +1,132 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\MappingArchive;
+use Tyhp\Rhetoric\Laravel\Commands\AutoMigrateCommand;
+use Tyhp\Rhetoric\Laravel\Commands\BaselineCommand;
+use Tyhp\Rhetoric\Laravel\Commands\CacheCommand;
+use Tyhp\Rhetoric\Laravel\Commands\ClearCommand;
+use Tyhp\Rhetoric\Laravel\Commands\MigrateDeferredCommand;
+use Tyhp\Rhetoric\Laravel\Commands\MigrationCommand;
+use Tyhp\Rhetoric\Laravel\Commands\PendingCommand;
+use Tyhp\Rhetoric\Laravel\Commands\RemoveMigrationCommand;
+use Tyhp\Rhetoric\Laravel\Commands\ScaffoldCommand;
+use Tyhp\Rhetoric\Laravel\Commands\ShowCommand;
+use Tyhp\Rhetoric\Migrations\Auto\AutoMigrator;
+
+class RhetoricServiceProvider extends \Illuminate\Support\ServiceProvider {
+    public function register(): void {
+        ?string $config = $this->configFile();
+        if ($config !== null) {
+            $this->mergeConfigFrom($config, 'rhetoric');
+        }
+        $this->registerContexts();
+        MappingArchive::install($this->app);
+        AutoMigrator::attach($this->app);
+        $this->optimizes('rhetoric:cache', 'rhetoric:clear');
+        AutoMigrator::enableFromConfig();
+    }
+
+    public function boot(): void {
+        AutoMigrator::bootWindow();
+        if (!$this->app->runningInConsole()) {
+            return;
+        }
+        ?string $config = $this->configFile();
+        if ($config !== null) {
+            array<string, string> $paths = [$config => $this->app->configPath('rhetoric.php')];
+            $this->publishes($paths, 'rhetoric-config');
+        }
+        $this->publishStubs();
+        $this->commands([
+            ShowCommand::class,
+            MigrationCommand::class,
+            RemoveMigrationCommand::class,
+            PendingCommand::class,
+            AutoMigrateCommand::class,
+            MigrateDeferredCommand::class,
+            CacheCommand::class,
+            ClearCommand::class,
+            ScaffoldCommand::class,
+            BaselineCommand::class,
+        ]);
+    }
+
+    private function registerContexts(): void {
+        mixed $repository = $this->app->get('config');
+        if (!($repository instanceof \Illuminate\Contracts\Config\Repository)) {
+            return;
+        }
+        mixed $contexts = $repository->get('rhetoric.contexts', []);
+        if (!\is_array($contexts)) {
+            return;
+        }
+        foreach ($contexts as $class) {
+            if (!\is_string($class) || !\class_exists($class) || !\is_subclass_of($class, Context::class)) {
+                continue;
+            }
+            $this->app->scoped($class);
+            $this->app->resolving($class, function (mixed $instance): void {
+                if ($instance instanceof Context) {
+                    (void)$instance->mapping();
+                }
+            });
+        }
+    }
+
+    private function publishStubs(): void {
+        ?string $directory = $this->stubDirectory();
+        if ($directory === null) {
+            return;
+        }
+        array<string, string> $paths = [];
+        foreach (['model.stub', 'trait.stub', 'context.stub', 'mappings.stub'] as $name) {
+            string $source = $directory . '/' . $name;
+            if (!\is_file($source)) {
+                return;
+            }
+            $paths[$source] = $this->app->basePath('stubs/rhetoric/' . $name);
+        }
+        $this->publishes($paths, 'rhetoric-stubs');
+    }
+
+    private function stubDirectory(): ?string {
+        string $dir = __DIR__;
+        int $remaining = 8;
+        while ($remaining > 0) {
+            string $candidate = $dir . '/stubs/model.stub';
+            if (\is_file($candidate)) {
+                return $dir . '/stubs';
+            }
+            string $parent = \dirname($dir);
+            if ($parent === $dir) {
+                return null;
+            }
+            $dir = $parent;
+            $remaining--;
+        }
+
+        return null;
+    }
+
+    private function configFile(): ?string {
+        string $dir = __DIR__;
+        int $remaining = 6;
+        while ($remaining > 0) {
+            string $candidate = $dir . '/config/rhetoric.php';
+            if (\is_file($candidate)) {
+                return $candidate;
+            }
+            string $parent = \dirname($dir);
+            if ($parent === $dir) {
+                return null;
+            }
+            $dir = $parent;
+            $remaining--;
+        }
+
+        return null;
+    }
+}

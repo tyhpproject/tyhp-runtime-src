@@ -1,0 +1,78 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+/**
+ * Inbound and outbound conversion for one column.
+ * Present so hydration and save can call a slot a later cast can fill.
+ */
+final class CastSlot {
+    public function __construct(
+        public \Closure $get,
+        public \Closure $set,
+    ) {}
+
+    /**
+     * The slot {@see MapFactory} would build for this column type and cast class.
+     */
+    public static function forType(string $type, ?string $castClass): ?CastSlot {
+        if ($castClass !== null) {
+            return self::around(self::userCast($castClass));
+        }
+        string $stored = \ltrim($type, '\\');
+        if (\str_contains($stored, 'DateTimeImmutable')) {
+            return self::around(new \Tyhp\Rhetoric\Casts\DateTimeImmutableCast());
+        }
+        if (\enum_exists($stored)) {
+            \ReflectionEnum $enum = self::reflectEnum($stored);
+            if ($enum->isBacked()) {
+                return self::around(new \Tyhp\Rhetoric\Casts\BackedEnumCast($stored));
+            }
+        }
+        if ($stored === 'bool') {
+            return self::around(new \Tyhp\Rhetoric\Casts\BoolCast());
+        }
+        if ($stored === 'int') {
+            return self::around(new \Tyhp\Rhetoric\Casts\IntCast());
+        }
+
+        return null;
+    }
+
+    private static function around(\Tyhp\Rhetoric\Casts\Cast $cast): CastSlot {
+        return new CastSlot(
+            fn (mixed $value): mixed => $cast->get($value),
+            fn (mixed $value): mixed => $cast->set($value),
+        );
+    }
+
+    private static function userCast(string $class): \Tyhp\Rhetoric\Casts\Cast {
+        if (!\class_exists($class)) {
+            throw new \InvalidArgumentException('Cast ' . $class . ' does not exist.');
+        }
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+        ?\ReflectionMethod $constructor = $reflection->getConstructor();
+        if ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0) {
+            throw new \InvalidArgumentException('Cast ' . $class . ' needs a constructor argument.');
+        }
+        object $instance = $reflection->newInstance();
+        if (!($instance instanceof \Tyhp\Rhetoric\Casts\Cast)) {
+            throw new \InvalidArgumentException($class . ' is not a cast.');
+        }
+
+        return $instance;
+    }
+
+    private static function reflectEnum(string $class): \ReflectionEnum {
+        mixed $cases = \call_user_func([$class, 'cases']);
+        if (!\is_array($cases) || $cases === []) {
+            throw new \InvalidArgumentException($class . ' has no cases.');
+        }
+        mixed $case = $cases[0];
+        if (!($case instanceof \UnitEnum)) {
+            throw new \InvalidArgumentException($class . ' is not an enum.');
+        }
+
+        return new \ReflectionEnum($case);
+    }
+}

@@ -1,0 +1,47 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+final class Paths {
+    public static function name<TCallable extends callable>(\Tyhp\PropertyPath<TCallable> $path): string {
+        if (\count($path->getSegments()) !== 1) {
+            throw new \InvalidArgumentException('Mapping paths name one property.');
+        }
+        string $name = $path->getPropertyName();
+        if ($name === '') {
+            throw new \InvalidArgumentException('A property path is required.');
+        }
+
+        return $name;
+    }
+
+    public static function relatedClass<TCallable extends callable>(
+        \Tyhp\PropertyPath<TCallable> $path,
+        bool $collection,
+    ): __ClassName {
+        \Tyhp\Type $type = \Tyhp\Type::parse($path->returnType)->asNonNullable();
+        if ($collection) {
+            ?\Tyhp\Type $element = $type->elementType();
+            if ($element === null) {
+                throw new \InvalidArgumentException(
+                    'Collection path ' . $path->getPropertyName() . ' has no element type.',
+                );
+            }
+            $type = $element->asNonNullable();
+        }
+        ?string $name = $type->getName();
+        if ($name === null || $name === '' || $name === 'mixed' || $name === 'array') {
+            throw new \InvalidArgumentException(
+                'Could not read the model type from ' . $path->getPropertyName() . '.',
+            );
+        }
+        string $class = \ltrim($name, '\\');
+        if (!\class_exists($class)) {
+            throw new \InvalidArgumentException(
+                'Could not read the model type from ' . $path->getPropertyName() . '.',
+            );
+        }
+
+        return $class;
+    }
+}

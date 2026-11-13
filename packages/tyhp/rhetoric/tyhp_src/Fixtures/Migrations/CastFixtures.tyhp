@@ -1,0 +1,63 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures\Migrations;
+
+use Tyhp\Rhetoric\Attributes\Cast;
+use Tyhp\Rhetoric\Attributes\DefaultValue;
+use Tyhp\Rhetoric\Casts\Cast as ValueCast;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\Mapper;
+
+enum Color: string {
+    case Red = 'red';
+    case Blue = 'blue';
+}
+
+class Painted {
+    public int $id = 0;
+
+    #[DefaultValue(Color::Red)]
+    public Color $color = Color::Red;
+
+    public ?\DateTimeImmutable $paintedAt = null;
+
+    public bool $active = false;
+}
+
+class ShoutCast extends ValueCast<string, string> {
+    public function get(mixed $value): ?string {
+        if ($value === null) {
+            return null;
+        }
+        if (!\is_string($value)) {
+            throw new \InvalidArgumentException('A shout requires a string.');
+        }
+
+        return \strtolower($value);
+    }
+
+    public function set(mixed $value): ?string {
+        if ($value === null) {
+            return null;
+        }
+        if (!\is_string($value)) {
+            throw new \InvalidArgumentException('A shout requires a string.');
+        }
+
+        return \strtoupper($value);
+    }
+}
+
+class Shout {
+    public int $id = 0;
+
+    #[Cast(ShoutCast::class)]
+    public string $word = '';
+}
+
+class CastContext extends Context {
+    protected function map(Mapper $map): void {
+        $map->model<Painted>();
+        $map->model<Shout>();
+    }
+}

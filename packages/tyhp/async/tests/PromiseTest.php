@@ -12,6 +12,7 @@ use Tyhp\PromiseState;
 use Tyhp\Exceptions\AsyncContextException;
 use Tyhp\Exceptions\InvalidPromiseStateException;
 use Tyhp\Exceptions\TimeoutException;
+use Tyhp\Type;
 
 final class PromiseTest extends TestCase
 {
@@ -38,7 +39,7 @@ final class PromiseTest extends TestCase
     public function testReject(): void
     {
         $exception = new \RuntimeException('err');
-        $promise = Promise::reject($exception);
+        $promise = Promise::reject()($exception);
 
         $this->assertTrue($promise->isFaulted());
         $this->assertSame(PromiseState::Rejected, $promise->getState());
@@ -112,14 +113,14 @@ final class PromiseTest extends TestCase
         $this->expectExceptionMessage('stay rejected');
 
         Promise::run(function () {
-            return Promise::_await(Promise::reject(new \RuntimeException('stay rejected'))->then());
+            return Promise::_await(Promise::reject()(new \RuntimeException('stay rejected'))->then());
         });
     }
 
     public function testThenWithOnlyRejectionHandlerRecovers(): void
     {
         $result = Promise::run(function () {
-            $recovered = Promise::reject(new \RuntimeException('boom'))
+            $recovered = Promise::reject()(new \RuntimeException('boom'))
                 ->then(null, fn(\Throwable $e) => 42);
             $untouched = Promise::resolve(7)->then(null, fn(\Throwable $e) => 42);
 
@@ -133,7 +134,7 @@ final class PromiseTest extends TestCase
     {
         $result = Promise::run(function () {
             $ok = Promise::resolve(3)->then(fn(int $v) => 'v' . $v, fn(\Throwable $e) => 'err');
-            $bad = Promise::reject(new \RuntimeException('boom'))
+            $bad = Promise::reject()(new \RuntimeException('boom'))
                 ->then(fn($v) => 'v' . $v, fn(\Throwable $e) => 'err:' . $e->getMessage());
 
             return [Promise::_await($ok), Promise::_await($bad)];
@@ -145,7 +146,7 @@ final class PromiseTest extends TestCase
     public function testCatchHandling(): void
     {
         $result = Promise::run(function () {
-            $p = Promise::reject(new \RuntimeException('fail'))
+            $p = Promise::reject()(new \RuntimeException('fail'))
                 ->catch(fn(\Throwable $e) => 'recovered: ' . $e->getMessage());
             return Promise::_await($p);
         });
@@ -176,7 +177,7 @@ final class PromiseTest extends TestCase
 
         try {
             Promise::run(function () use (&$finallyCalled) {
-                $p = Promise::reject(new \RuntimeException('boom'))
+                $p = Promise::reject()(new \RuntimeException('boom'))
                     ->finally(function () use (&$finallyCalled) {
                         $finallyCalled = true;
                     });
@@ -208,7 +209,7 @@ final class PromiseTest extends TestCase
     public function testContinueWithOnRejection(): void
     {
         $result = Promise::run(function () {
-            $p = Promise::reject(new \RuntimeException('oops'))
+            $p = Promise::reject()(new \RuntimeException('oops'))
                 ->continueWith(function (mixed $value, ?\Throwable $error) {
                     return ['value' => $value, 'errorMsg' => $error?->getMessage()];
                 });
@@ -221,7 +222,7 @@ final class PromiseTest extends TestCase
 
     public function testWait(): void
     {
-        $promise = Promise::resolve(99);
+        $promise = Promise::resolved(99);
         $result = $promise->wait();
 
         $this->assertSame(99, $result);
@@ -232,13 +233,23 @@ final class PromiseTest extends TestCase
         $this->expectException(TimeoutException::class);
 
         $deferred = new Deferred();
-        $deferred->getPromise()->wait(100);
+        $deferred->getPromise()->wait(10);
+    }
+
+    public function testWaitNegativeTimeoutHasNoDeadline(): void
+    {
+        $deferred = Deferred::new(Type::int())();
+        EventLoop::getInstance()->delay(15, static function () use ($deferred): void {
+            $deferred->resolve(5);
+        });
+
+        $this->assertSame(5, $deferred->getPromise()->wait(-1));
     }
 
     public function testWithResolvers(): void
     {
         $result = Promise::run(function () {
-            $resolvers = Promise::withResolvers();
+            $resolvers = Promise::withResolvers(Type::int)();
             $resolvers->resolve(777);
             return Promise::_await($resolvers->getPromise());
         });
@@ -271,7 +282,7 @@ final class PromiseTest extends TestCase
 
     public function testGetResultRejectedThrows(): void
     {
-        $promise = Promise::reject(new \RuntimeException('test-reject'));
+        $promise = Promise::reject()(new \RuntimeException('test-reject'));
 
         try {
             $promise->wait();

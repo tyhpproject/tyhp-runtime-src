@@ -1,0 +1,128 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+/**
+ * JSON snapshot for one context. The default directory is database/rhetoric.
+ */
+final class SnapshotStore {
+    public function __construct(
+        private string $directory,
+    ) {}
+
+    public function path(string $context): string {
+        return $this->directory . '/' . self::basename($context) . '.snapshot.json';
+    }
+
+    public function exists(string $context): bool {
+        return \is_file($this->path($context));
+    }
+
+    public function load(string $context): SnapshotDocument {
+        string $path = $this->path($context);
+        if (!\is_file($path)) {
+            return SnapshotDocument::empty($context);
+        }
+        mixed $contents = \file_get_contents($path);
+        if (!\is_string($contents)) {
+            throw new \RuntimeException('Could not read ' . $path . '.');
+        }
+        mixed $decoded = \json_decode($contents, true);
+        if (!\is_array($decoded)) {
+            throw new \RuntimeException($path . ' is not a Rhetoric snapshot.');
+        }
+        array<string, mixed> $data = [];
+        foreach ($decoded as $key => $value) {
+            if (!\is_string($key)) {
+                throw new \RuntimeException($path . ' is not a Rhetoric snapshot.');
+            }
+            $data[$key] = $value;
+        }
+        SnapshotDocument $document = SnapshotDocument::fromArray($data);
+        if ($document->context !== $context) {
+            throw new \RuntimeException($path . ' belongs to ' . $document->context . ', not ' . $context . '.');
+        }
+
+        return $document;
+    }
+
+    public function save(SnapshotDocument $document): void {
+        self::ensure($this->directory);
+        string $path = $this->path($document->context);
+        mixed $written = \file_put_contents($path, SpecJson::pretty($document->toArray()));
+        if ($written === false) {
+            throw new \RuntimeException('Could not write ' . $path . '.');
+        }
+    }
+
+    public function remember(SnapshotDocument $document): void {
+        string $directory = $this->directory . '/history';
+        self::ensure($directory);
+        string $path = $directory . '/' . $document->hash() . '.json';
+        mixed $written = \file_put_contents($path, SpecJson::pretty($document->toArray()));
+        if ($written === false) {
+            throw new \RuntimeException('Could not write ' . $path . '.');
+        }
+    }
+
+    public function hasHistory(string $hash): bool {
+        return \is_file($this->directory . '/history/' . $hash . '.json');
+    }
+
+    public function restore(string $hash): SnapshotDocument {
+        SnapshotDocument $document = $this->recorded($hash);
+        $this->save($document);
+
+        return $document;
+    }
+
+    /**
+     * Reads a document from history without making it the current snapshot.
+     */
+    public function recorded(string $hash): SnapshotDocument {
+        string $path = $this->directory . '/history/' . $hash . '.json';
+        if (!\is_file($path)) {
+            throw new \RuntimeException('No snapshot history for ' . $hash . '.');
+        }
+        mixed $contents = \file_get_contents($path);
+        if (!\is_string($contents)) {
+            throw new \RuntimeException('Could not read ' . $path . '.');
+        }
+        mixed $decoded = \json_decode($contents, true);
+        if (!\is_array($decoded)) {
+            throw new \RuntimeException($path . ' is not a Rhetoric snapshot.');
+        }
+        array<string, mixed> $data = [];
+        foreach ($decoded as $key => $value) {
+            if (!\is_string($key)) {
+                throw new \RuntimeException($path . ' is not a Rhetoric snapshot.');
+            }
+            $data[$key] = $value;
+        }
+        return SnapshotDocument::fromArray($data);
+    }
+
+    private static function basename(string $context): string {
+        string $name = $context;
+        if (\str_contains($context, '\\')) {
+            mixed $position = \strrpos($context, '\\');
+            if (\is_int($position)) {
+                $name = \substr($context, $position + 1);
+            }
+        }
+        if ($name === '') {
+            throw new \InvalidArgumentException('A context class is required.');
+        }
+
+        return $name;
+    }
+
+    private static function ensure(string $directory): void {
+        if (\is_dir($directory)) {
+            return;
+        }
+        if (!\mkdir($directory, 0777, true) && !\is_dir($directory)) {
+            throw new \RuntimeException('Could not create ' . $directory . '.');
+        }
+    }
+}

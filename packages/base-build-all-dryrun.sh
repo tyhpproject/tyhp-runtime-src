@@ -1,6 +1,6 @@
 #!/bin/bash
 # Dry-run every first-party dist package (all PHP versions) plus single-version packages.
-# Pass a package name to dry-run only that one: core, decimal, async, lambda, parallel, io, or compiler.
+# Pass a package name to dry-run only that one: core, decimal, async, lambda, parallel, io, rhetoric, or compiler.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -54,7 +54,8 @@ build_package() {
 
   run_composer_update "$pkg" || { FAILED+=("$pkg"); return 0; }
 
-  for entry in "${DIST_BUILDS[@]}"; do
+  set_package_dist_builds "$pkg"
+  for entry in "${PACKAGE_DIST_BUILDS[@]}"; do
     rest="${entry#*:}"
     php_version="${rest%%:*}"
     label="${rest#*:}"

@@ -1,0 +1,36 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Casts;
+
+final class DateTimeImmutableCast extends \Tyhp\Rhetoric\Casts\Cast<\DateTimeImmutable, string> {
+    public function get(mixed $value): ?\DateTimeImmutable {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if ($value instanceof \DateTimeImmutable) {
+            return $value;
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return \DateTimeImmutable::createFromInterface($value);
+        }
+        if (!\is_string($value)) {
+            throw new \InvalidArgumentException('A date column requires a date string.');
+        }
+
+        return new \DateTimeImmutable($value);
+    }
+
+    public function set(mixed $value): ?string {
+        if ($value === null) {
+            return null;
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+        if (\is_string($value)) {
+            return $value;
+        }
+
+        throw new \InvalidArgumentException('A date column requires a date.');
+    }
+}

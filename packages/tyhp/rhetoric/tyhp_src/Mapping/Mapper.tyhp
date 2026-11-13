@@ -1,0 +1,41 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Observers\QueryInterceptor;
+
+final class Mapper {
+    private Conventions $conventions;
+    private array<string, ModelConfig> $models = [];
+    private array<int, QueryInterceptor> $interceptors = [];
+
+    public function __construct() {
+        $this->conventions = new Conventions();
+    }
+
+    public function conventions(Conventions $conventions): void {
+        $this->conventions = $conventions;
+    }
+
+    public function model<T>(): ModelMapper<T> {
+        __ClassName<T> $class = T::class;
+        if (!isset($this->models[$class])) {
+            $this->models[$class] = new ModelConfig($class);
+        }
+
+        return new ModelMapper<T>($this->models[$class]);
+    }
+
+    public function register(ModelMapping $mapping): void {
+        $mapping->apply($this);
+    }
+
+    public function intercept(QueryInterceptor $interceptor): void {
+        $this->interceptors[] = $interceptor;
+    }
+
+    public function build(Context $context): ContextMap {
+        return MapFactory::build($context, $this->conventions, $this->models, $this->interceptors);
+    }
+}

@@ -1,0 +1,36 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Fixtures\Discovered\PostMapping;
+use Tyhp\Rhetoric\Mapping\Mapper;
+use Tyhp\Rhetoric\OnDelete;
+use Tyhp\Rhetoric\Table;
+
+class FluentBlogContext extends Context {
+    public Table<FluentBlog> $blogs {
+        get => $this->table<FluentBlog>();
+    }
+
+    public Table<FluentPost> $posts {
+        get => $this->table<FluentPost>();
+    }
+
+    protected function map(Mapper $map): void {
+        $map->register(new PostMapping());
+        $map->model<FluentPost>()
+            ->table('stored_posts')
+            ->hasIndex(fn (FluentPost $post) => $post->slug)
+            ->unique();
+        $map->model<FluentPost>()
+            ->column(fn (FluentPost $post) => $post->title)
+            ->name('post_title')
+            ->maxLength(80);
+        $map->model<FluentPost>()
+            ->belongsTo(fn (FluentPost $post) => $post?->blog)
+            ->inverseOf(fn (FluentBlog $blog) => $blog->posts)
+            ->foreignKey(fn (FluentPost $post) => $post->blogId)
+            ->onDelete(OnDelete::Cascade);
+    }
+}

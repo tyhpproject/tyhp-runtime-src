@@ -12,11 +12,16 @@ final class DisposableHelper {
     /**
      * Disposes one or more disposable resources asynchronously.
      * Resources are disposed in reverse order (LIFO).
+     * An uninitialized lazy object is skipped.
      */
     async public static function dispose(IsDisposable|AsyncIsDisposable ...$disposables): void {
         array<\Throwable> $errors = [];
 
         foreach (\array_reverse($disposables) as $disposable) {
+            // Same skip as DisposableScope: an uninitialized lazy object is not disposed.
+            if (self::isUninitializedLazyObject($disposable)) {
+                continue;
+            }
             try {
                 if ($disposable instanceof AsyncIsDisposable) {
                     await $disposable->disposeAsync();
@@ -40,5 +45,22 @@ final class DisposableHelper {
             }
             throw new AggregateException($errors, 'One or more errors during disposal');
         }
+    }
+
+    /**
+     * True for a PHP 8.4+ lazy object that has not been initialized. Checking does
+     * not initialize it. PHP before 8.4 has no lazy objects.
+     *
+     * Every build compiles against the PHP 8.2 reflection signatures, which omit
+     * `isUninitializedLazyObject`, so the call goes through `call_user_func`. The
+     * version test keeps older PHP from calling a method it does not have, and
+     * lets a build for an older PHP still skip ghosts when it runs on 8.4 or newer.
+     */
+    private static function isUninitializedLazyObject(object $object): bool {
+        if (\PHP_VERSION_ID < 80400) {
+            return false;
+        }
+
+        return \call_user_func([new \ReflectionClass($object), 'isUninitializedLazyObject'], $object) === true;
     }
 }

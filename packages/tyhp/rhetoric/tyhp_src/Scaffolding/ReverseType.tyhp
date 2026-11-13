@@ -1,0 +1,276 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+final class ColumnShape {
+    public function __construct(
+        public string $type,
+        public ?string $blueprint,
+        public ?int $maxLength,
+        public ?int $precision,
+        public ?int $scale,
+        public bool $text,
+    ) {}
+}
+
+final class ParsedDefault {
+    public function __construct(
+        public bool $present,
+        public mixed $value,
+    ) {}
+
+    public static function none(): ParsedDefault {
+        return new ParsedDefault(false, null);
+    }
+}
+
+final class ReverseType {
+    public static function shape(string $typeName, string $full): ColumnShape {
+        string $name = \strtolower($typeName);
+        string $type = \strtolower($full);
+        array<int, int> $lengths = self::lengths($type);
+        ?int $first = $lengths[0] ?? null;
+        ?int $second = $lengths[1] ?? null;
+        bool $unsigned = \str_contains($type, 'unsigned');
+        if ($name === 'bool' || $name === 'boolean' || ($name === 'tinyint' && $first === 1) || ($name === 'bit' && $first === 1)) {
+            return new ColumnShape('bool', null, null, null, null, false);
+        }
+        if (self::integerName($name)) {
+            return new ColumnShape('int', self::integerBlueprint($name, $unsigned), null, null, null, false);
+        }
+        if ($name === 'decimal' || $name === 'numeric' || $name === 'number' || $name === 'money') {
+            return new ColumnShape('string', 'decimal', null, $first, $second ?? ($first !== null ? 0 : null), false);
+        }
+        if ($name === 'float' || $name === 'real' || $name === 'float4') {
+            return new ColumnShape('float', 'float', null, $first, null, false);
+        }
+        if ($name === 'double' || $name === 'float8' || $name === 'double precision') {
+            return new ColumnShape('float', null, null, null, null, false);
+        }
+        if (self::temporalName($name)) {
+            return new ColumnShape('DateTimeImmutable', self::temporalBlueprint($name), null, null, null, false);
+        }
+        if ($name === 'json' || $name === 'jsonb') {
+            return new ColumnShape('string', 'json', null, null, null, false);
+        }
+        if ($name === 'uuid') {
+            return new ColumnShape('string', 'uuid', null, null, null, false);
+        }
+        if ($name === 'ulid') {
+            return new ColumnShape('string', 'ulid', null, null, null, false);
+        }
+        if ($name === 'tinytext') {
+            return new ColumnShape('string', 'tinyText', null, null, null, false);
+        }
+        if ($name === 'mediumtext') {
+            return new ColumnShape('string', 'mediumText', null, null, null, false);
+        }
+        if ($name === 'longtext') {
+            return new ColumnShape('string', 'longText', null, null, null, false);
+        }
+        if ($name === 'text' || $name === 'clob' || $name === 'ntext') {
+            return new ColumnShape('string', null, null, null, null, true);
+        }
+        if ($name === 'blob' || $name === 'binary' || $name === 'varbinary' || $name === 'bytea') {
+            return new ColumnShape('string', 'blob', null, null, null, false);
+        }
+        ?int $length = null;
+        if (self::characterName($name) && $first !== null && $first !== 255) {
+            $length = $first;
+        }
+
+        return new ColumnShape('string', null, $length, null, null, false);
+    }
+
+    public static function parseDefault(mixed $raw, string $type): ParsedDefault {
+        if ($raw === null) {
+            return ParsedDefault::none();
+        }
+        if (\is_bool($raw)) {
+            if ($type === 'bool') {
+                return new ParsedDefault(true, $raw);
+            }
+            if ($type === 'int') {
+                return new ParsedDefault(true, $raw ? 1 : 0);
+            }
+
+            return ParsedDefault::none();
+        }
+        if (\is_int($raw)) {
+            return self::numericDefault($raw, (float)$raw, $type);
+        }
+        if (\is_float($raw)) {
+            return self::numericDefault((int)$raw, $raw, $type);
+        }
+        if (!\is_string($raw)) {
+            return ParsedDefault::none();
+        }
+        string $text = \trim($raw);
+        if ($text === '' || \strtolower($text) === 'null') {
+            return ParsedDefault::none();
+        }
+        string $lower = \strtolower($text);
+        if (\str_contains($text, '(') || \str_starts_with($lower, 'current_') || $lower === 'now') {
+            return ParsedDefault::none();
+        }
+        $text = self::unquote($text);
+        if ($type === 'bool') {
+            string $flag = \strtolower($text);
+            if ($flag === '1' || $flag === 'true') {
+                return new ParsedDefault(true, true);
+            }
+            if ($flag === '0' || $flag === 'false') {
+                return new ParsedDefault(true, false);
+            }
+
+            return ParsedDefault::none();
+        }
+        if ($type === 'int' && \preg_match('/^-?[0-9]+\z/', $text) === 1) {
+            return new ParsedDefault(true, (int)$text);
+        }
+        if ($type === 'float' && \preg_match('/^-?[0-9]+(\.[0-9]+)?\z/', $text) === 1) {
+            return new ParsedDefault(true, (float)$text);
+        }
+        if ($type === 'string') {
+            return new ParsedDefault(true, $text);
+        }
+
+        return ParsedDefault::none();
+    }
+
+    private static function numericDefault(int $int, float $float, string $type): ParsedDefault {
+        if ($type === 'bool') {
+            return new ParsedDefault(true, $int !== 0);
+        }
+        if ($type === 'int') {
+            return new ParsedDefault(true, $int);
+        }
+        if ($type === 'float') {
+            return new ParsedDefault(true, $float);
+        }
+        if ($type === 'string') {
+            return new ParsedDefault(true, (string)$int);
+        }
+
+        return ParsedDefault::none();
+    }
+
+    private static function unquote(string $text): string {
+        int $length = \strlen($text);
+        if ($length < 2) {
+            return $text;
+        }
+        string $first = \substr($text, 0, 1);
+        string $last = \substr($text, -1);
+        if (($first === "'" && $last === "'") || ($first === '"' && $last === '"')) {
+            string $inner = \substr($text, 1, $length - 2);
+            if ($first === "'") {
+                return \str_replace("''", "'", $inner);
+            }
+
+            return \str_replace('""', '"', $inner);
+        }
+
+        return $text;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function lengths(string $type): array<int, int> {
+        int|false $open = \strpos($type, '(');
+        if ($open === false) {
+            return [];
+        }
+        int|false $close = \strpos($type, ')', $open);
+        if ($close === false || $close <= $open + 1) {
+            return [];
+        }
+        array<int, int> $numbers = [];
+        foreach (\explode(',', \substr($type, $open + 1, $close - $open - 1)) as $part) {
+            if (!\is_string($part)) {
+                continue;
+            }
+            string $trimmed = \trim($part);
+            if ($trimmed !== '' && \preg_match('/^[0-9]+\z/', $trimmed) === 1) {
+                $numbers[] = (int)$trimmed;
+            }
+        }
+
+        return $numbers;
+    }
+
+    private static function integerName(string $name): bool {
+        return $name === 'int'
+            || $name === 'integer'
+            || $name === 'mediumint'
+            || $name === 'smallint'
+            || $name === 'bigint'
+            || $name === 'tinyint'
+            || $name === 'int2'
+            || $name === 'int4'
+            || $name === 'int8'
+            || $name === 'serial'
+            || $name === 'bigserial'
+            || $name === 'smallserial'
+            || $name === 'year';
+    }
+
+    private static function integerBlueprint(string $name, bool $unsigned): ?string {
+        if ($name === 'year') {
+            return 'year';
+        }
+        if ($name === 'tinyint') {
+            return $unsigned ? 'unsignedTinyInteger' : 'tinyInteger';
+        }
+        if ($name === 'smallint' || $name === 'int2' || $name === 'smallserial') {
+            return $unsigned ? 'unsignedSmallInteger' : 'smallInteger';
+        }
+        if ($name === 'mediumint') {
+            return $unsigned ? 'unsignedMediumInteger' : 'mediumInteger';
+        }
+        if ($name === 'bigint' || $name === 'int8' || $name === 'bigserial') {
+            return $unsigned ? 'unsignedBigInteger' : 'bigInteger';
+        }
+        if ($unsigned) {
+            return 'unsignedInteger';
+        }
+
+        return null;
+    }
+
+    private static function temporalName(string $name): bool {
+        return $name === 'datetime'
+            || $name === 'datetime2'
+            || $name === 'smalldatetime'
+            || $name === 'timestamp'
+            || $name === 'timestamptz'
+            || $name === 'date'
+            || $name === 'time';
+    }
+
+    private static function temporalBlueprint(string $name): ?string {
+        if ($name === 'timestamp' || $name === 'timestamptz') {
+            return 'timestamp';
+        }
+        if ($name === 'date') {
+            return 'date';
+        }
+        if ($name === 'time') {
+            return 'time';
+        }
+
+        return null;
+    }
+
+    private static function characterName(string $name): bool {
+        return $name === 'varchar'
+            || $name === 'character'
+            || $name === 'character varying'
+            || $name === 'char'
+            || $name === 'bpchar'
+            || $name === 'string'
+            || $name === 'nvarchar'
+            || $name === 'nchar';
+    }
+}

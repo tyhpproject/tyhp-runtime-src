@@ -2,6 +2,7 @@
 
 namespace Tyhp;
 
+use Tyhp\Expression\ClosureTree;
 use Tyhp\Expression\EvalBacker;
 use Tyhp\Expression\ExpressionInterpreter;
 use Tyhp\Expression\FluentSupport;
@@ -130,6 +131,19 @@ class Expression<TCallableShape extends callable> {
     }
 
     /**
+     * Build an expression tree from a closure.
+     *
+     * Parameter types declared on the closure are kept. `$expectedShape` supplies a
+     * parameter or return type the closure leaves out, spelled `callable(User): bool`.
+     * When the tyhp extension is loaded, the tree is read from the closure's opcodes.
+     * Otherwise the closure's source is tokenized. A body that is not an expression
+     * throws `\InvalidArgumentException`.
+     */
+    public static function fromClosure(\Closure $fn, mixed $expectedShape): Expression<callable> {
+        return ClosureTree::expression($fn, $expectedShape);
+    }
+
+    /**
      * Return type string for {@see Expression::lambda()}: the closure's declared return
      * type when a closure was passed and declares one, otherwise the type stored on the tree body.
      * When the body type is the full Tyhp form of the closure's PHP type (`array<App\Post>` for
@@ -218,6 +232,7 @@ class Expression<TCallableShape extends callable> {
      * @psalm-param string|list<string> ...$segments
      * @psalm-return PropertyPathBuilder<T>&T
      */
+    #[\Tyhp\InferGeneric]
     public static function of<T extends object>(\__ClassName<T> $sourceType, string|array ...$segments): PropertyPathBuilder<T> {
         return PropertyPathBuilder::of($sourceType, ...$segments);
     }

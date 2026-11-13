@@ -1,0 +1,48 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+final class StructFields {
+    /**
+     * @return array<string, \Tyhp\Type>
+     */
+    public static function of(\Tyhp\Type $type): array<string, \Tyhp\Type> {
+        \Tyhp\Type $current = self::follow($type->asNonNullable());
+        if ($current->getKind() !== 'struct') {
+            return [];
+        }
+        \ReflectionProperty $property = new \ReflectionProperty(\Tyhp\Type::class, 'structFields');
+        mixed $value = $property->getValue($current);
+        array<string, \Tyhp\Type> $fields = [];
+        if (!\is_array($value)) {
+            return $fields;
+        }
+        foreach ($value as $name => $field) {
+            if (\is_string($name) && $field instanceof \Tyhp\Type) {
+                $fields[$name] = $field;
+            }
+        }
+
+        return $fields;
+    }
+
+    private static function follow(\Tyhp\Type $type): \Tyhp\Type {
+        \ReflectionClass $reflection = new \ReflectionClass($type);
+        if ($reflection->hasProperty('forward')) {
+            \ReflectionProperty $forward = $reflection->getProperty('forward');
+            mixed $next = $forward->getValue($type);
+            if ($next instanceof \Tyhp\Type && $next !== $type) {
+                return self::follow($next);
+            }
+        }
+        if ($reflection->hasProperty('lazyInner')) {
+            \ReflectionProperty $lazy = $reflection->getProperty('lazyInner');
+            mixed $inner = $lazy->getValue($type);
+            if ($inner instanceof \Tyhp\Type && $inner !== $type) {
+                return self::follow($inner);
+            }
+        }
+
+        return $type;
+    }
+}

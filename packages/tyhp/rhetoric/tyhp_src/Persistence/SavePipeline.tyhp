@@ -1,0 +1,1261 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Persistence;
+
+use Tyhp\Rhetoric\ConcurrencyException;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Observers\ObserverDispatcher;
+use Tyhp\Rhetoric\Mapping\ForeignKeyMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Tracking\PropertyBag;
+use Tyhp\Rhetoric\Tracking\TrackedRecord;
+use Tyhp\Rhetoric\Tracking\Tracker;
+use Tyhp\Rhetoric\Tracking\TrackingState;
+
+final class SavePipeline {
+    /**
+     * SQLite's default variable limit is 999. Stay under it on every driver.
+     */
+    private const int INSERT_PARAMETER_BUDGET = 900;
+
+    public function save(Context $context): int {
+        Tracker $tracker = $context->tracker;
+        $tracker->detectChanges();
+        array<int, TrackedRecord> $records = $tracker->records();
+        array<int, TrackedRecord> $added = [];
+        array<int, TrackedRecord> $dirty = [];
+        array<int, TrackedRecord> $deleted = [];
+        foreach ($records as $record) {
+            if ($record->state === TrackingState::Added) {
+                $added[] = $record;
+            } elseif ($record->state === TrackingState::Dirty) {
+                $dirty[] = $record;
+            } elseif ($record->state === TrackingState::Deleted) {
+                $deleted[] = $record;
+            }
+        }
+        if (\count($added) === 0 && \count($dirty) === 0 && \count($deleted) === 0) {
+            return 0;
+        }
+        foreach ($added as $record) {
+            $this->guardWritable($record);
+        }
+        foreach ($dirty as $record) {
+            $this->guardWritable($record);
+        }
+        foreach ($deleted as $record) {
+            $this->guardWritable($record);
+        }
+        array<int, array<string, mixed>> $snapshots = [];
+        foreach ($records as $record) {
+            $snapshots[\spl_object_id($record)] = PropertyBag::snapshot($record->map, $record->model);
+        }
+        try {
+            $this->inTransaction($context, function () use ($context, $records, $added, $dirty, $deleted): void {
+                $this->execute($context, $records, $added, $dirty, $deleted);
+            });
+        } catch (\Throwable $error) {
+            foreach ($records as $record) {
+                int $id = \spl_object_id($record);
+                if (isset($snapshots[$id])) {
+                    PropertyBag::restore($record->map, $record->model, $snapshots[$id]);
+                }
+            }
+            throw $error;
+        }
+        $this->accept($tracker, $added, $dirty, $deleted);
+
+        return \count($added) + \count($dirty) + \count($deleted);
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $records
+     * @param array<int, TrackedRecord> $added
+     * @param array<int, TrackedRecord> $dirty
+     * @param array<int, TrackedRecord> $deleted
+     */
+    private function execute(
+        Context $context,
+        array<int, TrackedRecord> $records,
+        array<int, TrackedRecord> $added,
+        array<int, TrackedRecord> $dirty,
+        array<int, TrackedRecord> $deleted,
+    ): void {
+        array<int, TrackedRecord> $live = [];
+        foreach ($added as $record) {
+            $live[] = $record;
+        }
+        foreach ($dirty as $record) {
+            $live[] = $record;
+        }
+        array<int, TrackedRecord> $universe = [];
+        foreach ($records as $record) {
+            if ($record->state === TrackingState::Added || $record->state === TrackingState::Dirty || $record->state === TrackingState::Clean) {
+                $universe[] = $record;
+            }
+        }
+        array<int, Dependency> $dependencies = $this->dependencies($live, $universe);
+        array<int, Dependency> $insertEdges = [];
+        array<int, Dependency> $deferred = [];
+        foreach ($dependencies as $dependency) {
+            if (
+                ($dependency->owner->state === TrackingState::Added || $dependency->owner->state === TrackingState::Dirty)
+                && $dependency->before->state !== TrackingState::Added
+                && !$this->assignedForeignKey($dependency->owner, $dependency->foreignKey)
+            ) {
+                // The principal already has its key. Only the navigation tells the new row which one.
+                $this->copyKey($dependency->before, $dependency->owner, $dependency->foreignKey);
+                continue;
+            }
+            if ($dependency->before->state !== TrackingState::Added || $dependency->after->state !== TrackingState::Added) {
+                continue;
+            }
+            if ($dependency->before === $dependency->after) {
+                // A row that references itself. Its own key is known after the insert, or already set.
+                if (!$this->needsGeneratedKey($dependency->before)) {
+                    $this->copyKey($dependency->before, $dependency->owner, $dependency->foreignKey);
+                } elseif ($dependency->nullable) {
+                    $deferred[] = $dependency;
+                } else {
+                    throw new \LogicException('A foreign key cycle cannot be saved.');
+                }
+                continue;
+            }
+            $insertEdges[] = $dependency;
+        }
+        array<int, TrackedRecord> $ordered = [];
+        $this->order($added, $insertEdges, $ordered, $deferred);
+        array<string, bool> $deferredTokens = [];
+        array<int, array<string, bool>> $deferProperties = [];
+        foreach ($deferred as $dependency) {
+            $deferredTokens[$this->token($dependency)] = true;
+            int $ownerId = \spl_object_id($dependency->owner);
+            if (!isset($deferProperties[$ownerId])) {
+                $deferProperties[$ownerId] = [];
+            }
+            foreach ($dependency->foreignKey->properties as $property) {
+                $deferProperties[$ownerId][$property] = true;
+            }
+        }
+        \Illuminate\Database\Connection $connection = $context->connection();
+        foreach ($added as $record) {
+            $this->assignDiscriminator($context, $record);
+            $this->seedVersion($record);
+            ObserverDispatcher::fire($record->map, 'saving', $record->model);
+            ObserverDispatcher::fire($record->map, 'creating', $record->model);
+        }
+        $this->insertAll($connection, $ordered, $dependencies, $deferredTokens, $deferProperties);
+        foreach ($deferred as $dependency) {
+            $this->copyKey($dependency->before, $dependency->owner, $dependency->foreignKey);
+            $this->updateProperties($connection, $dependency->owner, $dependency->foreignKey->properties);
+        }
+        foreach ($dirty as $record) {
+            $this->bumpVersions($record);
+            ObserverDispatcher::fire($record->map, 'saving', $record->model);
+            ObserverDispatcher::fire($record->map, 'updating', $record->model);
+            $this->updateRecord($connection, $record);
+        }
+        $this->applyPivots($context);
+        $this->deleteAll($context, $deleted);
+    }
+
+    private function inTransaction(Context $context, \Closure $work): void {
+        \Illuminate\Database\Connection $connection = $context->connection();
+        if ($connection->transactionLevel() > 0) {
+            $work();
+
+            return;
+        }
+        $connection->transaction<mixed>(function () use ($work): mixed {
+            $work();
+
+            return null;
+        });
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $ordered
+     * @param array<int, Dependency> $dependencies
+     * @param array<string, bool> $deferredTokens
+     * @param array<int, array<string, bool>> $deferProperties
+     */
+    private function insertAll(
+        \Illuminate\Database\Connection $connection,
+        array<int, TrackedRecord> $ordered,
+        array<int, Dependency> $dependencies,
+        array<string, bool> $deferredTokens,
+        array<int, array<string, bool>> $deferProperties,
+    ): void {
+        int $index = 0;
+        int $count = \count($ordered);
+        while ($index < $count) {
+            TrackedRecord $current = $ordered[$index];
+            if ($this->needsGeneratedKey($current)) {
+                $this->insertOne($connection, $current, $deferProperties[\spl_object_id($current)] ?? []);
+                $this->propagate($current, $dependencies, $deferredTokens);
+                $index++;
+                continue;
+            }
+            array<int, TrackedRecord> $batch = [];
+            string $table = $current->map->table;
+            while ($index < $count) {
+                TrackedRecord $candidate = $ordered[$index];
+                if (
+                    $candidate->map->table !== $table
+                    || $candidate->map->class !== $current->map->class
+                    || $this->needsGeneratedKey($candidate)
+                    || $this->dependsOnBatch($candidate, $batch, $dependencies, $deferredTokens)
+                ) {
+                    break;
+                }
+                $batch[] = $candidate;
+                $index++;
+            }
+            $this->insertMany($connection, $batch, $deferProperties);
+            foreach ($batch as $saved) {
+                $this->propagate($saved, $dependencies, $deferredTokens);
+            }
+        }
+    }
+
+    /**
+     * A row cannot share an insert with the row whose key it still has to receive.
+     *
+     * @param array<int, TrackedRecord> $batch
+     * @param array<int, Dependency> $dependencies
+     * @param array<string, bool> $deferredTokens
+     */
+    private function dependsOnBatch(
+        TrackedRecord $candidate,
+        array<int, TrackedRecord> $batch,
+        array<int, Dependency> $dependencies,
+        array<string, bool> $deferredTokens,
+    ): bool {
+        foreach ($dependencies as $dependency) {
+            if ($dependency->owner !== $candidate || $dependency->before === $candidate || isset($deferredTokens[$this->token($dependency)])) {
+                continue;
+            }
+            foreach ($batch as $member) {
+                if ($member === $dependency->before) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, bool> $defer
+     */
+    private function insertOne(
+        \Illuminate\Database\Connection $connection,
+        TrackedRecord $record,
+        array<string, bool> $defer,
+    ): void {
+        array<string, mixed> $values = $this->insertValues($record, $defer);
+        if ($this->needsGeneratedKey($record)) {
+            int $id = $connection->table($record->map->table)->insertGetId($values);
+            $this->assignGenerated($record, $id);
+
+            return;
+        }
+        (void)$connection->table($record->map->table)->insert($values);
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $records
+     * @param array<int, array<string, bool>> $deferProperties
+     */
+    private function insertMany(
+        \Illuminate\Database\Connection $connection,
+        array<int, TrackedRecord> $records,
+        array<int, array<string, bool>> $deferProperties,
+    ): void {
+        if (\count($records) === 0) {
+            return;
+        }
+        if (\count($records) === 1) {
+            TrackedRecord $only = $records[0];
+            $this->insertOne($connection, $only, $deferProperties[\spl_object_id($only)] ?? []);
+
+            return;
+        }
+        array<int, array<string, mixed>> $rows = [];
+        string $table = $records[0]->map->table;
+        foreach ($records as $record) {
+            $rows[] = $this->insertValues($record, $deferProperties[\spl_object_id($record)] ?? []);
+        }
+        int $width = 1;
+        foreach ($rows as $row) {
+            int $count = \count($row);
+            if ($count > $width) {
+                $width = $count;
+            }
+        }
+        int $size = \intdiv(self::INSERT_PARAMETER_BUDGET, $width);
+        if ($size < 1) {
+            $size = 1;
+        }
+        int $offset = 0;
+        int $total = \count($rows);
+        while ($offset < $total) {
+            array<int, array<string, mixed>> $chunk = [];
+            int $end = $offset + $size;
+            if ($end > $total) {
+                $end = $total;
+            }
+            while ($offset < $end) {
+                $chunk[] = $rows[$offset];
+                $offset++;
+            }
+            (void)$connection->table($table)->insert($chunk);
+        }
+    }
+
+    /**
+     * @param array<int, Dependency> $dependencies
+     * @param array<string, bool> $deferredTokens
+     */
+    private function propagate(
+        TrackedRecord $principal,
+        array<int, Dependency> $dependencies,
+        array<string, bool> $deferredTokens,
+    ): void {
+        foreach ($dependencies as $dependency) {
+            if ($dependency->before !== $principal || isset($deferredTokens[$this->token($dependency)])) {
+                continue;
+            }
+            $this->copyKey($principal, $dependency->owner, $dependency->foreignKey);
+        }
+    }
+
+    private function updateRecord(\Illuminate\Database\Connection $connection, TrackedRecord $record): void {
+        array<string, mixed> $values = $this->updateValues($record);
+        if (\count($values) === 0) {
+            return;
+        }
+        mixed $updated = $this->keyed($connection, $record)->update($values);
+        int $affected = \is_int($updated) ? $updated : 0;
+        if ($affected === 0 && $this->checksConcurrency($record)) {
+            throw new ConcurrencyException($record->map->class . ' was updated by someone else.');
+        }
+    }
+
+    /**
+     * @param array<int, string> $properties
+     */
+    private function updateProperties(
+        \Illuminate\Database\Connection $connection,
+        TrackedRecord $record,
+        array<int, string> $properties,
+    ): void {
+        array<string, mixed> $values = [];
+        foreach ($properties as $property) {
+            ColumnMap $column = $record->map->column($property);
+            $values[$column->name] = PropertyBag::database($column, PropertyBag::read($record->model, $property));
+        }
+        if (\count($values) === 0) {
+            return;
+        }
+        (void)$this->keyed($connection, $record)->update($values);
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $deleted
+     */
+    private function deleteAll(Context $context, array<int, TrackedRecord> $deleted): void {
+        \Illuminate\Database\Connection $connection = $context->connection();
+        if (\count($deleted) === 0) {
+            return;
+        }
+        array<int, Dependency> $edges = [];
+        array<int, Dependency> $dependencies = $this->dependencies($deleted, $deleted);
+        foreach ($dependencies as $dependency) {
+            if ($dependency->before === $dependency->owner) {
+                continue;
+            }
+            if ($dependency->before->state === TrackingState::Deleted && $dependency->owner->state === TrackingState::Deleted) {
+                $edges[] = new Dependency(
+                    $dependency->owner,
+                    $dependency->before,
+                    $dependency->owner,
+                    $dependency->foreignKey,
+                    $dependency->nullable,
+                );
+            }
+        }
+        array<int, TrackedRecord> $ordered = [];
+        array<int, Dependency> $deferred = [];
+        $this->order($deleted, $edges, $ordered, $deferred);
+        foreach ($deferred as $dependency) {
+            foreach ($dependency->foreignKey->properties as $property) {
+                PropertyBag::write($dependency->owner->model, $property, null);
+            }
+            $this->updateProperties($connection, $dependency->owner, $dependency->foreignKey->properties);
+        }
+        int $index = 0;
+        int $count = \count($ordered);
+        while ($index < $count) {
+            TrackedRecord $current = $ordered[$index];
+            if (!$this->canBatchDelete($current)) {
+                $this->deleteOne($context, $current);
+                $index++;
+                continue;
+            }
+            array<int, TrackedRecord> $batch = [];
+            while ($index < $count) {
+                TrackedRecord $candidate = $ordered[$index];
+                if (!$this->canBatchDelete($candidate) || $candidate->map->table !== $current->map->table || $candidate->map->class !== $current->map->class) {
+                    break;
+                }
+                $batch[] = $candidate;
+                $index++;
+            }
+            $this->deleteGroup($context, $batch);
+        }
+    }
+
+    private function canBatchDelete(TrackedRecord $record): bool {
+        if ($record->map->softDeletes || $this->checksConcurrency($record)) {
+            return false;
+        }
+        if ($record->map->key === null || \count($record->map->key->columns) !== 1 || \count($record->map->key->properties) !== 1) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $records
+     */
+    private function deleteGroup(Context $context, array<int, TrackedRecord> $records): void {
+        if (\count($records) < 2) {
+            foreach ($records as $record) {
+                $this->deleteOne($context, $record);
+            }
+
+            return;
+        }
+        foreach ($records as $record) {
+            ObserverDispatcher::fire($record->map, 'deleting', $record->model);
+            $this->deletePivots($context, $record);
+        }
+        ?TrackedRecord $first = null;
+        foreach ($records as $record) {
+            $first = $record;
+            break;
+        }
+        if ($first === null) {
+            return;
+        }
+        if ($first->map->key === null) {
+            return;
+        }
+        \Tyhp\Rhetoric\Mapping\KeyMap $key = $first->map->key;
+        string $column = $key->columns[0];
+        string $property = $key->properties[0];
+        array<int, mixed> $keys = [];
+        foreach ($records as $record) {
+            $keys[] = PropertyBag::database($record->map->column($property), PropertyBag::read($record->model, $property));
+        }
+        // One key is one parameter, so a long list is cut to stay within the same budget as an insert.
+        foreach (\array_chunk($keys, self::INSERT_PARAMETER_BUDGET) as $chunk) {
+            (void)$context->connection()->table($first->map->table)->whereIn($column, $chunk)->delete();
+        }
+    }
+
+    private function deleteOne(Context $context, TrackedRecord $record): void {
+        \Illuminate\Database\Connection $connection = $context->connection();
+        ObserverDispatcher::fire($record->map, 'deleting', $record->model);
+        if ($record->map->softDeletes && $record->map->deletedAtColumn !== null) {
+            string $now = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+            (void)$this->keyed($connection, $record)->update([$record->map->deletedAtColumn => $now]);
+            if ($record->map->deletedAtProperty !== null) {
+                PropertyBag::write($record->model, $record->map->deletedAtProperty, new \DateTimeImmutable($now));
+            }
+
+            return;
+        }
+        $this->deletePivots($context, $record);
+        (void)$this->keyed($connection, $record)->delete();
+    }
+
+    private function keyed(
+        \Illuminate\Database\Connection $connection,
+        TrackedRecord $record,
+    ): \Illuminate\Database\Query\Builder {
+        if ($record->map->key === null) {
+            throw new \LogicException($record->map->class . ' has no key.');
+        }
+        \Illuminate\Database\Query\Builder $builder = $connection->table($record->map->table);
+        foreach ($record->map->key->properties as $index => $property) {
+            string $column = $record->map->key->columns[$index];
+            ColumnMap $mapped = $record->map->column($property);
+            $builder = $builder->where($column, '=', PropertyBag::database($mapped, PropertyBag::read($record->model, $property)));
+        }
+        foreach ($record->map->columns as $column) {
+            if (!$column->concurrency && !$column->rowVersion) {
+                continue;
+            }
+            if ($this->isKey($record, $column->property)) {
+                continue;
+            }
+            mixed $original = $record->original[$column->property] ?? null;
+            $builder = $builder->where($column->name, '=', PropertyBag::database($column, $original));
+        }
+
+        return $builder;
+    }
+
+    /**
+     * @param array<string, bool> $defer
+     * @return array<string, mixed>
+     */
+    private function insertValues(TrackedRecord $record, array<string, bool> $defer): array<string, mixed> {
+        array<string, mixed> $extras = $this->applyTimestamps($record, true);
+        array<string, mixed> $values = [];
+        foreach ($record->map->columns as $column) {
+            if ($column->shadow || $this->omitGenerated($record, $column)) {
+                continue;
+            }
+            if (isset($defer[$column->property])) {
+                $values[$column->name] = null;
+                continue;
+            }
+            $values[$column->name] = PropertyBag::database($column, PropertyBag::read($record->model, $column->property));
+        }
+        foreach ($extras as $name => $value) {
+            if (!isset($values[$name])) {
+                $values[$name] = $value;
+            }
+        }
+        if ($record->map->discriminatorColumn !== null && $record->map->discriminatorValue !== null) {
+            $values[$record->map->discriminatorColumn] = $record->map->discriminatorValue;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function updateValues(TrackedRecord $record): array<string, mixed> {
+        array<string, mixed> $extras = $this->applyTimestamps($record, false);
+        array<string, mixed> $values = [];
+        bool $ghost = \Tyhp\Lazy::isLazy($record->model);
+        foreach ($record->map->columns as $column) {
+            if ($column->shadow || $this->isKey($record, $column->property)) {
+                continue;
+            }
+            if ($ghost && !PropertyBag::held($record->model, $column->property)) {
+                // The ghost never loaded this column, so it holds nothing to write.
+                continue;
+            }
+            mixed $current = PropertyBag::read($record->model, $column->property);
+            bool $known = \array_key_exists($column->property, $record->original);
+            mixed $original = $known ? $record->original[$column->property] : null;
+            bool $changed = $record->forceDirty
+                || isset($record->dirty[$column->property])
+                || ($record->map->timestamps && $column->name === 'updated_at')
+                || !$known
+                || !PropertyBag::same($current, $original);
+            if (!$changed) {
+                continue;
+            }
+            $values[$column->name] = PropertyBag::database($column, $current);
+        }
+        foreach ($extras as $name => $value) {
+            $values[$name] = $value;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function applyTimestamps(TrackedRecord $record, bool $insert): array<string, mixed> {
+        array<string, mixed> $extras = [];
+        if (!$record->map->timestamps) {
+            return $extras;
+        }
+        string $now = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+        if ($insert) {
+            $this->putTimestamp($record, 'created_at', $now, $extras);
+        }
+        $this->putTimestamp($record, 'updated_at', $now, $extras);
+
+        return $extras;
+    }
+
+    /**
+     * @param array<string, mixed> $extras
+     */
+    private function putTimestamp(TrackedRecord $record, string $columnName, string $now, array<string, mixed> &$extras): void {
+        foreach ($record->map->columns as $column) {
+            if ($column->name !== $columnName) {
+                continue;
+            }
+            PropertyBag::write($record->model, $column->property, $this->phpTimestamp($column, $now));
+
+            return;
+        }
+        $extras[$columnName] = $now;
+    }
+
+    private function phpTimestamp(ColumnMap $column, string $now): mixed {
+        if (\str_contains($column->type, 'DateTime')) {
+            return new \DateTimeImmutable($now);
+        }
+
+        return $now;
+    }
+
+    private function assignGenerated(TrackedRecord $record, int $id): void {
+        if ($record->map->key === null) {
+            return;
+        }
+        foreach ($record->map->key->properties as $property) {
+            ColumnMap $column = $record->map->column($property);
+            if (!$column->generated) {
+                continue;
+            }
+            mixed $current = PropertyBag::read($record->model, $property);
+            if ($current === null || $current === 0 || $current === '' || $current === '0') {
+                PropertyBag::write($record->model, $property, $id);
+
+                return;
+            }
+        }
+    }
+
+    private function needsGeneratedKey(TrackedRecord $record): bool {
+        if ($record->map->key === null) {
+            return false;
+        }
+        bool $generated = false;
+        foreach ($record->map->key->properties as $property) {
+            ColumnMap $column = $record->map->column($property);
+            mixed $value = PropertyBag::read($record->model, $property);
+            if ($this->clientToken($value)) {
+                return false;
+            }
+            if ($column->generated && ($value === null || $value === 0 || $value === '' || $value === '0')) {
+                $generated = true;
+            }
+        }
+
+        return $generated;
+    }
+
+    private function clientToken(mixed $value): bool {
+        if (!\is_string($value)) {
+            return false;
+        }
+        if (\Illuminate\Support\Str::isUuid($value)) {
+            return true;
+        }
+
+        return \preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $value) === 1;
+    }
+
+    private function omitGenerated(TrackedRecord $record, ColumnMap $column): bool {
+        if (!$this->isKey($record, $column->property) || !$column->generated) {
+            return false;
+        }
+        mixed $value = PropertyBag::read($record->model, $column->property);
+
+        return $value === null || $value === 0 || $value === '' || $value === '0';
+    }
+
+    private function isKey(TrackedRecord $record, string $property): bool {
+        if ($record->map->key === null) {
+            return false;
+        }
+        foreach ($record->map->key->properties as $key) {
+            if ($key === $property) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function copyKey(TrackedRecord $principal, TrackedRecord $dependent, ForeignKeyMap $foreignKey): void {
+        if ($principal->map->key === null) {
+            return;
+        }
+        array<string, mixed> $byColumn = [];
+        foreach ($principal->map->key->properties as $index => $property) {
+            string $column = $principal->map->key->columns[$index];
+            $byColumn[$column] = PropertyBag::read($principal->model, $property);
+        }
+        foreach ($foreignKey->properties as $index => $property) {
+            string $referenced = $foreignKey->referencedColumns[$index] ?? '';
+            if ($referenced === '' || !\array_key_exists($referenced, $byColumn)) {
+                continue;
+            }
+            PropertyBag::write($dependent->model, $property, $byColumn[$referenced]);
+        }
+    }
+
+    /**
+     * A navigation may point at any tracked principal, so those are looked up in $universe. Only the rows being
+     * written ($records) take part in key matching and in hasOne edges.
+     *
+     * @param array<int, TrackedRecord> $records
+     * @param array<int, TrackedRecord> $universe
+     * @return array<int, Dependency>
+     */
+    private function dependencies(array<int, TrackedRecord> $records, array<int, TrackedRecord> $universe): array<int, Dependency> {
+        array<int, Dependency> $dependencies = [];
+        array<string, bool> $seen = [];
+        foreach ($records as $dependent) {
+            if ($dependent->state !== TrackingState::Added && $dependent->state !== TrackingState::Dirty && $dependent->state !== TrackingState::Deleted) {
+                continue;
+            }
+            foreach ($dependent->map->foreignKeys as $foreignKey) {
+                ?TrackedRecord $principal = $this->principal($dependent, $foreignKey, $records, $universe);
+                if ($principal === null) {
+                    continue;
+                }
+                $this->addDependency($dependencies, $seen, $principal, $dependent, $foreignKey);
+            }
+        }
+        foreach ($records as $owner) {
+            foreach ($owner->map->relations as $relation) {
+                if ($relation->kind !== RelationKind::HasOne && $relation->kind !== RelationKind::BelongsTo) {
+                    continue;
+                }
+                mixed $target = PropertyBag::read($owner->model, $relation->property);
+                if (!\is_object($target)) {
+                    continue;
+                }
+                ?TrackedRecord $other = $this->findRecord($relation->kind === RelationKind::BelongsTo ? $universe : $records, $target);
+                if ($other === null) {
+                    continue;
+                }
+                if ($relation->kind === RelationKind::BelongsTo) {
+                    $this->relate($dependencies, $seen, $other, $owner, $relation->foreignKeyProperty);
+                } else {
+                    $this->relate($dependencies, $seen, $owner, $other, $relation->foreignKeyProperty);
+                }
+            }
+        }
+        foreach ($universe as $owner) {
+            foreach ($owner->map->relations as $relation) {
+                if ($relation->kind !== RelationKind::HasMany && $relation->kind !== RelationKind::HasOne) {
+                    continue;
+                }
+                foreach ($this->navigationMembers($owner, $relation->property) as $target) {
+                    ?TrackedRecord $other = $this->findRecord($universe, $target);
+                    if ($other === null) {
+                        continue;
+                    }
+                    $this->relate($dependencies, $seen, $owner, $other, $relation->foreignKeyProperty);
+                }
+            }
+        }
+
+        return $dependencies;
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    private function navigationMembers(TrackedRecord $record, string $property): array<int, object> {
+        mixed $value = PropertyBag::read($record->model, $property);
+        array<int, object> $members = [];
+        if (\is_object($value)) {
+            $members[] = $value;
+
+            return $members;
+        }
+        if (!\is_array($value)) {
+            return $members;
+        }
+        foreach ($value as $item) {
+            if (\is_object($item)) {
+                $members[] = $item;
+            }
+        }
+
+        return $members;
+    }
+
+    /**
+     * @param array<int, Dependency> $dependencies
+     * @param array<string, bool> $seen
+     */
+    /**
+     * @param array<int, Dependency> $dependencies
+     * @param array<string, bool> $seen
+     */
+    private function relate(
+        array<int, Dependency> &$dependencies,
+        array<string, bool> &$seen,
+        TrackedRecord $principal,
+        TrackedRecord $dependent,
+        ?string $property,
+    ): void {
+        ?ForeignKeyMap $matched = $this->foreignKey($dependent, $principal, $property);
+        if ($matched === null) {
+            return;
+        }
+        $this->addDependency($dependencies, $seen, $principal, $dependent, $matched);
+    }
+
+    private function addDependency(
+        array<int, Dependency> &$dependencies,
+        array<string, bool> &$seen,
+        TrackedRecord $principal,
+        TrackedRecord $dependent,
+        ForeignKeyMap $foreignKey,
+    ): void {
+        string $token = \spl_object_id($principal) . '>' . \spl_object_id($dependent) . ':' . ($foreignKey->columns[0] ?? '');
+        if (isset($seen[$token])) {
+            return;
+        }
+        $seen[$token] = true;
+        $dependencies[] = new Dependency(
+            $principal,
+            $dependent,
+            $dependent,
+            $foreignKey,
+            $this->nullable($dependent, $foreignKey),
+        );
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $records
+     * @param array<int, TrackedRecord> $universe
+     */
+    private function principal(
+        TrackedRecord $dependent,
+        ForeignKeyMap $foreignKey,
+        array<int, TrackedRecord> $records,
+        array<int, TrackedRecord> $universe,
+    ): ?TrackedRecord {
+        foreach ($dependent->map->relations as $relation) {
+            if ($relation->kind !== RelationKind::BelongsTo) {
+                continue;
+            }
+            if (\ltrim($relation->relatedClass, '\\') !== \ltrim($foreignKey->referencedClass, '\\')) {
+                continue;
+            }
+            if ($relation->foreignKeyProperty !== null && !\in_array($relation->foreignKeyProperty, $foreignKey->properties, true)) {
+                continue;
+            }
+            mixed $value = PropertyBag::read($dependent->model, $relation->property);
+            if (!\is_object($value)) {
+                continue;
+            }
+            ?TrackedRecord $found = $this->findRecord($universe, $value);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+        if (!$this->assignedForeignKey($dependent, $foreignKey)) {
+            return null;
+        }
+        foreach ($records as $candidate) {
+            if (\ltrim($candidate->map->class, '\\') !== \ltrim($foreignKey->referencedClass, '\\')) {
+                continue;
+            }
+            if (PropertyBag::temporary($candidate->map, $candidate->model)) {
+                continue;
+            }
+            if ($this->keyMatches($candidate, $dependent, $foreignKey)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function foreignKey(TrackedRecord $dependent, TrackedRecord $principal, ?string $property): ?ForeignKeyMap {
+        foreach ($dependent->map->foreignKeys as $foreignKey) {
+            if (\ltrim($foreignKey->referencedClass, '\\') !== \ltrim($principal->map->class, '\\')) {
+                continue;
+            }
+            if ($property !== null && !\in_array($property, $foreignKey->properties, true)) {
+                continue;
+            }
+
+            return $foreignKey;
+        }
+
+        return null;
+    }
+
+    private function assignedForeignKey(TrackedRecord $dependent, ForeignKeyMap $foreignKey): bool {
+        foreach ($foreignKey->properties as $property) {
+            mixed $value = PropertyBag::read($dependent->model, $property);
+            if ($value !== null && $value !== 0 && $value !== '' && $value !== '0') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function keyMatches(TrackedRecord $principal, TrackedRecord $dependent, ForeignKeyMap $foreignKey): bool {
+        if ($principal->map->key === null) {
+            return false;
+        }
+        array<string, mixed> $byColumn = [];
+        foreach ($principal->map->key->properties as $index => $property) {
+            $byColumn[$principal->map->key->columns[$index]] = PropertyBag::read($principal->model, $property);
+        }
+        foreach ($foreignKey->properties as $index => $property) {
+            string $referenced = $foreignKey->referencedColumns[$index] ?? '';
+            if ($referenced === '' || !\array_key_exists($referenced, $byColumn)) {
+                return false;
+            }
+            mixed $value = PropertyBag::read($dependent->model, $property);
+            if (!PropertyBag::same($value, $byColumn[$referenced])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function nullable(TrackedRecord $record, ForeignKeyMap $foreignKey): bool {
+        foreach ($foreignKey->properties as $property) {
+            if (!$record->map->column($property)->nullable) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $records
+     */
+    private function findRecord(array<int, TrackedRecord> $records, object $model): ?TrackedRecord {
+        foreach ($records as $record) {
+            if ($record->model === $model) {
+                return $record;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $nodes
+     * @param array<int, Dependency> $edges
+     * @param array<int, TrackedRecord> $ordered
+     * @param array<int, Dependency> $deferred
+     */
+    private function order(
+        array<int, TrackedRecord> $nodes,
+        array<int, Dependency> $edges,
+        array<int, TrackedRecord> &$ordered,
+        array<int, Dependency> &$deferred,
+    ): void {
+        array<int, Dependency> $active = $edges;
+        int $limit = \count($nodes) + \count($edges) + 1;
+        for (int $attempt = 0; $attempt < $limit; $attempt++) {
+            array<int, TrackedRecord> $placed = [];
+            array<int, bool> $placedIds = [];
+            $this->kahn($nodes, $active, $placed, $placedIds);
+            if (\count($placed) === \count($nodes)) {
+                $ordered = $placed;
+
+                return;
+            }
+            bool $broke = false;
+            array<int, Dependency> $next = [];
+            foreach ($active as $edge) {
+                int $beforeId = \spl_object_id($edge->before);
+                int $afterId = \spl_object_id($edge->after);
+                bool $inCycle = !isset($placedIds[$beforeId]) && !isset($placedIds[$afterId]);
+                if (!$broke && $inCycle && $edge->nullable) {
+                    $deferred[] = $edge;
+                    $broke = true;
+                    continue;
+                }
+                $next[] = $edge;
+            }
+            if (!$broke) {
+                throw new \LogicException('A foreign key cycle cannot be saved.');
+            }
+            $active = $next;
+        }
+        throw new \LogicException('A foreign key cycle cannot be saved.');
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $nodes
+     * @param array<int, Dependency> $edges
+     * @param array<int, TrackedRecord> $ordered
+     * @param array<int, bool> $placedIds
+     */
+    private function kahn(
+        array<int, TrackedRecord> $nodes,
+        array<int, Dependency> $edges,
+        array<int, TrackedRecord> &$ordered,
+        array<int, bool> &$placedIds,
+    ): void {
+        array<int, TrackedRecord> $byId = [];
+        array<int, int> $indegree = [];
+        array<int, array<int, int>> $outgoing = [];
+        foreach ($nodes as $node) {
+            int $id = \spl_object_id($node);
+            $byId[$id] = $node;
+            $indegree[$id] = 0;
+            $outgoing[$id] = [];
+        }
+        foreach ($edges as $edge) {
+            int $from = \spl_object_id($edge->before);
+            int $to = \spl_object_id($edge->after);
+            if (!isset($byId[$from]) || !isset($byId[$to]) || $from === $to) {
+                continue;
+            }
+            $outgoing[$from][] = $to;
+            $indegree[$to] = ($indegree[$to] ?? 0) + 1;
+        }
+        array<int, int> $queue = [];
+        foreach ($nodes as $node) {
+            int $id = \spl_object_id($node);
+            if (($indegree[$id] ?? 0) === 0) {
+                $queue[] = $id;
+            }
+        }
+        int $cursor = 0;
+        while ($cursor < \count($queue)) {
+            int $id = $queue[$cursor];
+            $cursor++;
+            $ordered[] = $byId[$id];
+            $placedIds[$id] = true;
+            foreach ($outgoing[$id] as $next) {
+                $indegree[$next] = ($indegree[$next] ?? 0) - 1;
+                if ($indegree[$next] === 0) {
+                    $queue[] = $next;
+                }
+            }
+        }
+    }
+
+    private function token(Dependency $dependency): string {
+        return \spl_object_id($dependency->before) . '>' . \spl_object_id($dependency->owner) . ':' . ($dependency->foreignKey->columns[0] ?? '');
+    }
+
+    /**
+     * @param array<int, TrackedRecord> $added
+     * @param array<int, TrackedRecord> $dirty
+     * @param array<int, TrackedRecord> $deleted
+     */
+    private function accept(
+        Tracker $tracker,
+        array<int, TrackedRecord> $added,
+        array<int, TrackedRecord> $dirty,
+        array<int, TrackedRecord> $deleted,
+    ): void {
+        foreach ($added as $record) {
+            ObserverDispatcher::fire($record->map, 'created', $record->model);
+            ObserverDispatcher::fire($record->map, 'saved', $record->model);
+            $this->markClean($tracker, $record);
+        }
+        foreach ($dirty as $record) {
+            ObserverDispatcher::fire($record->map, 'updated', $record->model);
+            ObserverDispatcher::fire($record->map, 'saved', $record->model);
+            $this->markClean($tracker, $record);
+        }
+        foreach ($deleted as $record) {
+            ObserverDispatcher::fire($record->map, 'deleted', $record->model);
+            if ($record->map->softDeletes) {
+                $this->markClean($tracker, $record);
+                continue;
+            }
+            $tracker->forget($record);
+        }
+        $tracker->clearPivotEdits();
+    }
+
+    private function markClean(Tracker $tracker, TrackedRecord $record): void {
+        $record->state = TrackingState::Clean;
+        $record->forceDirty = false;
+        $record->relationDirty = false;
+        $record->dirty = [];
+        $record->original = PropertyBag::snapshot($record->map, $record->model);
+        $tracker->captureAll($record->model);
+        $tracker->remember($record);
+    }
+
+    private function applyPivots(Context $context): void {
+        foreach ($context->tracker->pivotEdits() as $edit) {
+            mixed $ownerKey = $this->modelKey($context, $edit->owner);
+            mixed $relatedKey = $this->modelKey($context, $edit->related);
+            if (!$this->presentKey($ownerKey) || !$this->presentKey($relatedKey)) {
+                throw new \LogicException('A pivot row needs both keys.');
+            }
+            if ($edit->insert) {
+                array<string, mixed> $row = [
+                    $edit->ownerColumn => $ownerKey,
+                    $edit->relatedColumn => $relatedKey,
+                ];
+                $this->pivotExtras($edit->related, $edit->ownerColumn, $edit->relatedColumn, $row);
+                (void)$context->connection()->table($edit->table)->insert($row);
+            } else {
+                (void)$context->connection()->table($edit->table)
+                    ->where($edit->ownerColumn, '=', $ownerKey)
+                    ->where($edit->relatedColumn, '=', $relatedKey)
+                    ->delete();
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function pivotExtras(object $related, string $ownerColumn, string $relatedColumn, array<string, mixed> &$row): void {
+        \ReflectionObject $reflection = new \ReflectionObject($related);
+        if (!$reflection->hasProperty('pivot')) {
+            return;
+        }
+        \ReflectionProperty $property = $reflection->getProperty('pivot');
+        if (!$property->isInitialized($related)) {
+            return;
+        }
+        mixed $pivot = $property->getValue($related);
+        if (!\is_object($pivot)) {
+            return;
+        }
+        \ReflectionObject $pivotReflection = new \ReflectionObject($pivot);
+        foreach ($pivotReflection->getProperties() as $field) {
+            if ($field->isStatic() || !$field->isInitialized($pivot)) {
+                continue;
+            }
+            string $column = \Illuminate\Support\Str::snake($field->getName());
+            if ($column === $ownerColumn || $column === $relatedColumn || isset($row[$column])) {
+                continue;
+            }
+            $row[$column] = $field->getValue($pivot);
+        }
+    }
+
+    private function deletePivots(Context $context, TrackedRecord $record): void {
+        if ($record->map->key === null || \count($record->map->key->properties) === 0) {
+            return;
+        }
+        string $property = $record->map->key->properties[0];
+        mixed $key = PropertyBag::database($record->map->column($property), PropertyBag::read($record->model, $property));
+        if (!$this->presentKey($key)) {
+            return;
+        }
+        foreach ($record->map->relations as $relation) {
+            if ($relation->kind !== RelationKind::BelongsToMany || $relation->pivotTable === null || $relation->pivotForeignKey === null) {
+                continue;
+            }
+            (void)$context->connection()->table($relation->pivotTable)->where($relation->pivotForeignKey, '=', $key)->delete();
+        }
+        string $class = \ltrim($record->map->class, '\\');
+        foreach ($context->mapping()->models as $model) {
+            foreach ($model->relations as $relation) {
+                if ($relation->kind !== RelationKind::BelongsToMany || $relation->pivotTable === null || $relation->pivotRelatedKey === null) {
+                    continue;
+                }
+                if (\ltrim($relation->relatedClass, '\\') !== $class) {
+                    continue;
+                }
+                (void)$context->connection()->table($relation->pivotTable)->where($relation->pivotRelatedKey, '=', $key)->delete();
+            }
+        }
+    }
+
+    private function modelKey(Context $context, object $model): mixed {
+        if (!$context->mapping()->hasModel($model::class)) {
+            return null;
+        }
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $context->mapping()->model($model::class);
+        if ($map->key === null || \count($map->key->properties) === 0) {
+            return null;
+        }
+        string $property = $map->key->properties[0];
+
+        return PropertyBag::database($map->column($property), PropertyBag::read($model, $property));
+    }
+
+    private function presentKey(mixed $value): bool {
+        return $value !== null && $value !== 0 && $value !== '' && $value !== '0';
+    }
+
+    private function guardWritable(TrackedRecord $record): void {
+        if ($record->map->readOnly) {
+            throw new \LogicException($record->map->class . ' is read-only.');
+        }
+    }
+
+    private function assignDiscriminator(Context $context, TrackedRecord $record): void {
+        if ($record->map->discriminatorProperty === null) {
+            return;
+        }
+        ?string $value = $record->map->discriminatorValue;
+        if ($value === null) {
+            // A derived row added through the root table is stored under its own class's value.
+            __ClassName $class = $record->model::class;
+            if (\ltrim($class, '\\') !== \ltrim($record->map->class, '\\') && $context->mapping()->hasModel($class)) {
+                $value = $context->mapping()->model($class)->discriminatorValue;
+            }
+        }
+        if ($value === null) {
+            return;
+        }
+        PropertyBag::write($record->model, $record->map->discriminatorProperty, $value);
+    }
+
+    private function seedVersion(TrackedRecord $record): void {
+        foreach ($record->map->columns as $column) {
+            if (!$column->rowVersion || $column->shadow) {
+                continue;
+            }
+            mixed $current = PropertyBag::read($record->model, $column->property);
+            if ($current !== null && $current !== 0 && $current !== '') {
+                continue;
+            }
+            PropertyBag::write($record->model, $column->property, $this->nextVersion($column, null));
+        }
+    }
+
+    private function bumpVersions(TrackedRecord $record): void {
+        foreach ($record->map->columns as $column) {
+            if (!$column->rowVersion || $column->shadow) {
+                continue;
+            }
+            mixed $original = $record->original[$column->property] ?? null;
+            PropertyBag::write($record->model, $column->property, $this->nextVersion($column, $original));
+            $record->dirty[$column->property] = true;
+        }
+    }
+
+    private function nextVersion(ColumnMap $column, mixed $original): mixed {
+        if (\str_contains($column->type, 'DateTime')) {
+            return new \DateTimeImmutable('now');
+        }
+        int $current = 0;
+        if (\is_int($original)) {
+            $current = $original;
+        } elseif (\is_string($original) && \is_numeric($original)) {
+            $current = (int)$original;
+        }
+
+        return $current + 1;
+    }
+
+    private function checksConcurrency(TrackedRecord $record): bool {
+        foreach ($record->map->columns as $column) {
+            if ($column->concurrency || $column->rowVersion) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

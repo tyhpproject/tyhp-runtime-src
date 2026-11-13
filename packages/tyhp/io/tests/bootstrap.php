@@ -17,4 +17,16 @@ if (!\is_dir($ioSrc)) {
 
 $loader = require $vendorAutoload;
 $loader->addPsr4('Tyhp\\', $ioSrc);
+foreach ([
+    'Io/Process/_functions.php',
+    'Io/Http/_functions.php',
+    'Io/Db/_functions.php',
+    'Io/Redis/_functions.php',
+] as $typeFile) {
+    require_once $ioSrc . '/' . $typeFile;
+}
+$parallelTypes = \dirname($packageRoot, 2) . '/dist/tyhp-parallel/802.latest/src/Tyhp/_functions.php';
+if (\is_file($parallelTypes)) {
+    require_once $parallelTypes;
+}
 require __DIR__ . '/Fixtures.php';

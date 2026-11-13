@@ -1,0 +1,164 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures\Migrations;
+
+use Tyhp\Rhetoric\Attributes\Column;
+use Tyhp\Rhetoric\Attributes\Comment;
+use Tyhp\Rhetoric\Attributes\DefaultValue;
+use Tyhp\Rhetoric\Attributes\Index;
+use Tyhp\Rhetoric\Attributes\MaxLength;
+use Tyhp\Rhetoric\Attributes\Table;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\Mapper;
+
+#[Table('posts')]
+class PlainPost {
+    public int $id = 0;
+
+    public string $title = '';
+}
+
+#[Table('posts')]
+class RatedPost {
+    public int $id = 0;
+
+    public string $title = '';
+
+    #[DefaultValue(0)]
+    #[Comment('stars')]
+    public int $rating = 0;
+}
+
+#[Table('posts')]
+class LongPost {
+    public int $id = 0;
+
+    public string $title = '';
+}
+
+#[Table('posts')]
+class ShortPost {
+    public int $id = 0;
+
+    #[MaxLength(40)]
+    public string $title = '';
+}
+
+#[Table('blogs')]
+class PlainBlog {
+    public int $id = 0;
+
+    public string $name = '';
+}
+
+#[Table('posts')]
+class LoosePost {
+    public int $id = 0;
+
+    #[Column('blog_id', 'foreignId')]
+    public int $blogId = 0;
+
+    public string $title = '';
+}
+
+#[Table('posts')]
+class LinkedPost {
+    public int $id = 0;
+
+    #[Column('blog_id', 'foreignId')]
+    public int $blogId = 0;
+
+    public ?PlainBlog $blog = null;
+
+    public string $title = '';
+}
+
+#[Table('posts')]
+class SlugPost {
+    public int $id = 0;
+
+    public string $slug = '';
+}
+
+#[Table('posts')]
+class UniqueSlugPost {
+    public int $id = 0;
+
+    #[Index(unique: true)]
+    public string $slug = '';
+}
+
+#[Table('posts')]
+class TitlePost {
+    public int $id = 0;
+
+    #[DefaultValue('')]
+    public string $title = '';
+}
+
+#[Table('posts')]
+class NamePost {
+    public int $id = 0;
+
+    #[DefaultValue('')]
+    public string $name = '';
+}
+
+class ColumnContext extends Context {
+    public static string $shape = 'plain';
+
+    protected function map(Mapper $map): void {
+        if (self::$shape === 'plain') {
+            $map->model<PlainPost>();
+        } elseif (self::$shape === 'rated') {
+            $map->model<RatedPost>();
+        } elseif (self::$shape === 'long') {
+            $map->model<LongPost>();
+        } elseif (self::$shape === 'short') {
+            $map->model<ShortPost>();
+        } elseif (self::$shape === 'slug') {
+            $map->model<SlugPost>();
+        } elseif (self::$shape === 'unique') {
+            $map->model<UniqueSlugPost>();
+        } elseif (self::$shape === 'title') {
+            $map->model<TitlePost>();
+        } elseif (self::$shape === 'name') {
+            $map->model<NamePost>();
+        }
+    }
+}
+
+class TableContext extends Context {
+    public static string $shape = 'posts';
+
+    protected function map(Mapper $map): void {
+        if (self::$shape === 'posts') {
+            $map->model<PlainPost>();
+        } elseif (self::$shape === 'blogs') {
+            $map->model<PlainBlog>();
+        }
+    }
+}
+
+function ratingHasLanded(ColumnContext $context): bool {
+    return $context->schemaHas<RatedPost, int>(fn ($post) => $post->rating);
+}
+
+class ForeignKeyContext extends Context {
+    public static string $shape = 'loose';
+
+    protected function map(Mapper $map): void {
+        $map->model<PlainBlog>();
+        if (self::$shape === 'loose') {
+            $map->model<LoosePost>();
+        } elseif (self::$shape === 'linked') {
+            $map->model<LinkedPost>();
+        }
+    }
+}
+
+class SeedBlogContext extends Context {
+    protected function map(Mapper $map): void {
+        $map->model<PlainBlog>()->seed(['name' => 'rhetoric']);
+    }
+}

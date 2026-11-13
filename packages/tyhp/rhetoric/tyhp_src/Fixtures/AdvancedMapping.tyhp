@@ -1,0 +1,343 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+use Tyhp\Rhetoric\Attributes\Discriminator;
+use Tyhp\Rhetoric\Attributes\DiscriminatorValue;
+use Tyhp\Rhetoric\Attributes\Embedded;
+use Tyhp\Rhetoric\Attributes\ObservedBy;
+use Tyhp\Rhetoric\Attributes\RowVersion;
+use Tyhp\Rhetoric\Attributes\SoftDeletes;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\Mapper;
+use Tyhp\Rhetoric\Observers\Observer;
+use Tyhp\Rhetoric\Observers\QueryInterceptor;
+use Tyhp\Rhetoric\Table;
+
+type CityBlock = struct {
+    string $city = '';
+    string $street = '';
+};
+
+class Purse {
+    public int $cents = 0;
+    public string $currency = 'USD';
+}
+
+class ScopedPost {
+    public int $id = 0;
+    public int $tenantId = 0;
+    public string $title = '';
+}
+
+#[SoftDeletes]
+#[ObservedBy(ArchiveObserver::class)]
+class ArchivedPost {
+    public int $id = 0;
+    public string $title = '';
+    public ?\DateTimeImmutable $deletedAt = null;
+}
+
+class VersionedPost {
+    public int $id = 0;
+    public string $title = '';
+
+    #[RowVersion]
+    public int $version = 0;
+}
+
+#[Discriminator('kind')]
+class Animal {
+    public int $id = 0;
+    public string $kind = '';
+    public string $name = '';
+}
+
+#[DiscriminatorValue('cat')]
+class Cat extends Animal {
+    public int $lives = 0;
+}
+
+#[DiscriminatorValue('dog')]
+class Dog extends Animal {
+    public bool $trained = false;
+}
+
+#[DiscriminatorValue('kitten')]
+class Kitten extends Cat {
+    public int $mews = 0;
+}
+
+#[Discriminator('kind')]
+class Vehicle {
+    public int $id = 0;
+    public int $tenantId = 0;
+    public string $kind = '';
+    public string $name = '';
+}
+
+#[DiscriminatorValue('car')]
+class Car extends Vehicle {
+    public int $doors = 0;
+}
+
+class Resident {
+    public int $id = 0;
+    public string $name = '';
+    public CityBlock $block = new CityBlock[];
+
+    #[Embedded]
+    public Purse $purse;
+
+    public array<string> $tags = [];
+
+    public function __construct() {
+        $this->purse = new Purse();
+    }
+}
+
+class Listing {
+    public int $id = 0;
+    public string $title = '';
+}
+
+class AuditView {
+    public int $id = 0;
+    public string $title = '';
+}
+
+class PostObserver extends Observer {
+    public static int $creating = 0;
+    public static int $created = 0;
+
+    public function creating(object $model): void {
+        self::$creating++;
+        (void)$model;
+    }
+
+    public function created(object $model): void {
+        self::$created++;
+        (void)$model;
+    }
+}
+
+class ArchiveObserver extends Observer {
+    /** @var array<int, string> */
+    public static array<int, string> $log = [];
+
+    public function deleting(object $model): void {
+        self::$log[] = 'deleting';
+        (void)$model;
+    }
+
+    public function deleted(object $model): void {
+        self::$log[] = 'deleted';
+        (void)$model;
+    }
+
+    public function restoring(object $model): void {
+        self::$log[] = 'restoring';
+        (void)$model;
+    }
+
+    public function restored(object $model): void {
+        self::$log[] = 'restored';
+        (void)$model;
+    }
+}
+
+class SqlLog implements QueryInterceptor {
+    public static int $queries = 0;
+
+    public function beforeExecuting(string $sql, array<int|string, mixed> $bindings, \Illuminate\Database\Connection $connection): void {
+        self::$queries++;
+        (void)$sql;
+        (void)$bindings;
+        (void)$connection;
+    }
+}
+
+class AdvancedContext extends Context {
+    public int $tenantId = 1;
+
+    public function __construct(string $name, int $tenantId = 1) {
+        $this->connection = $name;
+        $this->tenantId = $tenantId;
+    }
+
+    public Table<ScopedPost> $scopedPosts {
+        get => $this->table<ScopedPost>();
+    }
+
+    public Table<ArchivedPost> $archivedPosts {
+        get => $this->table<ArchivedPost>();
+    }
+
+    public Table<VersionedPost> $versionedPosts {
+        get => $this->table<VersionedPost>();
+    }
+
+    public Table<Animal> $animals {
+        get => $this->table<Animal>();
+    }
+
+    public Table<Cat> $cats {
+        get => $this->table<Cat>();
+    }
+
+    public Table<Dog> $dogs {
+        get => $this->table<Dog>();
+    }
+
+    public Table<Kitten> $kittens {
+        get => $this->table<Kitten>();
+    }
+
+    public Table<Vehicle> $vehicles {
+        get => $this->table<Vehicle>();
+    }
+
+    public Table<Car> $cars {
+        get => $this->table<Car>();
+    }
+
+    public Table<Resident> $residents {
+        get => $this->table<Resident>();
+    }
+
+    public Table<Listing> $listings {
+        get => $this->table<Listing>();
+    }
+
+    public Table<AuditView> $audits {
+        get => $this->table<AuditView>();
+    }
+
+    protected function map(Mapper $map): void {
+        $map->intercept(new SqlLog());
+        $map->model<ScopedPost>()
+            ->addGlobalScope(fn (ScopedPost $post): bool => $post->tenantId === $this->tenantId)
+            ->observedBy(PostObserver::class);
+        $map->model<Vehicle>()
+            ->addGlobalScope(fn (Vehicle $vehicle): bool => $vehicle->tenantId === $this->tenantId)
+            ->observedBy(PostObserver::class);
+        $map->model<Car>()
+            ->addGlobalScope(fn (Car $car): bool => $car->name !== 'hidden');
+        $map->model<Listing>()
+            ->extraColumn<int>('rank')
+            ->default(0);
+        $map->model<AuditView>()
+            ->fromView('audit_view');
+    }
+}
+
+final class MappingScenarios {
+    public static function tenantSql(AdvancedContext $db): string {
+        return $db->scopedPosts->toSql();
+    }
+
+    public static function unscopedSql(AdvancedContext $db): string {
+        return $db->scopedPosts->withoutGlobalScopes()->toSql();
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    public static function tenantBindings(AdvancedContext $db): array<int, mixed> {
+        return $db->scopedPosts->bindings();
+    }
+
+    public static function scopedCount(AdvancedContext $db): int {
+        return $db->scopedPosts->count();
+    }
+
+    public static function archivedSql(AdvancedContext $db): string {
+        return $db->archivedPosts->toSql();
+    }
+
+    public static function withTrashedSql(AdvancedContext $db): string {
+        return $db->archivedPosts->withTrashed()->toSql();
+    }
+
+    public static function onlyTrashedSql(AdvancedContext $db): string {
+        return $db->archivedPosts->onlyTrashed()->toSql();
+    }
+
+    public static function archivedCount(AdvancedContext $db): int {
+        return $db->archivedPosts->count();
+    }
+
+    public static function withTrashedCount(AdvancedContext $db): int {
+        return $db->archivedPosts->withTrashed()->count();
+    }
+
+    public static function onlyTrashedCount(AdvancedContext $db): int {
+        return $db->archivedPosts->onlyTrashed()->count();
+    }
+
+    public static function deleteTitled(AdvancedContext $db, string $title): int {
+        return $db->archivedPosts->where(fn (ArchivedPost $post): bool => $post->title === $title)->delete();
+    }
+
+    public static function restoreTrashed(AdvancedContext $db): int {
+        return $db->archivedPosts->onlyTrashed()->restore();
+    }
+
+    public static function onlyTrashedUnscopedCount(AdvancedContext $db): int {
+        return $db->archivedPosts->withoutGlobalScopes()->onlyTrashed()->count();
+    }
+
+    public static function catSql(AdvancedContext $db): string {
+        return $db->animals->where(fn (Animal $animal): bool => $animal is Cat)->toSql();
+    }
+
+    /**
+     * @return array<int, Animal>
+     */
+    public static function cats(AdvancedContext $db): array<int, Animal> {
+        return $db->animals->where(fn (Animal $animal): bool => $animal is Cat)->all();
+    }
+
+    /**
+     * @return array<int, Cat>
+     */
+    public static function catTable(AdvancedContext $db): array<int, Cat> {
+        return $db->cats->all();
+    }
+
+    public static function carCount(AdvancedContext $db): int {
+        return $db->cars->count();
+    }
+
+    /**
+     * @return array<int, Animal>
+     */
+    public static function animals(AdvancedContext $db): array<int, Animal> {
+        return $db->animals->all();
+    }
+
+    /**
+     * @return array<int, Resident>
+     */
+    public static function tagged(AdvancedContext $db): array<int, Resident> {
+        return $db->residents->where(fn (Resident $resident): bool => $resident->tags->contains('php'))->all();
+    }
+
+    public static function taggedSql(AdvancedContext $db): string {
+        return $db->residents->where(fn (Resident $resident): bool => $resident->tags->contains('php'))->toSql();
+    }
+
+    /**
+     * @return array<int, Resident>
+     */
+    public static function residents(AdvancedContext $db): array<int, Resident> {
+        return $db->residents->all();
+    }
+
+    /**
+     * @return array<int, AuditView>
+     */
+    public static function audits(AdvancedContext $db): array<int, AuditView> {
+        return $db->audits->all();
+    }
+}

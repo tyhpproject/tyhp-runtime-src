@@ -1,0 +1,94 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Migrations\MigrationResult;
+
+class MigrationCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:migration');
+        $this->setDescription('Write a plain PHP migration for mapping changes since the snapshot.');
+        $this->addArgument('name', \Symfony\Component\Console\Input\InputArgument::REQUIRED, 'Migration name');
+        $this->addOption('context', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Context class');
+        $this->addOption('rename', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED | \Symfony\Component\Console\Input\InputOption::VALUE_IS_ARRAY, 'old:new column rename');
+        $this->addOption('path', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Migrations directory');
+        $this->addOption('snapshot', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Snapshot directory');
+        $this->addOption('defer', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Leave this migration for rhetoric:migrate-deferred');
+        $this->addOption('independent', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'With --defer, let later migrations run before this one');
+    }
+
+    public function handle(): int {
+        try {
+            mixed $name = $this->argument('name');
+            if (!\is_string($name) || $name === '') {
+                $this->error('A migration name is required.');
+
+                return 1;
+            }
+            bool $defer = $this->flag('defer') || $this->flag('independent');
+            MigrationResult $result = CommandContext::workspace($this, $this->text('snapshot'), $this->text('path'))->add(
+                CommandContext::resolve($this, $this->text('context')),
+                $name,
+                $this->renames(),
+                \date('Y_m_d_His'),
+                $defer,
+                $this->flag('independent'),
+            );
+            foreach ($result->plan->warnings as $warning) {
+                $this->warn($warning);
+            }
+            if ($result->plan->losesData() && !$defer) {
+                $this->warn('This migration drops or narrows data. Pass --defer to leave it for rhetoric:migrate-deferred.');
+            }
+            if ($result->path !== null) {
+                CommandContext::forgetManifest($this);
+            }
+            if ($result->path === null) {
+                $this->info($result->snapshotUpdated ? 'No schema changes. Snapshot updated.' : 'No schema changes.');
+
+                return 0;
+            }
+            $this->info($result->path);
+
+            return 0;
+        } catch (\Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return 1;
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function renames(): array<int, string> {
+        mixed $value = $this->option('rename');
+        if (!\is_array($value)) {
+            return [];
+        }
+        array<int, string> $renames = [];
+        foreach ($value as $rename) {
+            if (\is_string($rename) && $rename !== '') {
+                $renames[] = $rename;
+            }
+        }
+
+        return $renames;
+    }
+
+    private function flag(string $option): bool {
+        mixed $value = $this->option($option);
+
+        return $value === true;
+    }
+
+    private function text(string $option): ?string {
+        mixed $value = $this->option($option);
+        if (!\is_string($value) || $value === '') {
+            return null;
+        }
+
+        return $value;
+    }
+}

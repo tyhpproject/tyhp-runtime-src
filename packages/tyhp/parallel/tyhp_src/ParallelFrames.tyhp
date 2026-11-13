@@ -41,7 +41,7 @@ internal final class ParallelFrames {
 
     public static function run(int $id, string $payload): string {
         self::checkData($payload, 'The task');
-        return self::encode(new ParallelFrame() with [
+        return self::encode(new ParallelFrame[
             'op' => ParallelFrameOp::Run->value,
             'id' => $id,
             'payload' => $payload,
@@ -49,7 +49,7 @@ internal final class ParallelFrames {
     }
 
     public static function cancel(int $id): string {
-        return self::encode(new ParallelFrame() with [
+        return self::encode(new ParallelFrame[
             'op' => ParallelFrameOp::Cancel->value,
             'id' => $id,
         ]);
@@ -57,7 +57,7 @@ internal final class ParallelFrames {
 
     public static function success(int $id, string $payload): string {
         self::checkData($payload, 'The task result');
-        return self::encode(new ParallelFrame() with [
+        return self::encode(new ParallelFrame[
             'op' => ParallelFrameOp::Result->value,
             'id' => $id,
             'ok' => true,
@@ -74,7 +74,7 @@ internal final class ParallelFrames {
         if ($error instanceof ParallelException) {
             $remote = $error->getRemoteError();
         }
-        return self::encode(new ParallelFrame() with [
+        return self::encode(new ParallelFrame[
             'op' => ParallelFrameOp::Result->value,
             'id' => $id,
             'message' => self::clip($error->getMessage(), self::MAX_MESSAGE_BYTES),
@@ -84,7 +84,7 @@ internal final class ParallelFrames {
 
     /** The worker hit an error outside a task and is about to exit. */
     public static function fatal(\Throwable $error): string {
-        return self::encode(new ParallelFrame() with [
+        return self::encode(new ParallelFrame[
             'op' => ParallelFrameOp::Fatal->value,
             'message' => self::clip($error->getMessage(), self::MAX_MESSAGE_BYTES),
             'error' => self::describe($error),
@@ -93,7 +93,7 @@ internal final class ParallelFrames {
 
     public static function describe(\Throwable $error): ParallelRemoteError {
         mixed $code = $error->getCode();
-        return new ParallelRemoteError() with [
+        return new ParallelRemoteError[
             'class' => \get_class($error),
             'message' => self::clip($error->getMessage(), self::MAX_MESSAGE_BYTES),
             'code' => ($code is int) ? $code : 0,

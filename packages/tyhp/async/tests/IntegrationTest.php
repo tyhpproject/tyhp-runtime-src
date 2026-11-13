@@ -10,6 +10,7 @@ use Tyhp\Deferred;
 use Tyhp\DisposableScope;
 use Tyhp\EventLoop;
 use Tyhp\Promise;
+use Tyhp\Type;
 use Tyhp\Contracts\IsDisposable;
 use Tyhp\Exceptions\OperationCancelledException;
 
@@ -94,7 +95,7 @@ final class IntegrationTest extends TestCase
     {
         $result = Promise::run(function () {
             $items = [1, 2, 3, 4, 5];
-            $results = Promise::_await(Promise::batch($items, function ($item) {
+            $results = Promise::_await(Promise::batch(Type::int, Type::int)($items, function ($item) {
                 return Promise::_async(function () use ($item) {
                     Promise::_await(Promise::delay(1));
                     return $item * $item;

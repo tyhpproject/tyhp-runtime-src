@@ -1,0 +1,33 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric;
+
+global use extension \Tyhp\Rhetoric\CollectionExtensions;
+
+extension CollectionExtensions {
+    extends<TKey extends int|string, TValue> array<TKey, TValue> {
+        function exists(?\Tyhp\Expression<callable(TValue): bool> $predicate = null): bool {
+            if ($predicate === null) {
+                return \count($this) > 0;
+            }
+            foreach ($this as $value) {
+                if ($predicate($value) === true) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function countWhere(\Tyhp\Expression<callable(TValue): bool> $predicate): int {
+            int $matched = 0;
+            foreach ($this as $value) {
+                if ($predicate($value) === true) {
+                    $matched++;
+                }
+            }
+
+            return $matched;
+        }
+    }
+}

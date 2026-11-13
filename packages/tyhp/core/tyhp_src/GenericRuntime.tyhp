@@ -5,16 +5,26 @@ namespace Tyhp;
 /**
  * Runtime-visible stamp on a compiled-library generic class, method, or function.
  *
- * Present on every emitted generic declaration (erased or tracked). `factory` /
- * `binder` are set only when helpers were emitted (`erased: false`). PHP builtin
- * and overlay tyhpdefs that omit this attribute keep erase / inline emit.
+ * Present on every emitted generic declaration (erased or tracked). `factory`,
+ * `binder`, and `aliasFactory` are set when the declaration is tracked
+ * (`erased: false`). PHP builtin and overlay tyhpdefs that omit this attribute
+ * keep erase / inline emit.
+ *
+ * A non-erased method or function without `#[\Tyhp\InferGeneric]` is emitted
+ * under its declared name. `layouts` is `[2]` and `binder` is that name
+ * (`decode`). PHP calls `Json::decode($type)($json)`. `#[\Tyhp\InferGeneric]`
+ * keeps the plain method and a `name__tyhpGeneric` companion stamped
+ * `layouts: [1]` (`proxy__tyhpGeneric`). An erased generic stays a plain
+ * method, `layouts: [1]`, with no companion. Class factories stay layout 1
+ * (`new_Ns_Box__tyhpGeneric`). Supported callable layouts are `[1, 2]`.
+ * `\Tyhp\Generic::bind` accepts layouts 1 and 2.
  *
  * Named arguments:
  * - `erased:` no factory / binder was emitted
- * - `binder:` Mechanism D companion (`decode__tyhpGeneric` or `Backer::jsonDecodeAs__tyhpGeneric`)
- * - `factory:` Mechanism C class factory (`new_Ns_Box__tyhpGeneric`)
+ * - `binder:` declared name (`decode`) or a `name__tyhpGeneric` companion
+ * - `factory:` class factory (`new_Ns_Box__tyhpGeneric`), layout 1
  * - `aliasFactory:` source type-alias `\Tyhp\Type` factory (`DecimalCoercible` or `UserService::NameType`)
- * - `layouts:` dispatch keys this declaration supports (currently `[1]`)
+ * - `layouts:` `[1]` or `[2]`
  * - `compiler:` optional compiler version for diagnostics only (not dispatch)
  *
  * Sit this attribute on the declaration, not on `<T>`. Authors do not write this

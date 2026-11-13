@@ -1,0 +1,876 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Tracking;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\LazyCollection;
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Mapping\RelationMap;
+use Tyhp\Rhetoric\Query\Hydrator;
+use Tyhp\Rhetoric\Query\RowFilter;
+
+/**
+ * Identity-stable ghosts for references and unloaded collections.
+ * The first touch of a class loads every pending ghost of that class.
+ */
+final class Ghosts {
+    /** @var array<string, array<int, object>> */
+    private array<string, array<int, object>> $byId = [];
+
+    /** @var array<int, array<int, mixed>> */
+    private array<int, array<int, mixed>> $idParts = [];
+
+    /** @var array<int, bool> */
+    private array<int, bool> $satisfied = [];
+
+    /** @var array<int, bool> */
+    private array<int, bool> $partials = [];
+
+    /** @var array<string, \Closure> */
+    private array<string, \Closure> $factories = [];
+
+    /** @var array<string, array<int, object>> */
+    private array<string, array<int, object>> $pendingHasOne = [];
+
+    /** @var array<int, object> */
+    private array<int, object> $hasOneOwner = [];
+
+    /** @var array<int, ModelMap> */
+    private array<int, ModelMap> $hasOneOwnerMap = [];
+
+    /** @var array<int, RelationMap> */
+    private array<int, RelationMap> $hasOneRelation = [];
+
+    /** @var array<int, ModelMap> */
+    private array<int, ModelMap> $hasOneRelated = [];
+
+    /** @var array<string, array<int, LazyCollection>> */
+    private array<string, array<int, LazyCollection>> $pendingCollections = [];
+
+    /** @var array<int, object> */
+    private array<int, object> $collectionOwners = [];
+
+    /** @var array<int, ModelMap> */
+    private array<int, ModelMap> $collectionOwnerMaps = [];
+
+    /** @var array<int, RelationMap> */
+    private array<int, RelationMap> $collectionRelations = [];
+
+    /** @var array<string, bool> */
+    private array<string, bool> $loadingCollections = [];
+
+    public function __construct(
+        private Context $context,
+    ) {}
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    public function reference(ModelMap $map, array<int, mixed> $parts): object {
+        if ($map->key === null || \count($map->key->properties) === 0) {
+            throw new \LogicException($map->class . ' has no key.');
+        }
+        array<int, mixed> $normal = $this->context->tracker->normalizeKey($map, $parts);
+        ?object $existing = $this->context->tracker->stored($map, $normal);
+        if ($existing !== null) {
+            return $existing;
+        }
+        object $ghost = $this->spawn($map->class, function (object $model) use ($map, $normal): void {
+            $this->loadById($map, $model, $normal);
+        });
+        if (\Tyhp\Lazy::isLazy($ghost)) {
+            $this->arm($map, $ghost, $normal);
+        }
+        $this->context->tracker->track($map, $ghost, false);
+        $this->wire($map, $ghost);
+        if (!\Tyhp\Lazy::isLazy($ghost)) {
+            $this->context->tracker->finish($ghost);
+        }
+
+        return $ghost;
+    }
+
+    /**
+     * Whether an entity ghost stays unloaded until it is touched. A core build that constructs eagerly
+     * runs the initializer before `spawn` returns, so nothing can be deferred and every column has to
+     * arrive with the first query.
+     */
+    public function defers(): bool {
+        if (self::$deferrable === null) {
+            bool $ran = false;
+            object $probe = $this->spawn(self::class, function (object $model) use (&$ran): void {
+                (void)$model;
+                $ran = true;
+            });
+            self::$deferrable = !$ran && \Tyhp\Lazy::isLazy($probe);
+        }
+
+        return self::$deferrable;
+    }
+
+    /** @var ?bool */
+    private static ?bool $deferrable = null;
+
+    /**
+     * A ghost for a row that was read without its deferred columns. It holds the other columns, and the
+     * first touch loads the deferred ones for every pending ghost of the class.
+     */
+    public function partial(ModelMap $map, string $class, object $row): object {
+        array<int, mixed> $parts = $this->context->tracker->partsFromRow($map, $row) ?? [];
+        array<int, mixed> $normal = $this->context->tracker->normalizeKey($map, $parts);
+        object $ghost = $this->spawn($class, function (object $model) use ($map, $normal): void {
+            $this->loadById($map, $model, $normal);
+        });
+        if (\Tyhp\Lazy::isLazy($ghost)) {
+            Hydrator::apply($map, $ghost, $row, true);
+            $this->partials[\spl_object_id($ghost)] = true;
+            $this->arm($map, $ghost, $normal);
+        }
+
+        return $ghost;
+    }
+
+    public function fill(ModelMap $map, object $model, object $row): void {
+        int $oid = \spl_object_id($model);
+        bool $complete = Hydrator::carriesDeferred($map, Hydrator::values($row));
+        if (isset($this->partials[$oid])) {
+            // The ghost already holds its other columns. Only a row that carries the deferred ones can finish it.
+            if (!$complete) {
+                return;
+            }
+            unset($this->partials[$oid]);
+            $this->satisfied[$oid] = true;
+            $this->forget($model);
+            Hydrator::apply($map, $model, $row, false, true);
+            \Tyhp\Lazy::initialize($model);
+            $this->wire($map, $model);
+            $this->context->tracker->finish($model);
+
+            return;
+        }
+        if (!$complete) {
+            // A reference read without its deferred columns keeps those unloaded.
+            array<int, mixed> $parts = $this->context->tracker->partsFromRow($map, $row) ?? [];
+            $this->forget($model);
+            Hydrator::apply($map, $model, $row, true);
+            $this->partials[$oid] = true;
+            $this->arm($map, $model, $this->context->tracker->normalizeKey($map, $parts));
+            $this->wire($map, $model);
+
+            return;
+        }
+        $this->satisfied[$oid] = true;
+        $this->forget($model);
+        Hydrator::apply($map, $model, $row, false);
+        if (\Tyhp\Lazy::isLazy($model)) {
+            \Tyhp\Lazy::initialize($model);
+        }
+        $this->wire($map, $model);
+        $this->context->tracker->finish($model);
+    }
+
+    /**
+     * Stops treating an instance as a pending ghost, before it is reset and loads itself again.
+     */
+    public function release(object $model): void {
+        unset($this->partials[\spl_object_id($model)]);
+        $this->forget($model);
+    }
+
+    /**
+     * Reloads a tracked instance in place. The key is the one the instance held before it was reset,
+     * because a reset instance no longer holds its own key properties.
+     *
+     * @param array<int, mixed> $parts
+     */
+    public function reload(ModelMap $map, object $model, array<int, mixed> $parts): void {
+        $this->guard();
+        if ($map->key === null) {
+            throw new \LogicException($map->class . ' has no key.');
+        }
+        array<int, object> $rows = $this->selectByKeys($map, [$this->context->tracker->normalizeKey($map, $parts)], true);
+        if (\count($rows) === 0) {
+            throw new \Illuminate\Database\RecordsNotFoundException();
+        }
+        object $row = $rows[0];
+        unset($this->partials[\spl_object_id($model)]);
+        Hydrator::apply($map, $model, $row, false);
+        $this->wire($map, $model);
+    }
+
+    public function wire(ModelMap $map, object $model): void {
+        if ($this->wiring[\spl_object_id($model)] ?? false) {
+            return;
+        }
+        $this->wiring[\spl_object_id($model)] = true;
+        foreach ($map->relations as $relation) {
+            if ($relation->kind === RelationKind::HasMany || $relation->kind === RelationKind::BelongsToMany) {
+                $this->wireCollection($map, $model, $relation);
+                continue;
+            }
+            if (!$this->context->loadsLazily() || $this->context->preventsLazyLoading() || $this->context->isClosed()) {
+                continue;
+            }
+            if (!$this->context->mapping()->hasModel($relation->relatedClass)) {
+                continue;
+            }
+            mixed $current = PropertyBag::raw($model, $relation->property);
+            if (\is_object($current)) {
+                continue;
+            }
+            ModelMap $related = $this->context->mapping()->model($relation->relatedClass);
+            if ($relation->kind === RelationKind::BelongsTo) {
+                $this->wireBelongsTo($model, $relation, $related);
+                continue;
+            }
+            if ($relation->kind === RelationKind::HasOne) {
+                $this->wireHasOne($map, $model, $relation, $related);
+            }
+        }
+        unset($this->wiring[\spl_object_id($model)]);
+    }
+
+    /** @var array<int, bool> */
+    private array<int, bool> $wiring = [];
+
+    /**
+     * @param array<int, object> $matches
+     */
+    public function fulfill(object $model, string $property, string $relatedClass, array<int, object> $matches): void {
+        mixed $current = PropertyBag::raw($model, $property);
+        if ($current instanceof LazyCollection) {
+            $current->fulfill($matches);
+            $this->forgetCollection($current);
+
+            return;
+        }
+        LazyCollection $collection = $this->newCollection($relatedClass);
+        $collection->fulfill($matches);
+        PropertyBag::write($model, $property, $collection);
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    private function arm(ModelMap $map, object $model, array<int, mixed> $parts): void {
+        if ($map->key === null) {
+            return;
+        }
+        foreach ($map->key->properties as $index => $property) {
+            if (!\array_key_exists($index, $parts)) {
+                continue;
+            }
+            PropertyBag::write($model, $property, $parts[$index]);
+        }
+        string $class = \ltrim($map->class, '\\');
+        int $oid = \spl_object_id($model);
+        if (!isset($this->byId[$class])) {
+            $this->byId[$class] = [];
+        }
+        $this->byId[$class][$oid] = $model;
+        $this->idParts[$oid] = $parts;
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    private function loadById(ModelMap $map, object $model, array<int, mixed> $parts): void {
+        int $oid = \spl_object_id($model);
+        if (isset($this->satisfied[$oid])) {
+            unset($this->satisfied[$oid]);
+
+            return;
+        }
+        $this->guard();
+        string $class = \ltrim($map->class, '\\');
+        array<int, object> $batch = $this->byId[$class] ?? [];
+        array<int, array<int, mixed>> $keys = [];
+        foreach ($batch as $id => $ghost) {
+            $keys[$id] = $this->idParts[$id] ?? [];
+            unset($this->idParts[$id]);
+        }
+        unset($this->byId[$class]);
+        if (!isset($batch[$oid])) {
+            $batch[$oid] = $model;
+            $keys[$oid] = $parts;
+        }
+        array<int, array<int, mixed>> $lookup = [];
+        array<string, int> $index = [];
+        foreach ($keys as $id => $key) {
+            if (\count($key) === 0) {
+                continue;
+            }
+            $lookup[] = $key;
+            $index[$this->token($map, $key)] = $id;
+        }
+        array<int, object> $rows = $this->selectByKeys($map, $lookup, false);
+        array<int, object> $matched = [];
+        foreach ($rows as $row) {
+            ?array<int, mixed> $rowKey = $this->context->tracker->partsFromRow($map, $row);
+            if ($rowKey === null) {
+                continue;
+            }
+            string $token = $this->token($map, $this->context->tracker->normalizeKey($map, $rowKey));
+            if (!isset($index[$token])) {
+                continue;
+            }
+            $matched[$index[$token]] = $row;
+        }
+        bool $missing = false;
+        foreach ($batch as $id => $ghost) {
+            if (!isset($matched[$id])) {
+                // A ghost whose row is gone stays unloaded. Only the one being touched reports it, so a
+                // missing row does not keep its neighbours from loading.
+                if ($ghost === $model) {
+                    $missing = true;
+                }
+                continue;
+            }
+            bool $partial = isset($this->partials[$id]);
+            unset($this->partials[$id]);
+            Hydrator::apply($map, $ghost, $matched[$id], false, $partial);
+            if ($ghost !== $model && \Tyhp\Lazy::isLazy($ghost)) {
+                $this->satisfied[\spl_object_id($ghost)] = true;
+                \Tyhp\Lazy::initialize($ghost);
+            }
+            $this->context->tracker->finish($ghost);
+        }
+        if ($missing) {
+            throw new \Illuminate\Database\RecordsNotFoundException();
+        }
+    }
+
+    private function wireBelongsTo(object $model, RelationMap $relation, ModelMap $related): void {
+        if ($relation->foreignKeyProperty === null || $related->key === null) {
+            return;
+        }
+        mixed $value = PropertyBag::raw($model, $relation->foreignKeyProperty);
+        if ($value === null || $value === 0 || $value === '' || $value === '0') {
+            return;
+        }
+        object $ghost = $this->reference($related, [$value]);
+        PropertyBag::write($model, $relation->property, $ghost);
+    }
+
+    private function wireHasOne(ModelMap $ownerMap, object $owner, RelationMap $relation, ModelMap $related): void {
+        if ($ownerMap->key === null || $relation->foreignKeyColumn === null || \count($ownerMap->key->properties) === 0) {
+            return;
+        }
+        mixed $key = PropertyBag::raw($owner, $ownerMap->key->properties[0]);
+        if ($key === null || $key === 0 || $key === '' || $key === '0') {
+            return;
+        }
+        string $token = \ltrim($ownerMap->class, '\\') . "\0" . $relation->property;
+        object $ghost = $this->spawn($related->class, function (object $model) use ($ownerMap, $owner, $relation, $related, $token): void {
+            $this->loadHasOne($token, $ownerMap, $owner, $relation, $related, $model);
+        });
+        if (\Tyhp\Lazy::isLazy($ghost)) {
+            int $oid = \spl_object_id($ghost);
+            if (!isset($this->pendingHasOne[$token])) {
+                $this->pendingHasOne[$token] = [];
+            }
+            $this->pendingHasOne[$token][$oid] = $ghost;
+            $this->hasOneOwner[$oid] = $owner;
+            $this->hasOneOwnerMap[$oid] = $ownerMap;
+            $this->hasOneRelation[$oid] = $relation;
+            $this->hasOneRelated[$oid] = $related;
+        }
+        PropertyBag::write($owner, $relation->property, $ghost);
+        if (!\Tyhp\Lazy::isLazy($ghost)) {
+            $this->context->tracker->track($related, $ghost, false);
+            $this->context->tracker->finish($ghost);
+        }
+    }
+
+    private function loadHasOne(
+        string $token,
+        ModelMap $ownerMap,
+        object $owner,
+        RelationMap $relation,
+        ModelMap $related,
+        object $model,
+    ): void {
+        int $oid = \spl_object_id($model);
+        if (isset($this->satisfied[$oid])) {
+            unset($this->satisfied[$oid]);
+
+            return;
+        }
+        $this->guard();
+        array<int, object> $ghosts = $this->pendingHasOne[$token] ?? [];
+        unset($this->pendingHasOne[$token]);
+        if (!isset($ghosts[$oid])) {
+            $ghosts[$oid] = $model;
+            $this->hasOneOwner[$oid] = $owner;
+            $this->hasOneOwnerMap[$oid] = $ownerMap;
+            $this->hasOneRelation[$oid] = $relation;
+            $this->hasOneRelated[$oid] = $related;
+        }
+        array<string, mixed> $wanted = [];
+        foreach ($ghosts as $id => $ghost) {
+            (void)$ghost;
+            object $parent = $this->hasOneOwner[$id] ?? $owner;
+            ModelMap $parentMap = $this->hasOneOwnerMap[$id] ?? $ownerMap;
+            if ($parentMap->key === null) {
+                continue;
+            }
+            mixed $key = PropertyBag::raw($parent, $parentMap->key->properties[0]);
+            if ($key === null) {
+                continue;
+            }
+            ColumnMap $column = $parentMap->column($parentMap->key->properties[0]);
+            $wanted[PropertyBag::keyToken($column->type, $key)] = $key;
+        }
+        array<int, mixed> $values = [];
+        foreach ($wanted as $value) {
+            $values[] = $value;
+        }
+        if ($relation->foreignKeyColumn === null || \count($values) === 0) {
+            throw new \Illuminate\Database\RecordsNotFoundException();
+        }
+        array<int, object> $rows = $this->selectWhereIn($related, $relation->foreignKeyColumn, $values);
+        array<string, object> $byForeign = [];
+        foreach ($rows as $row) {
+            if ($relation->foreignKeyProperty === null || !$related->hasColumn($relation->foreignKeyProperty)) {
+                continue;
+            }
+            mixed $foreign = $this->field($row, $relation->foreignKeyColumn);
+            string $foreignToken = PropertyBag::keyToken($related->column($relation->foreignKeyProperty)->type, $foreign);
+            if (!isset($byForeign[$foreignToken])) {
+                $byForeign[$foreignToken] = $row;
+            }
+        }
+        foreach ($ghosts as $id => $ghost) {
+            object $parent = $this->hasOneOwner[$id] ?? $owner;
+            ModelMap $parentMap = $this->hasOneOwnerMap[$id] ?? $ownerMap;
+            RelationMap $link = $this->hasOneRelation[$id] ?? $relation;
+            ModelMap $childMap = $this->hasOneRelated[$id] ?? $related;
+            if ($parentMap->key === null || $link->foreignKeyProperty === null) {
+                throw new \Illuminate\Database\RecordsNotFoundException();
+            }
+            mixed $key = PropertyBag::raw($parent, $parentMap->key->properties[0]);
+            string $parentToken = PropertyBag::keyToken($parentMap->column($parentMap->key->properties[0])->type, $key);
+            ?object $matched = $byForeign[$parentToken] ?? null;
+            if ($matched === null) {
+                throw new \Illuminate\Database\RecordsNotFoundException();
+            }
+            Hydrator::apply($childMap, $ghost, $matched, false);
+            if ($ghost !== $model && \Tyhp\Lazy::isLazy($ghost)) {
+                $this->satisfied[\spl_object_id($ghost)] = true;
+                \Tyhp\Lazy::initialize($ghost);
+            }
+            $this->context->tracker->track($childMap, $ghost, false);
+            $this->wire($childMap, $ghost);
+            $this->context->tracker->finish($ghost);
+            unset($this->hasOneOwner[$id], $this->hasOneOwnerMap[$id], $this->hasOneRelation[$id], $this->hasOneRelated[$id]);
+        }
+    }
+
+    private function wireCollection(ModelMap $ownerMap, object $owner, RelationMap $relation): void {
+        if (!$this->holdsCollection($owner, $relation->property)) {
+            return;
+        }
+        mixed $current = PropertyBag::raw($owner, $relation->property);
+        if ($current instanceof LazyCollection) {
+            return;
+        }
+        if (!$this->context->loadsLazily()) {
+            LazyCollection $empty = $this->newCollection($relation->relatedClass);
+            $empty->fulfill([]);
+            PropertyBag::write($owner, $relation->property, $empty);
+
+            return;
+        }
+        LazyCollection $collection = $this->newCollection($relation->relatedClass);
+        string $token = \ltrim($ownerMap->class, '\\') . "\0" . $relation->property;
+        int $oid = \spl_object_id($collection);
+        if (!isset($this->pendingCollections[$token])) {
+            $this->pendingCollections[$token] = [];
+        }
+        $this->pendingCollections[$token][$oid] = $collection;
+        $this->collectionOwners[$oid] = $owner;
+        $this->collectionOwnerMaps[$oid] = $ownerMap;
+        $this->collectionRelations[$oid] = $relation;
+        $collection->arm(function () use ($token): void {
+            $this->loadCollections($token);
+        });
+        PropertyBag::write($owner, $relation->property, $collection);
+    }
+
+    private function loadCollections(string $token): void {
+        if (isset($this->loadingCollections[$token])) {
+            return;
+        }
+        $this->loadingCollections[$token] = true;
+        array<int, LazyCollection> $group = [];
+        try {
+            $this->guard();
+            $group = $this->pendingCollections[$token] ?? [];
+            unset($this->pendingCollections[$token]);
+            if (\count($group) === 0) {
+                unset($this->loadingCollections[$token]);
+
+                return;
+            }
+            int $sample = 0;
+            foreach ($group as $id => $collection) {
+                (void)$collection;
+                $sample = $id;
+                break;
+            }
+            RelationMap $relation = $this->collectionRelations[$sample];
+            ModelMap $ownerMap = $this->collectionOwnerMaps[$sample];
+            if (!$this->context->mapping()->hasModel($relation->relatedClass)) {
+                throw new \LogicException($relation->relatedClass . ' is not a mapped model.');
+            }
+            ModelMap $related = $this->context->mapping()->model($relation->relatedClass);
+            if ($relation->kind === RelationKind::BelongsToMany) {
+                $this->loadManyToMany($group, $ownerMap, $relation, $related);
+            } else {
+                $this->loadHasMany($group, $ownerMap, $relation, $related);
+            }
+            foreach ($group as $id => $collection) {
+                object $owner = $this->collectionOwners[$id];
+                $this->context->tracker->captureRelation($owner, $relation->property);
+                unset($this->collectionOwners[$id], $this->collectionOwnerMaps[$id], $this->collectionRelations[$id]);
+            }
+        } catch (\Throwable $error) {
+            unset($this->loadingCollections[$token]);
+            // A failed load leaves every collection of the group unloaded and still pending, so a retry loads them.
+            foreach ($group as $id => $collection) {
+                if (!$collection->isLoaded()) {
+                    $this->pendingCollections[$token][$id] = $collection;
+                }
+            }
+            throw $error;
+        }
+        unset($this->loadingCollections[$token]);
+    }
+
+    /**
+     * @param array<int, LazyCollection> $group
+     */
+    private function loadHasMany(array<int, LazyCollection> $group, ModelMap $ownerMap, RelationMap $relation, ModelMap $related): void {
+        if ($relation->foreignKeyColumn === null || $relation->foreignKeyProperty === null || $ownerMap->key === null) {
+            throw new \LogicException($relation->property . ' has no foreign key.');
+        }
+        array<string, mixed> $wanted = [];
+        ColumnMap $keyColumn = $ownerMap->column($ownerMap->key->properties[0]);
+        foreach ($group as $id => $collection) {
+            (void)$collection;
+            object $owner = $this->collectionOwners[$id];
+            mixed $key = PropertyBag::raw($owner, $ownerMap->key->properties[0]);
+            if ($key === null || $key === 0 || $key === '' || $key === '0') {
+                continue;
+            }
+            $wanted[PropertyBag::keyToken($keyColumn->type, $key)] = $key;
+        }
+        array<int, mixed> $values = [];
+        foreach ($wanted as $value) {
+            $values[] = $value;
+        }
+        array<string, array<int, object>> $grouped = [];
+        if (\count($values) > 0) {
+            foreach ($this->selectWhereIn($related, $relation->foreignKeyColumn, $values, Hydrator::selectedColumns($this->context, $related)) as $row) {
+                object $child = $this->hydrate($related, $row);
+                mixed $foreign = PropertyBag::raw($child, $relation->foreignKeyProperty);
+                string $token = PropertyBag::keyToken($related->column($relation->foreignKeyProperty)->type, $foreign);
+                if (!isset($grouped[$token])) {
+                    $grouped[$token] = [];
+                }
+                $grouped[$token][] = $child;
+            }
+        }
+        foreach ($group as $id => $collection) {
+            object $owner = $this->collectionOwners[$id];
+            mixed $key = PropertyBag::raw($owner, $ownerMap->key->properties[0]);
+            string $token = PropertyBag::keyToken($keyColumn->type, $key);
+            array<int, object> $matches = $grouped[$token] ?? [];
+            $collection->fulfill($matches);
+        }
+    }
+
+    /**
+     * @param array<int, LazyCollection> $group
+     */
+    private function loadManyToMany(array<int, LazyCollection> $group, ModelMap $ownerMap, RelationMap $relation, ModelMap $related): void {
+        if ($relation->pivotTable === null || $relation->pivotForeignKey === null || $relation->pivotRelatedKey === null) {
+            throw new \LogicException($relation->property . ' has no pivot.');
+        }
+        if ($ownerMap->key === null || $related->key === null) {
+            throw new \LogicException($relation->property . ' needs a key.');
+        }
+        ColumnMap $ownerColumn = $ownerMap->column($ownerMap->key->properties[0]);
+        ColumnMap $relatedColumn = $related->column($related->key->properties[0]);
+        array<string, mixed> $wanted = [];
+        foreach ($group as $id => $collection) {
+            (void)$collection;
+            object $owner = $this->collectionOwners[$id];
+            mixed $key = PropertyBag::raw($owner, $ownerMap->key->properties[0]);
+            if ($key === null || $key === 0 || $key === '' || $key === '0') {
+                continue;
+            }
+            $wanted[PropertyBag::keyToken($ownerColumn->type, $key)] = $key;
+        }
+        array<int, mixed> $ownerKeys = [];
+        foreach ($wanted as $value) {
+            $ownerKeys[] = $value;
+        }
+        array<int, object> $pivotRows = [];
+        if (\count($ownerKeys) > 0) {
+            mixed $selected = $this->context->connection()->table($relation->pivotTable)->whereIn($relation->pivotForeignKey, $ownerKeys)->get();
+            if ($selected instanceof \Illuminate\Support\Collection) {
+                foreach ($selected->all() as $row) {
+                    if (\is_object($row)) {
+                        $pivotRows[] = $row;
+                    }
+                }
+            }
+        }
+        array<string, mixed> $relatedKeys = [];
+        foreach ($pivotRows as $row) {
+            mixed $relatedKey = $this->field($row, $relation->pivotRelatedKey);
+            if ($relatedKey === null || $relatedKey === 0 || $relatedKey === '' || $relatedKey === '0') {
+                continue;
+            }
+            $relatedKeys[PropertyBag::keyToken($relatedColumn->type, $relatedKey)] = $relatedKey;
+        }
+        array<int, mixed> $relatedValues = [];
+        foreach ($relatedKeys as $value) {
+            $relatedValues[] = $value;
+        }
+        array<string, object> $indexed = [];
+        if (\count($relatedValues) > 0) {
+            foreach ($this->selectWhereIn($related, $related->key->columns[0], $relatedValues, Hydrator::selectedColumns($this->context, $related)) as $row) {
+                object $child = $this->hydrate($related, $row);
+                mixed $key = PropertyBag::raw($child, $related->key->properties[0]);
+                $indexed[PropertyBag::keyToken($relatedColumn->type, $key)] = $child;
+            }
+        }
+        array<string, array<int, object>> $grouped = [];
+        foreach ($pivotRows as $row) {
+            mixed $ownerKey = $this->field($row, $relation->pivotForeignKey);
+            mixed $relatedKey = $this->field($row, $relation->pivotRelatedKey);
+            if ($ownerKey === null || $relatedKey === null) {
+                continue;
+            }
+            string $ownerToken = PropertyBag::keyToken($ownerColumn->type, $ownerKey);
+            string $relatedToken = PropertyBag::keyToken($relatedColumn->type, $relatedKey);
+            if (!isset($indexed[$relatedToken])) {
+                continue;
+            }
+            if (!isset($grouped[$ownerToken])) {
+                $grouped[$ownerToken] = [];
+            }
+            $grouped[$ownerToken][] = $indexed[$relatedToken];
+        }
+        foreach ($group as $id => $collection) {
+            object $owner = $this->collectionOwners[$id];
+            mixed $key = PropertyBag::raw($owner, $ownerMap->key->properties[0]);
+            string $token = PropertyBag::keyToken($ownerColumn->type, $key);
+            $collection->fulfill($grouped[$token] ?? []);
+        }
+    }
+
+    private function hydrate(ModelMap $map, object $row): object {
+        ?object $existing = $this->context->tracker->modelForRow($map, $row);
+        if ($existing !== null) {
+            if (\Tyhp\Lazy::isLazy($existing)) {
+                $this->fill($map, $existing, $row);
+            }
+
+            return $existing;
+        }
+        mixed $fresh = Hydrator::model($map, $row, $this->context, false);
+        if (!\is_object($fresh)) {
+            throw new \LogicException('Query row did not hydrate.');
+        }
+        $this->context->tracker->track($map, $fresh, false);
+        $this->context->tracker->finish($fresh);
+
+        return $fresh;
+    }
+
+    /**
+     * @param array<int, mixed> $keys
+     * @return array<int, object>
+     */
+    private function selectWhereIn(ModelMap $map, string $column, array<int, mixed> $keys, ?array<int, string> $columns = null): array<int, object> {
+        if (\count($keys) === 0) {
+            return [];
+        }
+        \Illuminate\Database\Query\Builder $query = $this->context->connection()->table($map->table)->whereIn($column, $keys);
+        if ($columns !== null) {
+            (void)$query->select($columns);
+        }
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $this->context->connection()->getQueryGrammar();
+        $this->applyFilter($query, $map, $grammar);
+        mixed $selected = $query->get();
+        array<int, object> $rows = [];
+        if ($selected instanceof \Illuminate\Support\Collection) {
+            foreach ($selected->all() as $row) {
+                if (\is_object($row)) {
+                    $rows[] = $row;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<int, array<int, mixed>> $keys
+     * @return array<int, object>
+     */
+    private function selectByKeys(ModelMap $map, array<int, array<int, mixed>> $keys, bool $includeHidden): array<int, object> {
+        if ($map->key === null || \count($keys) === 0 || \count($map->key->columns) === 0) {
+            return [];
+        }
+        \Illuminate\Database\Connection $connection = $this->context->connection();
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $connection->getQueryGrammar();
+        \Illuminate\Database\Query\Builder $query = $connection->table($map->table);
+        if (\count($map->key->columns) === 1) {
+            array<int, mixed> $values = [];
+            string $column = $map->key->columns[0];
+            foreach ($keys as $parts) {
+                $values[] = $parts[0] ?? null;
+            }
+            $query = $query->whereIn($column, $values);
+        } else {
+            array<int, string> $clauses = [];
+            array<int, mixed> $bindings = [];
+            foreach ($keys as $parts) {
+                array<int, string> $one = [];
+                foreach ($map->key->columns as $index => $column) {
+                    $one[] = $grammar->wrap($column) . ' = ?';
+                    $bindings[] = $parts[$index] ?? null;
+                }
+                $clauses[] = '(' . \implode(' and ', $one) . ')';
+            }
+            $query = $query->whereRaw(\implode(' or ', $clauses), $bindings);
+        }
+        if (!$includeHidden) {
+            $this->applyFilter($query, $map, $grammar);
+        }
+        mixed $selected = $query->get();
+        array<int, object> $rows = [];
+        if ($selected instanceof \Illuminate\Support\Collection) {
+            foreach ($selected->all() as $row) {
+                if (\is_object($row)) {
+                    $rows[] = $row;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    private function applyFilter(
+        \Illuminate\Database\Query\Builder $query,
+        ModelMap $map,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+    ): void {
+        $piece = RowFilter::sql($map, $grammar, null, false, false, false, 'default');
+        if ($piece->sql !== '') {
+            (void)$query->whereRaw($piece->sql, $piece->bindings);
+        }
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    private function token(ModelMap $map, array<int, mixed> $parts): string {
+        array<int, string> $tokens = [];
+        foreach ($parts as $index => $part) {
+            string $type = 'mixed';
+            if ($map->key !== null && isset($map->key->properties[$index]) && $map->hasColumn($map->key->properties[$index])) {
+                $type = $map->column($map->key->properties[$index])->type;
+            }
+            $tokens[] = PropertyBag::keyToken($type, $part);
+        }
+
+        return \implode('|', $tokens);
+    }
+
+    private function spawn(string $class, \Closure $initializer): object {
+        string $name = \ltrim($class, '\\');
+        if (!isset($this->factories[$name])) {
+            mixed $bound = \Tyhp\Generic::bind(\Tyhp\Lazy::class . '::ghost', \Tyhp\Type::fromClassName($name));
+            if (!($bound instanceof \Closure)) {
+                throw new \LogicException('Could not create a ghost.');
+            }
+            $this->factories[$name] = $bound;
+        }
+        mixed $created = ($this->factories[$name])($initializer, 0);
+        if (!\is_object($created)) {
+            throw new \LogicException('Could not create a ghost.');
+        }
+
+        return $created;
+    }
+
+    private function newCollection(string $class): LazyCollection {
+        mixed $binder = \Tyhp\Generic::bind(\Tyhp\Rhetoric\LazyCollection::class, \Tyhp\Type::fromClassName(\ltrim($class, '\\')));
+        if (!($binder instanceof \Tyhp\Generic)) {
+            throw new \LogicException('Could not create a collection.');
+        }
+        mixed $created = $binder->new();
+        if (!($created instanceof LazyCollection)) {
+            throw new \LogicException('Could not create a collection.');
+        }
+
+        return $created;
+    }
+
+    private function holdsCollection(object $model, string $property): bool {
+        \ReflectionObject $reflection = new \ReflectionObject($model);
+        if (!$reflection->hasProperty($property)) {
+            return false;
+        }
+        ?\ReflectionType $type = $reflection->getProperty($property)->getType();
+        if (!($type instanceof \ReflectionNamedType)) {
+            return false;
+        }
+
+        return \ltrim($type->getName(), '\\') === \ltrim(LazyCollection::class, '\\');
+    }
+
+    private function forget(object $model): void {
+        int $oid = \spl_object_id($model);
+        unset($this->idParts[$oid]);
+        string $class = \ltrim($model::class, '\\');
+        if (isset($this->byId[$class])) {
+            unset($this->byId[$class][$oid]);
+        }
+    }
+
+    private function forgetCollection(LazyCollection $collection): void {
+        int $oid = \spl_object_id($collection);
+        unset($this->collectionOwners[$oid], $this->collectionOwnerMaps[$oid], $this->collectionRelations[$oid]);
+        foreach ($this->pendingCollections as $token => $group) {
+            if (isset($group[$oid])) {
+                unset($this->pendingCollections[$token][$oid]);
+            }
+        }
+    }
+
+    private function field(object $row, string $name): mixed {
+        mixed $cast = (array)$row;
+        if (!\is_array($cast) || !\array_key_exists($name, $cast)) {
+            return null;
+        }
+
+        return $cast[$name];
+    }
+
+    private function guard(): void {
+        if ($this->context->isClosed()) {
+            throw new \LogicException('This context has been closed.');
+        }
+        if ($this->context->preventsLazyLoading()) {
+            throw new \LogicException('Lazy loading is not allowed for this context.');
+        }
+    }
+}

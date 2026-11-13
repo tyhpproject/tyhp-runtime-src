@@ -1,0 +1,141 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\OnDelete;
+
+final class ScaffoldColumn {
+    public function __construct(
+        public string $property,
+        public string $name,
+        public string $type,
+        public bool $nullable,
+        public ?int $maxLength,
+        public ?int $precision,
+        public ?int $scale,
+        public bool $text,
+        public ?string $blueprint,
+        public ?bool $generated,
+        public ?string $comment,
+        public bool $hasDefault,
+        public mixed $default,
+        public bool $key,
+        public bool $autoIncrement,
+    ) {}
+}
+
+final class ScaffoldIndex {
+    public function __construct(
+        public array<int, string> $properties,
+        public array<int, string> $columns,
+        public bool $unique,
+        public ?string $name,
+    ) {}
+}
+
+final class ScaffoldRelation {
+    public function __construct(
+        public string $property,
+        public RelationKind $kind,
+        public string $relatedClass,
+        public string $relatedShort,
+        public string $inverse,
+        public ?string $foreignKeyProperty,
+        public OnDelete $onDelete,
+        public ?string $referencedColumn,
+        public ?string $pivotTable,
+        public ?string $pivotForeignKey,
+        public ?string $pivotRelatedKey,
+        public bool $navigationNullable,
+        public bool $aligned,
+        public ?string $conventionForeignKey,
+    ) {}
+}
+
+final class ScaffoldModel {
+    public function __construct(
+        public string $className,
+        public string $short,
+        public string $table,
+        public bool $tableOverride,
+        public bool $keyless,
+        public bool $view,
+        public ?string $comment,
+        public array<int, ScaffoldColumn> $columns,
+        public array<int, string> $keyProperties,
+        public array<int, ScaffoldIndex> $indexes,
+        public array<int, ScaffoldRelation> $relations,
+    ) {}
+
+    public function column(string $property): ?ScaffoldColumn {
+        foreach ($this->columns as $column) {
+            if ($column->property === $property) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    public function relation(string $property): ?ScaffoldRelation {
+        foreach ($this->relations as $relation) {
+            if ($relation->property === $property) {
+                return $relation;
+            }
+        }
+
+        return null;
+    }
+}
+
+final class ScaffoldPlan {
+    public function __construct(
+        public string $contextClass,
+        public string $contextShort,
+        public string $namespace,
+        public array<int, ScaffoldModel> $models,
+    ) {}
+
+    public function model(string $className): ?ScaffoldModel {
+        foreach ($this->models as $model) {
+            if ($model->className === $className) {
+                return $model;
+            }
+        }
+
+        return null;
+    }
+}
+
+final class ScaffoldOptions {
+    public function __construct(
+        public string $contextClass,
+        public string $namespace,
+        public string $output,
+        public bool $attributes,
+        public bool $pluralize,
+        public bool $force,
+        public ?string $connection,
+        public ?string $schema,
+        public array<int, string> $tables,
+        public array<int, string> $exclude,
+        public ?string $stubs = null,
+        public bool $eloquent = false,
+    ) {}
+}
+
+final class WrittenFile {
+    public function __construct(
+        public string $path,
+        public bool $skipped,
+    ) {}
+}
+
+final class ScaffoldResult {
+    public function __construct(
+        public ScaffoldPlan $plan,
+        public array<int, WrittenFile> $files,
+        public ?string $snapshotPath,
+    ) {}
+}

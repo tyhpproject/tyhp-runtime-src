@@ -1,0 +1,69 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Mapping;
+
+final class PropertyReader {
+    public static function read(__ClassName $class): array<string, PropertyFacts> {
+        array<string, PropertyFacts> $facts = [];
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+        foreach ($reflection->getProperties() as $property) {
+            if ($property->isStatic() || !$property->isPublic()) {
+                continue;
+            }
+            string $declaring = $property->getDeclaringClass()->getName();
+            if (\str_starts_with($declaring, 'Tyhp\\Concerns\\')) {
+                continue;
+            }
+            string $name = $property->getName();
+            if (\str_starts_with($name, '__tyhp')) {
+                continue;
+            }
+            bool $virtual = \method_exists($property, 'isVirtual') && $property->isVirtual();
+            $facts[$name] = new PropertyFacts(
+                $name,
+                \Tyhp\Type::fromProperty($class, $name),
+                $virtual,
+                $property,
+            );
+        }
+
+        self::mergePolyfill($class, $reflection, $facts);
+
+        return $facts;
+    }
+
+    private static function mergePolyfill(
+        __ClassName $class,
+        \ReflectionClass $reflection,
+        array<string, PropertyFacts> &$facts,
+    ): void {
+        if ($reflection->isAbstract() || !\method_exists($class, '__initPropertyHooks__tyhpPropertyHook')) {
+            return;
+        }
+
+        object $instance = $reflection->newInstanceWithoutConstructor();
+        \ReflectionMethod $init = new \ReflectionMethod($class, '__initPropertyHooks__tyhpPropertyHook');
+        $init->invoke($instance);
+
+        if (!\method_exists($instance, 'tyhpPropertyHooks')) {
+            return;
+        }
+        \ReflectionMethod $reader = new \ReflectionMethod($instance, 'tyhpPropertyHooks');
+        mixed $bag = $reader->invoke($instance);
+        if (!($bag instanceof \Tyhp\PropertyAccessorObject)) {
+            return;
+        }
+
+        foreach ($bag->hookedProperties() as $name) {
+            if (isset($facts[$name])) {
+                continue;
+            }
+            ?\Tyhp\Type $type = $bag->propertyType($name);
+            if ($type === null) {
+                continue;
+            }
+            ?bool $backed = $bag->isBackedProperty($name);
+            $facts[$name] = new PropertyFacts($name, $type, $backed === false, null);
+        }
+    }
+}

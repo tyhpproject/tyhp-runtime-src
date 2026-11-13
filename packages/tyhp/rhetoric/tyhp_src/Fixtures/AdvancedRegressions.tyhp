@@ -1,0 +1,391 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+use Tyhp\Rhetoric\Query\Assignments;
+use Tyhp\Rhetoric\Query\Group;
+use Tyhp\Rhetoric\Query\Sql;
+use Tyhp\Rhetoric\Query\SqlText;
+
+class AdvancedRegressions {
+    public static function leftJoinedRows(QueryContext $context, string $blogName): array<int, PostMaybeBlog> {
+        return $context->posts->leftJoin<Blog, PostMaybeBlog>(
+            $context->blogs->where(fn (Blog $blog) => $blog->name === $blogName),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostMaybeBlog($post->title, $blog->name),
+        )->orderBy(fn (PostMaybeBlog $row) => $row->title)->all();
+    }
+
+    public static function joinedLimited(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<Blog, PostMaybeBlog>(
+            $context->blogs->take(1),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostMaybeBlog($post->title, $blog->name),
+        )->all();
+    }
+
+    public static function groupCount(QueryContext $context): int {
+        return $context->posts->groupBy(fn (Post $post) => $post->blogId)->count();
+    }
+
+    public static function groupsExist(QueryContext $context, int $least): bool {
+        return $context->posts
+            ->groupBy(fn (Post $post) => $post->blogId)
+            ->having(fn (Group<Post> $group) => $group->count() >= $least)
+            ->exists();
+    }
+
+    public static function highOrAlpha(QueryContext $context): \Tyhp\Rhetoric\Query\Query<Post> {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->union($context->posts->where(fn (Post $post) => $post->title === 'Alpha'));
+    }
+
+    public static function unitedCount(QueryContext $context): int {
+        return self::highOrAlpha($context)->count();
+    }
+
+    public static function groupCountSql(QueryContext $context): SqlText {
+        return $context->posts->groupBy(fn (Post $post) => $post->blogId)->statement('count');
+    }
+
+    public static function groupsExistSql(QueryContext $context): SqlText {
+        return $context->posts
+            ->groupBy(fn (Post $post) => $post->blogId)
+            ->having(fn (Group<Post> $group) => $group->count() >= 2)
+            ->statement('exists');
+    }
+
+    public static function unitedRatingSum(QueryContext $context): int|float {
+        return self::highOrAlpha($context)->sum(fn (Post $post) => $post->rating);
+    }
+
+    public static function unitedSkippedIds(QueryContext $context): array<int, int> {
+        array<int, int> $ids = [];
+        foreach (self::highOrAlpha($context)->orderBy(fn (Post $post) => $post->id)->skip(1)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function unitedExists(QueryContext $context): bool {
+        return self::highOrAlpha($context)->exists();
+    }
+
+    public static function unitedTopIds(QueryContext $context, int $take): array<int, int> {
+        array<int, int> $ids = [];
+        foreach (self::highOrAlpha($context)->orderByDesc(fn (Post $post) => $post->id)->take($take)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function unitedFirstId(QueryContext $context): ?int {
+        return self::highOrAlpha($context)->orderByDesc(fn (Post $post) => $post->id)->first()?->id;
+    }
+
+    public static function chainedSetsSql(QueryContext $context): SqlText {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->union($context->posts->where(fn (Post $post) => $post->title === 'Alpha'))
+            ->intersect($context->posts->where(fn (Post $post) => $post->rating <= 4))
+            ->statement('select');
+    }
+
+    public static function chainedSetsIds(QueryContext $context): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->union($context->posts->where(fn (Post $post) => $post->title === 'Alpha'))
+            ->intersect($context->posts->where(fn (Post $post) => $post->rating <= 4))
+            ->orderBy(fn (Post $post) => $post->id)
+            ->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function deleteFirst(QueryContext $context): int {
+        return $context->posts->take(1)->delete();
+    }
+
+    public static function updateSkipped(QueryContext $context): int {
+        return $context->posts
+            ->skip(1)
+            ->update(fn (Assignments<Post> $set) => $set->assign(
+                fn (Post $post) => $post->rating,
+                fn (Post $post) => $post->rating + 1,
+            ));
+    }
+
+    public static function firstSingle(QueryContext $context): ?Blog {
+        return $context->blogs->with(fn (Blog $blog) => $blog->posts)->singleQuery()->orderBy(fn (Blog $blog) => $blog->id)->first();
+    }
+
+    public static function takeSingle(QueryContext $context): array<int, Blog> {
+        return $context->blogs->with(fn (Blog $blog) => $blog->posts)->singleQuery()->orderBy(fn (Blog $blog) => $blog->id)->take(1)->all();
+    }
+
+    public static function filteredSingle(QueryContext $context): array<int, Blog> {
+        return $context->blogs
+            ->where(fn (Blog $blog) => $blog->id >= 1)
+            ->with(fn (Blog $blog) => $blog->posts)
+            ->singleQuery()
+            ->orderBy(fn (Blog $blog) => $blog->id)
+            ->all();
+    }
+
+    public static function constrainedSingle(QueryContext $context, string $title): array<int, Blog> {
+        return $context->blogs
+            ->with(fn (Blog $blog) => $blog->posts, constrain: self::titled($title))
+            ->singleQuery()
+            ->orderBy(fn (Blog $blog) => $blog->id)
+            ->all();
+    }
+
+    public static function whereIn(QueryContext $context, array<int, int> $ids): array<int, int> {
+        array<int, int> $found = [];
+        foreach ($context->posts->where(fn (Post $post) => $ids->contains($post->id))->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $found[] = $post->id;
+        }
+
+        return $found;
+    }
+
+    public static function nestedLists(QueryContext $context): array<int, array<string, mixed>> {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->select(
+            fn (Post $post) => ['id' => $post->id, 'detail' => ['title' => $post->title, 'rating' => $post->rating]],
+        )->all();
+    }
+
+    public static function dayGap(QueryContext $context, int $least): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->posts->where(
+            fn (Post $post) => Sql::dateDiff($post->publishedAt, $post->deletedAt) >= $least,
+        )->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function roundedIds(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::round($post->rating, 2) >= 1)->statement('select');
+    }
+
+    public static function dayGapBetween(QueryContext $context, string $from, string $to, int $days): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->posts->where(
+            fn (Post $post) => Sql::dateDiff($from, $to) === $days,
+        )->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function dayGapAmongBindings(QueryContext $context, int $rating, string $from, string $to, int $days, string $title): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->posts->where(
+            fn (Post $post) => $post->rating >= $rating && Sql::dateDiff($from, $to) === $days && $post->title !== $title,
+        )->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function dayGapBetweenSql(QueryContext $context, string $from, string $to, int $days): SqlText {
+        return $context->posts->where(
+            fn (Post $post) => Sql::dateDiff($from, $to) === $days,
+        )->statement('select');
+    }
+
+    public static function unitedRows(QueryContext $context): array<int, int> {
+        array<int, int> $ids = [];
+        foreach (self::highOrAlpha($context)->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function unitedUnordered(QueryContext $context): array<int, int> {
+        array<int, int> $ids = [];
+        foreach (self::highOrAlpha($context)->all() as $post) {
+            $ids[] = $post->id;
+        }
+        \sort($ids);
+
+        return $ids;
+    }
+
+    public static function unitedMax(QueryContext $context): int|float|string|null {
+        return self::highOrAlpha($context)->max(fn (Post $post) => $post->rating);
+    }
+
+    public static function unitedMin(QueryContext $context): int|float|string|null {
+        return self::highOrAlpha($context)->min(fn (Post $post) => $post->rating);
+    }
+
+    public static function unitedAvg(QueryContext $context): ?float {
+        return self::highOrAlpha($context)->avg(fn (Post $post) => $post->rating);
+    }
+
+    public static function unitedEvery(QueryContext $context): bool {
+        return self::highOrAlpha($context)->every(fn (Post $post) => $post->rating > 0);
+    }
+
+    public static function unitedNotExists(QueryContext $context): bool {
+        return self::highOrAlpha($context)->doesntExist();
+    }
+
+    public static function unitedSoleId(QueryContext $context): int {
+        return $context->posts->where(fn (Post $post) => $post->id === 1)
+            ->union($context->posts->where(fn (Post $post) => $post->id === 1))
+            ->sole()->id;
+    }
+
+    public static function unionAllCount(QueryContext $context): int {
+        return $context->posts->where(fn (Post $post) => $post->id <= 2)
+            ->unionAll($context->posts->where(fn (Post $post) => $post->id <= 2))
+            ->count();
+    }
+
+    public static function exceptIds(QueryContext $context): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->posts->where(fn (Post $post) => $post->id <= 3)
+            ->except($context->posts->where(fn (Post $post) => $post->id === 2))
+            ->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function updateUnited(QueryContext $context): int {
+        return self::highOrAlpha($context)->update(fn (Assignments<Post> $set) => $set->assign(
+            fn (Post $post) => $post->rating,
+            fn (Post $post) => $post->rating + 1,
+        ));
+    }
+
+    public static function deleteDistinct(QueryContext $context): int {
+        return $context->posts->distinct()->delete();
+    }
+
+    public static function deleteGrouped(QueryContext $context): int {
+        return $context->posts->groupBy(fn (Post $post) => $post->blogId)->delete();
+    }
+
+    public static function incrementTaken(QueryContext $context): int {
+        return $context->posts->take(1)->increment(fn (Post $post) => $post->rating, 1);
+    }
+
+    public static function decrementSkipped(QueryContext $context): int {
+        return $context->posts->skip(1)->decrement(fn (Post $post) => $post->rating, 1);
+    }
+
+    public static function filteredUpdate(QueryContext $context): int {
+        return $context->posts->where(fn (Post $post) => $post->id === 3)->update(fn (Assignments<Post> $set) => $set->assign(
+            fn (Post $post) => $post->rating,
+            fn (Post $post) => $post->rating + 10,
+        ));
+    }
+
+    public static function filteredDelete(QueryContext $context): int {
+        return $context->posts->where(fn (Post $post) => $post->id === 4)->delete();
+    }
+
+    public static function joinedSelected(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<string, PostMaybeBlog>(
+            $context->blogs->select(fn (Blog $blog) => $blog->name),
+            fn (Post $post) => $post->title,
+            fn (string $name) => $name,
+            fn (Post $post, string $name) => new PostMaybeBlog($post->title, $name),
+        )->all();
+    }
+
+    public static function joinedGrouped(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<Group<Blog>, PostMaybeBlog>(
+            $context->blogs->groupBy(fn (Blog $blog) => $blog->id),
+            fn (Post $post) => $post->blogId,
+            fn (Group<Blog> $group) => $group->key,
+            fn (Post $post, Group<Blog> $group) => new PostMaybeBlog($post->title, 'x'),
+        )->all();
+    }
+
+    public static function joinedUnion(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<Blog, PostMaybeBlog>(
+            $context->blogs->union($context->blogs),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostMaybeBlog($post->title, $blog->name),
+        )->all();
+    }
+
+    public static function joinedDistinct(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<Blog, PostMaybeBlog>(
+            $context->blogs->distinct(),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostMaybeBlog($post->title, $blog->name),
+        )->all();
+    }
+
+    public static function joinedSkipped(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<Blog, PostMaybeBlog>(
+            $context->blogs->skip(1),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostMaybeBlog($post->title, $blog->name),
+        )->all();
+    }
+
+    public static function joinedFromRaw(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<Blog, PostMaybeBlog>(
+            $context->blogs->fromRaw('blogs'),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostMaybeBlog($post->title, $blog->name),
+        )->all();
+    }
+
+    public static function filteredJoin(QueryContext $context): array<int, PostMaybeBlog> {
+        return $context->posts->join<Blog, PostMaybeBlog>(
+            $context->blogs->where(fn (Blog $blog) => $blog->name === 'one'),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostMaybeBlog($post->title, $blog->name),
+        )->orderBy(fn (PostMaybeBlog $row) => $row->title)->all();
+    }
+
+    public static function soleSingle(QueryContext $context): Blog {
+        return $context->blogs->where(fn (Blog $blog) => $blog->id === 1)->with(fn (Blog $blog) => $blog->posts)->singleQuery()->sole();
+    }
+
+    public static function skipSingle(QueryContext $context): array<int, Blog> {
+        return $context->blogs->with(fn (Blog $blog) => $blog->posts)->singleQuery()->orderBy(fn (Blog $blog) => $blog->id)->skip(1)->all();
+    }
+
+    public static function plainSingleSql(QueryContext $context): SqlText {
+        return $context->blogs->with(fn (Blog $blog) => $blog->posts)->singleQuery()->statement('select');
+    }
+
+    public static function firstSingleSql(QueryContext $context): SqlText {
+        return $context->blogs->with(fn (Blog $blog) => $blog->posts)->singleQuery()->statement('first');
+    }
+
+    private static function titled(string $title): \Tyhp\Expression<callable(Post): bool> {
+        return self::alpha(fn (Post $post) => $post->title === $title);
+    }
+
+    private static function alpha(\Tyhp\Expression<callable(Post): bool> $predicate): \Tyhp\Expression<callable(Post): bool> {
+        return $predicate;
+    }
+}

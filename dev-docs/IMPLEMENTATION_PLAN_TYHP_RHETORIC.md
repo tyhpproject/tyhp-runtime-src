@@ -1,6 +1,7 @@
 # Implementation Plan: `tyhp/rhetoric` — typed, lambda-driven data access for Laravel
 
 > **Status:** Proposed. Nothing in this document is implemented yet.
+> Phase 0 outcomes are recorded in [Phase 0 outcomes](#phase-0-outcomes). Later phases are not started.
 > **Package:** `tyhp/rhetoric` (namespace `Tyhp\Rhetoric`, artisan prefix `rhetoric:`). The name is a companion to
 > Laravel's Eloquent: rhetoric is the craft behind eloquent speech.
 > **Location:** `packages/tyhp/rhetoric/` (compiled runtime package built from `tyhp_src/`, like `tyhp/lambda`)
@@ -57,7 +58,7 @@ translate. Rhetoric builds this layer on top of that **without replacing Laravel
 
 ## Non-goals
 
-- Replacing Eloquent. Eloquent keeps working. An optional typed-query bridge over Eloquent models is a later phase.
+- Replacing Eloquent. Eloquent keeps working. The typed-query bridge over Eloquent models is required (Phase 12).
 - Shipping our own SQL dialects or schema grammars. If Laravel's grammar can't express something, we use the
   builder's `*Raw` methods with grammar-wrapped identifiers rather than forking a grammar.
 - EF features with no Laravel foundation and low demand in PHP: spatial types, temporal tables, NoSQL providers,
@@ -330,7 +331,7 @@ feature delegates to. **Phase** is where it lands (see [Phases](#phases)).
 | Debug SQL | `ToQueryString` | `toSql()` / `toRawSql()` | `Builder::toSql`, `toRawSql` | 3 | |
 | Client evaluation | top-level projection only, else throw | same rule | — | 3 | Untranslatable `where`/`orderBy` throws `QueryTranslationException` naming the node. |
 | Compiled queries | `EF.CompileQuery` | automatic translation cache keyed by tree shape | — | 3 / 11 | Keyed by `ExpressionShape::of($e)->key`; constants bind through `slotOf()`. |
-| Async | `ToListAsync`, `SaveChangesAsync` | `allAsync()`, `saveAsync()` | — | 13 (optional) | Laravel connections are blocking. Async would run on `tyhp/io` DB connections. |
+| Async | `ToListAsync`, `SaveChangesAsync` | `allAsync()`, `saveAsync()` | — | 13 (required) | Laravel connections are blocking. Async would run on `tyhp/io` DB connections. |
 | Paging helpers | (none built in) | `paginate()`, `simplePaginate()`, `cursorPaginate()` | `LengthAwarePaginator`, `CursorPaginator` | 11 | Blade `->links()` works unchanged. |
 | Streaming | `AsAsyncEnumerable` | `cursor()`, `lazy()`, `chunk()`, `chunkById()` | same names | 4 | Yields tracked or untracked models. |
 | Locking | (provider-specific) | `lockForUpdate()`, `sharedLock()` | same | 3 | |
@@ -343,7 +344,7 @@ feature delegates to. **Phase** is where it lands (see [Phases](#phases)).
 | Split vs single query | `AsSplitQuery`, `AsSingleQuery` | separate queries by default, `singleQuery()` opt-in | — | 5 / 9 | See [Decision D5](#decisions). |
 | Filtered include | `Include(b => b.Posts.Where(...))` | `with(fn ($b) => $b->posts, constrain: fn ($p) => ...)` | constrained eager loads | 9 | Taking the filter as a separate argument avoids nested lambdas. |
 | Explicit loading | `Entry(e).Collection(x).Load()` | `$db->load($model, fn)`, `$db->loadMissing($model, fn)` | `$model->load()`, `loadMissing()` | 5 | |
-| Lazy loading | proxies / `ILazyLoader` | opt-in `lazyLoading()` | Eloquent lazy loading, `preventLazyLoading()` | 10 | PHP 8.4+ lazy ghost objects (`ReflectionClass::newLazyGhost`) for references; a lazy collection class for collections. Off by default. |
+| Lazy loading | proxies / `ILazyLoader` | opt-in `lazyLoading()` | Eloquent lazy loading, `preventLazyLoading()` | 10 | Off by default. Ghosts for references and a lazy collection class for collections. Mechanism is `\Tyhp\Lazy` in [tyhp/dev-docs/IMPLEMENTATION_PLAN_TODO_STORY_48.md](../../tyhp/dev-docs/IMPLEMENTATION_PLAN_TODO_STORY_48.md). Blocked until that file's Status marks Slice B (`\Tyhp\Lazy`) Landed; Slice A (typed Reflection callbacks) is the other blocker. `lazy new` (Slice C) is optional. See [Lazy loading](#lazy-loading). |
 | Relationship fix-up | automatic | automatic | — | 5 | Navigations are filled from the identity map as models load. |
 
 ### Change tracking and saving
@@ -373,7 +374,7 @@ feature delegates to. **Phase** is where it lands (see [Phases](#phases)).
 | Conventions | built-in | Eloquent-compatible naming conventions | `Str::snake`, `Str::plural` | 2 | Overridable per context (`conventions(Conventions $c)`). |
 | Data annotations | `[Key]`, `[Required]`, `[MaxLength]`, `[Column]`, `[Table]`, `[Index]`, `[ForeignKey]`, `[InverseProperty]`, `[NotMapped]`, `[DatabaseGenerated]`, `[Precision]`, `[Comment]`, `[Unicode]` | `Tyhp\Rhetoric\Attributes\*`: `Key`, `MaxLength`, `Column`, `Table`, `Index`, `ForeignKey`, `InverseOf`, `NotMapped`, `Generated`, `Precision`, `Comment` | — | 2 | Nullability comes from the Tyhp type (`?string`), so there is no `Required` attribute. |
 | Fluent API | `modelBuilder.Entity<T>()...` | `Mapper::model<T>()` returning `ModelMapper<T>`, with `PropertyPath` lambdas | — | 2 | |
-| Per-model configuration classes | `IEntityTypeConfiguration<T>`, `ApplyConfigurationsFromAssembly` | `ModelMapping<T>` + `$map->discover($directory)` | Composer classmap | 2 | |
+| Per-model configuration classes | `IEntityTypeConfiguration<T>`, `ApplyConfigurationsFromAssembly` | `ModelMapping<T>` + `$map->register(new SomeMapping())` | — | 2 | |
 | Keys | single, composite, alternate | `key(fn)`, composite via `key(fn, fn)`, `alternateKey(fn)` | `primary`, `unique` | 2 / 6 | |
 | Indexes | `HasIndex().IsUnique().HasFilter()` | `hasIndex(fn)->unique()->where(fn)` | `index`, `unique` | 2 / 6 | Filtered indexes only where the grammar supports them. |
 | Relationships | `HasOne().WithMany()`, `HasOne().WithOne()`, `HasMany().WithOne()` | `belongsTo`, `hasOne`, `hasMany`, `belongsToMany` + `inverseOf`, `foreignKey`; attributes `#[BelongsTo]`, `#[HasOne]`, `#[HasMany]`, `#[BelongsToMany]` | Eloquent relationship names | 5 | |
@@ -387,9 +388,8 @@ feature delegates to. **Phase** is where it lands (see [Phases](#phases)).
 | JSON columns | `ToJson()`, primitive collections | `asJson()` for structs, value objects, `array<scalar>` | `json` column, `whereJsonContains` | 10 | |
 | Value conversions | `HasConversion`, `ValueConverter` | casts: `Cast<TValue, TColumn>` with `get`/`set`, `#[Cast(MoneyCast::class)]`, `->cast(...)`; built-ins for backed enums, `decimal` (`tyhp/decimal`), `DateTimeImmutable`, Carbon, UUID | `CastsAttributes` | 6 | |
 | Keyless types / views | `HasNoKey`, `ToView` | `#[Keyless]`, `fromView('name')` | `Schema::getViews` (db-first) | 10 | Read-only. |
-| Table/entity splitting | `ToTable` sharing, `SplitToTable` | later | — | 13 (optional) | |
 | Seed data | `HasData` | `seed(...)` emitted into migrations | Laravel seeders remain available | 6 | |
-| DB functions | `HasDbFunction` | `Sql::fn('name', ...)` + translator registration | raw | 13 (optional) | |
+| DB functions | `HasDbFunction` | `Sql::fn('name', ...)` plus translator registration | raw | 13 (required) | Hook on the existing translator registry. A caller maps one function name to SQL per grammar. |
 
 ### Migrations and schema tooling
 
@@ -812,9 +812,9 @@ then takes the double-checked path in step 5.
 - The lock name is `rhetoric-migrate:` plus the marker-key hash. That keeps it within MySQL's 64-character limit,
   and tenant databases lock independently.
 - Advisory locks are taken on the connection that runs the migrations. They do not depend on DDL transaction
-  behavior (MySQL DDL commits implicitly, and named locks are not transactional). Losing that connection stops the
-  migration and releases the lock together. Laravel can reconnect after a lost connection. If Phase 0 shows that
-  this can happen mid-run, the auto-migrator re-checks lock ownership before each migration.
+  behavior (MySQL DDL commits implicitly, and named locks are not transactional). Losing that connection releases
+  the lock. Laravel reconnects after a lost connection when no transaction is open, and the new session does not
+  hold the lock, so the auto-migrator re-checks lock ownership before each migration.
 - The cache driver needs a store whose atomic locks are shared across servers (Redis, Memcached, DynamoDB, the
   database store). File and array stores lock within one machine only. Use the cache driver when advisory locks are
   not available, for example behind PgBouncer in transaction-pooling mode.
@@ -986,8 +986,8 @@ if ($db->schemaHas(fn ($p) => $p->rating)) {
   `ContextFactory<T>` or `$db->tracker->clear()`.
 - **Auto-migrator (opt-in):** booting hook, Octane and queue `WorkerStarting` listeners, `optimize` integration, and
   `AutoMigrator::ensure()` for tenant switches. See [Auto-migrator](#auto-migrator).
-- **Later:** route model binding for Rhetoric models, typed factories for tests, polymorphic (`morphTo`) relations
-  for tables shared with Eloquent, and an Eloquent typed-query bridge (Phase 12).
+- **Later:** route model binding for Rhetoric models, typed factories for tests, and polymorphic (`morphTo`) relations
+  for tables shared with Eloquent. The Eloquent typed-query bridge is required (Phase 12).
 
 ---
 
@@ -1087,12 +1087,15 @@ passes.
   Tyhp types, `NotMapped` for virtual hooked properties.
 - Attribute classes and the attribute convention.
 - `Mapper` / `ModelMapper<T>` / `ColumnMapper` using `PropertyPath` lambdas; `ModelMapping<T>` classes and
-  `$map->discover()`.
+  `$map->register(new SomeMapping())`.
 - `Context`, `Table<T>`, `table<T>()`, mapping cache, `RhetoricServiceProvider` (bindings + config publish).
 - `rhetoric:show` command (prints the mapping, like `model:show`).
 
 **Done when:** tests build the mapping for a fixture context and assert tables, columns, keys, FKs, and relations
 for convention, attribute, and fluent configurations.
+
+Status: mapping metadata, conventions, attributes, the fluent mapper, `Table<T>`, the process cache, and
+`rhetoric:show` are implemented. Query translation is not.
 
 ### Phase 3 — Query translation MVP (single model, no eager loading)
 
@@ -1209,9 +1212,88 @@ compiles with zero errors, queries correctly, and produces an empty diff from `r
   table-per-concrete-class as follow-ups.
 - Embedded values (value objects and structs → prefixed columns), JSON columns, `array<scalar>` columns.
 - Keyless models / views; extra columns without properties.
-- Opt-in lazy loading using PHP 8.4 lazy ghosts (gated with `declare(php=…)` / `#[\Tyhp\Php]`), plus a lazy
-  collection class.
+- Opt-in lazy loading (ghosts for references, plus a lazy collection class), specified in
+  [Lazy loading](#lazy-loading). Blocked on Slices A and B of
+  `tyhp/dev-docs/IMPLEMENTATION_PLAN_TODO_STORY_48.md`. The other items in this phase are not blocked.
 - Observers and query interceptors.
+
+#### Lazy loading
+
+This is Phase 10 work. It does not block the other items in this phase, or any other phase. Do not implement
+it until the Status section of
+[tyhp/dev-docs/IMPLEMENTATION_PLAN_TODO_STORY_48.md](../../tyhp/dev-docs/IMPLEMENTATION_PLAN_TODO_STORY_48.md)
+marks Slice B (`\Tyhp\Lazy`) as `Landed`. Slice A (typed Reflection callbacks) is the other blocker. Slice C
+(`lazy new`) is optional for rhetoric.
+
+Check that file again before starting this work. Before implementing, re-read its Status section and the
+Slice B signatures. If Status and the code disagree, trust the landing-evidence paths, then re-read the
+slice section. Do not copy `\Tyhp\Lazy`'s signatures into this plan. If Status or those signatures change,
+follow that file.
+
+Call `\Tyhp\Lazy` once Status says Slice B has landed. Do not invent a second helper. Do not call
+`ReflectionClass::newLazyGhost` directly.
+
+`\Tyhp\Lazy` is the supported API. A `ReflectionClass::newLazyGhost` closure that only calls `__construct`
+does not call `__initGenerics__tyhpGeneric`, and the constructor prologue then binds null type arguments. A
+rhetoric model that is a Tyhp generic is created with `\Tyhp\Lazy::ghost`, or with `lazy new` after Slice C
+has landed. Both bind the type arguments before the constructor.
+
+Ghosts initialize in place and keep identity. Proxies do not (`$proxy !== $real`). References are ghosts so
+`Tracker` identity (`spl_object_id`, `$byKey`) stays stable when the object initializes.
+
+On PHP older than 8.4 the helper is eager: same end state, and the object is not lazy. `tyhp/rhetoric`
+publishes 803, 804, and 805 (`packages/build-common.sh`, `set_package_dist_builds`). Gate this feature with
+`#[\Tyhp\Php]` / `declare(php=…)`, the same way the helper is gated. `output.phpVersion` is a floor and the
+803 artifact requires `php: >=8.3`:
+
+- The 804 and 805 builds (floors 8.4 and 8.5) emit the lazy body with no `\PHP_VERSION_ID` check.
+- The 803 build emits a `\PHP_VERSION_ID` branch. On PHP 8.3 the eager path runs (`with(fn)`, `$db->load`,
+  `$db->loadMissing`). On PHP 8.4+ that same 803 binary takes the lazy path. That branch stays. The compiler
+  has no ceiling.
+
+`lazy new` is a compile-time choice of the package floor (`IsPhpVersionAtLeast(8, 4)`), with no runtime
+branch. A `lazy new` compiled into the 803 artifact stays eager even when that artifact later runs on PHP
+8.4. Prefer `\Tyhp\Lazy::ghost` so the 803 artifact still becomes lazy on PHP 8.4.
+
+`preset` writes a property without initializing
+(`ReflectionProperty::setRawValueWithoutLazyInitialization` on 8.4+). `reset` is `resetAsLazyGhost`. Pass
+`ReflectionClass::SKIP_DESTRUCTOR` when expiring a live instance so PHP does not run the destructor before
+the object becomes lazy again. `json_encode` and normal `serialize` initialize.
+`SKIP_INITIALIZATION_ON_SERIALIZE` opts out of serialize only. If the initializer throws, PHP leaves the
+object lazy.
+
+`ReflectionProperty::getValue` initializes. `Tyhp\Rhetoric\Tracking\PropertyBag::read` calls `getValue`
+after `isInitialized` (`packages/tyhp/rhetoric/tyhp_src/Tracking/PropertyBag.tyhp`). A key that must stay
+lazy is read with `ReflectionProperty::getRawValue` (already on the overlay, `getRawValue(T $object): mixed`,
+`>=8.4`).
+
+Work:
+
+- Call `\Tyhp\Lazy` once Status says Slice B has landed. Until then, do not invent a second helper and do
+  not call `newLazyGhost` directly.
+- Ghosts, not proxies, for references, so tracker identity stays stable. Register the ghost in the tracker
+  before it initializes, so a later query for the same key fills that same instance.
+- Batch the first initialization. The first ghost of a class in a context loads every pending ghost of that
+  class with one `WHERE id IN (...)` query.
+- `reference($id)`. Nothing in the rhetoric sources is named `reference` today (`alignForeignKey` is a
+  private method on `Tracker`). Use `reference`. It returns a ghost with only the key preset, and it does
+  not query. `alignForeignKey` reads that key without initializing the ghost (`getRawValue`, not
+  `PropertyBag::read`).
+- Deferred columns. An attribute on large columns. Hydration presets the columns it loaded. The ghost
+  fetches the rest on first access.
+- Refresh and expire in place with `Lazy::reset` / `resetAsLazyGhost` and `SKIP_DESTRUCTOR`, instead of
+  hydrating a second instance and copying columns.
+- Opt-in strict mode, the `preventLazyLoading()` equivalent. Its initializer throws. PHP then leaves the
+  object lazy.
+- A collection class for has-many / belongs-to-many. PHP arrays cannot be lazy.
+- Tracker changes are mandatory. `detectChanges`, `snapshot`, `compare`, `adoptReferences`, and
+  `readMembers` must not initialize an untouched ghost. An untouched ghost is not dirty. Take the snapshot
+  when the ghost finishes initializing.
+- Initializers close over `Context`. Touching a ghost after that scoped context is gone (Octane workers)
+  throws a clear error. It does not query a dead connection.
+- `Query::lazy()` is unrelated. It is the generator at `Query::lazy(int $count = 1000)`. Do not introduce a
+  `lazy` keyword anywhere except `lazy new`, and only after Slice C has landed. The method name `lazy()`
+  stays.
 
 ### Phase 11 — Laravel polish and performance
 
@@ -1220,27 +1302,55 @@ compiles with zero errors, queries correctly, and produces an empty diff from `r
 - Translation-cache and hydrator profiling on large result sets; batching improvements.
 - Octane and queue-worker guidance; Telescope/Debugbar verification.
 
-### Phase 12 — Optional: typed queries over Eloquent models
+### Phase 12 — Required: typed queries over Eloquent models
 
 Typed `where`/`orderBy` over existing Eloquent models, translated to `Eloquent\Builder` calls and returning
 Eloquent models. It needs typed attribute declarations on models (hooked properties delegating to
 `getAttribute`/`setAttribute`), which `rhetoric:scaffold --eloquent` could generate. Main risk: the PHP 8.3
 property-hook polyfill and Eloquent both rely on `__get`/`__set`. This phase may be limited to PHP ≥ 8.4.
 
-### Phase 13 — Optional extensions
+### Phase 13 — Required: async and database function registration
 
-- Async (`allAsync`, `saveAsync`) on `tyhp/async` + `tyhp/io` DB connections.
-- In-memory test backend that evaluates queries with `Expression::compile()` over arrays (unit tests without a DB).
-- DB function mapping, table splitting.
+Decision: `allAsync` / `saveAsync` were removed. They needed a second `tyhp/io` connection, which is not worth it for PHP-FPM. `Sql::fn` remains.
+
+- A database function registration hook: `Sql::fn('name', ...)` plus translator registration, so a caller can map one function name to SQL per grammar. This is a hook on the existing translator registry. It is not a built-in catalog of functions.
 
 ### Phase 14 — Documentation and examples
 
-- Docs pages in `tyhp-docs-src` (getting started, mapping, querying, saving, migrations, scaffolding, Laravel
-  integration, translation reference listing every supported node and method, and a "coming from EF Core" page
-  built from the [Vocabulary](#vocabulary) table).
-- `tyhp-ai-dev-guide` handbook section for the package, plus a `REGEN.md` item.
+Tyhp developers keep the pages in this phase. PHP developers who use `tyhp/rhetoric` and do not write Tyhp get
+a second set of pages in those same documentation homes. That set covers models, contexts, queries, save,
+mapping, migrations, scaffold, and the other public behavior this phase publishes. A PHP developer can open it
+without reading the Tyhp language pages.
+
+- Tyhp docs pages in `tyhp-docs-src`: getting started, mapping, querying, saving, migrations, scaffolding,
+  Laravel integration, a translation reference listing every supported node and method, and a "coming from EF
+  Core" page built from the [Vocabulary](#vocabulary) table.
+- PHP docs pages in that same `tyhp-docs-src` site, in their own section: getting started (models and
+  contexts), mapping, querying, saving, migrations, scaffolding, Laravel integration, the translation
+  reference listing every supported node and method, and a "coming from EF Core" page built from the
+  [Vocabulary](#vocabulary) table.
+- The PHP pages call generics through `\Tyhp\Generic::bind` in `tyhp/core`. A class is
+  `\Tyhp\Generic::bind(\Vendor\Box::class, \Tyhp\Type::int())->new(42)`, and invoking the binder is the same
+  construction: `\Tyhp\Generic::bind(\Vendor\Box::class, \Tyhp\Type::int())(42)`. A generic method or function
+  is a first-class callable, then the closure `bind` returns:
+  `\Tyhp\Generic::bind($object->method(...), \Tyhp\Type::string())($value)`. Each type argument is a
+  `\Tyhp\Type`: `\Tyhp\Type::int()`, `\Tyhp\Type::string()`, `\Tyhp\Type::fromClassName(Post::class)`,
+  `\Tyhp\Type::nullable(\Tyhp\Type::fromClassName(Blog::class))`, and
+  `\Tyhp\Type::generic('array', new \Tyhp\NamedType('TKey', \Tyhp\Type::int()), new \Tyhp\NamedType('TValue', \Tyhp\Type::int()))`.
+  The root function with that signature is `_gnrc` (`fallback function _gnrc` in
+  `packages/tyhp/core/tyhp_src/RootFunctions.tyhp`, emitted as `function _gnrc`). Query and mapping trees use
+  the `tyhp/lambda` fluent builders:
+  `\Tyhp\Expression::of(User::class)->age->gte(18)->and()->isActive->same(true)`. The PHP pages use these
+  calls. They do not show Tyhp source as the way to call the package.
+- `tyhp-ai-dev-guide` handbook section for the package: the Tyhp material, and a distinct PHP section a PHP
+  developer can open without reading the Tyhp language pages. The `REGEN.md` item covers both sections.
 - Port `tyhp-examples/chirper` to Rhetoric (side by side with Eloquent for `User` auth) as the end-to-end example.
-- Package README via `write-package-readmes.php`.
+- Package README via `write-package-readmes.php`. The README keeps its Tyhp material and adds a distinct PHP
+  section in that same file.
+
+**Done when:** `tyhp-docs-src`, the handbook section (and its `REGEN.md` item), and the package README each
+publish the Tyhp material and the PHP section. PHP samples call generics with `\Tyhp\Generic::bind` and
+`\Tyhp\Type` (root function `_gnrc`), and they build query and mapping trees with `\Tyhp\Expression::of`.
 
 ---
 
@@ -1272,7 +1382,7 @@ property-hook polyfill and Eloquent both rely on `__get`/`__set`. This phase may
   helps adoption, but behavior must match Laravel's meaning wherever the name matches. Differences (for example,
   `all()` returning `array<T>` rather than a Collection) are called out in the docs.
 - **Scope.** EF Core is large. Phases 0–8 are the product (typed queries, unit of work, code-first, the
-  auto-migrator, db-first). Later phases are independently shippable.
+  auto-migrator, db-first). Later phases are independently shippable. Phases 12 and 13 are required.
 - **Auto-migrate: long migrations block requests.** While one process holds the lock, waiting requests occupy
   PHP-FPM workers and database connections, and the pool can run dry. Mitigations: a short HTTP wait (10 s by
   default) followed by a fast 503 with `Retry-After`; deferred migrations for long changes; `rhetoric:migration`
@@ -1297,14 +1407,14 @@ All decisions in this table are locked in (2026-11-02).
 | --- | --- | --- |
 | D1 | Package name | `tyhp/rhetoric`, namespace `Tyhp\Rhetoric`, artisan prefix `rhetoric:` |
 | D2 | Supported Laravel majors | Laravel 13 only (PHP 8.3–8.5 builds); matches the existing tyhpdefs |
-| D3 | Model style | Plain Tyhp classes (data mapper + unit of work); Eloquent bridge is optional Phase 12 |
+| D3 | Model style | Plain Tyhp classes (data mapper + unit of work); Eloquent bridge is required Phase 12 |
 | D4 | Generated migration language | Plain `.php` in `database/migrations` (works with zero config). Option to write `.tyhp` for projects that compile `database/**/*.tyhp`, as chirper does |
 | D5 | Collection eager-load strategy | Separate queries by default (Eloquent-style, no cartesian explosion); `singleQuery()` opt-in |
 | D6 | Re-scaffold strategy | Generated trait in `Generated/` + user-owned model shell written once |
 | D7 | Mapping precedence | Fluent mapper > attributes > conventions |
 | D8 | Snapshot format | JSON per context (diff-friendly, readable in PRs) |
 | D9 | One package or two | One package; Laravel-only pieces (provider, commands) live under `Tyhp\Rhetoric\Laravel` |
-| D10 | Async API timing | After Phase 11, only if `tyhp/io` DB connections can share Laravel's connection config |
+| D10 | Async API timing | Required in Phase 13, after Phase 11, on `tyhp/io` DB connections that share Laravel's connection config |
 | D11 | `all()` vs `get()` return types | `all(): array<T>` for typed Tyhp code, `get(): Collection<int, T>` to match Laravel |
 | D12 | Auto-migrator lock mechanism | Database advisory lock per driver by default (scoped to the database being migrated, released when the session dies); Laravel cache lock as a configured fallback for poolers such as PgBouncer in transaction mode |
 | D13 | Auto-migrator marker store | Local opcache'd PHP file under `storage/framework/rhetoric/` by default. APCu and a shared cache store are optional alternatives. APCu is never required: the package does not depend on `ext-apcu`, and the `apcu` store is used only when configured |
@@ -1314,3 +1424,48 @@ All decisions in this table are locked in (2026-11-02).
 | D17 | Deferred migration ordering | Stop at the first pending deferred migration unless it is `independent`, so a later migration never runs before one it may depend on |
 | D18 | Auto-migrator migration engine | Drive `Migrator::runPending()` directly (exact run list, per-set repository table); Phase 0 item 13 checks parity with `migrate` |
 | D19 | Auto-migrator environments | Every environment except `testing` once enabled, narrowed by the `environments` setting |
+
+## Phase 0 outcomes
+
+Recorded 2026-11-04 from throwaway projects under `dev-docs/rhetoric-spikes/`. PHP for the runs below is 8.5.12 unless noted. Compiler is the local Debug `tyhp.dll` after the literal array-key checker fix. No `packages/tyhp/rhetoric/` code was added.
+
+1. **Fail.** `fn ($p) => $p->title->startsWith('x')` type-checks and then emit reports TYHP5024 (`function call has no tree form`). The span is the `tyhp/core` extension body (`\str_starts_with`), because the extension is spliced before the tree is built. Repro: `expr/spike1/StartsWith.tyhp`. An ordinary instance method does emit `methodCall type=mixed method=startsWith`. Logged as FOUND_BUGS #12. Not fixed here.
+2. **Fail** for a nullable receiver. `$p->blog->name` when `blog` is `?Blog` is TYHP4198 (cannot use `->` on a possibly null value). A non-null chain emits nested `propertyAccess` (`requiredBlog` type `Blog`, `name` type `string`). `$p->blog?->name` emits `nullSafeAccess type=?string` over `propertyAccess type=?Blog`. `Type::fromProperty(Blog::class, 'posts')` is `array<Rhetoric\Spikes\Expr\Post>`, and `elementType` is `Post`.
+3. **Pass.** On both the 8.5 emit and the 8.3 emit, run on PHP 8.5.12: `Table<Blog>::modelType()` and `Context::table<Blog>()` print `Blog`, the `Post` forms print `Post`, and the property hook `get => $this->table<Blog>()` prints `Blog`.
+4. **Pass.** `Table<Post>::where(fn ($p) => $p->rating > 3)` infers `$p` as `Post`. Body is `binary operator=>`, `rating` type `int`, constant `3`, `returnType=bool`.
+5. **Pass.** `belongsTo(fn ($p) => $p->blog)` has `returnType=?Blog` and param `Post`. `inverseOf(fn ($b) => $b->posts)` infers `$b` as `Blog` and `posts` as `array<Post>`. `TRelated` is `Blog`; the `?` is the callable return.
+6. **Pass.** `fn ($p, $b) => $p->blogId === $b->id` has param 0 `Post`, param 1 `Blog`, `binary operator====`, `returnType=bool`.
+7. **Pass.** `update(fn (Assignments<Post> $set) => $set->assign(...))` is an ordinary closure. The inner fns are trees. The column is `propertyAccess rating` type `int`. The value `rating + 1` is `binary type=mixed operator=+`.
+8. **Pass.** A scope that reads `$this->id` stores `constant type=BlogContext value=object BlogContext`, then `propertyAccess id` type `int`. It is the context instance, not a folded integer. A scope that does not capture `$this` has `constant null`.
+9. **Pass on PHP 8.5; blocked on 8.3 and 8.4.** Homebrew has `php@8.1`, `php@8.2`, and `php@8.5` only. On 8.5.12, a readonly class reports `ReflectionClass::isReadOnly=true`; readonly properties on an ordinary class report `ReflectionProperty::isReadOnly=true` and `isVirtual=false`. Promoted constructor parameters are `id:int` and `title:string`. `newInstanceArgs` works. `newInstanceWithoutConstructor` plus one `setValue` on an uninitialized readonly property works; a second `setValue` throws `Error: Cannot modify readonly property ...::$id`. The same result came from the 8.3 emit, still executed on the 8.5 interpreter.
+10. **Pass**, with the 8.3 polyfill executed on PHP 8.5.12 (no 8.3 binary). Native 8.5 emit: backed hook `isVirtual=false`, `hasHooks=true`, hooks `get` and `set`, read/write works (`init` then `changed`). Virtual hook `isVirtual=true`, hook `get` only, read returns `virtual-value`, write throws `Error: Property ...::$virtual is read-only`. The 8.3 polyfill emit does not declare the properties: `ReflectionClass::getProperty('backed')` throws `ReflectionException`. The class docblock is `@property string $backed` and `@property-read string $virtual`. The private accessor's `isBacked()` is true for the backed hook and false for the virtual one. There is no public API on the polyfill object that returns that accessor.
+11. **Fail** on `orderBy`; the other listed APIs compiled. `illuminate/src/Touch.tyhp` compiled with 0 errors (warnings TYHP8027 only) for `Query\Builder` `where` / `whereNull` / `whereIn`, `Connection::transaction<int>`, `Schema\Builder::create`, `Blueprint` `id` / `string` / `integer` / `default`, `Migration::$withinTransaction`, `Migrator` `setConnection` / `getMigrationFiles` / `runPending`, `Command::info`, both paginators' `count()`, and `ServiceProvider::optimizes()`. `transaction(function (): void {})` is TYHP4377 (cannot infer `TReturn`); an explicit `transaction<int>` compiles. `orderby/OrderBy.tyhp` (`$query->orderBy('id')`) fails TYHP4035 because `Query\Builder::orderBy` is declared with `Eloquent\Builder<mixed>` and `TModel extends Model`. That spelling occurs 66 times in `illuminate.database.tyhpdef` and comes from the `Builder<*>` docblock wildcard, which the generator emits as `mixed`. Every `Query\Builder` method that takes a sub-query fails the same way: `orderBy`, `orderByDesc`, `from`, `selectSub` / `fromSub`, the `*JoinSub` and `*JoinLateral` methods, `whereBetween` and its `or` / `not` forms, `whereExists` and its forms, `union` / `unionAll`, `insertUsing`. `where`, `whereNull`, and `whereIn` are not affected, which is why the first compile passed. Logged as FOUND_BUGS #13. Not mass-fixed. A separate arity gap is fixed: Laravel's own docblock gives `PendingHasThroughRelationship` a `HasOneOrMany<TIntermediateModel, TDeclaringModel>` bound although `HasOneOrMany` has three type parameters, so the tyhpdef now passes `mixed` for `TResult`. That edit is in the generated layer of the tyhpdef and has to be repeated if the layer is regenerated.
+12. **Pass.** `$b->address->city` stays `propertyAccess`: `address` type `struct Rhetoric\Spikes\Expr\Address`, `city` type `string`. `Type::fromProperty` returns `struct Rhetoric\Spikes\Expr\Address`. Native reflection type is `array`. The `Tyhp\PropertyType` argument is `struct Rhetoric\Spikes\Expr\Address`.
+13. **Pass** (source, Laravel framework 13.32.0). `MigrateCommand` is still absent from the tyhpdef and was not added. Empty database: `prepareDatabase()` calls `migrate:install` when `repositoryExists()` is false; `InstallCommand` calls `MigrationRepositoryInterface::createRepository()`. If no migrations have run and the run is not `--pretend`, `loadSchemaState()` returns immediately for `SqlServerConnection` or a missing file; otherwise `deleteRepository()` then `getSchemaState()->load($path)`. The path is `--schema-path`, else `database/schema/{name}-schema.dump`, else `.sql`. Then `SchemaLoaded`, then `Migrator::run` → `runPending`. Those migrator and schema methods are already in the tyhpdef. `--isolated` is not on `MigrateCommand`'s signature. `Command::configureIsolation()` adds it when the command implements the empty `Isolatable` contract, and `execute()` takes a `CacheCommandMutex` (cache lock, not a database advisory lock) when `--isolated` is not false.
+14. **Blocked** for MySQL, MariaDB, SQL Server, and PgBouncer. **Pass** for PostgreSQL and SQLite flock. Drivers loaded: `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`, `pdo_dblib`, `pgsql`, `mysqli`, `sqlite3`. `pdo_sqlsrv` / `sqlsrv` are not installed. Nothing is listening on 3306, 5432, 6432, or 1433, and the usual MySQL and PostgreSQL sockets are absent. PostgreSQL 16 on a local server (`locks/probe-pg.php`, connection from `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`): `pg_try_advisory_lock` is false while held; `pg_advisory_lock` with `lock_timeout=300ms` fails `SQLSTATE[55P03]` (canceling statement due to lock timeout); `CREATE TEMP TABLE` does not release the lock; after `pg_terminate_backend` the holder pid is gone and `pg_try_advisory_lock` succeeds. SQLite sidecar `flock`: a second non-blocking exclusive lock fails while the first is held and succeeds after `LOCK_UN`. Laravel reconnect was not run against a server. In framework 13.32.0, `Connection::handleQueryException` rethrows when `transactions >= 1`; otherwise a lost-connection error calls `reconnect()` and retries. A new session does not keep a session advisory lock.
+15. **Pass.** `Migrator::resolvePath` (via reflection) on an anonymous PHP migration returned `deferred=true` and `independent=true`. The same call on a PHP file that returns `new Rhetoric\Spikes\Illuminate\CreatePosts` (compiled from `illuminate/src/CreatePosts.tyhp`) returned `deferred=true` and `independent=false`. The Tyhp class is namespaced, so the file has to return the instance; `getMigrationClass` would look for a global `CreatePosts`.
+16. **Pass.** A minimal HTTP kernel (bootstrappers limited to `BootProviders`, JSON accept, view and routing services registered) saw the request path inside `Application::booting()`, before the router. Path `up` did not throw and the router then returned **404** with no `Retry-After`. Path `posts` threw `ServiceUnavailableHttpException(15)` from the booting callback; the kernel rendered **503** with `Retry-After: 15`. Console: during booting, `$_SERVER['argv'][1]` was `rhetoric:auto-migrate` and neither `artisan` nor the console kernel contract was bound. `Kernel::handle` bootstraps before `getArtisan()->run`, so the resolved command does not exist yet. The later artisan run exited 1 because that command is not registered.
+17. **Blocked** at runtime. `laravel/octane` is not installed in the spike vendor, and no Octane worker was started. Expected order from Octane `2.x` `Worker::boot`, unverified (Octane's source is not in any spike vendor tree; check the installed version before relying on it): `ApplicationFactory::createApplication` calls `bootstrapWith` on the HTTP kernel bootstrappers, which includes `BootProviders` → `Application::boot()` → booting callbacks, and only then dispatches `WorkerStarting`. A check in both places runs twice per worker unless it is memoized.
+18. **Pass** for registration. The compiled `ProbeProvider::register()` calls `optimizes(optimize: 'rhetoric:cache', clear: 'rhetoric:clear')`. `OptimizeCommand::getOptimizeTasks()` contains `rhetoric:cache` and `OptimizeClearCommand::getOptimizeClearTasks()` contains `rhetoric:clear` (`ServiceProvider::$optimizeCommands` / `$optimizeClearCommands`). A full `php artisan optimize` was not run. Artisan does not invent the command: the console probe reported `There are no commands defined in the "rhetoric" namespace` when the name was not registered.
+19. **Blocked.** `php-fpm` exists at `/opt/homebrew/opt/php@8.5/sbin/php-fpm`, but `pgrep` found no FPM workers. CLI `php` 8.5.12 does not load opcache (`opcache.enable_cli=0`). No cross-worker `opcache_invalidate` test was run.
+
+### Fixes made while spiking
+
+- Compiler: string and int literal types, including unions, satisfy array key constraints (`array<'get'|'set', T>`, `array<0|1, T>`). `GenericTypeArgumentValidator.IsIntOrStringKeyType`, test `StringAndIntLiteralUnions_AreArrayKeys`, checker technical guide, compiler `CHANGELOG.md`. This unblocked `ReflectionProperty::getHooks(): array<'get'|'set', ReflectionMethod>`. A fresh array literal still widens its keys to `string`, so `return ['get' => $a, 'set' => $b];` against `array<'get'|'set', T>` is TYHP4009 (TYHP4008 on assignment); that was not changed. Code that needs a value of that type has to build it from a typed source.
+- `tyhpdef/illuminate-database` 13.32.0: `PendingHasThroughRelationship` now passes `mixed` as `HasOneOrMany`'s third type argument. Runtime `CHANGELOG.md`. Covered by `test_illuminate_database_pending_has_through` in the package tests.
+
+### What Phase 1 has to take from this
+
+- Do not call `tyhp/core` string extensions inside a parsable lambda until FOUND_BUGS #12 is fixed. Ordinary method calls already become `methodCall` nodes whose `type` is `mixed`.
+- Nullable navigations are `?->` (`nullSafeAccess`). A plain `->` on `?Blog` does not compile.
+- Rebind a captured context from the `ConstantExpression` that holds the object, then read its properties. Do not expect a folded scalar.
+- Arithmetic in a tree is typed `mixed`. Struct properties stay `propertyAccess` with a `struct` spelling; PHP reflection sees `array` plus `Tyhp\PropertyType`.
+- `Connection::transaction` needs an explicit `TReturn` (or a closure return the checker can infer). Do not call `orderBy`, or any other signature that spells `Eloquent\Builder<mixed>`, until FOUND_BUGS #13 is fixed.
+- Drive `Migrator` directly. Match install-repository, then schema load, then `runPending`. Do not add `MigrateCommand` to the tyhpdef for that. `--isolated` is a cache mutex and is separate from the advisory lock.
+- PostgreSQL: session advisory locks survive a temp DDL statement, `lock_timeout` cancels the waiter, and the lock dies with the session. SQLite: `flock` a sidecar file. MySQL, MariaDB, SQL Server, and PgBouncer are still unmeasured. Laravel reconnects only outside a transaction, and that new session will not still hold the lock, so the auto-migrator checks lock ownership before each migration.
+- Read `$deferred` / `$independent` off the instance `resolvePath` returns. A namespaced Tyhp migration has to be returned from the file.
+- Throw `ServiceUnavailableHttpException` from the booting callback for the 503. The request path is already available there, so `except_paths` can skip before routing. In console, read the command from `argv` during boot; the artisan application has not resolved it yet.
+- Octane's worker boot already runs booting callbacks before `WorkerStarting`. Memoize so the two hooks do not migrate twice. The order is unverified until Octane is installed.
+- `optimizes()` only adds names to the optimize task lists. The artisan commands still have to be registered.
+- On the 8.3 polyfill, hooked properties are invisible to `ReflectionProperty`. The polyfill keeps each property's `backed` flag in a private array inside the protected `__tyhpPropertyHook` (`PropertyAccessorObject`), with no public reader, so Phase 2 needs either a public accessor on `PropertyAccessorObject` or the compiler to record the flag another way. `ReflectionProperty::isVirtual()` exists only on PHP 8.4+; there it is false for a backed hook.
+- Marker visibility across FPM workers with `opcache.validate_timestamps=0` is still untested.

@@ -1,0 +1,38 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+final class UnloadedModel {
+}
+
+/**
+ * A scaffold names classes that are not loaded yet. Schema extraction stores the name, so an
+ * unknown class is aliased to a stand-in for the rest of this process.
+ */
+final class ClassNames {
+    public static function brand(string $name): __ClassName {
+        string $class = \ltrim($name, '\\');
+        self::check($class);
+        if (!\class_exists($class)) {
+            if (!\class_alias(UnloadedModel::class, $class)) {
+                throw new \RuntimeException('Could not name ' . $class . '.');
+            }
+        }
+        if (\class_exists($class)) {
+            return $class;
+        }
+
+        throw new \RuntimeException('Could not name ' . $class . '.');
+    }
+
+    private static function check(string $class): void {
+        if ($class === '') {
+            throw new \InvalidArgumentException('A class name is required.');
+        }
+        foreach (\explode('\\', $class) as $part) {
+            if (!\is_string($part) || !Naming::ident($part)) {
+                throw new \InvalidArgumentException($class . ' is not a class name.');
+            }
+        }
+    }
+}

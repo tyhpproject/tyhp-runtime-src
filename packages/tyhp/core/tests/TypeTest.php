@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Tyhp\Tests\Core;
 
 use PHPUnit\Framework\TestCase;
+use Tyhp\BuiltIn;
 use Tyhp\Exceptions\InvalidTypeException;
+use Tyhp\ExtModule;
+use Tyhp\GenericRuntime;
 use Tyhp\NamedType;
 use Tyhp\Type;
+use Tyhp\TypeLike;
 
 class TypeTest extends TestCase
 {
@@ -894,5 +898,666 @@ class TypeTest extends TestCase
         self::assertTrue(Type::is($join, $variadic));
         self::assertFalse(Type::is($notVariadic, $variadic));
         self::assertSame(Type::string(), Type::string());
+    }
+
+    public function testTypeArgNormalizesTypeLikeAndClassStrings(): void
+    {
+        self::assertNull(Type::arg(null));
+        $type = Type::string();
+        self::assertSame($type, Type::arg($type));
+        self::assertSame(Type::int(), Type::arg(BuiltIn::int));
+        self::assertSame(Type::int(), Type::arg(Type::int));
+        self::assertSame(Type::fromClassName(\stdClass::class), Type::arg(\stdClass::class));
+        self::assertSame(Type::fromClassName(TypeLike::class), Type::arg(TypeLike::class));
+        self::assertSame(Type::fromClassName(BuiltIn::class), Type::arg(BuiltIn::class));
+
+        try {
+            Type::arg('array<int>');
+            self::fail('A type spelling must not be accepted by Type::arg.');
+        } catch (InvalidTypeException $e) {
+            self::assertStringContainsString('Type::parse', $e->getMessage());
+        }
+    }
+
+    public function testNullableStaysMagicAndOptionalHasBothForms(): void
+    {
+        $reflection = new \ReflectionClass(Type::class);
+        self::assertFalse($reflection->hasMethod('nullable'));
+        self::assertFalse($reflection->hasMethod('optional'));
+        self::assertTrue($reflection->hasMethod('or'));
+        self::assertTrue($reflection->hasMethod('toType'));
+        self::assertSame('?int', (string) Type::nullable(Type::int()));
+        self::assertSame('?int', (string) Type::int()->nullable());
+        self::assertSame('?string', (string) Type::nullable(Type::string));
+
+        $fluent = Type::struct()->optional('name', Type::string);
+        self::assertTrue(Type::is([], $fluent));
+        self::assertTrue(Type::is(['name' => 'Ada'], $fluent));
+        self::assertFalse(Type::is(['name' => 1], $fluent));
+    }
+
+    public function testStructFieldMapRequiresKeysUnlessOptional(): void
+    {
+        $shape = Type::struct([
+            'id' => Type::int,
+            'name' => Type::optional(Type::string),
+        ]);
+
+        self::assertTrue(Type::is(['id' => 1], $shape));
+        self::assertTrue(Type::is(['id' => 1, 'name' => 'Ada'], $shape));
+        self::assertFalse(Type::is(['name' => 'Ada'], $shape));
+        self::assertFalse(Type::is([], $shape));
+        self::assertFalse(Type::is(['id' => '1'], $shape));
+
+        $named = Type::struct(name: 'App\\UserData', fields: ['id' => Type::int]);
+        self::assertSame('App\\UserData', $named->getName());
+        self::assertFalse(Type::is([], $named));
+        self::assertTrue(Type::is(['id' => 4], $named));
+
+        $twoArgument = Type::struct('User', ['name' => Type::string()]);
+        self::assertFalse(Type::is([], $twoArgument));
+        self::assertTrue(Type::is(['name' => 'Ada'], $twoArgument));
+
+        $threeArgument = Type::struct(
+            'User',
+            ['name' => Type::string(), 'age' => Type::int()],
+            ['name'],
+        );
+        self::assertTrue(Type::is(['name' => 'Ada'], $threeArgument));
+        self::assertFalse(Type::is(['age' => 1], $threeArgument));
+        self::assertTrue(Type::is(['name' => 'Ada', 'age' => 3], $threeArgument));
+
+        $explicitlyNoneRequired = Type::struct('User', ['name' => Type::string()], []);
+        self::assertTrue(Type::is([], $explicitlyNoneRequired));
+        self::assertTrue(Type::is(['name' => 'Ada'], $explicitlyNoneRequired));
+        self::assertFalse(Type::is(['name' => 1], $explicitlyNoneRequired));
+    }
+
+    public function testListAndMapFactories(): void
+    {
+        self::assertSame((string) Type::listOf(Type::int()), (string) Type::list(Type::int));
+        self::assertSame(
+            (string) Type::mapOf(Type::string(), Type::int()),
+            (string) Type::map(Type::string, Type::int),
+        );
+        self::assertSame('int|string', (string) Type::int->or(Type::string));
+        self::assertSame(Type::int(), Type::int->toType());
+        self::assertSame(Type::string(), Type::string->toType());
+    }
+
+    public function testOrOfTheSameTypeIsThatType(): void
+    {
+        self::assertSame(Type::int(), Type::int()->or(Type::int()));
+        self::assertSame('array<int>', (string) Type::list(Type::int)->or(Type::list(Type::int)));
+        self::assertSame('int|string', (string) Type::int()->or(Type::string(), Type::int(), Type::string()));
+    }
+
+    public function testGenericArgumentsByPositionNameAndNamedType(): void
+    {
+        $positional = Type::generic(Story49Box::class, Type::int());
+        $named = Type::generic(Story49Box::class, T: Type::int());
+        $explicit = Type::generic(Story49Box::class, new NamedType('T', Type::int()));
+        $customName = Type::generic(Story49Box::class, new NamedType('Custom', Type::int()));
+
+        self::assertSame('T', $positional->genericParameter('T')?->getParameterName());
+        self::assertSame('T', $named->genericParameter('T')?->getParameterName());
+        self::assertSame('T', $explicit->genericParameter('T')?->getParameterName());
+        self::assertSame('Custom', $customName->genericParameter('Custom')?->getParameterName());
+        self::assertNull($customName->genericParameter('T'));
+        self::assertSame('int', (string) $positional->typeArgument(0));
+        self::assertSame('int', (string) $named->typeArgument('T'));
+
+        $mixed = Type::generic(Story49Pair::class, Type::string(), TValue: Type::int());
+        self::assertSame('string', (string) $mixed->typeArgument('TKey'));
+        self::assertSame('int', (string) $mixed->typeArgument('TValue'));
+        self::assertSame('string', (string) $mixed->typeArgument(0));
+
+        $plain = Type::generic(\stdClass::class, Type::int());
+        self::assertSame('stdClass<int>', (string) $plain);
+        self::assertSame('T0', $plain->genericParameter('T0')?->getParameterName());
+
+        self::assertSame((string) Type::list(Type::int()), (string) Type::generic('array', Type::int()));
+        self::assertSame(
+            (string) Type::map(Type::string(), Type::int()),
+            (string) Type::generic('array', TKey: Type::string(), TValue: Type::int()),
+        );
+        self::assertSame('TValue', Type::generic('iterable', Type::int())->genericParameter('TValue')?->getParameterName());
+    }
+
+    public function testGenericBuilderFormStillAppendsParameters(): void
+    {
+        // The compiler emits `Type::generic(X::class)->param('T', $t)` for type-parameter lookups.
+        $builder = Type::generic(Story49Box::class)->param('T', Type::int());
+        self::assertSame('int', (string) $builder->typeArgument('T'));
+        self::assertTrue(Type::compatible($builder, Type::generic(Story49Box::class, Type::int())));
+
+        $pair = Type::generic(Story49Pair::class)
+            ->param('TKey', Type::string())
+            ->param('TValue', Type::int());
+        self::assertTrue(Type::compatible($pair, Type::generic(Story49Pair::class, Type::string(), Type::int())));
+
+        foreach (['array', 'iterable'] as $name) {
+            $viaBuilder = Type::generic($name)->param('TValue', Type::int());
+            self::assertSame('generic', $viaBuilder->getKind());
+            self::assertSame($name . '<int>', (string) $viaBuilder);
+            self::assertTrue(Type::compatible(Type::parse($name . '<int>'), $viaBuilder));
+        }
+    }
+
+    public function testGenericRejectsBadArguments(): void
+    {
+        try {
+            Type::generic(Story49Box::class, Type::int(), Type::string());
+            self::fail('Too many type arguments must throw.');
+        } catch (InvalidTypeException $e) {
+            self::assertStringContainsString('expects', $e->getMessage());
+        }
+
+        try {
+            Type::generic(Story49Pair::class, Type::int());
+            self::fail('Too few type arguments must throw.');
+        } catch (InvalidTypeException $e) {
+            self::assertStringContainsString('expects', $e->getMessage());
+        }
+
+        try {
+            Type::generic(Story49Box::class, Nope: Type::int());
+            self::fail('An unknown type parameter name must throw.');
+        } catch (InvalidTypeException $e) {
+            self::assertStringContainsString('Unknown type parameter', $e->getMessage());
+        }
+
+        try {
+            Type::generic(Story49Pair::class, Type::string(), TKey: Type::int());
+            self::fail('A named argument must not fill a positional slot.');
+        } catch (InvalidTypeException $e) {
+            self::assertStringContainsString('already filled', $e->getMessage());
+        }
+
+        try {
+            Type::generic(\stdClass::class, T: Type::int());
+            self::fail('A plain PHP class accepts positional arguments only.');
+        } catch (InvalidTypeException $e) {
+            self::assertStringContainsString('position', $e->getMessage());
+        }
+    }
+
+    public function testGenericSpellingsAreTheSameType(): void
+    {
+        $positional = Type::generic(Story49Box::class, Type::int());
+        $named = Type::generic(Story49Box::class, T: Type::int());
+        $explicit = Type::generic(Story49Box::class, new NamedType('T', Type::int()));
+        $parsed = Type::parse(Story49Box::class . '<int>');
+
+        self::assertTrue(Type::compatible($positional, $named));
+        self::assertTrue(Type::compatible($named, $explicit));
+        self::assertTrue(Type::compatible($explicit, $parsed));
+        self::assertTrue(Type::compatible($parsed, $positional));
+        self::assertTrue(Type::compatible($positional, Type::generic(Story49Box::class, new NamedType('Custom', Type::int()))));
+
+        $box = new Story49Box();
+        $box->__tyhpGeneric = new Story49GenericBag($parsed);
+        self::assertTrue(Type::is($box, $positional));
+        self::assertTrue(Type::is($box, $named));
+        self::assertTrue(Type::is($box, $explicit));
+        self::assertTrue(Type::is($box, $parsed));
+
+        Type::register('Story49Holder', static fn (Type $T): Type => Type::struct()->field('v', $T));
+        $first = Type::ref('Story49Holder', $positional);
+        self::assertSame($first, Type::ref('Story49Holder', $named));
+        self::assertSame($first, Type::ref('Story49Holder', $explicit));
+        self::assertSame($first, Type::ref('Story49Holder', $parsed));
+        self::assertNotSame($first, Type::ref('Story49Holder', Type::generic(Story49Box::class, Type::string())));
+    }
+
+    public function testParseDuplicateUnionIsRejected(): void
+    {
+        try {
+            Type::parse('int|int');
+            self::fail('Expected InvalidTypeException.');
+        } catch (InvalidTypeException $e) {
+            self::assertSame('Union type requires at least 2 member types.', $e->getMessage());
+        }
+
+        self::assertSame('int|int|null', (string) Type::parse('?int|int'));
+        self::assertSame('int|int|null', (string) Type::parse('?int|?int'));
+        self::assertSame('int|string', (string) Type::parse('int|string|int'));
+    }
+
+    public function testParseDeepSpelling(): void
+    {
+        self::assertNestedFoo(Type::parse(self::nestedFooSpelling(3)), 3);
+        self::assertNestedFoo(Type::parse(self::nestedFooSpelling(128)), 128);
+        self::assertNestedFoo(Type::parse(self::nestedFooSpelling(129)), 129);
+    }
+
+    public function testIsObjectShapeMatchesWhenTheNativeWalkDeclines(): void
+    {
+        $shape = Type::shape()->method('now');
+        $clock = new class {
+            public function now(): int
+            {
+                return 1;
+            }
+        };
+
+        if (ExtModule::available()) {
+            self::assertNull(\Tyhp\Ext::typeIs($shape, $clock));
+        }
+
+        self::assertTrue(Type::is($clock, $shape));
+        self::assertFalse(Type::is(new \stdClass(), $shape));
+    }
+
+    public function testIsCallsTheExtensionOnlyWhenItIsAvailable(): void
+    {
+        $probe = new TypeWalkProbe([1, 2]);
+
+        self::assertTrue(Type::is($probe, Type::parse('iterable<int>')));
+        self::assertNotSame([], $probe->frames);
+        self::assertSame(ExtModule::available(), \in_array('Tyhp\\Ext::typeIs', $probe->frames, true));
+        self::assertContains('Tyhp\\Type::is', $probe->frames);
+        self::assertFalse(Type::is(new TypeWalkProbe([1, 'two']), Type::parse('iterable<int>')));
+    }
+
+    public function testIsDoesNotSwallowAnExceptionFromTheWalk(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('walk failed');
+
+        Type::is(new TypeWalkProbe([1], failWith: new \RuntimeException('walk failed')), Type::parse('iterable<int>'));
+    }
+
+    public function testParseTakesTheExtensionGraphOnlyWhenItIsAvailable(): void
+    {
+        $frames = [];
+        Type::register('TypeParseProbeAlias', static function () use (&$frames): Type {
+            foreach (\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
+                $frames[] = ($frame['class'] ?? '') . '::' . $frame['function'];
+            }
+
+            return Type::int();
+        });
+
+        $parsed = Type::parse('TypeParseProbeAlias');
+
+        self::assertTrue(Type::is(5, $parsed));
+        self::assertFalse(Type::is('5', $parsed));
+        self::assertSame(ExtModule::available(), \in_array('Tyhp\\Type::typeFromExtGraph', $frames, true));
+        self::assertSame(!ExtModule::available(), \in_array('Tyhp\\Type::parseNamedSpelling', $frames, true));
+    }
+
+    public function testParseWithTheExtensionBuildsWhatThePhpParserBuilds(): void
+    {
+        if (!ExtModule::available()) {
+            self::markTestSkipped('The tyhp extension is not available.');
+        }
+
+        Type::register('TypeParseParityAlias', static fn (Type $T): Type => Type::list($T));
+        $spellings = [
+            'int', '?int', 'null', 'mixed', '?mixed', 'true', 'decimal', 'int|string', '?int|string', 'int|null',
+            'string|int|null', '(int|string)|null', '\\Countable&\\Traversable', 'array', 'iterable', 'array<int>',
+            'array<string, ?int>', 'iterable<int>', 'iterable<string, App\\Post>', '?\\stdClass', 'App\\Post',
+            'App\\Table<App\\Blog>', 'App\\Table<int, string|null>', 'struct App\\Address', 'object App\\Clock',
+            'callable App\\Handler', 'TypeParseParityAlias<int>', 'array<TypeParseParityAlias<string>>',
+            'struct TypeParseParityAlias<int>',
+        ];
+
+        foreach ($spellings as $spelling) {
+            $graph = \Tyhp\Ext::typeParse($spelling);
+            self::assertIsArray($graph, $spelling);
+
+            $fromGraph = self::callPrivate('typeFromExtGraph', $graph);
+            $fromParser = self::parseWithPhpParser($spelling);
+
+            self::assertInstanceOf(Type::class, $fromGraph, $spelling);
+            self::assertSame((string) $fromParser, (string) $fromGraph, $spelling);
+            self::assertSame($fromParser->getKind(), $fromGraph->getKind(), $spelling);
+            self::assertTrue(Type::compatible($fromParser, $fromGraph), $spelling);
+            self::assertTrue(Type::compatible($fromGraph, $fromParser), $spelling);
+            self::assertSame((string) $fromParser, (string) Type::parse($spelling), $spelling);
+        }
+    }
+
+    public function testParseSpellingsOnlyThePhpParserAcceptsStillThrow(): void
+    {
+        if (ExtModule::available()) {
+            self::assertNull(\Tyhp\Ext::typeParse('array<int, int, int>'));
+            self::assertNull(\Tyhp\Ext::typeParse('int !'));
+        }
+
+        foreach (['array<int, int, int>', 'int !', 'int<string>', '', '?'] as $spelling) {
+            try {
+                Type::parse($spelling);
+                self::fail('Expected InvalidTypeException for "' . $spelling . '".');
+            } catch (InvalidTypeException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testParseDoesNotHideAnAliasFactoryFailure(): void
+    {
+        $calls = 0;
+        Type::register('TypeParseFailingAlias', static function () use (&$calls): Type {
+            $calls++;
+            throw new InvalidTypeException('alias factory failed');
+        });
+
+        try {
+            Type::parse('TypeParseFailingAlias');
+            self::fail('The alias factory failure must reach the caller.');
+        } catch (InvalidTypeException $e) {
+            self::assertSame('alias factory failed', $e->getMessage());
+        }
+
+        self::assertSame(1, $calls);
+    }
+
+    /**
+     * @param array<string, mixed> $graph
+     */
+    private static function callPrivate(string $method, array $graph): mixed
+    {
+        return (new \ReflectionMethod(Type::class, $method))->invoke(null, $graph);
+    }
+
+    private static function parseWithPhpParser(string $spelling): Type
+    {
+        $tokens = (new \ReflectionMethod(Type::class, 'tokenizeSpelling'))->invoke(null, $spelling);
+        $position = 0;
+        $args = [$tokens, &$position, $spelling];
+        $parsed = (new \ReflectionMethod(Type::class, 'parseUnionSpelling'))->invokeArgs(null, $args);
+        self::assertInstanceOf(Type::class, $parsed);
+
+        return $parsed;
+    }
+
+    private static function nestedFooSpelling(int $depth): string
+    {
+        $spelling = 'int';
+        for ($i = 0; $i < $depth; $i++) {
+            $spelling = 'Foo<' . $spelling . '>';
+        }
+
+        return $spelling;
+    }
+
+    private static function assertNestedFoo(Type $type, int $depth): void
+    {
+        $current = $type;
+        for ($i = 0; $i < $depth; $i++) {
+            self::assertSame('Foo', $current->getName());
+            $next = $current->typeArgument(0);
+            self::assertInstanceOf(Type::class, $next);
+            $current = $next;
+        }
+
+        self::assertSame(Type::int(), $current);
+    }
+
+    public function testDefaultValueCallsClassDeclaredTyhpDefault(): void
+    {
+        $before = DefaultValueHookParent::$calls;
+        $first = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+        $second = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+
+        self::assertInstanceOf(DefaultValueHookParent::class, $first);
+        self::assertInstanceOf(DefaultValueHookParent::class, $second);
+        self::assertSame(DefaultValueHookParent::class, $first::class);
+        self::assertSame('parent', $first->source);
+        self::assertNotSame($first, $second);
+        self::assertSame($before + 2, DefaultValueHookParent::$calls);
+
+        $spelled = '\\' . DefaultValueHookParent::class;
+        $fromSpelling = Type::fromClassName($spelled)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $fromSpelling);
+        self::assertSame(DefaultValueHookParent::class, $fromSpelling::class);
+
+        $aliased = Type::fromClassName(DefaultValueHookParent::class)->name('NotAClass');
+        self::assertSame('NotAClass', $aliased->getName());
+        $fromAlias = $aliased->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $fromAlias);
+        self::assertSame(DefaultValueHookParent::class, $fromAlias::class);
+
+        $beforeGeneric = DefaultValueHookParent::$calls;
+        $fromGeneric = Type::generic(DefaultValueHookParent::class, Type::int())->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $fromGeneric);
+        self::assertSame(DefaultValueHookParent::class, $fromGeneric::class);
+        self::assertSame($beforeGeneric + 1, DefaultValueHookParent::$calls);
+
+        $beforeAbstract = DefaultValueHookAbstract::$calls;
+        $fromAbstract = Type::fromClassName(DefaultValueHookAbstract::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookAbstractMade::class, $fromAbstract);
+        self::assertSame($beforeAbstract + 1, DefaultValueHookAbstract::$calls);
+
+        $beforeNullable = DefaultValueHookParent::$calls;
+        self::assertNull(Type::nullable(Type::fromClassName(DefaultValueHookParent::class))->defaultValue());
+        self::assertSame($beforeNullable, DefaultValueHookParent::$calls);
+
+        $case = Type::fromClassName(DefaultValueHookColor::class)->defaultValue();
+        self::assertSame(DefaultValueHookColor::Red, $case);
+    }
+
+    public function testDefaultValueIgnoresInheritedTyhpDefault(): void
+    {
+        $before = DefaultValueHookParent::$calls;
+        self::assertNull(Type::fromClassName(DefaultValueHookChild::class)->defaultValue());
+        self::assertNull(Type::fromClassName(DefaultValueHookGrandchild::class)->defaultValue());
+        self::assertNull(Type::generic(DefaultValueHookChild::class)->defaultValue());
+        self::assertSame($before, DefaultValueHookParent::$calls);
+
+        $own = Type::fromClassName(DefaultValueHookChildOwn::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookChildOwn::class, $own);
+        self::assertSame(DefaultValueHookChildOwn::class, $own::class);
+        self::assertSame('child', $own->source);
+        self::assertSame($before, DefaultValueHookParent::$calls);
+
+        $beforeAbstract = DefaultValueHookAbstract::$calls;
+        self::assertNull(Type::fromClassName(DefaultValueHookAbstractMade::class)->defaultValue());
+        self::assertSame($beforeAbstract, DefaultValueHookAbstract::$calls);
+    }
+
+    public function testDefaultValueWithoutTyhpDefaultIsNull(): void
+    {
+        self::assertNull(Type::fromClassName(DefaultValueHookNone::class)->defaultValue());
+        self::assertNull(Type::fromClassName(\stdClass::class)->defaultValue());
+        self::assertNull(Type::fromClassName(DefaultValueHookPrivate::class)->defaultValue());
+        self::assertNull(Type::fromClassName(DefaultValueHookInterface::class)->defaultValue());
+        self::assertNull(Type::generic('array', Type::int())->defaultValue());
+        self::assertNull(Type::object()->defaultValue());
+    }
+
+    public function testDefaultValueDoesNotReuseTheInstance(): void
+    {
+        $first = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+        $second = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $first);
+        self::assertInstanceOf(DefaultValueHookParent::class, $second);
+        self::assertNotSame($first, $second);
+
+        $one = Type::fromClassName(DefaultValueHookSingleton::class)->defaultValue();
+        $two = Type::fromClassName(DefaultValueHookSingleton::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookSingleton::class, $one);
+        self::assertSame($one, $two);
+
+        $red = Type::fromClassName(DefaultValueHookColor::class)->defaultValue();
+        $again = Type::fromClassName(DefaultValueHookColor::class)->defaultValue();
+        self::assertSame(DefaultValueHookColor::Red, $red);
+        self::assertSame($red, $again);
+    }
+}
+
+#[GenericRuntime(erased: false, factory: 'new_Story49Box__tyhpGeneric', layouts: [1])]
+class Story49Box
+{
+    public ?object $__tyhpGeneric = null;
+
+    public static function new_Story49Box__tyhpGeneric(?Type $__generic_T, mixed $value = null): void
+    {
+    }
+}
+
+#[GenericRuntime(erased: false, factory: 'new_Story49Pair__tyhpGeneric', layouts: [1])]
+class Story49Pair
+{
+    public static function new_Story49Pair__tyhpGeneric(?Type $__generic_TKey, ?Type $__generic_TValue): void
+    {
+    }
+}
+
+class Story49GenericBag
+{
+    public function __construct(private Type $type)
+    {
+    }
+
+    public function objectType(): Type
+    {
+        return $this->type;
+    }
+}
+
+/**
+ * An iterator that records the call stack the first time the type walk reads it, so a test can tell
+ * whether `\Tyhp\Ext::typeIs` or the PHP walk reached it.
+ *
+ * @implements \Iterator<int, mixed>
+ */
+final class TypeWalkProbe implements \Iterator
+{
+    /** @var list<string> */
+    public array $frames = [];
+
+    private int $position = 0;
+
+    /**
+     * @param list<mixed> $items
+     */
+    public function __construct(private array $items, private ?\Throwable $failWith = null)
+    {
+    }
+
+    public function rewind(): void
+    {
+        $this->position = 0;
+    }
+
+    public function valid(): bool
+    {
+        if ($this->frames === []) {
+            foreach (\debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
+                $this->frames[] = ($frame['class'] ?? '') . '::' . $frame['function'];
+            }
+        }
+
+        return $this->position < \count($this->items);
+    }
+
+    public function current(): mixed
+    {
+        if ($this->failWith !== null) {
+            throw $this->failWith;
+        }
+
+        return $this->items[$this->position];
+    }
+
+    public function key(): int
+    {
+        return $this->position;
+    }
+
+    public function next(): void
+    {
+        $this->position++;
+    }
+}
+
+class DefaultValueHookParent
+{
+    public static int $calls = 0;
+
+    public string $source = '';
+
+    public static function __tyhpDefault(): static
+    {
+        self::$calls++;
+        $value = new self();
+        $value->source = 'parent';
+
+        return $value;
+    }
+}
+
+class DefaultValueHookChild extends DefaultValueHookParent
+{
+}
+
+class DefaultValueHookGrandchild extends DefaultValueHookChild
+{
+}
+
+class DefaultValueHookChildOwn extends DefaultValueHookParent
+{
+    public static function __tyhpDefault(): static
+    {
+        $value = new self();
+        $value->source = 'child';
+
+        return $value;
+    }
+}
+
+class DefaultValueHookNone
+{
+}
+
+class DefaultValueHookPrivate
+{
+    private static function __tyhpDefault(): static
+    {
+        return new self();
+    }
+}
+
+class DefaultValueHookSingleton
+{
+    private static ?self $instance = null;
+
+    public static function __tyhpDefault(): static
+    {
+        return self::$instance ??= new self();
+    }
+}
+
+interface DefaultValueHookInterface
+{
+    public static function __tyhpDefault(): static;
+}
+
+abstract class DefaultValueHookAbstract
+{
+    public static int $calls = 0;
+
+    public static function __tyhpDefault(): static
+    {
+        self::$calls++;
+
+        return new DefaultValueHookAbstractMade();
+    }
+}
+
+class DefaultValueHookAbstractMade extends DefaultValueHookAbstract
+{
+}
+
+enum DefaultValueHookColor
+{
+    case Red;
+
+    public static function __tyhpDefault(): static
+    {
+        return self::Red;
     }
 }

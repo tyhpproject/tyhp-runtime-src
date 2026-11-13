@@ -1,0 +1,764 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\Migrations\SchemaExtractor;
+use Tyhp\Rhetoric\OnDelete;
+
+final class PivotLink {
+    public function __construct(
+        public string $table,
+        public string $leftTable,
+        public string $leftColumn,
+        public string $rightTable,
+        public string $rightColumn,
+    ) {}
+}
+
+final class ModelWork {
+    public function __construct(
+        public string $table,
+        public string $className,
+        public string $short,
+        public bool $tableOverride,
+        public bool $keyless,
+        public bool $view,
+        public ?string $comment,
+        public array<int, ScaffoldColumn> $columns,
+        public array<int, string> $keyProperties,
+        public array<int, ScaffoldIndex> $indexes,
+        public array<string, bool> $used,
+        public array<int, ScaffoldRelation> $relations,
+    ) {}
+
+    public function columnNamed(string $name): ?ScaffoldColumn {
+        foreach ($this->columns as $column) {
+            if ($column->name === $name) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    public function hasProperty(string $property): bool {
+        return isset($this->used[$property]);
+    }
+}
+
+final class ReverseMapper {
+    public static function map(ReadSchema $schema, ScaffoldOptions $options): ScaffoldPlan {
+        array<string, ReadTable> $byName = [];
+        foreach ($schema->tables as $table) {
+            $byName[$table->name] = $table;
+        }
+        array<string, PivotLink> $pivots = self::pivots($byName);
+        array<int, ReadTable> $tables = [];
+        foreach ($schema->tables as $table) {
+            if (!isset($pivots[$table->name])) {
+                $tables[] = $table;
+            }
+        }
+        \usort($tables, fn (ReadTable $left, ReadTable $right): int => $left->name <=> $right->name);
+        array<string, string> $classByTable = [];
+        array<string, bool> $usedShort = [];
+        foreach ($tables as $table) {
+            string $short = self::fresh(Naming::className($table->name, $options->pluralize), $usedShort);
+            $usedShort[$short] = true;
+            $classByTable[$table->name] = Naming::qualify($options->namespace, $short);
+        }
+        array<string, ModelWork> $works = [];
+        foreach ($tables as $table) {
+            string $className = $classByTable[$table->name] ?? '';
+            $works[$table->name] = self::model($table, $className);
+        }
+        self::relations($works, $byName, $pivots, $classByTable);
+        self::clearForeignBlueprints($works);
+        array<int, ScaffoldModel> $models = [];
+        foreach ($tables as $table) {
+            ModelWork $work = $works[$table->name];
+            $models[] = new ScaffoldModel(
+                $work->className,
+                $work->short,
+                $work->table,
+                $work->tableOverride,
+                $work->keyless,
+                $work->view,
+                $work->comment,
+                $work->columns,
+                $work->keyProperties,
+                $work->indexes,
+                $work->relations,
+            );
+        }
+
+        return new ScaffoldPlan(
+            $options->contextClass,
+            Naming::basename($options->contextClass),
+            $options->namespace,
+            $models,
+        );
+    }
+
+    /**
+     * @param array<string, ReadTable> $tables
+     * @return array<string, PivotLink>
+     */
+    private static function pivots(array<string, ReadTable> $tables): array<string, PivotLink> {
+        array<string, PivotLink> $pivots = [];
+        foreach ($tables as $table) {
+            ?PivotLink $pivot = self::pivot($table, $tables);
+            if ($pivot !== null) {
+                $pivots[$table->name] = $pivot;
+            }
+        }
+        bool $changed = true;
+        while ($changed) {
+            $changed = false;
+            foreach ($pivots as $name => $pivot) {
+                if (isset($pivots[$pivot->leftTable]) || isset($pivots[$pivot->rightTable])) {
+                    unset($pivots[$name]);
+                    $changed = true;
+                }
+            }
+        }
+
+        return $pivots;
+    }
+
+    /**
+     * @param array<string, ReadTable> $tables
+     */
+    private static function pivot(ReadTable $table, array<string, ReadTable> $tables): ?PivotLink {
+        if ($table->view || \count($table->columns) !== 2 || \count($table->foreignKeys) !== 2) {
+            return null;
+        }
+        ReadForeignKey $left = $table->foreignKeys[0];
+        ReadForeignKey $right = $table->foreignKeys[1];
+        if (\count($left->columns) !== 1 || \count($right->columns) !== 1) {
+            return null;
+        }
+        if (\count($left->foreignColumns) !== 1 || \count($right->foreignColumns) !== 1) {
+            return null;
+        }
+        string $leftColumn = $left->columns[0] ?? '';
+        string $rightColumn = $right->columns[0] ?? '';
+        if ($leftColumn === '' || $rightColumn === '' || $leftColumn === $rightColumn) {
+            return null;
+        }
+        if ($left->foreignTable === $right->foreignTable) {
+            return null;
+        }
+        if (!isset($tables[$left->foreignTable]) || !isset($tables[$right->foreignTable])) {
+            return null;
+        }
+        if ($tables[$left->foreignTable]->view || $tables[$right->foreignTable]->view) {
+            return null;
+        }
+        // belongsToMany joins on the related model's key, so each link must point at that key.
+        array<int, string> $leftKey = [$left->foreignColumns[0] ?? ''];
+        array<int, string> $rightKey = [$right->foreignColumns[0] ?? ''];
+        if (self::primary($tables[$left->foreignTable]) !== $leftKey || self::primary($tables[$right->foreignTable]) !== $rightKey) {
+            return null;
+        }
+        array<int, string> $primary = self::primary($table);
+        array<int, string> $foreign = [$leftColumn, $rightColumn];
+        if (!self::sameSet($primary, $foreign)) {
+            return null;
+        }
+        array<int, string> $present = [];
+        foreach ($table->columns as $column) {
+            $present[] = $column->name;
+        }
+        if (!self::sameSet($present, $foreign)) {
+            return null;
+        }
+
+        return new PivotLink($table->name, $left->foreignTable, $leftColumn, $right->foreignTable, $rightColumn);
+    }
+
+    private static function model(ReadTable $table, string $className): ModelWork {
+        array<int, string> $primary = $table->view ? [] : self::primary($table);
+        bool $keyless = $table->view || $primary === [];
+        array<string, ReadColumn> $byName = [];
+        foreach ($table->columns as $column) {
+            $byName[$column->name] = $column;
+        }
+        array<int, string> $order = [];
+        array<string, bool> $taken = [];
+        if (!$keyless) {
+            foreach ($primary as $name) {
+                if (isset($byName[$name]) && !isset($taken[$name])) {
+                    $order[] = $name;
+                    $taken[$name] = true;
+                }
+            }
+        }
+        foreach ($table->columns as $column) {
+            if (!isset($taken[$column->name])) {
+                $order[] = $column->name;
+                $taken[$column->name] = true;
+            }
+        }
+        array<string, bool> $used = [];
+        array<int, ScaffoldColumn> $columns = [];
+        array<string, string> $propertyByColumn = [];
+        foreach ($order as $name) {
+            ReadColumn $read = $byName[$name];
+            string $property = self::fresh(Naming::property($read->name), $used);
+            $used[$property] = true;
+            $propertyByColumn[$read->name] = $property;
+            $columns[] = self::column($read, $property);
+        }
+        array<int, string> $keyProperties = [];
+        if (!$keyless) {
+            foreach ($primary as $name) {
+                if (isset($propertyByColumn[$name])) {
+                    $keyProperties[] = $propertyByColumn[$name];
+                }
+            }
+        }
+        self::markIdentity($columns, $keyProperties, $keyless);
+        ?string $comment = $table->comment;
+        if ($comment === '') {
+            $comment = null;
+        }
+        string $short = Naming::basename($className);
+
+        return new ModelWork(
+            $table->name,
+            $className,
+            $short,
+            Naming::tableName($className) !== $table->name,
+            $keyless,
+            $table->view,
+            $comment,
+            $columns,
+            $keyProperties,
+            self::indexes($table, $propertyByColumn, $primary),
+            $used,
+            [],
+        );
+    }
+
+    private static function column(ReadColumn $read, string $property): ScaffoldColumn {
+        ColumnShape $shape = ReverseType::shape($read->typeName, $read->type);
+        ParsedDefault $default = ReverseType::parseDefault($read->default, $shape->type);
+        ?string $comment = $read->comment;
+        if ($comment === '') {
+            $comment = null;
+        }
+
+        return new ScaffoldColumn(
+            $property,
+            $read->name,
+            $shape->type,
+            $read->nullable,
+            $shape->maxLength,
+            $shape->precision,
+            $shape->scale,
+            $shape->text,
+            $shape->blueprint,
+            null,
+            $comment,
+            $default->present,
+            $default->present ? $default->value : null,
+            false,
+            $read->autoIncrement,
+        );
+    }
+
+    /**
+     * @param array<int, ScaffoldColumn> $columns
+     * @param array<int, string> $keyProperties
+     */
+    private static function markIdentity(array<int, ScaffoldColumn> $columns, array<int, string> $keyProperties, bool $keyless): void {
+        bool $sole = !$keyless && \count($keyProperties) === 1;
+        string $soleProperty = $keyProperties[0] ?? '';
+        foreach ($columns as $column) {
+            bool $inKey = false;
+            foreach ($keyProperties as $property) {
+                if ($property === $column->property) {
+                    $inKey = true;
+                }
+            }
+            $column->key = $inKey;
+            if (!$column->autoIncrement || $column->type !== 'int' || $column->nullable || $keyless) {
+                if ($sole && $column->property === 'id' && $column->name === 'id' && $column->type === 'int' && !$column->nullable) {
+                    $column->generated = false;
+                }
+                continue;
+            }
+            bool $plain = self::plainInteger($column->blueprint);
+            if ($sole && $column->property === $soleProperty && $plain && $column->property === 'id' && $column->name === 'id') {
+                $column->blueprint = null;
+                $column->generated = null;
+                continue;
+            }
+            if ($sole && $column->property === $soleProperty && self::identityBlueprint($column->blueprint)) {
+                $column->blueprint = null;
+                $column->generated = true;
+                continue;
+            }
+            $column->generated = true;
+        }
+    }
+
+    private static function plainInteger(?string $blueprint): bool {
+        return self::identityBlueprint($blueprint) || $blueprint === 'unsignedInteger' || $blueprint === 'integer';
+    }
+
+    private static function identityBlueprint(?string $blueprint): bool {
+        return $blueprint === null || $blueprint === '' || $blueprint === 'bigInteger' || $blueprint === 'unsignedBigInteger';
+    }
+
+    /**
+     * @param array<string, string> $propertyByColumn
+     * @param array<int, string> $primary
+     * @return array<int, ScaffoldIndex>
+     */
+    private static function indexes(ReadTable $table, array<string, string> $propertyByColumn, array<int, string> $primary): array<int, ScaffoldIndex> {
+        array<int, ScaffoldIndex> $pending = [];
+        foreach ($table->indexes as $index) {
+            if ($index->primary || \str_starts_with($index->name, 'sqlite_') || $index->columns === []) {
+                continue;
+            }
+            if (self::sameSet($index->columns, $primary)) {
+                continue;
+            }
+            array<int, string> $properties = [];
+            bool $complete = true;
+            foreach ($index->columns as $column) {
+                if (!isset($propertyByColumn[$column])) {
+                    $complete = false;
+                    continue;
+                }
+                $properties[] = $propertyByColumn[$column];
+            }
+            if (!$complete || $properties === []) {
+                continue;
+            }
+            string $conventional = SchemaExtractor::indexName($table->name, $index->columns, $index->unique, null);
+            ?string $name = $index->name === $conventional ? null : $index->name;
+            $pending[] = new ScaffoldIndex($properties, $index->columns, $index->unique, $name);
+        }
+        array<int, ScaffoldIndex> $ordered = [];
+        foreach ($propertyByColumn as $property) {
+            foreach ($pending as $index) {
+                if (($index->properties[0] ?? '') === $property) {
+                    $ordered[] = $index;
+                }
+            }
+        }
+
+        return $ordered;
+    }
+
+    /**
+     * @param array<string, ModelWork> $works
+     * @param array<string, ReadTable> $tables
+     * @param array<string, PivotLink> $pivots
+     * @param array<string, string> $classByTable
+     */
+    private static function relations(
+        array<string, ModelWork> $works,
+        array<string, ReadTable> $tables,
+        array<string, PivotLink> $pivots,
+        array<string, string> $classByTable,
+    ): void {
+        foreach ($tables as $table) {
+            if (!isset($works[$table->name])) {
+                continue;
+            }
+            foreach ($table->foreignKeys as $foreignKey) {
+                self::belongsTo($works[$table->name], $foreignKey, $works, $classByTable);
+            }
+        }
+        foreach ($tables as $table) {
+            if (!isset($works[$table->name])) {
+                continue;
+            }
+            foreach ($table->foreignKeys as $foreignKey) {
+                self::collection($works[$table->name], $table, $foreignKey, $works, $classByTable);
+            }
+        }
+        foreach ($pivots as $pivot) {
+            self::pivotRelations($pivot, $works, $classByTable);
+        }
+    }
+
+    /**
+     * @param array<string, ModelWork> $works
+     * @param array<string, string> $classByTable
+     */
+    private static function belongsTo(
+        ModelWork $child,
+        ReadForeignKey $foreignKey,
+        array<string, ModelWork> $works,
+        array<string, string> $classByTable,
+    ): void {
+        if (\count($foreignKey->columns) !== 1 || \count($foreignKey->foreignColumns) !== 1) {
+            return;
+        }
+        string $columnName = $foreignKey->columns[0] ?? '';
+        string $referencedName = $foreignKey->foreignColumns[0] ?? '';
+        if ($columnName === '' || $referencedName === '' || !isset($works[$foreignKey->foreignTable])) {
+            return;
+        }
+        ModelWork $parent = $works[$foreignKey->foreignTable];
+        ?ScaffoldColumn $column = $child->columnNamed($columnName);
+        if ($column === null) {
+            return;
+        }
+        string $base = self::relationBase($columnName);
+        bool $aligned = $base . 'Id' === $column->property && !isset($child->used[$base]);
+        string $property = $aligned ? $base : self::fresh($base === $column->property ? $base . 'Ref' : $base, $child->used);
+        $child->used[$property] = true;
+        ?string $referenced = null;
+        array<int, string> $parentKey = [];
+        foreach ($parent->keyProperties as $keyProperty) {
+            foreach ($parent->columns as $parentColumn) {
+                if ($parentColumn->property === $keyProperty) {
+                    $parentKey[] = $parentColumn->name;
+                }
+            }
+        }
+        if ($parentKey !== [$referencedName]) {
+            $referenced = $referencedName;
+        }
+        $child->relations[] = new ScaffoldRelation(
+            $property,
+            RelationKind::BelongsTo,
+            $parent->className,
+            $parent->short,
+            '',
+            $column->property,
+            self::onDelete($foreignKey->onDelete),
+            $referenced,
+            null,
+            null,
+            null,
+            true,
+            $aligned,
+            $aligned ? $column->property : null,
+        );
+    }
+
+    /**
+     * @param array<string, ModelWork> $works
+     * @param array<string, string> $classByTable
+     */
+    private static function collection(
+        ModelWork $child,
+        ReadTable $table,
+        ReadForeignKey $foreignKey,
+        array<string, ModelWork> $works,
+        array<string, string> $classByTable,
+    ): void {
+        if (\count($foreignKey->columns) !== 1 || !isset($works[$foreignKey->foreignTable]) || !isset($classByTable[$child->table])) {
+            return;
+        }
+        ModelWork $parent = $works[$foreignKey->foreignTable];
+        ?ScaffoldRelation $belongs = self::belongsFor($child, $parent->className, $foreignKey->columns[0] ?? '');
+        if ($belongs === null || $belongs->foreignKeyProperty === null) {
+            return;
+        }
+        int $count = self::edgeCount($table, $foreignKey->foreignTable);
+        bool $one = self::columnIsUnique($table, $foreignKey->columns[0] ?? '');
+        string $base = $one
+            ? Naming::camel($child->short)
+            : Naming::camel(\Illuminate\Support\Str::plural($child->short));
+        if ($child->table === $parent->table && $count === 1) {
+            $base = 'children';
+        } elseif ($count > 1) {
+            $base = Naming::camel($belongs->property . Naming::studly($base));
+        }
+        string $property = self::fresh($base, $parent->used);
+        $parent->used[$property] = true;
+        string $ownerKey = Naming::modelKeyProperty($parent->className);
+        ?string $guess = $child->hasProperty($ownerKey) ? $ownerKey : self::firstAlignedForeignKey($child, $parent->className);
+        bool $looksLikeBelongsTo = false;
+        foreach ($parent->columns as $column) {
+            if ($column->property === $property . 'Id') {
+                $looksLikeBelongsTo = true;
+            }
+        }
+        ?string $convention = $looksLikeBelongsTo ? null : $guess;
+        $parent->relations[] = new ScaffoldRelation(
+            $property,
+            $one ? RelationKind::HasOne : RelationKind::HasMany,
+            $child->className,
+            $child->short,
+            $belongs->property,
+            $belongs->foreignKeyProperty,
+            $belongs->onDelete,
+            null,
+            null,
+            null,
+            null,
+            $one,
+            true,
+            $convention,
+        );
+        $belongs->inverse = $property;
+    }
+
+    /**
+     * @param array<string, ModelWork> $works
+     * @param array<string, string> $classByTable
+     */
+    private static function pivotRelations(PivotLink $pivot, array<string, ModelWork> $works, array<string, string> $classByTable): void {
+        if (!isset($works[$pivot->leftTable]) || !isset($works[$pivot->rightTable])) {
+            return;
+        }
+        ModelWork $left = $works[$pivot->leftTable];
+        ModelWork $right = $works[$pivot->rightTable];
+        string $leftClass = $classByTable[$pivot->leftTable] ?? $left->className;
+        string $rightClass = $classByTable[$pivot->rightTable] ?? $right->className;
+        string $expectedTable = Naming::pivotTable($leftClass, $rightClass);
+        ?string $table = $pivot->table === $expectedTable ? null : $pivot->table;
+        string $leftKey = self::keyColumn($left);
+        string $rightKey = self::keyColumn($right);
+        string $expectedLeft = Naming::pivotForeignKey($leftClass, $leftKey);
+        string $expectedRight = Naming::pivotForeignKey($rightClass, $rightKey);
+        ?string $leftColumn = $pivot->leftColumn === $expectedLeft ? null : $pivot->leftColumn;
+        ?string $rightColumn = $pivot->rightColumn === $expectedRight ? null : $pivot->rightColumn;
+        string $leftProperty = self::fresh(Naming::camel(\Illuminate\Support\Str::plural($right->short)), $left->used);
+        $left->used[$leftProperty] = true;
+        string $rightProperty = self::fresh(Naming::camel(\Illuminate\Support\Str::plural($left->short)), $right->used);
+        $right->used[$rightProperty] = true;
+        $left->relations[] = self::many($leftProperty, $right, $rightProperty, $table, $leftColumn, $rightColumn);
+        $right->relations[] = self::many($rightProperty, $left, $leftProperty, $table, $rightColumn, $leftColumn);
+    }
+
+    private static function many(
+        string $property,
+        ModelWork $related,
+        string $inverse,
+        ?string $table,
+        ?string $foreignKey,
+        ?string $relatedKey,
+    ): ScaffoldRelation {
+        return new ScaffoldRelation(
+            $property,
+            RelationKind::BelongsToMany,
+            $related->className,
+            $related->short,
+            $inverse,
+            null,
+            \Tyhp\Rhetoric\OnDelete::Restrict,
+            null,
+            $table,
+            $foreignKey,
+            $relatedKey,
+            false,
+            true,
+            null,
+        );
+    }
+
+    /**
+     * @param array<string, ModelWork> $works
+     */
+    private static function clearForeignBlueprints(array<string, ModelWork> $works): void {
+        foreach ($works as $work) {
+            foreach ($work->relations as $relation) {
+                if ($relation->kind !== RelationKind::BelongsTo || $relation->foreignKeyProperty === null) {
+                    continue;
+                }
+                ?ModelWork $related = self::workFor($works, $relation->relatedClass);
+                if ($related === null || !self::referencesIdentity($related, $relation->referencedColumn)) {
+                    continue;
+                }
+                foreach ($work->columns as $column) {
+                    if ($column->property !== $relation->foreignKeyProperty || $column->type !== 'int' || $column->autoIncrement) {
+                        continue;
+                    }
+                    if (self::plainInteger($column->blueprint)) {
+                        $column->blueprint = null;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @param array<string, ModelWork> $works
+     */
+    private static function workFor(array<string, ModelWork> $works, string $className): ?ModelWork {
+        foreach ($works as $work) {
+            if ($work->className === $className) {
+                return $work;
+            }
+        }
+
+        return null;
+    }
+
+    private static function referencesIdentity(ModelWork $model, ?string $referencedColumn): bool {
+        if ($model->keyless || \count($model->keyProperties) !== 1) {
+            return false;
+        }
+        string $property = $model->keyProperties[0] ?? '';
+        ?ScaffoldColumn $key = null;
+        foreach ($model->columns as $column) {
+            if ($column->property === $property) {
+                $key = $column;
+            }
+        }
+        if ($key === null || $key->type !== 'int' || $key->nullable) {
+            return false;
+        }
+        if ($referencedColumn !== null && $referencedColumn !== $key->name) {
+            return false;
+        }
+        if ($key->blueprint !== null && $key->blueprint !== '') {
+            return false;
+        }
+        if ($key->generated === true) {
+            return true;
+        }
+
+        return $key->generated === null
+            && $key->property === 'id'
+            && $key->name === 'id'
+            && $key->autoIncrement;
+    }
+
+    private static function belongsFor(ModelWork $child, string $parentClass, string $column): ?ScaffoldRelation {
+        foreach ($child->relations as $relation) {
+            if ($relation->kind !== RelationKind::BelongsTo || $relation->relatedClass !== $parentClass) {
+                continue;
+            }
+            ?ScaffoldColumn $foreign = null;
+            foreach ($child->columns as $candidate) {
+                if ($candidate->property === $relation->foreignKeyProperty) {
+                    $foreign = $candidate;
+                }
+            }
+            if ($foreign !== null && $foreign->name === $column) {
+                return $relation;
+            }
+        }
+
+        return null;
+    }
+
+    private static function firstAlignedForeignKey(ModelWork $child, string $parentClass): ?string {
+        foreach ($child->relations as $relation) {
+            if ($relation->kind === RelationKind::BelongsTo
+                && $relation->relatedClass === $parentClass
+                && $relation->aligned
+                && $relation->foreignKeyProperty !== null) {
+                return $relation->foreignKeyProperty;
+            }
+        }
+
+        return null;
+    }
+
+    private static function edgeCount(ReadTable $child, string $parent): int {
+        int $count = 0;
+        foreach ($child->foreignKeys as $foreignKey) {
+            if ($foreignKey->foreignTable === $parent && \count($foreignKey->columns) === 1) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    private static function columnIsUnique(ReadTable $table, string $column): bool {
+        foreach ($table->indexes as $index) {
+            if (($index->unique || $index->primary) && $index->columns === [$column]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function keyColumn(ModelWork $model): string {
+        string $property = $model->keyProperties[0] ?? '';
+        foreach ($model->columns as $column) {
+            if ($column->property === $property) {
+                return $column->name;
+            }
+        }
+
+        return 'id';
+    }
+
+    private static function relationBase(string $column): string {
+        string $base = $column;
+        if (\strlen($column) > 3 && \str_ends_with(\strtolower($column), '_id')) {
+            $base = \substr($column, 0, -3);
+        }
+
+        return Naming::property($base);
+    }
+
+    private static function onDelete(string $value): OnDelete {
+        string $text = \strtolower(\str_replace([' ', '_', '-'], '', $value));
+        if ($text === 'cascade') {
+            return OnDelete::Cascade;
+        }
+        if ($text === 'setnull') {
+            return OnDelete::SetNull;
+        }
+
+        return OnDelete::Restrict;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function primary(ReadTable $table): array<int, string> {
+        foreach ($table->indexes as $index) {
+            if ($index->primary && $index->columns !== []) {
+                array<int, string> $columns = [];
+                foreach ($index->columns as $column) {
+                    $columns[] = $column;
+                }
+
+                return $columns;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @param array<int, string> $left
+     * @param array<int, string> $right
+     */
+    private static function sameSet(array<int, string> $left, array<int, string> $right): bool {
+        array<int, string> $first = [];
+        array<int, string> $second = [];
+        foreach ($left as $name) {
+            $first[] = $name;
+        }
+        foreach ($right as $name) {
+            $second[] = $name;
+        }
+        \sort($first);
+        \sort($second);
+
+        return $first === $second;
+    }
+
+    /**
+     * @param array<string, bool> $used
+     */
+    private static function fresh(string $base, array<string, bool> $used): string {
+        string $name = $base;
+        int $suffix = 2;
+        while (isset($used[$name])) {
+            $name = $base . (string)$suffix;
+            $suffix++;
+        }
+
+        return $name;
+    }
+}

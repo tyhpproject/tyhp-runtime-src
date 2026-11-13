@@ -1,0 +1,47 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Migrations\Auto\AutoMigrator;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationResult;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationTarget;
+
+class MigrateDeferredCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:migrate-deferred');
+        $this->setDescription('Apply deferred migrations and the migrations they hold back.');
+        $this->addOption('connection', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Database connection name');
+        $this->addOption('set', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Migration set');
+        $this->addOption('only', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Start at this migration and include everything after it');
+    }
+
+    public function handle(): int {
+        try {
+            ?\Illuminate\Contracts\Container\Container $container = CommandContext::container($this);
+            if ($container !== null) {
+                AutoMigrator::attach($container);
+            }
+            array<int, MigrationTarget> $targets = AutoMigrator::targets($this->text('connection'), $this->text('set'), true);
+            foreach ($targets as $target) {
+                MigrationResult $result = AutoMigrator::migrateDeferred($target->connection, $target->set, $this->text('only'), 'console');
+                $this->info($target->connection . ' (' . $target->set . '): ' . $result->status->name);
+            }
+
+            return 0;
+        } catch (\Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return 1;
+        }
+    }
+
+    private function text(string $option): ?string {
+        mixed $value = $this->option($option);
+        if (!\is_string($value) || $value === '') {
+            return null;
+        }
+
+        return $value;
+    }
+}

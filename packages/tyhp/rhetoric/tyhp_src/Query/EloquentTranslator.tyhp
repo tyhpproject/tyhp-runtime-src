@@ -1,0 +1,537 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Expression\ArrayExpression;
+use Tyhp\Expression\BinaryExpression;
+use Tyhp\Expression\ConstantExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\MethodCallExpression;
+use Tyhp\Expression\NullSafeAccessExpression;
+use Tyhp\Expression\NullSafeMethodCallExpression;
+use Tyhp\Expression\ParameterExpression;
+use Tyhp\Expression\PropertyAccessExpression;
+use Tyhp\Expression\UnaryExpression;
+
+/**
+ * Turns a typed `where` or `orderBy` into calls on an Eloquent builder.
+ */
+final class EloquentTranslator<T extends \Illuminate\Database\Eloquent\Model> {
+    public function __construct(
+        private string $modelClass,
+        private \Tyhp\Expression $expression,
+    ) {}
+
+    public function applyWhere(\Illuminate\Database\Eloquent\Builder<T> $builder): void {
+        $this->apply($builder, $this->expression->body, 'and', false);
+    }
+
+    public function applyOrder(\Illuminate\Database\Eloquent\Builder<T> $builder, string $direction): void {
+        ?string $column = $this->columnOf($this->expression->body);
+        if ($column === null) {
+            $this->fail($this->expression->body, 'a column of the model');
+
+            return;
+        }
+        (void)$builder->__call('orderBy', [$column, $direction]);
+    }
+
+    private function apply(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        ExpressionNode $node,
+        string $boolean,
+        bool $negated,
+    ): void {
+        if ($node instanceof UnaryExpression && $node->isPrefix && $node->operator === '!') {
+            $this->apply($builder, $node->operand, $boolean, !$negated);
+
+            return;
+        }
+        if ($node instanceof BinaryExpression && ($this->isAnd($node) || $this->isOr($node))) {
+            if ($negated) {
+                $this->groupNot($builder, $node, $boolean);
+
+                return;
+            }
+            if ($this->isAnd($node)) {
+                if ($boolean === 'or') {
+                    $this->group($builder, $node, 'or');
+
+                    return;
+                }
+                $this->apply($builder, $node->left, 'and', false);
+                $this->apply($builder, $node->right, 'and', false);
+
+                return;
+            }
+            if ($boolean === 'and') {
+                $this->group($builder, $node, 'and');
+
+                return;
+            }
+            $this->apply($builder, $node->left, 'or', false);
+            $this->apply($builder, $node->right, 'or', false);
+
+            return;
+        }
+        $this->leaf($builder, $node, $boolean, $negated);
+    }
+
+    private function group(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        ExpressionNode $node,
+        string $boolean,
+    ): void {
+        $translator = $this;
+        (void)$builder->where(function (\Illuminate\Database\Eloquent\Builder<T> $inner) use ($translator, $node): void {
+            $translator->applyGrouped($inner, $node);
+        }, null, null, $boolean);
+    }
+
+    private function groupNot(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        ExpressionNode $node,
+        string $boolean,
+    ): void {
+        $translator = $this;
+        (void)$builder->whereNot(function (\Illuminate\Database\Eloquent\Builder<T> $inner) use ($translator, $node): void {
+            $translator->apply($inner, $node, 'and', false);
+        }, null, null, $boolean);
+    }
+
+    private function applyGrouped(\Illuminate\Database\Eloquent\Builder<T> $builder, ExpressionNode $node): void {
+        if ($node instanceof BinaryExpression && $this->isOr($node)) {
+            $this->apply($builder, $node->left, 'and', false);
+            $this->apply($builder, $node->right, 'or', false);
+
+            return;
+        }
+        if ($node instanceof BinaryExpression && $this->isAnd($node)) {
+            $this->apply($builder, $node->left, 'and', false);
+            $this->apply($builder, $node->right, 'and', false);
+
+            return;
+        }
+        $this->apply($builder, $node, 'and', false);
+    }
+
+    private function leaf(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        ExpressionNode $node,
+        string $boolean,
+        bool $negated,
+    ): void {
+        if ($node instanceof MethodCallExpression || $node instanceof NullSafeMethodCallExpression) {
+            $this->method($builder, $node, $boolean, $negated);
+
+            return;
+        }
+        if (!($node instanceof BinaryExpression) || !$this->isComparison($node->operator)) {
+            $this->fail($node, $node instanceof BinaryExpression ? 'operator ' . $node->operator : 'a column of the model');
+
+            return;
+        }
+        ?string $leftColumn = $this->columnOf($node->left);
+        ?string $rightColumn = $this->columnOf($node->right);
+        if ($leftColumn !== null && $rightColumn !== null) {
+            string $operator = $this->sqlOperator($node, $node->operator);
+            if ($negated) {
+                $operator = $this->flip($operator);
+            }
+            (void)$builder->__call('whereColumn', [$leftColumn, $operator, $rightColumn, $boolean]);
+
+            return;
+        }
+        ExpressionNode $columnNode = $node->left;
+        ExpressionNode $valueNode = $node->right;
+        ?string $column = $leftColumn;
+        string $operator = $node->operator;
+        if ($column === null && $rightColumn !== null) {
+            $column = $rightColumn;
+            $columnNode = $node->right;
+            $valueNode = $node->left;
+            $operator = $this->swapComparison($operator);
+        }
+        if ($column === null) {
+            $this->fail($node, 'a column of the model');
+
+            return;
+        }
+        $operator = $this->sqlOperator($node, $operator);
+        if ($negated) {
+            $operator = $this->flip($operator);
+        }
+        mixed $value = $this->value($valueNode);
+        $this->compare($builder, $node, $columnNode, $column, $operator, $value, $boolean, $valueNode);
+    }
+
+    private function compare(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        ExpressionNode $node,
+        ExpressionNode $columnNode,
+        string $column,
+        string $operator,
+        mixed $value,
+        string $boolean,
+        ExpressionNode $valueNode,
+    ): void {
+        if ($value === null) {
+            if ($operator !== '=' && $operator !== '<>') {
+                $this->fail($node, 'operator ' . $operator);
+
+                return;
+            }
+            $this->whereNull($builder, $column, $boolean, $operator === '<>');
+
+            return;
+        }
+        if (\is_array($value) || \is_object($value)) {
+            $this->fail($valueNode, 'value');
+
+            return;
+        }
+        // PHP: a nullable column !== a value is true when the column is NULL. SQL <> drops that row.
+        if ($operator === '<>' && $this->nullableType($columnNode->type)) {
+            $this->whereDiffers($builder, $column, $value, $boolean);
+
+            return;
+        }
+        (void)$builder->where($column, $operator, $value, $boolean);
+    }
+
+    private function whereDiffers(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        string $column,
+        mixed $value,
+        string $boolean,
+    ): void {
+        (void)$builder->where(function (\Illuminate\Database\Eloquent\Builder<T> $inner) use ($column, $value): void {
+            (void)$inner->where($column, '<>', $value, 'and');
+            (void)$inner->__call('orWhereNull', [$column]);
+        }, null, null, $boolean);
+    }
+
+    private function whereNull(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        string $column,
+        string $boolean,
+        bool $not,
+    ): void {
+        string $method = 'whereNull';
+        if ($not && $boolean === 'or') {
+            $method = 'orWhereNotNull';
+        } elseif ($not) {
+            $method = 'whereNotNull';
+        } elseif ($boolean === 'or') {
+            $method = 'orWhereNull';
+        }
+        (void)$builder->__call($method, [$column]);
+    }
+
+    private function method(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        MethodCallExpression|NullSafeMethodCallExpression $call,
+        string $boolean,
+        bool $negated,
+    ): void {
+        MethodCallExpression $plain;
+        if ($call instanceof MethodCallExpression) {
+            $plain = $call;
+        } else {
+            $plain = new MethodCallExpression($call->object, $call->method, $call->arguments, $call->type);
+        }
+        string $name = \strtolower($plain->method);
+        if ($name === 'contains' && $this->isList($plain->object)) {
+            if (\count($plain->arguments) !== 1) {
+                $this->fail($plain, 'method ' . $plain->method);
+
+                return;
+            }
+            ExpressionNode $argument = $plain->arguments[0];
+            ?string $column = $this->columnOf($argument);
+            if ($column === null) {
+                $this->fail($call, 'method ' . $call->method);
+
+                return;
+            }
+            array<int, mixed> $values = $this->listValues($plain->object);
+            string $called = $negated ? 'whereNotIn' : 'whereIn';
+            (void)$builder->__call($called, [$column, $values, $boolean]);
+
+            return;
+        }
+        if ($name !== 'contains' && $name !== 'startswith' && $name !== 'endswith') {
+            $this->fail($plain, 'method ' . $plain->method);
+
+            return;
+        }
+        ?string $column = $this->columnOf($plain->object);
+        if ($column === null || \count($plain->arguments) !== 1) {
+            $this->fail($plain, 'method ' . $plain->method);
+
+            return;
+        }
+        ExpressionNode $argument = $plain->arguments[0];
+        mixed $needle = $this->value($argument);
+        if (!\is_string($needle)) {
+            $this->fail($argument, 'value');
+
+            return;
+        }
+        string $mode = 'contains';
+        if ($name === 'startswith') {
+            $mode = 'prefix';
+        } elseif ($name === 'endswith') {
+            $mode = 'suffix';
+        }
+        $this->whereLike($builder, $column, Translator::likePattern($needle, $mode), $boolean, $negated);
+    }
+
+    /**
+     * `likePattern` escapes `\`, `%`, and `_` with a backslash. SQLite and SQL Server give a backslash
+     * no meaning in LIKE unless the statement names it, so the clause carries the same ESCAPE the
+     * query translator writes.
+     */
+    private function whereLike(
+        \Illuminate\Database\Eloquent\Builder<T> $builder,
+        string $column,
+        string $pattern,
+        string $boolean,
+        bool $negated,
+    ): void {
+        \Illuminate\Database\Eloquent\Model $model = $builder->getModel();
+        string $driver = $model->getConnection()->getDriverName();
+        string $escape = ($driver === 'mysql' || $driver === 'mariadb') ? "'\\\\'" : "'\\'";
+        string $wrapped = $builder->getQuery()->getGrammar()->wrap($builder->qualifyColumn($column));
+        string $sql = $wrapped . ($negated ? ' not like ' : ' like ') . '? escape ' . $escape;
+        (void)$builder->__call('whereRaw', [$sql, [$pattern], $boolean]);
+    }
+
+    private function columnOf(ExpressionNode $node): ?string {
+        if (($node instanceof PropertyAccessExpression || $node instanceof NullSafeAccessExpression)
+            && $node->object instanceof ParameterExpression
+            && $node->object->index === 0) {
+            return $this->columnName($node->property);
+        }
+
+        return null;
+    }
+
+    private function columnName(string $property): string {
+        try {
+            \ReflectionClass $class = new \ReflectionClass($this->modelClass);
+            if (!$class->hasProperty($property)) {
+                return \Illuminate\Support\Str::snake($property);
+            }
+            \ReflectionProperty $reflected = $class->getProperty($property);
+            foreach ($reflected->getAttributes(\Tyhp\Rhetoric\Attributes\Column::class) as $attribute) {
+                object $instance = $attribute->newInstance();
+                if ($instance is \Tyhp\Rhetoric\Attributes\Column && $instance->name !== '') {
+                    return $instance->name;
+                }
+            }
+        } catch (\Throwable $error) {
+            (void)$error;
+
+            return \Illuminate\Support\Str::snake($property);
+        }
+
+        return \Illuminate\Support\Str::snake($property);
+    }
+
+    private function value(ExpressionNode $node): mixed {
+        if ($node instanceof ConstantExpression) {
+            return $this->normalize($node->value);
+        }
+        if ($node instanceof UnaryExpression && $node->isPrefix && ($node->operator === '-' || $node->operator === '+')) {
+            mixed $inner = $this->value($node->operand);
+            if (!\is_int($inner) && !\is_float($inner)) {
+                return $this->fail($node, 'value');
+            }
+            if ($node->operator === '-') {
+                return -$inner;
+            }
+
+            return $inner;
+        }
+        if (($node instanceof PropertyAccessExpression || $node instanceof NullSafeAccessExpression)
+            && $node->object instanceof ConstantExpression
+            && \is_object($node->object->value)) {
+            return $this->normalize($this->readMember($node, $node->object->value, $node->property));
+        }
+
+        return $this->fail($node, 'value');
+    }
+
+    private function readMember(ExpressionNode $node, object $object, string $property): mixed {
+        if ($object is \Illuminate\Database\Eloquent\Model) {
+            string $saved = $this->modelClass;
+            $this->modelClass = $object::class;
+            string $column = $this->columnName($property);
+            $this->modelClass = $saved;
+
+            return $object->getAttribute($column);
+        }
+        try {
+            \ReflectionProperty $reflected = new \ReflectionProperty($object, $property);
+
+            return $reflected->getValue($object);
+        } catch (\Throwable $error) {
+            (void)$error;
+
+            return $this->fail($node, 'value');
+        }
+    }
+
+    private function normalize(mixed $value): mixed {
+        if ($value is \BackedEnum) {
+            return (new \ReflectionProperty($value, 'value'))->getValue($value);
+        }
+        if ($value is \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+        if (\is_bool($value)) {
+            return $value ? 1 : 0;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function listValues(ExpressionNode $node): array<int, mixed> {
+        array<int, mixed> $values = [];
+        if ($node instanceof ConstantExpression) {
+            if (!\is_array($node->value)) {
+                $this->fail($node, 'value');
+
+                return [];
+            }
+            foreach ($node->value as $item) {
+                $values[] = $this->scalarItem($node, $item);
+            }
+
+            return $values;
+        }
+        if ($node instanceof ArrayExpression) {
+            foreach ($node->items as $item) {
+                if (!($item->value instanceof ConstantExpression)) {
+                    $this->fail($item->value, 'value');
+
+                    return [];
+                }
+                $values[] = $this->scalarItem($item->value, $item->value->value);
+            }
+
+            return $values;
+        }
+        $this->fail($node, 'value');
+
+        return [];
+    }
+
+    private function scalarItem(ExpressionNode $node, mixed $item): mixed {
+        mixed $normalized = $this->normalize($item);
+        if (\is_array($normalized) || \is_object($normalized) || $normalized === null) {
+            $this->fail($node, 'value');
+
+            return null;
+        }
+
+        return $normalized;
+    }
+
+    private function isList(ExpressionNode $node): bool {
+        if ($node instanceof ConstantExpression && \is_array($node->value)) {
+            return true;
+        }
+
+        return $node instanceof ArrayExpression;
+    }
+
+    private function isAnd(ExpressionNode $node): bool {
+        return $node instanceof BinaryExpression && ($node->operator === '&&' || $node->operator === 'and');
+    }
+
+    private function isOr(ExpressionNode $node): bool {
+        return $node instanceof BinaryExpression && ($node->operator === '||' || $node->operator === 'or');
+    }
+
+    private function isComparison(string $operator): bool {
+        return $operator === '==='
+            || $operator === '=='
+            || $operator === '!=='
+            || $operator === '!='
+            || $operator === '>'
+            || $operator === '>='
+            || $operator === '<'
+            || $operator === '<=';
+    }
+
+    private function sqlOperator(ExpressionNode $node, string $operator): string {
+        if ($operator === '===' || $operator === '==') {
+            return '=';
+        }
+        if ($operator === '!==' || $operator === '!=') {
+            return '<>';
+        }
+        if ($operator === '>' || $operator === '>=' || $operator === '<' || $operator === '<=') {
+            return $operator;
+        }
+        $this->fail($node, 'operator ' . $operator);
+
+        return '=';
+    }
+
+    private function swapComparison(string $operator): string {
+        if ($operator === '>') {
+            return '<';
+        }
+        if ($operator === '>=') {
+            return '<=';
+        }
+        if ($operator === '<') {
+            return '>';
+        }
+        if ($operator === '<=') {
+            return '>=';
+        }
+
+        return $operator;
+    }
+
+    private function flip(string $operator): string {
+        if ($operator === '=') {
+            return '<>';
+        }
+        if ($operator === '<>') {
+            return '=';
+        }
+        if ($operator === '>') {
+            return '<=';
+        }
+        if ($operator === '>=') {
+            return '<';
+        }
+        if ($operator === '<') {
+            return '>=';
+        }
+        if ($operator === '<=') {
+            return '>';
+        }
+
+        return $operator;
+    }
+
+    private function nullableType(string $type): bool {
+        return $type === 'null'
+            || \str_starts_with($type, '?')
+            || \str_contains($type, '|null')
+            || \str_contains($type, 'null|');
+    }
+
+    private function fail(ExpressionNode $node, string $detail): mixed {
+        throw new QueryTranslationException($node->nodeType, ExpressionText::lambda($this->expression), $detail);
+    }
+}

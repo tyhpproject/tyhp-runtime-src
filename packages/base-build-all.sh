@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build every first-party dist package (all PHP versions) plus single-version packages.
-# Pass a package name to build only that one: core, decimal, async, lambda, parallel, io, or compiler.
+# Pass a package name to build only that one: core, decimal, async, lambda, parallel, io, rhetoric, or compiler.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -34,7 +34,8 @@ build_package() {
   load_package_release_version "$pkg" || return $?
   run_composer_update "$pkg" || return $?
 
-  for entry in "${DIST_BUILDS[@]}"; do
+  set_package_dist_builds "$pkg"
+  for entry in "${PACKAGE_DIST_BUILDS[@]}"; do
     php_major="${entry%%:*}"
     rest="${entry#*:}"
     php_version="${rest%%:*}"

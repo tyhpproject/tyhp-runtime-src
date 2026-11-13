@@ -1,0 +1,387 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Tracking;
+
+use Tyhp\Rhetoric\Mapping\ColumnMap;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+
+final class PropertyBag {
+    public static function read(object $model, string $property): mixed {
+        if (!\str_contains($property, '.')) {
+            return self::readProperty($model, $property);
+        }
+        array<int, string> $parts = \explode('.', $property);
+        mixed $current = $model;
+        foreach ($parts as $part) {
+            if (\is_array($current)) {
+                $current = $current[$part] ?? null;
+                continue;
+            }
+            if (!\is_object($current)) {
+                return null;
+            }
+            $current = self::readProperty($current, $part);
+        }
+
+        return $current;
+    }
+
+    public static function write(object $model, string $property, mixed $value): void {
+        if (!\str_contains($property, '.')) {
+            self::writeProperty($model, $property, $value);
+
+            return;
+        }
+        array<int, string> $parts = \explode('.', $property);
+        string $first = $parts[0] ?? '';
+        if ($first === '' || \count($parts) < 2) {
+            return;
+        }
+        array<int, string> $rest = [];
+        for (int $index = 1; $index < \count($parts); $index++) {
+            $rest[] = $parts[$index];
+        }
+        mixed $owner = self::readProperty($model, $first);
+        if (\is_object($owner)) {
+            self::write($owner, \implode('.', $rest), $value);
+
+            return;
+        }
+        array<string, mixed> $bag = [];
+        if (\is_array($owner)) {
+            foreach ($owner as $key => $item) {
+                if (\is_string($key)) {
+                    $bag[$key] = $item;
+                }
+            }
+        }
+        self::writeArray($bag, \implode('.', $rest), $value);
+        self::writeProperty($model, $first, self::inflate($model, $first, $bag));
+    }
+
+    private static function readProperty(object $model, string $property): mixed {
+        if (\Tyhp\Lazy::isLazy($model)) {
+            return self::raw($model, $property);
+        }
+
+        return self::reflect($model, $property);
+    }
+
+    #[\Tyhp\Php(">=8.4")]
+    public static function raw(object $model, string $property): mixed {
+        if (!\Tyhp\Lazy::isLazy($model)) {
+            return self::reflect($model, $property);
+        }
+        \ReflectionObject $reflection = new \ReflectionObject($model);
+        if (!$reflection->hasProperty($property)) {
+            return null;
+        }
+        \ReflectionProperty $reflected = $reflection->getProperty($property);
+        // isInitialized() initializes a lazy object when the property was not preset, so ask isLazy() first.
+        if ($reflected->isLazy($model) || !$reflected->isInitialized($model)) {
+            return null;
+        }
+
+        return $reflected->getRawValue($model);
+    }
+
+    /**
+     * Whether a column's property already holds a value. Asking a ghost never initializes it.
+     */
+    public static function held(object $model, string $property): bool {
+        array<int, string> $path = \explode('.', $property);
+        \ReflectionObject $reflection = new \ReflectionObject($model);
+        if (!$reflection->hasProperty($path[0])) {
+            return false;
+        }
+
+        return self::holds($model, $reflection->getProperty($path[0]));
+    }
+
+    /**
+     * Whether a property already holds a value. Asking a ghost never initializes it.
+     */
+    #[\Tyhp\Php(">=8.4")]
+    public static function holds(object $model, \ReflectionProperty $property): bool {
+        if (\Tyhp\Lazy::isLazy($model) && $property->isLazy($model)) {
+            return false;
+        }
+
+        return $property->isInitialized($model);
+    }
+
+    #[\Tyhp\Php("<8.4")]
+    public static function holds(object $model, \ReflectionProperty $property): bool {
+        return $property->isInitialized($model);
+    }
+
+    #[\Tyhp\Php("<8.4")]
+    public static function raw(object $model, string $property): mixed {
+        return self::reflect($model, $property);
+    }
+
+    private static function reflect(object $model, string $property): mixed {
+        \ReflectionObject $reflection = new \ReflectionObject($model);
+        if (!$reflection->hasProperty($property)) {
+            return null;
+        }
+        \ReflectionProperty $reflected = $reflection->getProperty($property);
+        if (!$reflected->isInitialized($model)) {
+            return null;
+        }
+
+        return $reflected->getValue($model);
+    }
+
+    private static function writeProperty(object $model, string $property, mixed $value): void {
+        if (\Tyhp\Lazy::isLazy($model)) {
+            self::preset($model, $property, $value);
+
+            return;
+        }
+        \ReflectionObject $reflection = new \ReflectionObject($model);
+        if (!$reflection->hasProperty($property)) {
+            return;
+        }
+        \ReflectionProperty $reflected = $reflection->getProperty($property);
+        if ($reflected->isReadOnly() && $reflected->isInitialized($model)) {
+            return;
+        }
+        if (\method_exists($reflected, 'isVirtual') && $reflected->isVirtual()) {
+            return;
+        }
+        $reflected->setValue($model, $value);
+    }
+
+    /** @var array<string, \Closure> */
+    private static array<string, \Closure> $presets = [];
+
+    private static function preset(object $model, string $property, mixed $value): void {
+        string $class = \ltrim($model::class, '\\');
+        if (!isset(self::$presets[$class])) {
+            mixed $bound = \Tyhp\Generic::bind(\Tyhp\Lazy::class . '::preset', \Tyhp\Type::fromClassName($class));
+            if (!($bound instanceof \Closure)) {
+                throw new \LogicException('Could not preset a property.');
+            }
+            self::$presets[$class] = $bound;
+        }
+        (self::$presets[$class])($model, $property, $value);
+    }
+
+    /**
+     * @param array<string, mixed> $bag
+     */
+    private static function writeArray(array<string, mixed> &$bag, string $path, mixed $value): void {
+        array<int, string> $parts = \explode('.', $path);
+        string $first = $parts[0] ?? '';
+        if ($first === '') {
+            return;
+        }
+        if (\count($parts) === 1) {
+            $bag[$first] = $value;
+
+            return;
+        }
+        array<string, mixed> $child = [];
+        if (isset($bag[$first]) && \is_array($bag[$first])) {
+            foreach ($bag[$first] as $key => $item) {
+                if (\is_string($key)) {
+                    $child[$key] = $item;
+                }
+            }
+        }
+        array<int, string> $rest = [];
+        for (int $index = 1; $index < \count($parts); $index++) {
+            $rest[] = $parts[$index];
+        }
+        self::writeArray($child, \implode('.', $rest), $value);
+        $bag[$first] = $child;
+    }
+
+    /**
+     * @param array<string, mixed> $bag
+     */
+    private static function inflate(object $model, string $property, array<string, mixed> $bag): mixed {
+        \ReflectionObject $reflection = new \ReflectionObject($model);
+        if (!$reflection->hasProperty($property)) {
+            return $bag;
+        }
+        ?\ReflectionType $type = $reflection->getProperty($property)->getType();
+        if (!($type instanceof \ReflectionNamedType) || $type->isBuiltin()) {
+            return $bag;
+        }
+        mixed $name = $type->getName();
+        if (!\is_string($name) || !\class_exists($name)) {
+            return $bag;
+        }
+        \ReflectionClass $ref = new \ReflectionClass($name);
+        object $instance = $ref->newInstanceWithoutConstructor();
+        foreach ($bag as $field => $fieldValue) {
+            self::writeProperty($instance, $field, $fieldValue);
+        }
+
+        return $instance;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function snapshot(ModelMap $map, object $model): array<string, mixed> {
+        return self::capture($map, $model);
+    }
+
+    /**
+     * The values a model holds. A ghost contributes only the columns it already holds, so capturing
+     * never loads it.
+     *
+     * @return array<string, mixed>
+     */
+    public static function capture(ModelMap $map, object $model): array<string, mixed> {
+        array<string, mixed> $values = [];
+        bool $ghost = \Tyhp\Lazy::isLazy($model);
+        foreach ($map->columns as $column) {
+            if ($column->shadow) {
+                continue;
+            }
+            if ($ghost && !self::held($model, $column->property)) {
+                continue;
+            }
+            $values[$column->property] = self::read($model, $column->property);
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     */
+    public static function restore(ModelMap $map, object $model, array<string, mixed> $values): void {
+        foreach ($map->columns as $column) {
+            if (!\array_key_exists($column->property, $values)) {
+                continue;
+            }
+            self::write($model, $column->property, $values[$column->property]);
+        }
+    }
+
+    public static function same(mixed $left, mixed $right): bool {
+        if ($left instanceof \DateTimeInterface && $right instanceof \DateTimeInterface) {
+            return $left->format('Y-m-d H:i:s.u') === $right->format('Y-m-d H:i:s.u');
+        }
+        if (\is_int($left) && \is_string($right) && \is_numeric($right)) {
+            return $left === (int)$right;
+        }
+        if (\is_string($left) && \is_int($right) && \is_numeric($left)) {
+            return (int)$left === $right;
+        }
+        if (\is_array($left) && \is_array($right)) {
+            return $left == $right;
+        }
+        if (\is_object($left) || \is_object($right)) {
+            return $left === $right;
+        }
+
+        return $left === $right;
+    }
+
+    public static function database(ColumnMap $column, mixed $value): mixed {
+        if ($column->json) {
+            if ($value === null) {
+                return null;
+            }
+            mixed $encoded = \json_encode(self::plain($value));
+            if (!\is_string($encoded)) {
+                return null;
+            }
+
+            return $encoded;
+        }
+        if ($column->cast !== null) {
+            return ($column->cast->set)($value);
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+        if (\is_bool($value)) {
+            return $value ? 1 : 0;
+        }
+
+        return $value;
+    }
+
+    public static function inbound(ColumnMap $column, mixed $value): mixed {
+        if ($column->json && \is_string($value)) {
+            mixed $decoded = \json_decode($value, true);
+            if (\json_last_error() === \JSON_ERROR_NONE) {
+                $value = $decoded;
+            }
+        }
+        if ($column->cast === null) {
+            return $value;
+        }
+
+        return ($column->cast->get)($value);
+    }
+
+    private static function plain(mixed $value): mixed {
+        if (!\is_object($value)) {
+            return $value;
+        }
+        array<string, mixed> $bag = [];
+        \ReflectionObject $reflection = new \ReflectionObject($value);
+        foreach ($reflection->getProperties() as $property) {
+            if ($property->isStatic() || !$property->isInitialized($value)) {
+                continue;
+            }
+            $bag[$property->getName()] = self::plain($property->getValue($value));
+        }
+
+        return $bag;
+    }
+
+    /**
+     * A stable token for a key or foreign-key value. Int columns accept numeric strings
+     * so a row id and the value just read back from SQLite meet.
+     */
+    public static function keyToken(string $type, mixed $value): string {
+        if ($value === null) {
+            return 'n';
+        }
+        string $name = \ltrim($type, '?\\');
+        if ($name === 'int' && \is_int($value)) {
+            return 'i:' . (string)$value;
+        }
+        if ($name === 'int' && \is_string($value) && \preg_match('/^-?[0-9]+\z/', $value) === 1) {
+            return 'i:' . (string)(int)$value;
+        }
+        if (\is_int($value)) {
+            return 'i:' . (string)$value;
+        }
+        if (\is_string($value)) {
+            return 's:' . $value;
+        }
+        if (\is_float($value)) {
+            return 'f:' . (string)$value;
+        }
+
+        return 'x';
+    }
+
+    public static function temporary(ModelMap $map, object $model): bool {
+        if ($map->key === null) {
+            return false;
+        }
+        foreach ($map->key->properties as $property) {
+            if (!$map->hasColumn($property)) {
+                continue;
+            }
+            ColumnMap $column = $map->column($property);
+            mixed $value = self::raw($model, $property);
+            if ($column->generated && ($value === null || $value === 0 || $value === '' || $value === '0')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

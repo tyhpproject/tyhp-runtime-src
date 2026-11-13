@@ -1,0 +1,257 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+use Tyhp\Rhetoric\Query\Assignments;
+use Tyhp\Rhetoric\Query\Group;
+use Tyhp\Rhetoric\Query\Sql;
+use Tyhp\Rhetoric\Query\SqlText;
+
+class AdvancedScenarios {
+    public static function joinedTitles(QueryContext $context): array<int, PostBlog> {
+        return $context->posts->join<Blog, PostBlog>(
+            $context->blogs->where(fn (Blog $blog) => $blog->name === 'one'),
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostBlog($post->title, $blog->name),
+        )->all();
+    }
+
+    public static function joinedSql(QueryContext $context): SqlText {
+        return $context->posts->join<Blog, PostBlog>(
+            $context->blogs,
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostBlog($post->title, $blog->name),
+        )->statement('select');
+    }
+
+    public static function leftJoinedSql(QueryContext $context): SqlText {
+        return $context->posts->leftJoin<Blog, PostBlog>(
+            $context->blogs,
+            fn (Post $post) => $post->blogId,
+            fn (Blog $blog) => $blog->id,
+            fn (Post $post, Blog $blog) => new PostBlog($post->title, $blog->name),
+        )->statement('select');
+    }
+
+    public static function grouped(QueryContext $context): array<int, GroupCount> {
+        return $context->posts
+            ->groupBy(fn (Post $post) => $post->blogId)
+            ->having(fn (Group<Post> $group) => $group->count() >= 3)
+            ->select(fn (Group<Post> $group) => new GroupCount($group->key, $group->count()))
+            ->all();
+    }
+
+    public static function groupedSql(QueryContext $context): SqlText {
+        return $context->posts
+            ->groupBy(fn (Post $post) => $post->blogId)
+            ->having(fn (Group<Post> $group) => $group->count() >= 3)
+            ->select(fn (Group<Post> $group) => new GroupCount($group->key, $group->count()))
+            ->statement('select');
+    }
+
+    public static function ratingTotal(QueryContext $context): array<int, GroupCount> {
+        return $context->posts
+            ->groupBy(fn (Post $post) => $post->blogId)
+            ->select(fn (Group<Post> $group) => new GroupCount($group->key, $group->sum(fn (Post $post) => $post->rating)))
+            ->all();
+    }
+
+    public static function united(QueryContext $context): array<int, Post> {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->union($context->posts->where(fn (Post $post) => $post->title === 'Alpha'))
+            ->all();
+    }
+
+    public static function unitedSql(QueryContext $context): SqlText {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->union($context->posts->where(fn (Post $post) => $post->title === 'Alpha'))
+            ->statement('select');
+    }
+
+    public static function unitedAllSql(QueryContext $context): SqlText {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->unionAll($context->posts->where(fn (Post $post) => $post->title === 'Alpha'))
+            ->statement('select');
+    }
+
+    public static function shared(QueryContext $context): array<int, Post> {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->intersect($context->posts->where(fn (Post $post) => $post->rating >= 5))
+            ->all();
+    }
+
+    public static function sharedSql(QueryContext $context): SqlText {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->intersect($context->posts->where(fn (Post $post) => $post->rating >= 5))
+            ->statement('select');
+    }
+
+    public static function excluded(QueryContext $context): array<int, Post> {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->except($context->posts->where(fn (Post $post) => $post->rating >= 5))
+            ->all();
+    }
+
+    public static function excludedSql(QueryContext $context): SqlText {
+        return $context->posts
+            ->where(fn (Post $post) => $post->rating >= 4)
+            ->except($context->posts->where(fn (Post $post) => $post->rating >= 5))
+            ->statement('select');
+    }
+
+    public static function raiseRatings(QueryContext $context): int {
+        return $context->posts
+            ->where(fn (Post $post) => $post->blogId === 1)
+            ->update(fn (Assignments<Post> $set) => $set->assign(
+                fn (Post $post) => $post->rating,
+                fn (Post $post) => $post->rating + 1,
+            ));
+    }
+
+    public static function removeLow(QueryContext $context): int {
+        return $context->posts->where(fn (Post $post) => $post->rating < 2)->delete();
+    }
+
+    public static function bump(QueryContext $context): int {
+        return $context->posts->where(fn (Post $post) => $post->id === 1)->increment(fn (Post $post) => $post->rating, 2);
+    }
+
+    public static function titles(QueryContext $context): array<int, string> {
+        array<int, string> $titles = [];
+        foreach ($context->posts->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $titles[] = $post->title;
+        }
+
+        return $titles;
+    }
+
+    public static function ratings(QueryContext $context): array<int, int> {
+        array<int, int> $ratings = [];
+        foreach ($context->posts->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ratings[] = $post->rating;
+        }
+
+        return $ratings;
+    }
+
+    public static function alphaBlogs(QueryContext $context): array<int, Blog> {
+        return $context->blogs->with(
+            fn (Blog $blog) => $blog->posts,
+            constrain: self::titledAlpha(),
+        )->all();
+    }
+
+    public static function alphaSql(QueryContext $context): SqlText {
+        return $context->blogs->with(
+            fn (Blog $blog) => $blog->posts,
+            constrain: self::titledAlpha(),
+        )->statement('select');
+    }
+
+    public static function blogsWithPosts(QueryContext $context): array<int, Blog> {
+        return $context->blogs->with(fn (Blog $blog) => $blog->posts)->singleQuery()->orderBy(fn (Blog $blog) => $blog->id)->all();
+    }
+
+    public static function singleSql(QueryContext $context): SqlText {
+        return $context->blogs->with(fn (Blog $blog) => $blog->posts)->singleQuery()->statement('select');
+    }
+
+    public static function blogsWithAlpha(QueryContext $context): array<int, string> {
+        array<int, string> $titles = [];
+        foreach (self::alphaBlogs($context) as $blog) {
+            foreach ($blog->posts as $post) {
+                $titles[] = $post->title;
+            }
+        }
+
+        return $titles;
+    }
+
+    public static function hasAlpha(QueryContext $context): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->blogs->where(fn (Blog $blog) => $blog->posts->exists(fn (Post $post) => $post->title === 'Alpha'))->all() as $blog) {
+            $ids[] = $blog->id;
+        }
+
+        return $ids;
+    }
+
+    public static function hasAlphaSql(QueryContext $context): SqlText {
+        return $context->blogs->where(fn (Blog $blog) => $blog->posts->exists(fn (Post $post) => $post->title === 'Alpha'))->statement('select');
+    }
+
+    public static function alphaCounts(QueryContext $context): array<int, BlogCount> {
+        return $context->blogs->orderBy(fn (Blog $blog) => $blog->id)->select(
+            fn (Blog $blog) => new BlogCount($blog->id, $blog->posts->countWhere(fn (Post $post) => $post->title === 'Alpha')),
+        )->all();
+    }
+
+    public static function listed(QueryContext $context): array<int, array<string, mixed>> {
+        return $context->posts->orderBy(fn (Post $post) => $post->id)->select(
+            fn (Post $post) => ['id' => $post->id, 'title' => $post->title],
+        )->all();
+    }
+
+    public static function listedSql(QueryContext $context): SqlText {
+        return $context->posts->select(fn (Post $post) => ['id' => $post->id, 'title' => $post->title])->statement('select');
+    }
+
+    public static function idsIn(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => [4, 9]->contains($post->id))->statement('select');
+    }
+
+    public static function loud(QueryContext $context): array<int, int> {
+        array<int, int> $ids = [];
+        foreach ($context->posts->where(fn (Post $post) => Sql::abs($post->rating) > 3)->orderBy(fn (Post $post) => $post->id)->all() as $post) {
+            $ids[] = $post->id;
+        }
+
+        return $ids;
+    }
+
+    public static function dateSql(QueryContext $context): SqlText {
+        return $context->posts->where(
+            fn (Post $post) => Sql::dateDiff($post->publishedAt, $post->deletedAt) > 1,
+        )->statement('select');
+    }
+
+    public static function yearSql(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::year($post->publishedAt) === 2024)->statement('select');
+    }
+
+    public static function monthSql(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::month($post->publishedAt) === 1)->statement('select');
+    }
+
+    public static function daySql(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::day($post->publishedAt) === 2)->statement('select');
+    }
+
+    public static function roundSql(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::round($post->rating, 0) >= 1)->statement('select');
+    }
+
+    public static function floorSql(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::floor($post->rating) >= 1)->statement('select');
+    }
+
+    public static function ceilingSql(QueryContext $context): SqlText {
+        return $context->posts->where(fn (Post $post) => Sql::ceiling($post->rating) >= 1)->statement('select');
+    }
+
+    private static function titledAlpha(): \Tyhp\Expression<callable(Post): bool> {
+        return self::alpha(fn (Post $post) => $post->title === 'Alpha');
+    }
+
+    private static function alpha(\Tyhp\Expression<callable(Post): bool> $predicate): \Tyhp\Expression<callable(Post): bool> {
+        return $predicate;
+    }
+}

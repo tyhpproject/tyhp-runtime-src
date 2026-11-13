@@ -26,7 +26,8 @@ Refresh README sections marked with <!-- tyhp-readme:start --> and
   ./write-package-readmes.sh --package nesbot-carbon
   ./write-package-readmes.sh --dry-run
 
-Scans packages/tyhpdef/ only. Composer-lib version folders
+Scans packages/tyhpdef/. Also writes packages/tyhp/rhetoric/README.md
+(Tyhp section and a PHP section). Composer-lib version folders
 get the implementation README. php and php-ext-* get the first-party section.
 Handed-off public metapackage text is written with --emit public or
 --emit handed-off (used by generate-meta-package.sh).

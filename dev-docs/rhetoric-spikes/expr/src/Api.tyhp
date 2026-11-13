@@ -1,0 +1,85 @@
+<?tyhp
+
+namespace Rhetoric\Spikes\Expr;
+
+use Tyhp\Expression;
+
+class Table<T> {
+    public ?Expression<callable(T): bool> $lastWhere = null;
+
+    public function where(Expression<callable(T): bool> $predicate): static {
+        $this->lastWhere = $predicate;
+        return $this;
+    }
+}
+
+class ModelMapper<T> {
+    public function belongsTo<TRelated>(
+        Expression<callable(T): ?TRelated> $nav,
+    ): RelationMapper<T, TRelated> {
+        return new RelationMapper<T, TRelated>($nav);
+    }
+}
+
+class RelationMapper<T, TRelated> {
+    public ?Expression<callable(TRelated): mixed> $inverse = null;
+
+    public function __construct(
+        public Expression<callable(T): ?TRelated> $nav,
+    ) {}
+
+    public function inverseOf(Expression<callable(TRelated): mixed> $inverse): static {
+        $this->inverse = $inverse;
+        return $this;
+    }
+}
+
+class Assignments<T> {
+    public ?Expression<callable(T): mixed> $column = null;
+    public ?Expression<callable(T): mixed> $value = null;
+
+    public function assign(
+        Expression<callable(T): mixed> $column,
+        Expression<callable(T): mixed> $value,
+    ): static {
+        $this->column = $column;
+        $this->value = $value;
+        return $this;
+    }
+}
+
+class Query<T> {
+    public ?Assignments<T> $assignments = null;
+    public ?Expression<callable(Post, Blog): bool> $join = null;
+
+    public function update(callable(Assignments<T>): mixed $apply): static {
+        Assignments<T> $set = new Assignments<T>();
+        $apply($set);
+        $this->assignments = $set;
+        return $this;
+    }
+
+    public function joinOn(Expression<callable(Post, Blog): bool> $on): static {
+        $this->join = $on;
+        return $this;
+    }
+}
+
+class BlogContext {
+    public int $id = 7;
+    public ?Expression<callable(Post): bool> $scope = null;
+    public ?Expression<callable(Post): bool> $plainScope = null;
+
+    public function map(): void {
+        $this->addGlobalScope(fn ($p) => $p->ownerId === $this->id);
+        $this->addPlainScope(fn ($p) => $p->deletedAt === null);
+    }
+
+    public function addGlobalScope(Expression<callable(Post): bool> $scope): void {
+        $this->scope = $scope;
+    }
+
+    public function addPlainScope(Expression<callable(Post): bool> $scope): void {
+        $this->plainScope = $scope;
+    }
+}

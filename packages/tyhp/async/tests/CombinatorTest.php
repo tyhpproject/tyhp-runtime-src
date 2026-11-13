@@ -9,6 +9,7 @@ use Tyhp\CancellationTokenSource;
 use Tyhp\Deferred;
 use Tyhp\EventLoop;
 use Tyhp\Promise;
+use Tyhp\Type;
 use Tyhp\Exceptions\AggregateException;
 use Tyhp\Exceptions\OperationCancelledException;
 use Tyhp\Exceptions\TimeoutException;
@@ -40,7 +41,7 @@ final class CombinatorTest extends TestCase
         Promise::run(function () {
             return Promise::_await(Promise::all([
                 Promise::resolve(1),
-                Promise::reject(new \RuntimeException('fail')),
+                Promise::reject()(new \RuntimeException('fail')),
             ]));
         });
     }
@@ -61,9 +62,9 @@ final class CombinatorTest extends TestCase
     public function testAllSettled(): void
     {
         $result = Promise::run(function () {
-            return Promise::_await(Promise::allSettled([
+            return Promise::_await(Promise::allSettled(Type::mixed)([
                 Promise::resolve(42),
-                Promise::reject(new \RuntimeException('err')),
+                Promise::reject()(new \RuntimeException('err')),
             ]));
         });
 
@@ -116,7 +117,7 @@ final class CombinatorTest extends TestCase
     {
         $result = Promise::run(function () {
             return Promise::_await(Promise::any([
-                Promise::reject(new \RuntimeException('nope')),
+                Promise::reject()(new \RuntimeException('nope')),
                 Promise::resolve('yes'),
                 Promise::resolve('also yes'),
             ]));
@@ -131,8 +132,8 @@ final class CombinatorTest extends TestCase
 
         Promise::run(function () {
             return Promise::_await(Promise::any([
-                Promise::reject(new \RuntimeException('a')),
-                Promise::reject(new \RuntimeException('b')),
+                Promise::reject()(new \RuntimeException('a')),
+                Promise::reject()(new \RuntimeException('b')),
             ]));
         });
     }
@@ -179,7 +180,7 @@ final class CombinatorTest extends TestCase
     {
         $result = Promise::run(function () {
             $items = [1, 2, 3, 4, 5];
-            return Promise::_await(Promise::batch($items, function ($item) {
+            return Promise::_await(Promise::batch(Type::int, Type::int)($items, function ($item) {
                 return Promise::resolve($item * 2);
             }, 2));
         });

@@ -1,0 +1,942 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+/**
+ * Remembers one confirmed hash for the rest of this process.
+ */
+final class Verified {
+    /**
+     * @param array<int, string> $deferred
+     */
+    public function __construct(
+        public string $hash,
+        public bool $blocked,
+        public array<int, string> $deferred,
+    ) {}
+}
+
+/**
+ * What rhetoric:auto-migrate --status prints. It does not migrate.
+ */
+final class MigrationInspection {
+    /**
+     * @param array<int, string> $pending
+     * @param array<int, string> $deferred
+     */
+    public function __construct(
+        public string $connection,
+        public string $set,
+        public string $expected,
+        public MarkerRecord $marker,
+        public array<int, string> $pending,
+        public array<int, string> $deferred,
+    ) {}
+}
+
+/**
+ * Applies pending migrations when the application loads, one database at a time.
+ */
+final class AutoMigrator {
+    private static ?\Illuminate\Contracts\Container\Container $app = null;
+
+    private static bool $enabled = false;
+
+    private static bool $bootHook = false;
+
+    private static bool $listeners = false;
+
+    private static bool $windowClosed = false;
+
+    /** @var array<string, string>|null */
+    private static ?array<string, string> $connectionOverride = null;
+
+    /** @var array<int, string>|null */
+    private static ?array<int, string> $environmentOverride = null;
+
+    /** @var array<string, Verified> */
+    private static array<string, Verified> $memo = [];
+
+    private static ?MigrationLock $activeLock = null;
+
+    private static ?object $watched = null;
+
+    /** @var array<string, bool> */
+    private static array<string, bool> $loggedBlocked = [];
+
+    public static function attach(\Illuminate\Contracts\Container\Container $app): void {
+        self::$app = $app;
+    }
+
+    public static function container(): ?\Illuminate\Contracts\Container\Container {
+        return self::$app;
+    }
+
+    public static function currentSettings(): AutoSettings {
+        return self::settings();
+    }
+
+    public static function hooksInstalled(): bool {
+        return self::$bootHook || self::$listeners;
+    }
+
+    /**
+     * @param array<string, string>|null $connections
+     * @param array<int, string>|null $environments
+     */
+    public static function enable(?array<string, string> $connections = null, ?array<int, string> $environments = null): void {
+        self::$enabled = true;
+        if ($connections !== null) {
+            self::$connectionOverride = $connections;
+        }
+        if ($environments !== null) {
+            self::$environmentOverride = $environments;
+        }
+        self::installBootHook();
+        self::installListeners();
+        if (self::$windowClosed) {
+            self::onBoot();
+        }
+    }
+
+    public static function enableFromConfig(): void {
+        if (self::$app === null || self::$enabled) {
+            return;
+        }
+        if (!AutoSettings::fromContainer(self::$app)->enabled) {
+            return;
+        }
+        self::enable(null, null);
+    }
+
+    public static function bootWindow(): void {
+        self::$windowClosed = true;
+        if (!self::active()) {
+            return;
+        }
+        AutoSettings $settings = self::settings();
+        if ($settings->trigger === 'middleware') {
+            self::prependMiddleware();
+        }
+        self::installListeners();
+    }
+
+    public static function flush(): void {
+        self::$app = null;
+        self::$enabled = false;
+        self::$bootHook = false;
+        self::$listeners = false;
+        self::$windowClosed = false;
+        self::$connectionOverride = null;
+        self::$environmentOverride = null;
+        self::$memo = [];
+        self::$activeLock = null;
+        self::$watched = null;
+        self::$loggedBlocked = [];
+        AutoClock::freeze(null);
+        SchemaAwareness::forget();
+    }
+
+    public static function ensure(string $connection, ?string $set = null): MigrationResult {
+        return self::runOne($connection, self::resolveSet($connection, $set), self::channel(), false, null);
+    }
+
+    public static function migrateDeferred(string $connection, ?string $set, ?string $only, string $channel = 'console'): MigrationResult {
+        return self::runOne($connection, self::resolveSet($connection, $set), $channel, true, $only);
+    }
+
+    public static function reset(string $connection, ?string $set = null): void {
+        MigrationSet $chosen = self::resolveSet($connection, $set);
+        string $key = self::markerKey($connection, $chosen);
+        MarkerStore::open(self::settings(), self::$app)->forget($key);
+        unset(self::$memo[$key]);
+        SchemaAwareness::forget();
+    }
+
+    public static function inspect(string $connection, ?string $set = null): MigrationInspection {
+        MigrationSet $chosen = self::resolveSet($connection, $set);
+        AutoSettings $settings = self::settings();
+        MigrationManifest $manifest = MigrationManifest::load($settings, self::$app);
+        string $expected = $manifest->hash($chosen);
+        MarkerRecord $marker = MarkerStore::open($settings, self::$app)->read(self::markerKey($connection, $chosen));
+        array<int, PlannedMigration> $pending = self::pending(self::migrator($connection, $chosen), $chosen, $manifest);
+        RunPlan $plan = RunPlanner::plan($pending, false, null);
+        array<int, string> $names = [];
+        foreach ($pending as $migration) {
+            $names[] = $migration->name;
+        }
+
+        return new MigrationInspection($connection, $chosen->name, $expected, $marker, $names, $plan->deferredPending);
+    }
+
+    /**
+     * @return array<int, MigrationTarget>
+     */
+    public static function targets(?string $connection, ?string $set, bool $required): array<int, MigrationTarget> {
+        AutoSettings $settings = self::settings();
+        array<int, MigrationTarget> $targets = [];
+        if ($connection !== null && $connection !== '' && $set !== null && $set !== '') {
+            (void)$settings->set($set);
+            $targets[] = new MigrationTarget($connection, $set);
+
+            return $targets;
+        }
+        if ($connection !== null && $connection !== '') {
+            $targets[] = new MigrationTarget($connection, self::resolveSet($connection, null)->name);
+
+            return $targets;
+        }
+        if ($set !== null && $set !== '') {
+            (void)$settings->set($set);
+            foreach ($settings->connections as $name => $mapped) {
+                if ($mapped === $set) {
+                    $targets[] = new MigrationTarget($name, $set);
+                }
+            }
+            if ($targets === [] && $required) {
+                throw new \InvalidArgumentException('No connection is mapped to migration set ' . $set . '.');
+            }
+
+            return $targets;
+        }
+        foreach ($settings->connections as $name => $mapped) {
+            if (isset($settings->sets[$mapped])) {
+                $targets[] = new MigrationTarget($name, $mapped);
+            }
+        }
+        if ($targets === [] && $required) {
+            throw new \InvalidArgumentException('Configure auto_migrate.connections or pass --connection and --set.');
+        }
+
+        return $targets;
+    }
+
+    public static function checkRequest(mixed $request): void {
+        if (!self::active() || !self::environmentAllows()) {
+            return;
+        }
+        if (self::skippedPath(self::requestPath($request))) {
+            return;
+        }
+        self::runConfigured('http');
+    }
+
+    public static function onBoot(): void {
+        if (!self::active() || !self::environmentAllows()) {
+            return;
+        }
+        if (self::runningConsole()) {
+            if (!self::consoleAllowed(self::commandName())) {
+                return;
+            }
+            self::runConfigured('console');
+
+            return;
+        }
+        if (self::skippedPath(self::boundRequestPath())) {
+            return;
+        }
+        self::runConfigured('http');
+    }
+
+    public static function onQueue(): void {
+        if (!self::active() || !self::environmentAllows()) {
+            return;
+        }
+        self::runConfigured('queue');
+    }
+
+    public static function onOctane(): void {
+        if (!self::active() || !self::environmentAllows()) {
+            return;
+        }
+        self::runConfigured('http');
+    }
+
+    private static function runConfigured(string $channel): void {
+        foreach (self::targets(null, null, false) as $target) {
+            (void)self::runOne($target->connection, self::settings()->set($target->set), $channel, false, null);
+        }
+    }
+
+    private static function runOne(
+        string $connection,
+        MigrationSet $set,
+        string $channel,
+        bool $includeDeferred,
+        ?string $only,
+    ): MigrationResult {
+        AutoSettings $settings = self::settings();
+        MigrationManifest $manifest = MigrationManifest::load($settings, self::$app);
+        string $expected = $manifest->hash($set);
+        string $key = self::markerKey($connection, $set);
+        if (!$includeDeferred && ($only === null || $only === '')) {
+            ?MigrationResult $hot = self::hot($key, $expected);
+            if ($hot !== null) {
+                return $hot;
+            }
+        }
+        MarkerStore $markers = MarkerStore::open($settings, self::$app);
+        MarkerRecord $marker = $markers->read($key);
+        if ($marker->failure() && $marker->retryAt > AutoClock::now()) {
+            return self::failureResult($settings, $marker->error ?? 'A migration failed.', null);
+        }
+        ?MigrationLock $lock = null;
+        bool $running = false;
+        try {
+            \Illuminate\Database\Connection $database = self::openConnection($connection);
+            if ($database->getDriverName() === 'sqlite') {
+                $database->statement('pragma busy_timeout = 30000');
+            }
+            \Illuminate\Database\Migrations\Migrator $migrator = self::migrator($connection, $set);
+            RunPlan $plan = RunPlanner::plan(self::pending($migrator, $set, $manifest), $includeDeferred, $only);
+            if ($plan->run === []) {
+                return self::confirm($markers, $key, $expected, $plan, false);
+            }
+            $lock = MigrationLock::open($database, MigrationLock::lockName($key), $settings, self::$app);
+            if (!$lock->acquire($settings->waitFor($channel))) {
+                return self::timeout($settings);
+            }
+            RunPlan $again = RunPlanner::plan(self::pending($migrator, $set, $manifest), $includeDeferred, $only);
+            if ($again->run === []) {
+                return self::confirm($markers, $key, $expected, $again, false);
+            }
+            if (!$migrator->repositoryExists()) {
+                $migrator->getRepository()->createRepository();
+            }
+            if (!$migrator->hasRunAnyMigrations()) {
+                self::loadSchemaDump($database, $migrator);
+            }
+            self::watch(self::events());
+            self::$activeLock = $lock;
+            array<int, string> $paths = [];
+            array<int, string> $applied = [];
+            foreach ($again->run as $migration) {
+                $paths[] = $migration->path;
+                $applied[] = $migration->name;
+            }
+            $running = true;
+            $migrator->runPending($paths, []);
+            MigrationResult $result = self::confirm($markers, $key, $expected, $again, true);
+            $result = new MigrationResult(
+                $again->run === [] ? $result->status : ($again->blocked ? MigrationStatus::BlockedByDeferred : MigrationStatus::Migrated),
+                $applied,
+                $again->deferredPending,
+                false,
+            );
+            if ($again->blocked) {
+                self::logBlocked($expected, $again);
+            }
+            self::dispatchDeferred($connection, $set->name, $settings, $again);
+
+            return $result;
+        } catch (MigrationsInProgressException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            if (!$running && $only !== null && $only !== '' && $exception instanceof \InvalidArgumentException) {
+                throw $exception;
+            }
+            int $attempts = $marker->attempts + 1;
+            if (!$marker->failure()) {
+                $attempts = 1;
+            }
+            int $retryAt = AutoClock::now() + AutoClock::delay($attempts, $settings->backoffFirst, $settings->backoffMax);
+            $markers->writeFailure($key, $exception->getMessage(), $attempts, $retryAt);
+            unset(self::$memo[$key]);
+            self::log('error', $exception->getMessage());
+            self::dispatchFailed($connection, $set->name, $exception->getMessage(), $attempts);
+
+            return self::failureResult($settings, $exception->getMessage(), $exception);
+        } finally {
+            if ($lock !== null) {
+                $lock->release();
+            }
+            self::$activeLock = null;
+        }
+    }
+
+    private static function confirm(MarkerStore $markers, string $key, string $expected, RunPlan $plan, bool $migrated): MigrationResult {
+        $markers->writeConfirmed($key, $expected, $plan->deferredPending, $plan->blocked);
+        SchemaAwareness::forget();
+        self::$memo[$key] = new Verified($expected, $plan->blocked, $plan->deferredPending);
+        if ($plan->blocked) {
+            self::logBlocked($expected, $plan);
+
+            return new MigrationResult(MigrationStatus::BlockedByDeferred, [], $plan->deferredPending, false);
+        }
+        MigrationStatus $status = MigrationStatus::UpToDate;
+        if ($migrated && $plan->run !== []) {
+            $status = MigrationStatus::Migrated;
+        }
+        array<int, string> $applied = [];
+        if ($migrated) {
+            foreach ($plan->run as $migration) {
+                $applied[] = $migration->name;
+            }
+        }
+
+        return new MigrationResult($status, $applied, $plan->deferredPending, false);
+    }
+
+    private static function hot(string $key, string $expected): ?MigrationResult {
+        if (isset(self::$memo[$key]) && self::$memo[$key]->hash === $expected) {
+            Verified $verified = self::$memo[$key];
+            if ($verified->blocked) {
+                return new MigrationResult(MigrationStatus::BlockedByDeferred, [], $verified->deferred, true);
+            }
+
+            return new MigrationResult(MigrationStatus::UpToDate, [], $verified->deferred, true);
+        }
+        MarkerRecord $marker = MarkerStore::open(self::settings(), self::$app)->read($key);
+        if ($marker->failure() || $marker->hash !== $expected) {
+            return null;
+        }
+        self::$memo[$key] = new Verified($expected, $marker->blocked, $marker->deferred);
+        if ($marker->blocked) {
+            self::logBlocked($expected, null);
+
+            return new MigrationResult(MigrationStatus::BlockedByDeferred, [], $marker->deferred, true);
+        }
+
+        return new MigrationResult(MigrationStatus::UpToDate, [], $marker->deferred, true);
+    }
+
+    private static function failureResult(AutoSettings $settings, string $error, ?\Throwable $previous): MigrationResult {
+        if ($settings->onFailure === 'continue') {
+            self::log('error', $error);
+
+            return new MigrationResult(MigrationStatus::Failed, [], [], false);
+        }
+
+        throw new MigrationFailedException($settings->retryAfter, $error, $previous);
+    }
+
+    private static function timeout(AutoSettings $settings): MigrationResult {
+        if ($settings->onTimeout === 'continue') {
+            self::log('warning', 'Migrations are in progress.');
+
+            return new MigrationResult(MigrationStatus::UpToDate, [], [], false);
+        }
+
+        throw new MigrationsInProgressException($settings->retryAfter, 'Migrations are in progress.');
+    }
+
+    /**
+     * @return array<int, PlannedMigration>
+     */
+    private static function pending(
+        \Illuminate\Database\Migrations\Migrator $migrator,
+        MigrationSet $set,
+        MigrationManifest $manifest,
+    ): array<int, PlannedMigration> {
+        array<string, string> $files = $migrator->getMigrationFiles($set->paths);
+        array<string, bool> $ran = [];
+        if ($migrator->repositoryExists()) {
+            foreach ($migrator->getRepository()->getRan() as $name) {
+                $ran[$name] = true;
+            }
+        }
+        array<int, PlannedMigration> $pending = [];
+        if ($manifest->exists()) {
+            foreach ($manifest->names($set) as $name) {
+                if (isset($ran[$name])) {
+                    continue;
+                }
+                if (!isset($files[$name])) {
+                    throw new \RuntimeException('Migration ' . $name . ' is in the manifest but has no file.');
+                }
+                DeferredFlag $flag = $manifest->flag($set, $name) ?? new DeferredFlag(false, false);
+                $pending[] = new PlannedMigration($name, $files[$name], $flag->deferred, $flag->independent);
+            }
+
+            return $pending;
+        }
+        foreach ($files as $name => $path) {
+            if (isset($ran[$name])) {
+                continue;
+            }
+            DeferredFlag $flag = DeferredFlag::read($path, $migrator);
+            $pending[] = new PlannedMigration($name, $path, $flag->deferred, $flag->independent);
+        }
+
+        return $pending;
+    }
+
+    /**
+     * A migrator that is only used to load migration files, for example when writing the manifest.
+     */
+    public static function flagMigrator(): \Illuminate\Database\Migrations\Migrator {
+        \Illuminate\Database\ConnectionResolverInterface $resolver = self::resolver();
+
+        return new \Illuminate\Database\Migrations\Migrator(
+            new \Illuminate\Database\Migrations\DatabaseMigrationRepository($resolver, 'migrations'),
+            $resolver,
+            new \Illuminate\Filesystem\Filesystem(),
+        );
+    }
+
+    private static function migrator(string $connection, MigrationSet $set): \Illuminate\Database\Migrations\Migrator {
+        \Illuminate\Database\ConnectionResolverInterface $resolver = self::resolver();
+        \Illuminate\Database\Migrations\DatabaseMigrationRepository $repository = new \Illuminate\Database\Migrations\DatabaseMigrationRepository($resolver, $set->table);
+        if ($connection !== '') {
+            $repository->setSource($connection);
+        }
+        \Illuminate\Database\Migrations\Migrator $migrator = new \Illuminate\Database\Migrations\Migrator(
+            $repository,
+            $resolver,
+            new \Illuminate\Filesystem\Filesystem(),
+            self::events(),
+        );
+        if ($connection !== '') {
+            $migrator->setConnection($connection);
+        }
+
+        return $migrator;
+    }
+
+    private static function resolver(): \Illuminate\Database\ConnectionResolverInterface {
+        if (self::$app !== null && self::$app->bound('db')) {
+            mixed $database = self::$app->get('db');
+            if ($database instanceof \Illuminate\Database\DatabaseManager) {
+                return $database;
+            }
+            if ($database instanceof \Illuminate\Database\Capsule\Manager) {
+                return $database->getDatabaseManager();
+            }
+            if ($database instanceof \Illuminate\Database\ConnectionResolverInterface) {
+                return $database;
+            }
+        }
+
+        mixed $manager = \Illuminate\Database\Capsule\Manager::getDatabaseManager();
+        if ($manager instanceof \Illuminate\Database\ConnectionResolverInterface) {
+            return $manager;
+        }
+
+        throw new \RuntimeException('The database manager is not available.');
+    }
+
+    private static function openConnection(string $connection): \Illuminate\Database\Connection {
+        \Illuminate\Database\ConnectionInterface $resolved = self::resolver()->connection($connection === '' ? null : $connection);
+        if ($resolved instanceof \Illuminate\Database\Connection) {
+            return $resolved;
+        }
+
+        throw new \RuntimeException('The migration connection is not a database connection.');
+    }
+
+    private static function events(): \Illuminate\Contracts\Events\Dispatcher {
+        if (self::$app !== null && self::$app->bound('events')) {
+            mixed $events = self::$app->get('events');
+            if ($events instanceof \Illuminate\Contracts\Events\Dispatcher) {
+                return $events;
+            }
+        }
+
+        return new \Illuminate\Events\Dispatcher(self::$app);
+    }
+
+    private static function watch(\Illuminate\Contracts\Events\Dispatcher $events): void {
+        if (self::$watched === $events) {
+            return;
+        }
+        self::$watched = $events;
+        $events->listen(\Illuminate\Database\Events\MigrationStarted::class, function (mixed $event): void {
+            (void)$event;
+            if (self::$activeLock !== null && !self::$activeLock->owns()) {
+                throw new \RuntimeException('The migration lock is no longer held.');
+            }
+        });
+    }
+
+    private static function loadSchemaDump(\Illuminate\Database\Connection $connection, \Illuminate\Database\Migrations\Migrator $migrator): void {
+        if ($connection->getDriverName() === 'sqlsrv') {
+            return;
+        }
+        ?string $path = self::schemaPath($connection);
+        if ($path === null) {
+            return;
+        }
+        try {
+            if (!\method_exists($connection, 'getSchemaState')) {
+                return;
+            }
+            mixed $state = (new \ReflectionMethod($connection, 'getSchemaState'))->invoke($connection);
+            if (!($state instanceof \Illuminate\Database\Schema\SchemaState)) {
+                return;
+            }
+            $migrator->getRepository()->deleteRepository();
+            $state->load($path);
+            self::events()->dispatch(new \Illuminate\Database\Events\SchemaLoaded($connection, $path));
+        } catch (\Throwable $exception) {
+            (void)$exception;
+        }
+    }
+
+    private static function schemaPath(\Illuminate\Database\Connection $connection): ?string {
+        ?string $database = null;
+        if (self::$app !== null && self::$app->bound('path.database')) {
+            mixed $bound = self::$app->get('path.database');
+            if (\is_string($bound) && $bound !== '') {
+                $database = \rtrim($bound, '/\\');
+            }
+        }
+        if ($database === null) {
+            return null;
+        }
+        string $name = $connection->getName() ?? 'schema';
+        string $dump = $database . '/schema/' . $name . '-schema.dump';
+        if (\is_file($dump)) {
+            return $dump;
+        }
+        string $sql = $database . '/schema/' . $name . '-schema.sql';
+        if (\is_file($sql)) {
+            return $sql;
+        }
+
+        return null;
+    }
+
+    private static function markerKey(string $connection, MigrationSet $set): string {
+        array<string, mixed> $config = self::connectionConfig($connection);
+        string $schema = self::piece($config['schema'] ?? null);
+        if ($schema === '') {
+            $schema = self::piece($config['search_path'] ?? null);
+        }
+        string $material = $set->name
+            . "\0" . self::piece($config['driver'] ?? null)
+            . "\0" . self::piece($config['host'] ?? null)
+            . "\0" . self::piece($config['port'] ?? null)
+            . "\0" . self::piece($config['database'] ?? null)
+            . "\0" . $schema
+            . "\0" . self::piece($config['prefix'] ?? null)
+            . "\0" . $set->table;
+
+        return \hash('sha256', $material);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function connectionConfig(string $connection): array<string, mixed> {
+        if (self::$app !== null && self::$app->bound('db')) {
+            mixed $database = self::$app->get('db');
+            if ($database instanceof \Illuminate\Database\DatabaseManager && $connection !== '') {
+                array<string, \Illuminate\Database\Connection> $open = $database->getConnections();
+                if (isset($open[$connection])) {
+                    return self::map($open[$connection]->getConfig(null));
+                }
+            }
+        }
+        if (self::$app !== null && self::$app->bound('config')) {
+            mixed $repository = self::$app->get('config');
+            if ($repository instanceof \Illuminate\Contracts\Config\Repository) {
+                string $name = $connection;
+                if ($name === '') {
+                    mixed $default = $repository->get('database.default');
+                    if (\is_string($default)) {
+                        $name = $default;
+                    }
+                }
+                return self::map($repository->get('database.connections.' . $name));
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function map(mixed $value): array<string, mixed> {
+        array<string, mixed> $map = [];
+        if (!\is_array($value)) {
+            return $map;
+        }
+        foreach ($value as $key => $item) {
+            if (\is_string($key)) {
+                $map[$key] = $item;
+            }
+        }
+
+        return $map;
+    }
+
+    private static function piece(mixed $value): string {
+        if (\is_string($value)) {
+            return $value;
+        }
+        if (\is_int($value)) {
+            return (string)$value;
+        }
+        if (\is_array($value)) {
+            array<int, string> $parts = [];
+            foreach ($value as $item) {
+                if (\is_string($item) || \is_int($item)) {
+                    $parts[] = (string)$item;
+                }
+            }
+
+            return \implode(',', $parts);
+        }
+
+        return '';
+    }
+
+    private static function resolveSet(string $connection, ?string $set): MigrationSet {
+        AutoSettings $settings = self::settings();
+        if ($set !== null && $set !== '') {
+            return $settings->set($set);
+        }
+        if (isset($settings->connections[$connection])) {
+            return $settings->set($settings->connections[$connection]);
+        }
+        if (\count($settings->sets) === 1) {
+            foreach ($settings->sets as $only) {
+                return $only;
+            }
+        }
+
+        throw new \InvalidArgumentException('Pass a migration set for connection ' . $connection . '.');
+    }
+
+    private static function settings(): AutoSettings {
+        if (self::$app === null) {
+            throw new \RuntimeException('AutoMigrator is not attached to an application.');
+        }
+        AutoSettings $settings = AutoSettings::fromContainer(self::$app);
+        if (self::$enabled) {
+            return $settings->override(self::$connectionOverride, self::$environmentOverride);
+        }
+
+        return $settings;
+    }
+
+    private static function active(): bool {
+        return self::$enabled;
+    }
+
+    private static function environmentAllows(): bool {
+        return self::settings()->allows(self::environmentName());
+    }
+
+    private static function environmentName(): string {
+        if (self::$app !== null && \method_exists(self::$app, 'environment')) {
+            mixed $name = (new \ReflectionMethod(self::$app, 'environment'))->invoke(self::$app);
+            if (\is_string($name) && $name !== '') {
+                return $name;
+            }
+        }
+
+        return 'production';
+    }
+
+    private static function runningConsole(): bool {
+        if (self::$app !== null && \method_exists(self::$app, 'runningInConsole')) {
+            mixed $console = (new \ReflectionMethod(self::$app, 'runningInConsole'))->invoke(self::$app);
+            if (\is_bool($console)) {
+                return $console;
+            }
+        }
+
+        return \PHP_SAPI === 'cli' || \PHP_SAPI === 'phpdbg';
+    }
+
+    private static function channel(): string {
+        if (self::runningConsole()) {
+            return 'console';
+        }
+
+        return 'http';
+    }
+
+    private static function consoleAllowed(string $command): bool {
+        if ($command === '' || self::alwaysSkipped($command)) {
+            return false;
+        }
+        foreach (self::settings()->console as $allowed) {
+            if ($allowed === $command) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function alwaysSkipped(string $command): bool {
+        if ($command === 'package:discover') {
+            return true;
+        }
+        array<int, string> $prefixes = ['migrate', 'db:', 'schema:', 'rhetoric:', 'optimize', 'config:'];
+        foreach ($prefixes as $prefix) {
+            if ($command === $prefix || \str_starts_with($command, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function commandName(): string {
+        mixed $server = $_SERVER;
+        if (!\is_array($server)) {
+            return '';
+        }
+        mixed $arguments = $server['argv'] ?? null;
+        if (!\is_array($arguments)) {
+            return '';
+        }
+        mixed $command = $arguments[1] ?? null;
+        if (!\is_string($command)) {
+            return '';
+        }
+
+        return $command;
+    }
+
+    private static function skippedPath(string $path): bool {
+        string $trimmed = \trim($path, '/');
+        foreach (self::settings()->exceptPaths as $except) {
+            if (\trim($except, '/') === $trimmed) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function boundRequestPath(): string {
+        if (self::$app === null || !self::$app->bound('request')) {
+            return '';
+        }
+
+        return self::requestPath(self::$app->get('request'));
+    }
+
+    private static function requestPath(mixed $request): string {
+        if (!\is_object($request)) {
+            return '';
+        }
+        if (\method_exists($request, 'path')) {
+            mixed $path = (new \ReflectionMethod($request, 'path'))->invoke($request);
+            if (\is_string($path)) {
+                return $path;
+            }
+        }
+        if (\method_exists($request, 'getPathInfo')) {
+            mixed $path = (new \ReflectionMethod($request, 'getPathInfo'))->invoke($request);
+            if (\is_string($path)) {
+                return $path;
+            }
+        }
+
+        return '';
+    }
+
+    private static function installBootHook(): void {
+        if (self::$bootHook || self::$app === null) {
+            return;
+        }
+        if (self::settings()->trigger === 'middleware') {
+            return;
+        }
+        if (!\method_exists(self::$app, 'booting')) {
+            return;
+        }
+        self::$bootHook = true;
+        (new \ReflectionMethod(self::$app, 'booting'))->invoke(self::$app, function (): void {
+            AutoMigrator::onBoot();
+        });
+    }
+
+    private static function installListeners(): void {
+        if (self::$listeners || self::$app === null || !self::$app->bound('events')) {
+            return;
+        }
+        mixed $events = self::$app->get('events');
+        if (!($events instanceof \Illuminate\Contracts\Events\Dispatcher)) {
+            return;
+        }
+        AutoSettings $settings = self::settings();
+        if ($settings->queue) {
+            $events->listen('Illuminate\\Queue\\Events\\WorkerStarting', function (): void {
+                AutoMigrator::onQueue();
+            });
+        }
+        if ($settings->octane) {
+            $events->listen('Laravel\\Octane\\Events\\WorkerStarting', function (): void {
+                AutoMigrator::onOctane();
+            });
+        }
+        self::$listeners = true;
+    }
+
+    private static function prependMiddleware(): void {
+        if (self::$app === null || !self::$app->bound(\Illuminate\Contracts\Http\Kernel::class)) {
+            return;
+        }
+        mixed $kernel = self::$app->get(\Illuminate\Contracts\Http\Kernel::class);
+        if (!\is_object($kernel) || !\method_exists($kernel, 'prependMiddleware')) {
+            return;
+        }
+        (new \ReflectionMethod($kernel, 'prependMiddleware'))->invoke($kernel, AutoMigrateMiddleware::class);
+    }
+
+    private static function dispatchDeferred(string $connection, string $set, AutoSettings $settings, RunPlan $plan): void {
+        if (!$settings->deferredDispatch || $plan->deferredPending === []) {
+            return;
+        }
+        if (self::$app === null || !self::$app->bound(\Illuminate\Contracts\Bus\Dispatcher::class)) {
+            self::log('warning', 'Deferred migrations were left pending and no bus is bound.');
+
+            return;
+        }
+        mixed $bus = self::$app->get(\Illuminate\Contracts\Bus\Dispatcher::class);
+        if (!($bus instanceof \Illuminate\Contracts\Bus\Dispatcher)) {
+            return;
+        }
+        try {
+            (void)$bus->dispatch(new RunDeferredMigrations($connection, $set, $settings->deferredQueue));
+        } catch (\Throwable $exception) {
+            self::log('error', $exception->getMessage());
+        }
+    }
+
+    private static function dispatchFailed(string $connection, string $set, string $error, int $attempts): void {
+        if (self::$app === null || !self::$app->bound('events')) {
+            return;
+        }
+        mixed $events = self::$app->get('events');
+        if ($events instanceof \Illuminate\Contracts\Events\Dispatcher) {
+            $events->dispatch(new AutoMigrationFailed($connection, $set, $error, $attempts));
+        }
+    }
+
+    private static function logBlocked(string $expected, ?RunPlan $plan): void {
+        if (isset(self::$loggedBlocked[$expected])) {
+            return;
+        }
+        self::$loggedBlocked[$expected] = true;
+        string $names = '';
+        if ($plan !== null) {
+            $names = \implode(', ', $plan->deferredPending);
+        }
+        self::log('warning', 'A deferred migration holds back later migrations. ' . $names);
+    }
+
+    private static function log(string $level, string $message): void {
+        if (self::$app !== null && self::$app->bound('log')) {
+            mixed $log = self::$app->get('log');
+            if ($log instanceof \Psr\Log\LoggerInterface) {
+                if ($level === 'warning') {
+                    $log->warning($message);
+                } else {
+                    $log->error($message);
+                }
+
+                return;
+            }
+        }
+        \error_log($message);
+    }
+}

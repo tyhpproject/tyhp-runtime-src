@@ -1,0 +1,41 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Fixtures;
+
+use Tyhp\Rhetoric\Attributes\Column;
+use Tyhp\Rhetoric\Attributes\ForeignKey;
+use Tyhp\Rhetoric\Attributes\Generated;
+use Tyhp\Rhetoric\Attributes\Index;
+use Tyhp\Rhetoric\Attributes\InverseOf;
+use Tyhp\Rhetoric\Attributes\Key;
+use Tyhp\Rhetoric\Attributes\MaxLength;
+use Tyhp\Rhetoric\Attributes\NotMapped;
+use Tyhp\Rhetoric\Attributes\Precision;
+use Tyhp\Rhetoric\OnDelete;
+
+#[Index<AttributePost>([nameof(AttributePost::$title), nameof(AttributePost::$slug)], name: 'title_slug')]
+class AttributePost {
+    #[Key]
+    #[Generated]
+    #[Column('entry_id')]
+    public int $entryId = 0;
+
+    #[Column('headline')]
+    #[MaxLength(120)]
+    public string $title = '';
+
+    #[Index(unique: true)]
+    public string $slug = '';
+
+    #[Precision(8, 2)]
+    public float $rating = 0.0;
+
+    #[ForeignKey(AttributeBlog::class, onDelete: OnDelete::SetNull)]
+    public int $blogId = 0;
+
+    #[InverseOf<AttributeBlog>(nameof(AttributeBlog::$entries))]
+    public ?AttributeBlog $blog = null;
+
+    #[NotMapped]
+    public string $blurb = '';
+}

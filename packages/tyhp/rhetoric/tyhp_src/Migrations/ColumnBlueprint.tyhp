@@ -1,0 +1,155 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+/**
+ * Shared column, index, and foreign-key shape for generated PHP and Schema:: calls.
+ */
+final class ColumnBlueprint {
+    public static function column(ColumnSpec $column, bool $change): string {
+        string $expr = '$table->' . self::call($column);
+        if ($change && !$column->nullable) {
+            $expr .= '->nullable(false)';
+        } elseif ($column->nullable) {
+            $expr .= '->nullable()';
+        }
+        if ($column->hasDefault) {
+            $expr .= '->default(' . self::literal($column->default) . ')';
+        }
+        if ($column->comment !== null) {
+            $expr .= '->comment(' . self::literal($column->comment) . ')';
+        }
+        if ($change) {
+            $expr .= '->change()';
+        }
+
+        return $expr;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function createLines(TableSpec $table): array<int, string> {
+        array<int, string> $lines = [];
+        foreach ($table->columns as $column) {
+            $lines[] = self::column($column, false) . ';';
+        }
+        if ($table->key !== null && !$table->key->generated && $table->key->columns !== []) {
+            $lines[] = '$table->primary(' . self::list($table->key->columns) . ');';
+        }
+        foreach ($table->indexes as $index) {
+            $lines[] = self::index($index) . ';';
+        }
+        if ($table->timestamps) {
+            $lines[] = '$table->timestamps();';
+        }
+        if ($table->comment !== null) {
+            $lines[] = '$table->comment(' . self::literal($table->comment) . ');';
+        }
+
+        return $lines;
+    }
+
+    public static function index(IndexSpec $index): string {
+        string $method = $index->unique ? 'unique' : 'index';
+
+        return '$table->' . $method . '(' . self::list($index->columns) . ', ' . self::literal($index->name) . ')';
+    }
+
+    /**
+     * A key named by the convention is created without a name, so Laravel names it (with the connection's table
+     * prefix) the same way `dropForeign([columns])` finds it again.
+     */
+    public static function foreign(string $table, ForeignKeySpec $foreignKey): string {
+        string $references = \count($foreignKey->referencedColumns) === 1
+            ? self::literal($foreignKey->referencedColumns[0] ?? '')
+            : self::list($foreignKey->referencedColumns);
+        string $name = self::conventional($table, $foreignKey) ? '' : ', ' . self::literal($foreignKey->name);
+
+        return '$table->foreign(' . self::list($foreignKey->columns) . $name . ')'
+            . '->references(' . $references . ')'
+            . '->on(' . self::literal($foreignKey->referencedTable) . ')';
+    }
+
+    public static function dropForeign(string $table, ForeignKeySpec $foreignKey): string {
+        return '$table->dropForeign(' . (self::conventional($table, $foreignKey)
+            ? self::list($foreignKey->columns)
+            : self::literal($foreignKey->name)) . ');';
+    }
+
+    public static function conventional(string $table, ForeignKeySpec $foreignKey): bool {
+        return $foreignKey->name === SchemaExtractor::foreignKeyName($table, $foreignKey->columns, null);
+    }
+
+    /**
+     * @param array<int, string> $values
+     */
+    public static function list(array<int, string> $values): string {
+        array<int, string> $parts = [];
+        foreach ($values as $value) {
+            $parts[] = self::literal($value);
+        }
+
+        return '[' . \implode(', ', $parts) . ']';
+    }
+
+    public static function literal(mixed $value): string {
+        mixed $exported = \var_export($value, true);
+        if (!\is_string($exported)) {
+            throw new \RuntimeException('Could not export a migration value.');
+        }
+
+        return $exported;
+    }
+
+    private static function call(ColumnSpec $column): string {
+        string $name = self::literal($column->name);
+        if ($column->blueprint === 'id') {
+            return $column->name === 'id' ? 'id()' : 'id(' . $name . ')';
+        }
+        if ($column->blueprint === 'increments') {
+            return 'increments(' . $name . ')';
+        }
+        if ($column->blueprint === 'bigIncrements') {
+            return 'bigIncrements(' . $name . ')';
+        }
+        if ($column->blueprint === 'integer') {
+            return 'integer(' . $name . ')';
+        }
+        if ($column->blueprint === 'bigInteger') {
+            return 'bigInteger(' . $name . ')';
+        }
+        if ($column->blueprint === 'foreignId') {
+            return 'foreignId(' . $name . ')';
+        }
+        if ($column->blueprint === 'string') {
+            return 'string(' . $name . ', ' . (string)($column->maxLength ?? 255) . ')';
+        }
+        if ($column->blueprint === 'text') {
+            return 'text(' . $name . ')';
+        }
+        if ($column->blueprint === 'json') {
+            return 'json(' . $name . ')';
+        }
+        if ($column->blueprint === 'boolean') {
+            return 'boolean(' . $name . ')';
+        }
+        if ($column->blueprint === 'double') {
+            return 'double(' . $name . ')';
+        }
+        if ($column->blueprint === 'float') {
+            return 'float(' . $name . ', ' . (string)($column->precision ?? 53) . ')';
+        }
+        if ($column->blueprint === 'decimal') {
+            return 'decimal(' . $name . ', ' . (string)($column->precision ?? 8) . ', ' . (string)($column->scale ?? 2) . ')';
+        }
+        if ($column->blueprint === 'dateTime') {
+            return 'dateTime(' . $name . ')';
+        }
+        if ($column->blueprint === 'timestamp') {
+            return 'timestamp(' . $name . ')';
+        }
+
+        return 'string(' . $name . ', 255)';
+    }
+}

@@ -1,0 +1,23 @@
+<?tyhp
+
+namespace Tyhp;
+
+/**
+ * Waits until `$promise` settles and returns its value, or throws its rejection.
+ *
+ * Inside a loop fiber this suspends. A `$timeoutMs` of zero or more waits through
+ * `Promise::timeout`. From synchronous PHP this runs the event loop until `$promise`
+ * has settled and no immediate work is left, and honours `$timeoutMs` and `$token`.
+ * Inside the running loop but outside a loop fiber, this throws the same
+ * re-entrancy `\LogicException` as `EventLoop::run`.
+ *
+ * Null or a negative `$timeoutMs` waits with no deadline.
+ */
+#[\Tyhp\InferGeneric]
+function await<T extends __Awaited<void|mixed>>(
+    Promise<T> $promise,
+    ?int $timeoutMs = null,
+    ?CancellationToken $token = null,
+): __Awaited<T> {
+    return $promise->driveAwait($timeoutMs, $token);
+}

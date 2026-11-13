@@ -1,0 +1,90 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Migrations\Auto\AutoMigrator;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationInspection;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationResult;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationTarget;
+
+class AutoMigrateCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:auto-migrate');
+        $this->setDescription('Apply pending migrations for the configured connections.');
+        $this->addOption('connection', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Database connection name');
+        $this->addOption('set', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Migration set');
+        $this->addOption('status', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Show the marker and pending migrations');
+        $this->addOption('reset', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Clear the marker and failure record');
+    }
+
+    public function handle(): int {
+        try {
+            $this->attach();
+            bool $status = $this->flag('status');
+            bool $reset = $this->flag('reset');
+            array<int, MigrationTarget> $targets = AutoMigrator::targets($this->text('connection'), $this->text('set'), true);
+            if ($reset) {
+                foreach ($targets as $target) {
+                    AutoMigrator::reset($target->connection, $target->set);
+                    $this->info('Cleared the marker for ' . $target->connection . ' (' . $target->set . ').');
+                }
+            }
+            if ($status) {
+                foreach ($targets as $target) {
+                    $this->printStatus(AutoMigrator::inspect($target->connection, $target->set));
+                }
+
+                return 0;
+            }
+            if ($reset) {
+                return 0;
+            }
+            foreach ($targets as $target) {
+                MigrationResult $result = AutoMigrator::ensure($target->connection, $target->set);
+                $this->info($target->connection . ' (' . $target->set . '): ' . $result->status->name);
+            }
+
+            return 0;
+        } catch (\Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return 1;
+        }
+    }
+
+    private function printStatus(MigrationInspection $inspection): void {
+        $this->line($inspection->connection . ' (' . $inspection->set . ')');
+        $this->line('expected ' . $inspection->expected);
+        if ($inspection->marker->failure()) {
+            $this->line('failure ' . ($inspection->marker->error ?? ''));
+            $this->line('retry_at ' . (string)$inspection->marker->retryAt);
+        } elseif ($inspection->marker->hash !== null) {
+            $this->line('marker ' . $inspection->marker->hash);
+        } else {
+            $this->line('marker missing');
+        }
+        $this->line('pending ' . \implode(' ', $inspection->pending));
+        $this->line('deferred ' . \implode(' ', $inspection->deferred));
+    }
+
+    private function attach(): void {
+        ?\Illuminate\Contracts\Container\Container $container = CommandContext::container($this);
+        if ($container !== null) {
+            AutoMigrator::attach($container);
+        }
+    }
+
+    private function flag(string $option): bool {
+        return $this->option($option) === true;
+    }
+
+    private function text(string $option): ?string {
+        mixed $value = $this->option($option);
+        if (!\is_string($value) || $value === '') {
+            return null;
+        }
+
+        return $value;
+    }
+}

@@ -74,6 +74,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
      * Wraps a callable in a Promise.
      * The `async` keyword desugars to this internally.
      */
+    #[\Tyhp\InferGeneric]
     public static function _async<T extends void|mixed>(callable(): T $fn): self<__Awaited<T>> {
         // DEV NOTE: Do not make this method itself `async` — that would wrap an extra
         // Promise layer. `return async { ... }` starts one Promise and is the intended form. This method would cause recursion.
@@ -84,6 +85,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
      * Suspends the current Fiber until the given Promise settles.
      * The `await` keyword desugars to this internally.
      */
+    #[\Tyhp\InferGeneric]
     public static function _await<T extends __Awaited<void|mixed>>(Promise<T> $promise): __Awaited<T> {
         if ($promise->state === PromiseState::Fulfilled) {
             return $promise->value ?? self::resolveMissingValue<T>('await resumed with no value for a non-nullable, non-void awaited type.');
@@ -164,6 +166,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
         callable(TReturn): TThenReturn $onFulfilled,
         ?callable(\Throwable): TThenReturn $onRejected = null
     ): TThenReturn;
+    #[\Tyhp\InferGeneric]
     async public function then<TThenReturn>(
         ?callable(TReturn): TThenReturn $onFulfilled = null,
         null|(callable(\Throwable): TThenReturn)|(callable(\Throwable): TReturn) $onRejected = null
@@ -226,6 +229,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
      * flatten/adopt, not "force fulfilled". Use resolved() when you need a new
      * immediately-fulfilled Promise and do not want to unwrap.
      */
+    #[\Tyhp\InferGeneric]
     public static function resolve<T extends __Awaited<void|mixed>>(null|T|Promise<T> $value = null): self<T> {
         if ($value === null) {
             $value = self::resolveMissingValue<T>('resolve called with no value for a non-nullable, non-void type.');
@@ -253,6 +257,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
      * settles, whatever `T` is. The result type is `Promise<__Awaited<T>>`, so
      * `resolved<Promise<int>>($p)` is a `Promise<int>`, never a promise of a promise.
      */
+    #[\Tyhp\InferGeneric]
     public static function resolved<T extends void|mixed = void>(?T $value = null): self<__Awaited<T>> {
         return new self<__Awaited<T>>(fn(): T => $value ?? default(T), true);
     }
@@ -278,11 +283,55 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
     }
 
     /**
-     * Blocks the current thread until this Promise settles or the timeout expires.
-     * Runs the event loop until settlement.
+     * Blocks until this Promise settles, the same call as `await($promise, $timeoutMs, $token)`.
+     *
+     * Null or a negative `$timeoutMs`, including `-1`, waits with no deadline.
+     * Inside a loop fiber this suspends. From synchronous PHP it runs the event loop
+     * until this Promise has settled and no immediate work is left.
      */
-    public function wait(int $timeoutMs = -1): mixed {
-        return EventLoop::getInstance()->runUntilSettled($this, $timeoutMs);
+    public function wait(?int $timeoutMs = null, ?CancellationToken $token = null): mixed {
+        return $this->driveAwait($timeoutMs, $token);
+    }
+
+    /**
+     * Suspends on a loop fiber, and otherwise runs the event loop the way {@see EventLoop::run()} does.
+     *
+     * A timeout is {@see timeout()}. From synchronous PHP the loop also honours `$token`.
+     * Inside the running loop but outside a loop fiber, this throws the same re-entrancy
+     * `\LogicException` as {@see EventLoop::run()}.
+     *
+     * When the caller is a user `\Fiber`, {@see EventLoop::run()} records that fiber as the
+     * driver. A callback during that run still sees the user's fiber as current, and that
+     * fiber is not treated as a loop fiber.
+     *
+     * @internal Used by {@see wait()} and `await()`.
+     */
+    internal function driveAwait(?int $timeoutMs = null, ?CancellationToken $token = null): TReturn {
+        $token?->throwIfCancellationRequested();
+
+        if (!($this is self<TReturn>)) {
+            throw new \LogicException('Promise::driveAwait() lost its promise type.');
+        }
+        self<TReturn> $promise = $this;
+
+        EventLoop $loop = EventLoop::getInstance();
+        ?\Fiber $current = \Fiber::getCurrent();
+
+        if ($loop->isLoopFiber($current)) {
+            if ($timeoutMs !== null && $timeoutMs >= 0) {
+                return self::_await(self::timeout<TReturn>($promise, $timeoutMs, $token));
+            }
+            if ($token !== null) {
+                return self::_await(self::race<TReturn>([$promise], $token));
+            }
+            return self::_await<TReturn>($promise);
+        }
+
+        $loop->ensureNotReentrant();
+        if ($timeoutMs !== null && $timeoutMs >= 0) {
+            return $loop->run(self::timeout<TReturn>($promise, $timeoutMs, $token), $token);
+        }
+        return $loop->run<TReturn>($promise, $token);
     }
 
     /**
@@ -334,6 +383,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
      * Shutting down cancels every timer, interval, and stream watcher, drops queued work, and
      * unwinds every fiber suspended on a pending Promise (see `EventLoop::run()`).
      */
+    #[\Tyhp\InferGeneric]
     public static function run<T extends void|mixed>(callable(): T $fn, ?CancellationToken $token = null): __Awaited<T> {
         $token?->throwIfCancellationRequested();
         return EventLoop::getInstance()->run(self::_async<T>($fn), $token);
@@ -379,6 +429,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
     /**
      * Waits for all Promises to resolve and returns their results.
      */
+    #[\Tyhp\InferGeneric]
     async public static function all<T extends __Awaited<void|mixed> = mixed>(array<Promise<T>> $promises, ?CancellationToken $token = null): array<T> {
         array<T> $results = [];
         foreach ($promises as $key => $promise) {
@@ -391,6 +442,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
     /**
      * C# Task.WhenAll-style alias for all().
      */
+    #[\Tyhp\InferGeneric]
     public static function whenAll<T extends __Awaited<void|mixed> = mixed>(Promise<T> ...$promises): self<array<int|string, T>> {
         // DEV NOTE: Do not make this method itself `async` — that would wrap an extra
         // Promise layer. `all` is already async; returning it yields one Promise.
@@ -423,6 +475,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
     /**
      * Resolves or rejects with the first Promise to settle.
      */
+    #[\Tyhp\InferGeneric]
     async public static function race<T extends __Awaited<void|mixed>>(array<Promise<T>> $promises, ?CancellationToken $token = null): __Awaited<T> {
         $token?->throwIfCancellationRequested();
 
@@ -473,6 +526,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
     /**
      * C# Task.WhenAny-style alias for race().
      */
+    #[\Tyhp\InferGeneric]
     public static function whenAny<T extends __Awaited<void|mixed>>(Promise<T> ...$promises): self<__Awaited<T>> {
         // DEV NOTE: Do not make this method itself `async` — that would wrap an extra
         // Promise layer. `race` is already async; returning it yields one Promise.
@@ -482,6 +536,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
     /**
      * Resolves with the first fulfilled Promise; rejects if all reject.
      */
+    #[\Tyhp\InferGeneric]
     async public static function any<T extends __Awaited<void|mixed>>(array<Promise<T>> $promises, ?CancellationToken $token = null): __Awaited<T> {
         $token?->throwIfCancellationRequested();
 
@@ -541,6 +596,7 @@ final class Promise<TReturn extends __Awaited<void|mixed> = __Awaited<mixed>> {
      * Rejects with TimeoutException if the Promise does not settle within the deadline.
      * Implemented as a race between the original Promise and a delay.
      */
+    #[\Tyhp\InferGeneric]
     public static function timeout<T extends __Awaited<void|mixed>>(Promise<T> $promise, int $ms, ?CancellationToken $token = null): self<__Awaited<T>> {
         // DEV NOTE: Do not make this method itself `async` — that would wrap an extra
         // Promise layer. `race` is already async; returning it yields one Promise.

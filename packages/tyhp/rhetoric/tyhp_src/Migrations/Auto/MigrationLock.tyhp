@@ -1,0 +1,285 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations\Auto;
+
+/**
+ * One migration lock for a set on one database. Database advisory locks are the default.
+ * A cache lock is used when lock.driver is cache, for poolers that drop session locks.
+ */
+final class MigrationLock {
+    public const string MYSQL_ACQUIRE = 'select get_lock(?, ?)';
+    public const string MYSQL_RELEASE = 'select release_lock(?)';
+    public const string MYSQL_OWNS = 'select case when is_used_lock(?) = connection_id() then 1 else 0 end';
+    public const string POSTGRES_ACQUIRE = 'select pg_try_advisory_lock((cast(? as bigint) << 32) | cast(? as bigint))';
+    public const string POSTGRES_RELEASE = 'select pg_advisory_unlock((cast(? as bigint) << 32) | cast(? as bigint))';
+    public const string POSTGRES_SESSION = 'select pg_backend_pid()';
+    public const string SQLSRV_ACQUIRE = 'declare @rhetoric_lock int; exec @rhetoric_lock = sp_getapplock @Resource = ?, @LockMode = \'Exclusive\', @LockOwner = \'Session\', @LockTimeout = ?; select @rhetoric_lock';
+    public const string SQLSRV_RELEASE = 'exec sp_releaseapplock @Resource = ?, @LockOwner = \'Session\'';
+    public const string SQLSRV_SESSION = 'select @@spid';
+
+    private function __construct(
+        private string $kind,
+        private string $name,
+        private ?\Illuminate\Database\Connection $connection,
+        private ?\SplFileObject $file,
+        private ?\Illuminate\Contracts\Cache\Lock $cacheLock,
+        private int $ttl,
+        private int $expiresAt,
+        private bool $held,
+        private string $session,
+        private int $hi,
+        private int $lo,
+    ) {}
+
+    public static function open(
+        \Illuminate\Database\Connection $connection,
+        string $name,
+        AutoSettings $settings,
+        ?\Illuminate\Contracts\Container\Container $app,
+    ): MigrationLock {
+        if ($settings->lockDriver === 'cache') {
+            return self::cache($name, $settings, $app);
+        }
+        string $driver = $connection->getDriverName();
+        if ($driver === 'sqlite') {
+            return self::sqlite($connection, $name);
+        }
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            return self::database('mysql', $connection, $name);
+        }
+        if ($driver === 'pgsql') {
+            return self::database('pgsql', $connection, $name);
+        }
+        if ($driver === 'sqlsrv') {
+            return self::database('sqlsrv', $connection, $name);
+        }
+        throw new \RuntimeException('No advisory lock is available for the ' . $driver . ' driver. Set auto_migrate.lock.driver to cache.');
+    }
+
+    public function acquire(int $seconds): bool {
+        if ($this->kind === 'none') {
+            $this->held = true;
+
+            return true;
+        }
+        if ($seconds < 0) {
+            $seconds = 0;
+        }
+        if ($this->kind === 'mysql' || $this->kind === 'sqlsrv' || $this->kind === 'cache') {
+            return $this->acquireOnce($seconds);
+        }
+        int $deadline = AutoClock::now() + $seconds;
+        int $spins = 0;
+        while ($spins < 1000000) {
+            $spins = $spins + 1;
+            if ($this->tryOnce()) {
+                $this->held = true;
+                $this->rememberSession();
+
+                return true;
+            }
+            if (AutoClock::frozen() || AutoClock::now() >= $deadline) {
+                return false;
+            }
+            \usleep(50000);
+        }
+
+        return false;
+    }
+
+    public function owns(): bool {
+        if (!$this->held) {
+            return false;
+        }
+        if ($this->kind === 'none') {
+            return true;
+        }
+        if ($this->kind === 'cache') {
+            return $this->expiresAt === 0 || AutoClock::now() < $this->expiresAt;
+        }
+        if ($this->kind === 'sqlite') {
+            return $this->file !== null;
+        }
+        if ($this->kind === 'mysql') {
+            return $this->truthy($this->scalar(self::MYSQL_OWNS, [$this->name]));
+        }
+
+        return $this->session !== '' && $this->session === $this->currentSession();
+    }
+
+    public function release(): void {
+        if (!$this->held && $this->kind !== 'sqlite') {
+            return;
+        }
+        try {
+            if ($this->kind === 'mysql' && $this->connection !== null) {
+                $this->scalar(self::MYSQL_RELEASE, [$this->name]);
+            } elseif ($this->kind === 'pgsql' && $this->connection !== null) {
+                $this->scalar(self::POSTGRES_RELEASE, [$this->hi, $this->lo]);
+            } elseif ($this->kind === 'sqlsrv' && $this->connection !== null) {
+                $this->connection->statement(self::SQLSRV_RELEASE, [$this->name]);
+            } elseif ($this->kind === 'sqlite' && $this->file !== null) {
+                $this->file->flock(\LOCK_UN);
+                $this->file = null;
+            } elseif ($this->kind === 'cache' && $this->cacheLock !== null) {
+                $this->cacheLock->release();
+            }
+        } catch (\Throwable $exception) {
+            (void)$exception;
+        }
+        $this->held = false;
+    }
+
+    public static function lockName(string $markerKey): string {
+        return 'rhetoric-migrate:' . \substr($markerKey, 0, 40);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function keyHalves(string $name): array<int, int> {
+        string $hex = \hash('sha256', $name);
+
+        return [\intval(\substr($hex, 0, 8), 16), \intval(\substr($hex, 8, 8), 16)];
+    }
+
+    private static function database(string $kind, \Illuminate\Database\Connection $connection, string $name): MigrationLock {
+        array<int, int> $halves = self::keyHalves($name);
+
+        return new MigrationLock($kind, $name, $connection, null, null, 0, 0, false, '', $halves[0], $halves[1]);
+    }
+
+    private static function sqlite(\Illuminate\Database\Connection $connection, string $name): MigrationLock {
+        mixed $database = $connection->getConfig('database');
+        string $path = \is_string($database) ? $database : '';
+        if ($path === '' || $path === ':memory:') {
+            return new MigrationLock('none', $name, null, null, null, 0, 0, false, '', 0, 0);
+        }
+        string $lockFile = $path . '.rhetoric-lock';
+        string $directory = \dirname($lockFile);
+        if (!\is_dir($directory) && !\mkdir($directory, 0777, true) && !\is_dir($directory)) {
+            throw new \RuntimeException('Could not create ' . $directory . '.');
+        }
+        \SplFileObject $opened = new \SplFileObject($lockFile, 'c+');
+
+        return new MigrationLock('sqlite', $name, null, $opened, null, 0, 0, false, '', 0, 0);
+    }
+
+    private static function cache(string $name, AutoSettings $settings, ?\Illuminate\Contracts\Container\Container $app): MigrationLock {
+        if ($app === null || !$app->bound('cache')) {
+            throw new \RuntimeException('The cache migration lock needs a cache manager.');
+        }
+        mixed $cache = $app->get('cache');
+        if (!($cache instanceof \Illuminate\Contracts\Cache\Factory)) {
+            throw new \RuntimeException('The cache migration lock needs a cache manager.');
+        }
+        \Illuminate\Contracts\Cache\Repository $repository = $cache->store($settings->lockStore);
+        if (!($repository instanceof \Illuminate\Contracts\Cache\LockProvider)) {
+            throw new \RuntimeException('The cache store does not support atomic locks.');
+        }
+        int $ttl = $settings->lockTtl;
+        if ($ttl < 1) {
+            $ttl = 1;
+        }
+        \Illuminate\Contracts\Cache\Lock $lock = $repository->lock($name, $ttl);
+
+        return new MigrationLock('cache', $name, null, null, $lock, $ttl, 0, false, '', 0, 0);
+    }
+
+    private function acquireOnce(int $seconds): bool {
+        bool $acquired = false;
+        if ($this->kind === 'mysql') {
+            $acquired = $this->truthy($this->scalar(self::MYSQL_ACQUIRE, [$this->name, $seconds]));
+        } elseif ($this->kind === 'sqlsrv') {
+            int $timeout = $seconds * 1000;
+            $acquired = $this->granted($this->scalar(self::SQLSRV_ACQUIRE, [$this->name, $timeout]));
+        } elseif ($this->kind === 'cache' && $this->cacheLock !== null) {
+            try {
+                mixed $result = $this->cacheLock->block($seconds);
+                $acquired = $result !== false;
+            } catch (\Illuminate\Contracts\Cache\LockTimeoutException $exception) {
+                (void)$exception;
+                $acquired = false;
+            }
+        }
+        if (!$acquired) {
+            return false;
+        }
+        $this->held = true;
+        if ($this->kind === 'cache') {
+            $this->expiresAt = AutoClock::now() + $this->ttl;
+        } else {
+            $this->rememberSession();
+        }
+
+        return true;
+    }
+
+    private function tryOnce(): bool {
+        if ($this->kind === 'pgsql') {
+            return $this->truthy($this->scalar(self::POSTGRES_ACQUIRE, [$this->hi, $this->lo]));
+        }
+        if ($this->kind === 'sqlite' && $this->file !== null) {
+            mixed $wouldBlock = null;
+
+            return $this->file->flock(\LOCK_EX | \LOCK_NB, $wouldBlock);
+        }
+
+        return false;
+    }
+
+    private function rememberSession(): void {
+        $this->session = $this->currentSession();
+    }
+
+    private function currentSession(): string {
+        if ($this->kind === 'pgsql') {
+            return $this->token(self::POSTGRES_SESSION);
+        }
+        if ($this->kind === 'sqlsrv') {
+            return $this->token(self::SQLSRV_SESSION);
+        }
+        if ($this->kind === 'mysql') {
+            return $this->token('select connection_id()');
+        }
+
+        return '';
+    }
+
+    private function token(string $sql): string {
+        mixed $value = $this->scalar($sql, []);
+        if (\is_int($value) || \is_string($value)) {
+            return (string)$value;
+        }
+
+        return '';
+    }
+
+    /**
+     * @param array<int, mixed> $bindings
+     */
+    private function scalar(string $sql, array<int, mixed> $bindings): mixed {
+        if ($this->connection === null) {
+            throw new \RuntimeException('The migration lock has no database connection.');
+        }
+
+        // The lock belongs to the session that runs the migrations, which is the write connection.
+        return $this->connection->scalar($sql, $bindings, false);
+    }
+
+    private function truthy(mixed $value): bool {
+        return $value === true || $value === 1 || $value === '1' || $value === 't';
+    }
+
+    private function granted(mixed $value): bool {
+        if (\is_int($value)) {
+            return $value >= 0;
+        }
+        if (\is_string($value) && \is_numeric($value)) {
+            return (int)$value >= 0;
+        }
+
+        return false;
+    }
+
+}

@@ -8,20 +8,24 @@ use Tyhp\Exceptions\InvalidTypeException;
  * Binds type arguments to a Tyhp generic class or callable from hand-written PHP
  * and from Tyhp sites that construct or call a **foreign** compiled-library generic
  * (`#[\Tyhp\GenericRuntime]` on the vendor tyhpdef). Same-compilation Tyhp sites
- * still emit the per-class factory / `__tyhpGeneric` binder directly.
+ * emit a class factory directly and a layout-2 callable as `name($types)($args)`.
+ * A layout-1 callable still emits `name__tyhpGeneric`.
  *
  *     // Class (Mechanism C, tracked or erased — same spelling)
  *     $box = \Tyhp\Generic::bind(Box::class, \Tyhp\Type::int())(42);
  *     $box = \Tyhp\Generic::bind(Box::class, \Tyhp\Type::int())->new(42); // new() ≡ __invoke
+ *     $box = \Tyhp\Generic::bind(Box::class, \Tyhp\Type::int())->ghost(42);
  *
  *     // Callable (Mechanism D) — prefer a first-class callable to the *clean* name
  *     $awaitInt = \Tyhp\Generic::bind(\Tyhp\Promise::_await(...), \Tyhp\Type::int());
  *     $awaitInt($promise);
  *
  * `bind()` does not construct. `__invoke` / `new()` runs the named factory (types then
- * constructor arguments) or `new $class(...)` when `erased: true`. For callables,
- * a tracked binder is invoked with type arguments only; an erased callable becomes
- * `\Closure::fromCallable` (by-ref preserved).
+ * constructor arguments) or `new $class(...)` when `erased: true`. `ghost()` takes the
+ * same constructor arguments. Builds for PHP 8.4 and 8.5 return a lazy ghost and bind
+ * type arguments on that instance before the constructor. Builds for PHP 8.2 and 8.3
+ * match `new()`. For callables, a tracked binder is invoked with type arguments only;
+ * an erased callable becomes `\Closure::fromCallable` (by-ref preserved).
  *
  * `TTarget` exists only in PHPDoc. Tyhp's own generics are runtime bindings carried on the
  * constructed instance; making this class generic in Tyhp would bind a parameter nothing here
@@ -134,20 +138,20 @@ final class Generic
      * @template TClass of object
      *
      * @param class-string<TClass>|TCallable $target
-     * @param ?\Tyhp\Type                    ...$typeArguments
+     * @param \Tyhp\TypeLike|string|null    ...$typeArguments
      *
      * @return ($target is class-string<TClass> ? self<TClass> : TCallable)
      *
      * @phpstan-template TCallable of callable
      * @phpstan-template TClass of object
      * @phpstan-param class-string<TClass>|TCallable $target
-     * @phpstan-param ?\Tyhp\Type                    ...$typeArguments
+     * @phpstan-param \Tyhp\TypeLike|string|null    ...$typeArguments
      * @phpstan-return ($target is class-string<TClass> ? self<TClass> : TCallable)
      *
      * @psalm-template TCallable of callable
      * @psalm-template TClass of object
      * @psalm-param class-string<TClass>|TCallable $target
-     * @psalm-param ?\Tyhp\Type                    ...$typeArguments
+     * @psalm-param \Tyhp\TypeLike|string|null    ...$typeArguments
      * @psalm-return ($target is class-string<TClass> ? self<TClass> : TCallable)
      *
      * @throws InvalidTypeException     When the target has no `GenericRuntime` stamp, or when
@@ -156,33 +160,49 @@ final class Generic
      * @throws \InvalidArgumentException When `$target` is neither a class-string nor a
      *                                  resolvable named callable, or is an anonymous Closure.
      */
-    public static function bind(mixed $target, ?\Tyhp\Type ...$typeArguments): mixed
+    public static function bind(mixed $target, TypeLike|string|null ...$typeArguments): mixed
     {
+        array<int, TypeLike|string|null>|null $extArguments = null;
+        if (ExtModule::available()) {
+            $extArguments = $typeArguments;
+
+            ?\Closure $cached = \Tyhp\Ext::bindGet($target, $typeArguments);
+            if ($cached !== null) {
+                return $cached;
+            }
+        }
+
+        array<int|string, ?Type> $normalized = [];
+        foreach ($typeArguments as $key => $typeArgument) {
+            $normalized[$key] = Type::arg($typeArgument);
+        }
+
+        self|\Closure $bound;
         if (\is_string($target)) {
             if (\str_contains($target, '::')) {
-                return self::bindCallable($target, $typeArguments);
+                $bound = self::bindCallable($target, $normalized);
+            } elseif (\class_exists($target)) {
+                $bound = self::bindClass($target, $normalized);
+            } elseif (\function_exists($target) || \is_callable($target)) {
+                $bound = self::bindCallable($target, $normalized);
+            } else {
+                // Not yet loaded: ReflectionClass autoloads and throws \ReflectionException
+                // when the name is not a class (same as a missing class-string at a PHP call site).
+                $bound = self::bindClass($target, $normalized);
             }
-
-            if (\class_exists($target)) {
-                return self::bindClass($target, $typeArguments);
-            }
-
-            if (\function_exists($target) || \is_callable($target)) {
-                return self::bindCallable($target, $typeArguments);
-            }
-
-            // Not yet loaded: ReflectionClass autoloads and throws \ReflectionException
-            // when the name is not a class (same as a missing class-string at a PHP call site).
-            return self::bindClass($target, $typeArguments);
+        } elseif (\is_callable($target)) {
+            $bound = self::bindCallable($target, $normalized);
+        } else {
+            throw new \InvalidArgumentException(
+                'Generic::bind() expects a class-string or callable as its first argument.',
+            );
         }
 
-        if (\is_callable($target)) {
-            return self::bindCallable($target, $typeArguments);
+        if ($extArguments !== null && $bound instanceof \Closure) {
+            \Tyhp\Ext::bindPut($target, $extArguments, $bound);
         }
 
-        throw new \InvalidArgumentException(
-            'Generic::bind() expects a class-string or callable as its first argument.',
-        );
+        return $bound;
     }
 
     /**
@@ -482,6 +502,17 @@ final class Generic
         }
 
         string $binderName = $info->binder ?? '';
+        // A layout-2 stamp names the binder by its short name, in the function's namespace. A
+        // global function with the same short name must not shadow it.
+        if ($binderName !== '' && !\str_contains($binderName, '\\')) {
+            string $namespace = $function->getNamespaceName();
+            if ($namespace !== '') {
+                string $qualified = $namespace . '\\' . $binderName;
+                if (\function_exists($qualified)) {
+                    $binderName = $qualified;
+                }
+            }
+        }
         if ($binderName === '' || !\function_exists($binderName)) {
             throw new InvalidTypeException(
                 \sprintf(
@@ -578,7 +609,7 @@ final class Generic
     {
         bool $ok = false;
         foreach ($info->layouts as $layout) {
-            if ($layout === 1) {
+            if ($layout === 1 || $layout === 2) {
                 $ok = true;
                 break;
             }
@@ -594,7 +625,7 @@ final class Generic
             : '';
         throw new InvalidTypeException(
             \sprintf(
-                'GenericRuntime layouts [%s] on \'%s\' have no intersection with this runtime (supported [1])%s.',
+                'GenericRuntime layouts [%s] on \'%s\' have no intersection with this runtime (supported [1, 2])%s.',
                 $listed,
                 $target,
                 $compiled,
@@ -626,21 +657,15 @@ final class Generic
     }
 
     /**
-     * Counts the leading `?\Tyhp\Type $__generic_*`-shaped parameters a generated factory or
-     * binder declares. Those are the only parameters `bind()`'s type arguments ever fill; a
-     * factory's trailing constructor-forwarding parameters (or a binder having none at all)
-     * stop the count at the first parameter that is not a bare nullable `\Tyhp\Type`.
+     * Counts the leading type-argument parameters a generated factory or binder declares.
+     * Layout 1 is a nullable `\Tyhp\Type`. Layout 2 is `\Tyhp\TypeLike|string|null`.
+     * A factory's trailing constructor parameters stop the count.
      */
     private static function genericParameterArity(\ReflectionFunctionAbstract $target): int
     {
         int $count = 0;
         foreach ($target->getParameters() as $parameter) {
-            ?\ReflectionType $type = $parameter->getType();
-            if (
-                !$type instanceof \ReflectionNamedType
-                || $type->getName() !== Type::class
-                || !$type->allowsNull()
-            ) {
+            if (!self::isGenericBinderParameter($parameter)) {
                 break;
             }
 
@@ -648,6 +673,35 @@ final class Generic
         }
 
         return $count;
+    }
+
+    private static function isGenericBinderParameter(\ReflectionParameter $parameter): bool
+    {
+        ?\ReflectionType $type = $parameter->getType();
+        if ($type instanceof \ReflectionNamedType) {
+            return $type->getName() === Type::class && $type->allowsNull();
+        }
+
+        if (!$type instanceof \ReflectionUnionType || !$type->allowsNull()) {
+            return false;
+        }
+
+        bool $hasTypeLike = false;
+        bool $hasString = false;
+        foreach ($type->getTypes() as $part) {
+            if (!$part instanceof \ReflectionNamedType) {
+                continue;
+            }
+
+            string $name = $part->getName();
+            if ($name === TypeLike::class) {
+                $hasTypeLike = true;
+            } elseif ($name === 'string') {
+                $hasString = true;
+            }
+        }
+
+        return $hasTypeLike && $hasString;
     }
 
     /**
@@ -694,6 +748,140 @@ final class Generic
     public function new(mixed ...$constructorArguments): object
     {
         return $this->newWithArgs($constructorArguments);
+    }
+
+    /**
+     * Return a lazy ghost. Type arguments are bound on that instance, then the constructor
+     * runs the first time the instance is used.
+     *
+     * @param mixed ...$constructorArguments Arguments forwarded to `TTarget::__construct`.
+     *
+     * @return TTarget
+     *
+     * @throws InvalidTypeException
+     * @throws \LogicException
+     */
+    #[\Tyhp\Php(">=8.4")]
+    public function ghost(mixed ...$constructorArguments): object
+    {
+        if ($this->spent) {
+            throw new \LogicException(
+                \sprintf(
+                    'Generic instance of \'%s\' has already been constructed.',
+                    $this->className,
+                ),
+            );
+        }
+
+        $this->spent = true;
+
+        \ReflectionClass<object> $reflection = self::reflectClass($this->className);
+        if ($reflection->getConstructor() === null && $constructorArguments !== []) {
+            // Same failure `new` reports, raised here rather than at first use.
+            $reflection->newInstanceArgs($constructorArguments);
+        }
+
+        string $factory = $this->factory ?? '';
+        \Closure<callable(object): void> $initializer = $this->erased || $factory === ''
+            ? self::ghostConstructor($constructorArguments)
+            : self::ghostInitializer($reflection, $factory, $this->typeArguments, $constructorArguments);
+
+        object $ghost = $reflection->newLazyGhost($initializer);
+        if (!$reflection->isUninitializedLazyObject($ghost)) {
+            // A class with no instance properties cannot be lazy, and PHP never runs the
+            // initializer for it. Run it now so the constructor still runs, as `new` does.
+            $initializer($ghost);
+        }
+
+        return $ghost;
+    }
+
+    /**
+     * Eager stand-in for {@see ghost}. Same result as {@see new()}.
+     *
+     * @param mixed ...$constructorArguments Arguments forwarded to `TTarget::__construct`.
+     *
+     * @return TTarget
+     *
+     * @throws InvalidTypeException
+     * @throws \LogicException
+     */
+    #[\Tyhp\Php("<8.4")]
+    public function ghost(mixed ...$constructorArguments): object
+    {
+        return $this->newWithArgs($constructorArguments);
+    }
+
+    /**
+     * @param array<int|string, mixed> $constructorArguments
+     */
+    #[\Tyhp\Php(">=8.4")]
+    private static function ghostConstructor(
+        array $constructorArguments,
+    ): \Closure<callable(object): void> {
+        return static function (object $object) use ($constructorArguments): void {
+            self::callInClassScope($object, static function (object $target) use ($constructorArguments): void {
+                if (!\method_exists($target, '__construct')) {
+                    return;
+                }
+
+                string $construct = '__construct';
+                $target->$construct(...$constructorArguments);
+            });
+        };
+    }
+
+    /**
+     * The factory method is only the arity source `new` uses. Calling it would allocate
+     * a different instance, so the hook and the constructor run on the ghost.
+     *
+     * @param array<string|int, ?\Tyhp\Type> $typeArguments
+     * @param array<int|string, mixed>       $constructorArguments
+     */
+    #[\Tyhp\Php(">=8.4")]
+    private static function ghostInitializer(
+        \ReflectionClass<object> $reflection,
+        string $factory,
+        array $typeArguments,
+        array $constructorArguments,
+    ): \Closure<callable(object): void> {
+        \ReflectionMethod $factoryMethod = $reflection->getMethod($factory);
+        array<int, ?\Tyhp\Type> $hookArguments = [];
+        foreach (self::padTypeArguments($factoryMethod, $typeArguments) as $typeArgument) {
+            $hookArguments[] = $typeArgument;
+        }
+
+        return static function (object $object) use ($hookArguments, $constructorArguments): void {
+            self::callInClassScope($object, static function (object $target) use ($hookArguments, $constructorArguments): void {
+                string $initHook = '__initGenerics__tyhpGeneric';
+                $target->$initHook(...$hookArguments);
+                if (!\method_exists($target, '__construct')) {
+                    return;
+                }
+
+                string $construct = '__construct';
+                $target->$construct(...$constructorArguments);
+            });
+        };
+    }
+
+    /**
+     * The ghost is the scope object, so the protected init hook is visible.
+     * `$newThis` stays null: the closure is static and receives the instance as an argument.
+     */
+    #[\Tyhp\Php(">=8.4")]
+    private static function callInClassScope(
+        object $object,
+        \Closure<callable(object): void> $call,
+    ): void {
+        $bound = $call->bindTo(null, $object);
+        if ($bound === null) {
+            throw new InvalidTypeException(
+                \sprintf('Class \'%s\' could not be constructed.', $object::class),
+            );
+        }
+
+        $bound($object);
     }
 
     /**

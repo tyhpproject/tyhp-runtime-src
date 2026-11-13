@@ -1,0 +1,49 @@
+<?tyhp
+
+namespace Tyhp;
+
+/**
+ * One PHP builtin, usable as a class constant (`Type::int`) in attribute arguments
+ * and parameter defaults. `Type::int()` is still the `Type` factory.
+ */
+enum BuiltIn implements TypeLike {
+    case string;
+    case int;
+    case float;
+    case bool;
+    case null;
+    case void;
+    case mixed;
+    case never;
+    case array;
+    case object;
+    case callable;
+    case iterable;
+    case resource;
+
+    public function toType(): Type {
+        return match ($this) {
+            self::string => Type::string(),
+            self::int => Type::int(),
+            self::float => Type::float(),
+            self::bool => Type::bool(),
+            self::null => Type::null(),
+            self::void => Type::void(),
+            self::mixed => Type::mixed(),
+            self::never => Type::never(),
+            self::array => Type::array(),
+            self::object => Type::object(),
+            self::callable => Type::callable(),
+            self::iterable => Type::iterable(),
+            self::resource => Type::resource(),
+        };
+    }
+
+    public function nullable(): Type {
+        return $this->toType()->asNullable();
+    }
+
+    public function or(TypeLike|string ...$others): Type {
+        return $this->toType()->or(...$others);
+    }
+}

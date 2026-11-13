@@ -1,0 +1,1123 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+
+class Query<T> {
+    public function __construct(
+        protected Context $context,
+        private __ClassName $sourceClass,
+        private QueryState $state,
+    ) {}
+
+    public function modelType(): \Tyhp\Type {
+        return typeof(T);
+    }
+
+    public function context(): Context {
+        return $this->context;
+    }
+
+    public function where(\Tyhp\Expression<callable(T): bool> $predicate): Query<T> {
+        return $this->branch($this->state->withWhere($predicate));
+    }
+
+    public function with<TValue>(
+        \Tyhp\PropertyPath<callable(T): TValue> $navigation,
+        ?\Tyhp\Expression $constrain = null,
+    ): Query<T> {
+        return $this->branch($this->state->withInclude($this->segments($navigation), $constrain));
+    }
+
+    public function singleQuery(): Query<T> {
+        return $this->branch($this->state->withSingleQuery());
+    }
+
+    public function thenWith<TRelated, TValue>(\Tyhp\PropertyPath<callable(TRelated): TValue> $navigation): Query<T> {
+        return $this->branch($this->state->withThen($this->segments($navigation)));
+    }
+
+    public function select<TResult>(\Tyhp\Expression<callable(T): TResult> $projection): Query<TResult> {
+        return new Query<TResult>($this->context, $this->sourceClass, $this->state->withProjection($projection));
+    }
+
+    public function orderBy(\Tyhp\Expression<callable(T): mixed> $column): Query<T> {
+        return $this->branch($this->state->withOrders([new OrderSpec($column, 'asc', false)]));
+    }
+
+    public function orderByDesc(\Tyhp\Expression<callable(T): mixed> $column): Query<T> {
+        return $this->branch($this->state->withOrders([new OrderSpec($column, 'desc', false)]));
+    }
+
+    public function thenBy(\Tyhp\Expression<callable(T): mixed> $column): Query<T> {
+        array<int, OrderSpec> $orders = $this->state->orders;
+        $orders[] = new OrderSpec($column, 'asc', false);
+
+        return $this->branch($this->state->withOrders($orders));
+    }
+
+    public function thenByDesc(\Tyhp\Expression<callable(T): mixed> $column): Query<T> {
+        array<int, OrderSpec> $orders = $this->state->orders;
+        $orders[] = new OrderSpec($column, 'desc', false);
+
+        return $this->branch($this->state->withOrders($orders));
+    }
+
+    public function latest(?\Tyhp\Expression<callable(T): mixed> $column = null): Query<T> {
+        if ($column === null) {
+            return $this->branch($this->state->withOrders([new OrderSpec(null, 'desc', true)]));
+        }
+
+        return $this->branch($this->state->withOrders([new OrderSpec($column, 'desc', false)]));
+    }
+
+    public function oldest(?\Tyhp\Expression<callable(T): mixed> $column = null): Query<T> {
+        if ($column === null) {
+            return $this->branch($this->state->withOrders([new OrderSpec(null, 'asc', true)]));
+        }
+
+        return $this->branch($this->state->withOrders([new OrderSpec($column, 'asc', false)]));
+    }
+
+    public function skip(int $count): Query<T> {
+        return $this->branch($this->state->withSkip($count));
+    }
+
+    public function take(int $count): Query<T> {
+        return $this->branch($this->state->withTake($count));
+    }
+
+    public function paginate(
+        int|null|\Closure $perPage = null,
+        string $pageName = 'page',
+        int|null $page = null,
+        \Closure|int|null $total = null,
+    ): \Illuminate\Pagination\LengthAwarePaginator<int, T> {
+        int $resolvedTotal = $this->resolvedTotal($total);
+        int $size = $this->pageSize($perPage, $resolvedTotal);
+        int $number = $this->pageNumber($page, $pageName);
+        array<int, T> $rows = [];
+        ?int $skip = $this->pageSkip($number, $size);
+        if ($resolvedTotal > 0 && $skip !== null) {
+            $rows = $this->branch($this->state->withSkip($skip)->withTake($size))->all();
+        }
+        \Illuminate\Support\Collection<int, T> $items = new \Illuminate\Support\Collection<int, T>($rows);
+
+        return new \Illuminate\Pagination\LengthAwarePaginator<int, T>(
+            $items,
+            $resolvedTotal,
+            $size,
+            $number,
+            $this->pageOptions($pageName),
+        );
+    }
+
+    public function simplePaginate(
+        int|null $perPage = null,
+        string $pageName = 'page',
+        int|null $page = null,
+    ): \Illuminate\Pagination\Paginator<int, T> {
+        int $size = $this->pageSize($perPage, 0);
+        int $number = $this->pageNumber($page, $pageName);
+        array<int, T> $rows = [];
+        ?int $skip = $this->pageSkip($number, $size);
+        if ($skip !== null) {
+            $rows = $this->branch($this->state->withSkip($skip)->withTake($size + 1))->all();
+        }
+        \Illuminate\Support\Collection<int, T> $items = new \Illuminate\Support\Collection<int, T>($rows);
+
+        return new \Illuminate\Pagination\Paginator<int, T>($items, $size, $number, $this->pageOptions($pageName));
+    }
+
+    public function cursorPaginate(
+        int|null $perPage = null,
+        string $cursorName = 'cursor',
+        \Illuminate\Pagination\Cursor|string|null $cursor = null,
+    ): \Illuminate\Pagination\CursorPaginator<int, T> {
+        if (\count($this->state->sets) > 0) {
+            throw new \LogicException('cursorPaginate does not apply to a set operation.');
+        }
+        if ($this->state->projection !== null) {
+            throw new \LogicException('cursorPaginate reads mapped models.');
+        }
+        int $size = $this->pageSize($perPage, 0);
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $this->sourceMap();
+        ?\Illuminate\Pagination\Cursor $position = $this->cursorPosition($cursorName, $cursor);
+        bool $reverse = $position !== null && $position->pointsToPreviousItems();
+        array<int, OrderSpec> $orders = [];
+        array<int, string> $properties = [];
+        if (\count($this->state->orders) === 0) {
+            if ($map->key === null || \count($map->key->columns) === 0 || \count($map->key->properties) === 0) {
+                throw new \LogicException('cursorPaginate needs an order.');
+            }
+            foreach ($map->key->columns as $index => $column) {
+                string $direction = $reverse ? 'desc' : 'asc';
+                $orders[] = new OrderSpec(null, $direction, false, $column);
+                string $property = $map->key->properties[$index] ?? '';
+                if ($property === '') {
+                    throw new \LogicException('cursorPaginate needs an order.');
+                }
+                $properties[] = $property;
+            }
+        } else {
+            foreach ($this->state->orders as $order) {
+                $orders[] = new OrderSpec($order->expression, $this->flipped($order->direction, $reverse), $order->defaultColumn, $order->column);
+                $properties[] = $this->orderProperty($order, $map);
+            }
+        }
+        // Rows that tie on the ordering are told apart by the key, so a page boundary neither skips nor repeats one.
+        if ($map->key !== null) {
+            foreach ($map->key->columns as $index => $column) {
+                string $keyProperty = $map->key->properties[$index] ?? '';
+                if ($keyProperty === '' || \in_array($keyProperty, $properties, true)) {
+                    continue;
+                }
+                $orders[] = new OrderSpec(null, $reverse ? 'desc' : 'asc', false, $column);
+                $properties[] = $keyProperty;
+            }
+        }
+        array<int, mixed> $values = [];
+        if ($position !== null) {
+            foreach ($properties as $property) {
+                mixed $raw = $position->parameter($property);
+                if ($raw === null || !$map->hasColumn($property)) {
+                    throw new \LogicException('cursorPaginate cannot page from a null column.');
+                }
+                mixed $stored = \Tyhp\Rhetoric\Tracking\PropertyBag::database($map->column($property), $raw);
+                if ($stored === null) {
+                    throw new \LogicException('cursorPaginate cannot page from a null column.');
+                }
+                $values[] = $stored;
+            }
+        }
+        QueryState $paging = $this->state->forCursor($orders, $size + 1, new CursorWindow($position !== null, $values));
+        array<int, T> $rows = $this->branch($paging)->all();
+        \Illuminate\Support\Collection<int, T> $items = new \Illuminate\Support\Collection<int, T>($rows);
+
+        return new CursorPage<T>($items, $size, $position, $properties, $cursorName, $map);
+    }
+
+    public function distinct(): Query<T> {
+        return $this->branch($this->state->withDistinct());
+    }
+
+    public function untracked(): Query<T> {
+        return $this->branch($this->state->withTracking(QueryTracking::Untracked));
+    }
+
+    public function untrackedWithIdentity(): Query<T> {
+        return $this->branch($this->state->withTracking(QueryTracking::Identity));
+    }
+
+    public function tag(string $comment): Query<T> {
+        return $this->branch($this->state->withTag($comment));
+    }
+
+    public function lockForUpdate(): Query<T> {
+        return $this->branch($this->state->withLock('update'));
+    }
+
+    public function sharedLock(): Query<T> {
+        return $this->branch($this->state->withLock('share'));
+    }
+
+    /**
+     * @param array<int, mixed> $bindings
+     */
+    public function fromRaw(string $sql, array<int, mixed> $bindings = []): Query<T> {
+        return $this->branch($this->state->withFrom($sql, $bindings));
+    }
+
+    public function join<TOther, TResult>(
+        Query<TOther> $other,
+        \Tyhp\Expression<callable(T): mixed> $outerKey,
+        \Tyhp\Expression<callable(TOther): mixed> $innerKey,
+        \Tyhp\Expression<callable(T, TOther): TResult> $result,
+    ): Query<TResult> {
+        return $this->joined(false, $other, $outerKey, $innerKey, $result);
+    }
+
+    public function leftJoin<TOther, TResult>(
+        Query<TOther> $other,
+        \Tyhp\Expression<callable(T): mixed> $outerKey,
+        \Tyhp\Expression<callable(TOther): mixed> $innerKey,
+        \Tyhp\Expression<callable(T, TOther): TResult> $result,
+    ): Query<TResult> {
+        return $this->joined(true, $other, $outerKey, $innerKey, $result);
+    }
+
+    public function groupBy(\Tyhp\Expression<callable(T): mixed> $key): Query<Group<T>> {
+        return new Query<Group<T>>($this->context, $this->sourceClass, $this->state->withGroup($key));
+    }
+
+    public function having(\Tyhp\Expression<callable(T): bool> $predicate): Query<T> {
+        return $this->branch($this->state->withHaving($predicate));
+    }
+
+    public function union(Query<T> $other): Query<T> {
+        return $this->branch($this->state->withSet(new SetOperand('union', $other->readSource(), $other->readState())));
+    }
+
+    public function unionAll(Query<T> $other): Query<T> {
+        return $this->branch($this->state->withSet(new SetOperand('unionAll', $other->readSource(), $other->readState())));
+    }
+
+    public function intersect(Query<T> $other): Query<T> {
+        return $this->branch($this->state->withSet(new SetOperand('intersect', $other->readSource(), $other->readState())));
+    }
+
+    public function except(Query<T> $other): Query<T> {
+        return $this->branch($this->state->withSet(new SetOperand('except', $other->readSource(), $other->readState())));
+    }
+
+    public function delete(): int {
+        ModelMap $map = $this->sourceMap();
+        \Illuminate\Database\Query\Builder $builder = $this->writeTarget();
+        if ($map->softDeletes && $map->deletedAtColumn !== null) {
+            return $this->affected($builder->update([
+                $map->deletedAtColumn => (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s'),
+            ]));
+        }
+
+        return $builder->delete();
+    }
+
+    public function restore(): int {
+        ModelMap $map = $this->sourceMap();
+        if (!$map->softDeletes || $map->deletedAtColumn === null) {
+            throw new \LogicException($map->class . ' does not use soft deletes.');
+        }
+        string $trash = $this->state->trash === 'only' ? 'only' : 'with';
+        QueryState $state = $this->preparedState($this->state->withTrash($trash));
+        \Illuminate\Database\Query\Builder $builder = (new QueryCompiler())->writeTarget($this->context, $this->sourceClass, $state);
+
+        return $this->affected($builder->update([$map->deletedAtColumn => null]));
+    }
+
+    private function affected(mixed $updated): int {
+        if (\is_int($updated)) {
+            return $updated;
+        }
+        if (\is_string($updated) && \is_numeric($updated)) {
+            return (int)$updated;
+        }
+
+        return 0;
+    }
+
+    public function withoutGlobalScopes(): Query<T> {
+        return new Query<T>($this->context, $this->sourceClass, $this->state->withoutGlobalScopes());
+    }
+
+    public function withTrashed(): Query<T> {
+        return new Query<T>($this->context, $this->sourceClass, $this->state->withTrash('with'));
+    }
+
+    public function onlyTrashed(): Query<T> {
+        return new Query<T>($this->context, $this->sourceClass, $this->state->withTrash('only'));
+    }
+
+    public function update(callable(Assignments<T>): mixed $assignments): int {
+        Assignments<T> $set = new Assignments<T>();
+        $assignments($set);
+        if (\count($set->pairs) === 0) {
+            return 0;
+        }
+        \Illuminate\Database\Query\Builder $builder = $this->writeTarget();
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $builder->getGrammar();
+        ModelMap $model = $this->sourceMap();
+        JoinSet $joins = new JoinSet($model, $this->context->mapping(), $grammar);
+        array<string, mixed> $values = [];
+        array<int, mixed> $setBindings = [];
+        foreach ($set->pairs as $pair) {
+            Translator $columnTranslator = $this->columnTranslator($grammar, $pair->column, $joins);
+            SqlPiece $column = $columnTranslator->translate($pair->column->body);
+            if ($column->column === null) {
+                throw new QueryTranslationException('property', ExpressionText::lambda($pair->column), 'update() needs a column.');
+            }
+            Translator $valueTranslator = $this->columnTranslator($grammar, $pair->value, $joins);
+            SqlPiece $value = $valueTranslator->translate($pair->value->body);
+            $values[$column->column] = new \Illuminate\Database\Query\Expression<string>($value->sql);
+            foreach ($value->bindings as $binding) {
+                $setBindings[] = $binding;
+            }
+        }
+        string $sql = $grammar->compileUpdate($builder, $values);
+        array<int, mixed> $bindings = $this->mergeLists($this->bindingList($builder, 'join'), $setBindings);
+        $bindings = $this->mergeLists($bindings, $this->bindingList($builder, 'where'));
+
+        return $this->context->connection()->update($sql, $bindings);
+    }
+
+    public function increment(\Tyhp\Expression<callable(T): mixed> $column, int|float $amount = 1): int {
+        return $this->step($column, $amount, true);
+    }
+
+    public function decrement(\Tyhp\Expression<callable(T): mixed> $column, int|float $amount = 1): int {
+        return $this->step($column, $amount, false);
+    }
+
+    public function readSource(): __ClassName {
+        return $this->sourceClass;
+    }
+
+    public function readState(): QueryState {
+        return $this->preparedState($this->state);
+    }
+
+    public function toSql(): string {
+        return $this->statement('select')->sql;
+    }
+
+    public function toRawSql(): string {
+        SqlText $text = $this->statement('select');
+        string $sql = $text->sql;
+
+        // Laravel's substitution reads a backslash before a quote as an escaped quote, so the
+        // LIKE ESCAPE clause and the text of a tag comment are set aside while it runs.
+        string $comment = '';
+        if (\count($this->state->tags) > 0 && \str_starts_with($sql, '/*')) {
+            $end = \strpos($sql, '*/');
+            if ($end !== false) {
+                $comment = \substr($sql, 0, $end + 2);
+                $sql = \substr($sql, $end + 2);
+            }
+        }
+        string $marker = '~' . \bin2hex(\random_bytes(8));
+        array<int, string> $clauses = Translator::likeEscapeClauses();
+        foreach ($clauses as $index => $clause) {
+            $sql = \str_replace($clause, $marker . $index . '~', $sql);
+        }
+        $sql = $this->context->connection()->getQueryGrammar()->substituteBindingsIntoRawSql($sql, $text->bindings);
+        foreach ($clauses as $index => $clause) {
+            $sql = \str_replace($marker . $index . '~', $clause, $sql);
+        }
+
+        return $comment . $sql;
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    public function bindings(): array<int, mixed> {
+        return $this->statement('select')->bindings;
+    }
+
+    public function statement(string $terminal): SqlText {
+        QueryState $state = $this->preparedState($this->state);
+
+        return $this->plan($state, $terminal)->text($state, $this->context);
+    }
+
+    public function columnStatement(string $terminal, \Tyhp\Expression $column): SqlText {
+        QueryState $state = $this->preparedState($this->state->withAggregate($column));
+
+        return $this->plan($state, $terminal)->text($state, $this->context);
+    }
+
+    public function everyStatement(\Tyhp\Expression<callable(T): bool> $predicate): SqlText {
+        QueryState $state = $this->preparedState($this->state->withEvery($predicate));
+
+        return $this->plan($state, 'every')->text($state, $this->context);
+    }
+
+    /**
+     * @return array<int, T>
+     */
+    public function all(): array<int, T> {
+        return $this->materialize('select');
+    }
+
+    public function get(): \Illuminate\Support\Collection<int, T> {
+        return new \Illuminate\Support\Collection<int, T>($this->all());
+    }
+
+    public function first(): ?T {
+        array<int, T> $rows = $this->materialize('first');
+        if (\count($rows) === 0) {
+            return null;
+        }
+
+        return $rows[0];
+    }
+
+    public function firstOrFail(): T {
+        ?T $row = $this->first();
+        if ($row === null) {
+            throw new \Illuminate\Database\RecordsNotFoundException();
+        }
+
+        return $row;
+    }
+
+    public function sole(): T {
+        array<int, T> $rows = $this->materialize('sole');
+        if (\count($rows) === 0) {
+            throw new \Illuminate\Database\RecordsNotFoundException();
+        }
+        if (\count($rows) > 1) {
+            throw new \Illuminate\Database\MultipleRecordsFoundException(\count($rows));
+        }
+
+        return $rows[0];
+    }
+
+    public function exists(): bool {
+        return $this->flag($this->state, 'exists');
+    }
+
+    public function doesntExist(): bool {
+        return $this->flag($this->state, 'notExists');
+    }
+
+    public function every(\Tyhp\Expression<callable(T): bool> $predicate): bool {
+        return $this->flag($this->state->withEvery($predicate), 'every');
+    }
+
+    public function count(): int {
+        mixed $value = $this->aggregateValue($this->state, 'count');
+        if (!\is_numeric($value)) {
+            return 0;
+        }
+
+        return (int)$value;
+    }
+
+    public function sum(\Tyhp\Expression<callable(T): int|float> $column): int|float {
+        mixed $value = $this->aggregateValue($this->state->withAggregate($column), 'sum');
+        if ($value === null) {
+            return 0;
+        }
+        if (\is_int($value)) {
+            return $value;
+        }
+        if (\is_float($value)) {
+            return $value;
+        }
+        if (\is_numeric($value)) {
+            string $text = (string)$value;
+            if (\str_contains($text, '.')) {
+                return (float)$value;
+            }
+
+            return (int)$value;
+        }
+
+        return 0;
+    }
+
+    public function min(\Tyhp\Expression<callable(T): mixed> $column): int|float|string|null {
+        return $this->extremum($this->state->withAggregate($column), 'min');
+    }
+
+    public function max(\Tyhp\Expression<callable(T): mixed> $column): int|float|string|null {
+        return $this->extremum($this->state->withAggregate($column), 'max');
+    }
+
+    public function cursor(): \Generator<int, T> {
+        QueryState $state = $this->preparedState($this->state);
+        QueryPlan $plan = $this->plan($state, 'select');
+        if (\count($plan->eager) > 0) {
+            int $index = 0;
+            foreach ($this->materialize('select') as $row) {
+                yield $index => $row;
+                $index++;
+            }
+
+            return;
+        }
+        if ($plan->rowKind !== 'model') {
+            int $index = 0;
+            foreach ($this->materialize('select') as $row) {
+                yield $index => $row;
+                $index++;
+            }
+
+            return;
+        }
+        \Generator $rows = $this->context->connection()->cursor($plan->sql, $plan->bindings($state, $this->context));
+        array<string, T> $seen = [];
+        int $index = 0;
+        foreach ($rows as $row) {
+            if (!\is_object($row)) {
+                throw new \LogicException('Query row was not an object.');
+            }
+            T $model = $this->resolveModel($row, $seen);
+            T $yielded = $model;
+            if (\count($this->state->includes) > 0 && \is_object($model)) {
+                array<int, object> $models = [$model];
+                array<string, object> $loaded = [];
+                EagerLoader::load($this->context, $models, $this->sourceMap(), $this->includePaths(), $this->state->tracking, false, $loaded, $this->includeConstraints());
+            }
+            yield $index => $yielded;
+            $index++;
+        }
+    }
+
+    public function lazy(int $count = 1000): \Generator<int, T> {
+        if ($count < 1) {
+            throw new \InvalidArgumentException('lazy() count must be at least 1.');
+        }
+        int $index = 0;
+        int $start = $this->state->skip ?? 0;
+        for (int $page = 0; $page < 1000000; $page++) {
+            array<int, T> $rows = $this->branch($this->state->withSkip($start + ($page * $count))->withTake($count))->all();
+            if (\count($rows) === 0) {
+                return;
+            }
+            foreach ($rows as $row) {
+                yield $index => $row;
+                $index++;
+            }
+            if (\count($rows) < $count) {
+                return;
+            }
+        }
+    }
+
+    public function chunk(int $count, callable(array<int, T>): bool $callback): bool {
+        if ($count < 1) {
+            throw new \InvalidArgumentException('chunk() count must be at least 1.');
+        }
+        int $start = $this->state->skip ?? 0;
+        for (int $page = 0; $page < 1000000; $page++) {
+            array<int, T> $rows = $this->branch($this->state->withSkip($start + ($page * $count))->withTake($count))->all();
+            if (\count($rows) === 0) {
+                return true;
+            }
+            if ($callback($rows) === false) {
+                return false;
+            }
+            if (\count($rows) < $count) {
+                return true;
+            }
+        }
+
+        return true;
+    }
+
+    public function chunkById(int $count, callable(array<int, T>): bool $callback): bool {
+        if ($count < 1) {
+            throw new \InvalidArgumentException('chunkById() count must be at least 1.');
+        }
+        \Tyhp\Rhetoric\Mapping\ModelMap $map = $this->sourceMap();
+        if ($map->key === null || \count($map->key->columns) !== 1 || \count($map->key->properties) !== 1) {
+            throw new \LogicException('chunkById requires a single-column key.');
+        }
+        string $column = $map->key->columns[0];
+        string $property = $map->key->properties[0];
+        bool $bounded = false;
+        mixed $last = null;
+        int $guard = 0;
+        while ($guard < 1000000) {
+            $guard++;
+            array<int, mixed> $bindings = [];
+            if ($bounded) {
+                $bindings[] = $last;
+            }
+            QueryState $paging = $this->state->withKeyset($column, $bindings)->withTake($count);
+            array<int, T> $rows = (new Query<T>($this->context, $this->sourceClass, $paging))->all();
+            if (\count($rows) === 0) {
+                return true;
+            }
+            if ($callback($rows) === false) {
+                return false;
+            }
+            if (\count($rows) < $count) {
+                return true;
+            }
+            T $tail = $rows[\count($rows) - 1];
+            if (!\is_object($tail)) {
+                return true;
+            }
+            $last = \Tyhp\Rhetoric\Tracking\PropertyBag::read($tail, $property);
+            if ($last === null) {
+                return true;
+            }
+            $bounded = true;
+        }
+
+        return true;
+    }
+
+    public function avg(\Tyhp\Expression<callable(T): int|float> $column): ?float {
+        mixed $value = $this->aggregateValue($this->state->withAggregate($column), 'avg');
+        if ($value === null || !\is_numeric($value)) {
+            return null;
+        }
+
+        return (float)$value;
+    }
+
+    private function branch(QueryState $state): Query<T> {
+        return new Query<T>($this->context, $this->sourceClass, $state);
+    }
+
+    private function resolvedTotal(\Closure|int|null $total): int {
+        if ($total instanceof \Closure) {
+            mixed $value = \call_user_func($total);
+            if (!\is_int($value)) {
+                throw new \InvalidArgumentException('paginate() total must be an integer.');
+            }
+
+            return $value;
+        }
+        if (\is_int($total)) {
+            return $total;
+        }
+
+        return $this->branch($this->state->unlimited())->count();
+    }
+
+    private function pageSize(int|null|\Closure $perPage, int $total): int {
+        int $size = 15;
+        if ($perPage instanceof \Closure) {
+            mixed $value = \call_user_func($perPage, $total);
+            if (!\is_int($value)) {
+                throw new \InvalidArgumentException('Page size must be an integer.');
+            }
+            $size = $value;
+        } elseif ($perPage !== null) {
+            $size = $perPage;
+        }
+        if ($size < 1) {
+            throw new \InvalidArgumentException('Page size must be at least 1.');
+        }
+
+        return $size;
+    }
+
+    /**
+     * The offset of a page, or null when it lies past the largest offset an integer can hold.
+     */
+    private function pageSkip(int $number, int $size): ?int {
+        int $before = $number - 1;
+        if ($before > \intdiv(\PHP_INT_MAX, $size)) {
+            return null;
+        }
+
+        return $before * $size;
+    }
+
+    private function pageNumber(int|null $page, string $pageName): int {
+        int $number = $page ?? 0;
+        if ($number < 1) {
+            $number = \Illuminate\Pagination\Paginator::resolveCurrentPage($pageName);
+        }
+        if ($number < 1) {
+            return 1;
+        }
+
+        return $number;
+    }
+
+    private function pageOptions(string $pageName): \Illuminate\Pagination\PaginatorOptions {
+        return new \Illuminate\Pagination\PaginatorOptions[
+            path => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
+            pageName => $pageName,
+        ];
+    }
+
+    private function cursorPosition(string $cursorName, \Illuminate\Pagination\Cursor|string|null $cursor): ?\Illuminate\Pagination\Cursor {
+        if ($cursor instanceof \Illuminate\Pagination\Cursor) {
+            return $cursor;
+        }
+        if (\is_string($cursor)) {
+            ?\Illuminate\Pagination\Cursor $decoded = \Illuminate\Pagination\Cursor::fromEncoded($cursor);
+            if ($decoded === null) {
+                throw new \InvalidArgumentException('The cursor is not valid.');
+            }
+
+            return $decoded;
+        }
+        mixed $resolved = \Illuminate\Pagination\CursorPaginator::resolveCurrentCursor($cursorName);
+        if ($resolved instanceof \Illuminate\Pagination\Cursor) {
+            return $resolved;
+        }
+
+        return null;
+    }
+
+    private function flipped(string $direction, bool $reverse): string {
+        if (!$reverse) {
+            return $direction;
+        }
+        if ($direction === 'asc') {
+            return 'desc';
+        }
+
+        return 'asc';
+    }
+
+    private function orderProperty(OrderSpec $order, \Tyhp\Rhetoric\Mapping\ModelMap $map): string {
+        if ($order->column !== null && $map->key !== null) {
+            foreach ($map->key->columns as $index => $column) {
+                if ($column === $order->column) {
+                    string $property = $map->key->properties[$index] ?? '';
+                    if ($property !== '') {
+                        return $property;
+                    }
+                }
+            }
+        }
+        if ($order->defaultColumn || $order->expression === null) {
+            return $this->defaultProperty($map);
+        }
+        \Tyhp\Expression\ExpressionNode $body = $order->expression->body;
+        if ($body instanceof \Tyhp\Expression\PropertyAccessExpression && $body->object instanceof \Tyhp\Expression\ParameterExpression) {
+            if (!$map->hasColumn($body->property)) {
+                throw new \LogicException('cursorPaginate orders by a mapped column.');
+            }
+
+            return $body->property;
+        }
+
+        throw new \LogicException('cursorPaginate orders by a mapped column.');
+    }
+
+    private function defaultProperty(\Tyhp\Rhetoric\Mapping\ModelMap $map): string {
+        if ($map->hasColumn('createdAt')) {
+            return 'createdAt';
+        }
+        foreach ($map->columns as $column) {
+            if ($column->name === 'created_at') {
+                return $column->property;
+            }
+        }
+        if ($map->key !== null) {
+            string $property = $map->key->properties[0] ?? '';
+            if ($property !== '') {
+                return $property;
+            }
+        }
+
+        throw new \LogicException('cursorPaginate needs an order.');
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function includePaths(): array<int, array<int, string>> {
+        array<int, array<int, string>> $paths = [];
+        foreach ($this->state->includes as $include) {
+            $paths[] = $include->path;
+        }
+
+        return $paths;
+    }
+
+    /**
+     * @return array<string, \Tyhp\Expression>
+     */
+    private function includeConstraints(): array<string, \Tyhp\Expression> {
+        array<string, \Tyhp\Expression> $constraints = [];
+        foreach ($this->state->includes as $include) {
+            if ($include->constrain !== null && isset($include->path[0])) {
+                $constraints[$include->path[0]] = $include->constrain;
+            }
+        }
+
+        return $constraints;
+    }
+
+    /**
+     * @template TOther
+     * @template TResult
+     */
+    private function joined<TOther, TResult>(
+        bool $left,
+        Query<TOther> $other,
+        \Tyhp\Expression $outerKey,
+        \Tyhp\Expression $innerKey,
+        \Tyhp\Expression $result,
+    ): Query<TResult> {
+        QueryState $inner = $other->readState();
+        if ($inner->skip !== null || $inner->take !== null || $inner->distinct || $inner->projection !== null || $inner->fromSql !== null || \count($inner->groups) > 0 || \count($inner->havings) > 0 || \count($inner->sets) > 0 || \count($inner->joins) > 0) {
+            // Only the other query's where() filters reach the join, so anything else would be dropped without a word.
+            throw new \LogicException('The query passed to join() or leftJoin() can only be filtered with where().');
+        }
+        QueryState $state = $this->state->withJoin(new JoinSpec($left, $other->readSource(), $other->readState(), $outerKey, $innerKey, $result));
+
+        return new Query<TResult>($this->context, $this->sourceClass, $state->withProjection($result));
+    }
+
+    private function writeTarget(): \Illuminate\Database\Query\Builder {
+        return (new QueryCompiler())->writeTarget($this->context, $this->sourceClass, $this->preparedState($this->state));
+    }
+
+    private function preparedState(QueryState $state): QueryState {
+        return $state->prepared($this->sourceMap());
+    }
+
+    private function columnTranslator(
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        \Tyhp\Expression $expression,
+        JoinSet $joins,
+    ): Translator {
+        return new Translator(
+            $this->sourceMap(),
+            $grammar,
+            $this->context->connection()->getDriverName(),
+            \Tyhp\Expression\ExpressionShape::of($expression),
+            $expression,
+            'where',
+            0,
+            $joins,
+            $this->context,
+        );
+    }
+
+    private function step(\Tyhp\Expression $column, int|float $amount, bool $up): int {
+        \Illuminate\Database\Query\Builder $builder = $this->writeTarget();
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $builder->getGrammar();
+        JoinSet $joins = new JoinSet($this->sourceMap(), $this->context->mapping(), $grammar);
+        Translator $translator = $this->columnTranslator($grammar, $column, $joins);
+        SqlPiece $piece = $translator->translate($column->body);
+        if ($piece->column === null) {
+            string $name = $up ? 'increment()' : 'decrement()';
+            throw new QueryTranslationException('property', ExpressionText::lambda($column), $name . ' needs a column.');
+        }
+        if ($up) {
+            return (int)$builder->increment($piece->column, $amount);
+        }
+
+        return (int)$builder->decrement($piece->column, $amount);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function bindingList(\Illuminate\Database\Query\Builder $builder, string $kind): array<int, mixed> {
+        mixed $raw = $builder->getRawBindings();
+        array<int, mixed> $values = [];
+        if (!\is_array($raw) || !isset($raw[$kind]) || !\is_array($raw[$kind])) {
+            return $values;
+        }
+        foreach ($raw[$kind] as $binding) {
+            $values[] = $binding;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param array<int, mixed> $left
+     * @param array<int, mixed> $right
+     * @return array<int, mixed>
+     */
+    private function mergeLists(array<int, mixed> $left, array<int, mixed> $right): array<int, mixed> {
+        foreach ($right as $binding) {
+            $left[] = $binding;
+        }
+
+        return $left;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function segments<TCallable extends callable>(\Tyhp\PropertyPath<TCallable> $navigation): array<int, string> {
+        array<int, string> $path = [];
+        foreach ($navigation->getSegments() as $segment) {
+            $path[] = $segment;
+        }
+        if (\count($path) === 0) {
+            throw new \InvalidArgumentException('A navigation path is required.');
+        }
+
+        return $path;
+    }
+
+    /**
+     * @return array<int, T>
+     */
+    private function materialize(string $terminal): array<int, T> {
+        QueryState $state = $this->preparedState($this->state);
+        QueryPlan $plan = $this->plan($state, $terminal);
+
+        return $this->hydrate($plan, $state, $this->objects($plan, $state));
+    }
+
+    /**
+     * @param array<int, object> $rows
+     * @return array<int, T>
+     */
+    private function hydrate(QueryPlan $plan, QueryState $state, array<int, object> $rows): array<int, T> {
+        (void)$state;
+        if (\count($plan->eager) > 0 && $plan->rowKind === 'model') {
+            array<int, T> $loaded = [];
+            foreach (SingleQuery::assemble($this->context, $this->sourceMap(), $rows, $plan->eager, $this->state) as $model) {
+                if (!($model is T)) {
+                    throw new \TypeError('Hydrated value is not the query result type.');
+                }
+                $loaded[] = $model;
+            }
+
+            return $loaded;
+        }
+        array<int, T> $result = [];
+        if ($plan->rowKind === 'array') {
+            foreach ($rows as $row) {
+                mixed $value = Hydrator::listed($plan, $row);
+                if (!($value is T)) {
+                    throw new \TypeError('Hydrated value is not the query result type.');
+                }
+                $result[] = $value;
+            }
+
+            return $result;
+        }
+        if ($plan->rowKind === 'client') {
+            if ($this->state->projection === null) {
+                throw new \LogicException('Client projection is missing.');
+            }
+            \Closure $project = $this->state->projection->compile();
+            foreach (Hydrator::models($this->sourceMap(), $rows, $this->context) as $model) {
+                mixed $value = $project($model);
+                if (!($value is T)) {
+                    throw new \TypeError('Projection returned a value of the wrong type.');
+                }
+                $result[] = $value;
+            }
+
+            return $result;
+        }
+        array<string, T> $seen = [];
+        foreach ($rows as $row) {
+            mixed $value = $plan->rowKind === 'ctor'
+                ? Hydrator::construct($this->state, $plan, $row)
+                : ($plan->rowKind === 'scalar' ? Hydrator::scalar($plan, $row) : $this->resolveModel($row, $seen));
+            if (!($value is T)) {
+                throw new \TypeError('Hydrated value is not the query result type.');
+            }
+            $result[] = $value;
+        }
+        if ($plan->rowKind === 'model' && \count($this->state->includes) > 0) {
+            array<int, object> $models = [];
+            foreach ($result as $row) {
+                if (\is_object($row)) {
+                    $models[] = $row;
+                }
+            }
+            array<string, object> $tracked = [];
+            EagerLoader::load($this->context, $models, $this->sourceMap(), $this->includePaths(), $this->state->tracking, false, $tracked, $this->includeConstraints());
+        }
+
+        return $result;
+    }
+
+    private function flag(QueryState $state, string $terminal): bool {
+        QueryState $prepared = $this->preparedState($state);
+        QueryPlan $plan = $this->plan($prepared, $terminal);
+        array<int, object> $rows = $this->objects($plan, $prepared);
+        if (\count($rows) === 0) {
+            return false;
+        }
+        array<string, mixed> $data = [];
+        mixed $cast = (array)$rows[0];
+        if (\is_array($cast)) {
+            foreach ($cast as $key => $value) {
+                if (\is_string($key)) {
+                    $data[$key] = $value;
+                }
+            }
+        }
+        mixed $flag = $data['exists'] ?? null;
+
+        return $flag === true || $flag === 1 || $flag === '1';
+    }
+
+    private function aggregateValue(QueryState $state, string $terminal): mixed {
+        QueryState $prepared = $this->preparedState($state);
+        QueryPlan $plan = $this->plan($prepared, $terminal);
+        array<int, object> $rows = $this->objects($plan, $prepared);
+        if (\count($rows) === 0) {
+            return null;
+        }
+        mixed $cast = (array)$rows[0];
+        if (!\is_array($cast) || !\array_key_exists('aggregate', $cast)) {
+            return null;
+        }
+
+        return $cast['aggregate'];
+    }
+
+    private function extremum(QueryState $state, string $terminal): int|float|string|null {
+        mixed $value = $this->aggregateValue($state, $terminal);
+        if ($value === null) {
+            return null;
+        }
+        if (\is_int($value) || \is_float($value) || \is_string($value)) {
+            return $value;
+        }
+        if (\is_numeric($value)) {
+            return (string)$value;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    private function objects(QueryPlan $plan, QueryState $state): array<int, object> {
+        QueryState $prepared = $this->preparedState($state);
+        mixed $selected = $this->context->connection()->select($plan->sql, $plan->bindings($prepared, $this->context));
+        if (!\is_array($selected)) {
+            throw new \LogicException('Query did not return rows.');
+        }
+        array<int, object> $objects = [];
+        foreach ($selected as $row) {
+            if (!\is_object($row)) {
+                throw new \LogicException('Query row was not an object.');
+            }
+            $objects[] = $row;
+        }
+
+        return $objects;
+    }
+
+    private function plan(QueryState $state, string $terminal): QueryPlan {
+        return (new QueryCompiler())->compile($this->context, $this->sourceClass, $state, $terminal);
+    }
+
+    protected function sourceMap(): ModelMap {
+        return $this->context->mapping()->model($this->sourceClass);
+    }
+
+    /**
+     * @param array<string, T> $seen
+     */
+    private function resolveModel(object $row, array<string, T> &$seen): T {
+        mixed $fresh = Hydrator::model($this->sourceMap(), $row, $this->context, $this->state->tracking === QueryTracking::Tracked);
+        if (!($fresh is T)) {
+            throw new \TypeError('Hydrated value is not the query result type.');
+        }
+        if ($this->state->tracking === QueryTracking::Untracked) {
+            return $fresh;
+        }
+        ModelMap $map = $this->sourceMap();
+        ?string $key = $this->context->tracker->indexKey($map, $fresh);
+        if ($this->state->tracking === QueryTracking::Identity) {
+            if ($key !== null && isset($seen[$key])) {
+                return $seen[$key];
+            }
+            if ($key !== null) {
+                $seen[$key] = $fresh;
+            }
+
+            return $fresh;
+        }
+        if ($key !== null) {
+            ?object $existing = $this->context->tracker->modelForKey($key);
+            if ($existing is T) {
+                return $existing;
+            }
+        }
+        $this->context->tracker->track($map, $fresh, false);
+
+        return $fresh;
+    }
+}

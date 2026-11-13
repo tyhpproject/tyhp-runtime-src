@@ -1,0 +1,519 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Migrations;
+
+final class ColumnSpec {
+    public function __construct(
+        public string $property,
+        public string $name,
+        public string $type,
+        public string $blueprint,
+        public bool $nullable,
+        public ?int $maxLength,
+        public ?int $precision,
+        public ?int $scale,
+        public bool $generated,
+        public ?string $comment,
+        public bool $hasDefault,
+        public mixed $default,
+    ) {}
+
+    public function schemaDiffers(ColumnSpec $other): bool {
+        return $this->name !== $other->name || $this->storageDiffers($other);
+    }
+
+    public function storageDiffers(ColumnSpec $other): bool {
+        return $this->blueprint !== $other->blueprint
+            || $this->nullable !== $other->nullable
+            || $this->maxLength !== $other->maxLength
+            || $this->precision !== $other->precision
+            || $this->scale !== $other->scale
+            || $this->generated !== $other->generated
+            || $this->comment !== $other->comment
+            || $this->hasDefault !== $other->hasDefault
+            || !SpecJson::sameValue($this->default, $other->default);
+    }
+
+    public function sameType(ColumnSpec $other): bool {
+        return $this->type === $other->type
+            && $this->blueprint === $other->blueprint
+            && $this->nullable === $other->nullable
+            && $this->maxLength === $other->maxLength
+            && $this->precision === $other->precision
+            && $this->scale === $other->scale
+            && $this->generated === $other->generated;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array<string, mixed> {
+        return [
+            'property' => $this->property,
+            'name' => $this->name,
+            'type' => $this->type,
+            'blueprint' => $this->blueprint,
+            'nullable' => $this->nullable,
+            'maxLength' => $this->maxLength,
+            'precision' => $this->precision,
+            'scale' => $this->scale,
+            'generated' => $this->generated,
+            'comment' => $this->comment,
+            'hasDefault' => $this->hasDefault,
+            'default' => $this->default,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array<string, mixed> $data): ColumnSpec {
+        return new ColumnSpec(
+            SpecJson::string($data, 'property'),
+            SpecJson::string($data, 'name'),
+            SpecJson::string($data, 'type'),
+            SpecJson::string($data, 'blueprint'),
+            SpecJson::bool($data, 'nullable'),
+            SpecJson::optionalInt($data, 'maxLength'),
+            SpecJson::optionalInt($data, 'precision'),
+            SpecJson::optionalInt($data, 'scale'),
+            SpecJson::bool($data, 'generated'),
+            SpecJson::optionalString($data, 'comment'),
+            SpecJson::bool($data, 'hasDefault'),
+            $data['default'] ?? null,
+        );
+    }
+}
+
+final class KeySpec {
+    public function __construct(
+        public array<int, string> $columns,
+        public bool $generated,
+    ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array<string, mixed> {
+        return [
+            'columns' => $this->columns,
+            'generated' => $this->generated,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array<string, mixed> $data): KeySpec {
+        return new KeySpec(SpecJson::strings($data, 'columns'), SpecJson::bool($data, 'generated'));
+    }
+}
+
+final class IndexSpec {
+    public function __construct(
+        public string $name,
+        public array<int, string> $columns,
+        public bool $unique,
+    ) {}
+
+    public function differs(IndexSpec $other): bool {
+        return $this->name !== $other->name
+            || $this->unique !== $other->unique
+            || $this->columns !== $other->columns;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array<string, mixed> {
+        return [
+            'name' => $this->name,
+            'columns' => $this->columns,
+            'unique' => $this->unique,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array<string, mixed> $data): IndexSpec {
+        return new IndexSpec(
+            SpecJson::string($data, 'name'),
+            SpecJson::strings($data, 'columns'),
+            SpecJson::bool($data, 'unique'),
+        );
+    }
+}
+
+final class ForeignKeySpec {
+    public function __construct(
+        public string $name,
+        public array<int, string> $columns,
+        public string $referencedTable,
+        public array<int, string> $referencedColumns,
+        public string $onDelete,
+    ) {}
+
+    public function schemaDiffers(ForeignKeySpec $other): bool {
+        return $this->name !== $other->name
+            || $this->columns !== $other->columns
+            || $this->referencedTable !== $other->referencedTable
+            || $this->referencedColumns !== $other->referencedColumns;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array<string, mixed> {
+        return [
+            'name' => $this->name,
+            'columns' => $this->columns,
+            'referencedTable' => $this->referencedTable,
+            'referencedColumns' => $this->referencedColumns,
+            'onDelete' => $this->onDelete,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array<string, mixed> $data): ForeignKeySpec {
+        return new ForeignKeySpec(
+            SpecJson::string($data, 'name'),
+            SpecJson::strings($data, 'columns'),
+            SpecJson::string($data, 'referencedTable'),
+            SpecJson::strings($data, 'referencedColumns'),
+            SpecJson::string($data, 'onDelete'),
+        );
+    }
+}
+
+final class TableSpec {
+    public function __construct(
+        public string $model,
+        public string $table,
+        public ?string $comment,
+        public bool $timestamps,
+        public bool $pivot,
+        public array<int, ColumnSpec> $columns,
+        public ?KeySpec $key,
+        public array<int, IndexSpec> $indexes,
+        public array<int, ForeignKeySpec> $foreignKeys,
+        public array<int, array<string, mixed>> $seeds,
+    ) {}
+
+    public function column(string $name): ?ColumnSpec {
+        foreach ($this->columns as $column) {
+            if ($column->name === $name) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array<string, mixed> {
+        array<int, array<string, mixed>> $columns = [];
+        foreach ($this->columns as $column) {
+            $columns[] = $column->toArray();
+        }
+        array<int, array<string, mixed>> $indexes = [];
+        foreach ($this->indexes as $index) {
+            $indexes[] = $index->toArray();
+        }
+        array<int, array<string, mixed>> $foreignKeys = [];
+        foreach ($this->foreignKeys as $foreignKey) {
+            $foreignKeys[] = $foreignKey->toArray();
+        }
+
+        return [
+            'model' => $this->model,
+            'table' => $this->table,
+            'comment' => $this->comment,
+            'timestamps' => $this->timestamps,
+            'columns' => $columns,
+            'key' => $this->key?->toArray(),
+            'indexes' => $indexes,
+            'foreignKeys' => $foreignKeys,
+            'seeds' => $this->seeds,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array<string, mixed> $data, bool $pivot): TableSpec {
+        array<int, ColumnSpec> $columns = [];
+        foreach (SpecJson::rows($data, 'columns') as $row) {
+            $columns[] = ColumnSpec::fromArray($row);
+        }
+        array<int, IndexSpec> $indexes = [];
+        foreach (SpecJson::rows($data, 'indexes') as $row) {
+            $indexes[] = IndexSpec::fromArray($row);
+        }
+        array<int, ForeignKeySpec> $foreignKeys = [];
+        foreach (SpecJson::rows($data, 'foreignKeys') as $row) {
+            $foreignKeys[] = ForeignKeySpec::fromArray($row);
+        }
+        ?KeySpec $key = null;
+        if (isset($data['key']) && \is_array($data['key'])) {
+            $key = KeySpec::fromArray($data['key']);
+        }
+
+        return new TableSpec(
+            SpecJson::string($data, 'model'),
+            SpecJson::string($data, 'table'),
+            SpecJson::optionalString($data, 'comment'),
+            SpecJson::bool($data, 'timestamps'),
+            $pivot,
+            $columns,
+            $key,
+            $indexes,
+            $foreignKeys,
+            SpecJson::seedRows($data, 'seeds'),
+        );
+    }
+}
+
+final class SnapshotDocument {
+    public function __construct(
+        public string $context,
+        public array<int, TableSpec> $tables,
+    ) {}
+
+    public static function empty(string $context): SnapshotDocument {
+        return new SnapshotDocument($context, []);
+    }
+
+    public function table(string $name): ?TableSpec {
+        foreach ($this->tables as $table) {
+            if ($table->table === $name) {
+                return $table;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, TableSpec>
+     */
+    public function byName(): array<string, TableSpec> {
+        array<string, TableSpec> $tables = [];
+        foreach ($this->tables as $table) {
+            $tables[$table->table] = $table;
+        }
+
+        return $tables;
+    }
+
+    public function hash(): string {
+        string $encoded = SpecJson::encode($this->payload());
+
+        return \hash('sha256', $encoded);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function payload(): array<string, mixed> {
+        array<int, array<string, mixed>> $models = [];
+        array<int, array<string, mixed>> $pivots = [];
+        foreach ($this->tables as $table) {
+            if ($table->pivot) {
+                $pivots[] = $table->toArray();
+            } else {
+                $models[] = $table->toArray();
+            }
+        }
+
+        return [
+            'format' => 1,
+            'context' => $this->context,
+            'models' => $models,
+            'pivots' => $pivots,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array<string, mixed> {
+        array<string, mixed> $payload = $this->payload();
+        $payload['hash'] = $this->hash();
+
+        return $payload;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array<string, mixed> $data): SnapshotDocument {
+        int $format = SpecJson::int($data, 'format');
+        if ($format !== 1) {
+            throw new \RuntimeException('Unsupported Rhetoric snapshot format ' . (string)$format . '.');
+        }
+        array<int, TableSpec> $tables = [];
+        foreach (SpecJson::rows($data, 'models') as $row) {
+            $tables[] = TableSpec::fromArray($row, false);
+        }
+        foreach (SpecJson::rows($data, 'pivots') as $row) {
+            $tables[] = TableSpec::fromArray($row, true);
+        }
+
+        return new SnapshotDocument(SpecJson::string($data, 'context'), $tables);
+    }
+}
+
+final class SpecJson {
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public static function encode(array<string, mixed> $payload): string {
+        mixed $encoded = \json_encode($payload, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+        if (!\is_string($encoded)) {
+            throw new \RuntimeException('Could not encode the Rhetoric snapshot.');
+        }
+
+        return $encoded;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public static function pretty(array<string, mixed> $payload): string {
+        mixed $encoded = \json_encode(
+            $payload,
+            \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE,
+        );
+        if (!\is_string($encoded)) {
+            throw new \RuntimeException('Could not encode the Rhetoric snapshot.');
+        }
+
+        return $encoded . "\n";
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function string(array<string, mixed> $data, string $key): string {
+        if (!isset($data[$key]) || !\is_string($data[$key])) {
+            throw new \RuntimeException('Snapshot field ' . $key . ' must be a string.');
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function optionalString(array<string, mixed> $data, string $key): ?string {
+        if (!isset($data[$key]) || $data[$key] === null) {
+            return null;
+        }
+        if (!\is_string($data[$key])) {
+            throw new \RuntimeException('Snapshot field ' . $key . ' must be a string.');
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function bool(array<string, mixed> $data, string $key): bool {
+        if (!isset($data[$key]) || !\is_bool($data[$key])) {
+            throw new \RuntimeException('Snapshot field ' . $key . ' must be a bool.');
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function int(array<string, mixed> $data, string $key): int {
+        if (!isset($data[$key]) || !\is_int($data[$key])) {
+            throw new \RuntimeException('Snapshot field ' . $key . ' must be an int.');
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function optionalInt(array<string, mixed> $data, string $key): ?int {
+        if (!isset($data[$key]) || $data[$key] === null) {
+            return null;
+        }
+        if (!\is_int($data[$key])) {
+            throw new \RuntimeException('Snapshot field ' . $key . ' must be an int.');
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<int, string>
+     */
+    public static function strings(array<string, mixed> $data, string $key): array<int, string> {
+        if (!isset($data[$key]) || !\is_array($data[$key])) {
+            throw new \RuntimeException('Snapshot field ' . $key . ' must be a list.');
+        }
+        array<int, string> $values = [];
+        foreach ($data[$key] as $value) {
+            if (!\is_string($value)) {
+                throw new \RuntimeException('Snapshot field ' . $key . ' must contain strings.');
+            }
+            $values[] = $value;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<int, array<string, mixed>>
+     */
+    public static function rows(array<string, mixed> $data, string $key): array<int, array<string, mixed>> {
+        if (!isset($data[$key]) || !\is_array($data[$key])) {
+            throw new \RuntimeException('Snapshot field ' . $key . ' must be a list.');
+        }
+        array<int, array<string, mixed>> $rows = [];
+        foreach ($data[$key] as $row) {
+            if (!\is_array($row)) {
+                throw new \RuntimeException('Snapshot field ' . $key . ' must contain objects.');
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<int, array<string, mixed>>
+     */
+    public static function seedRows(array<string, mixed> $data, string $key): array<int, array<string, mixed>> {
+        return self::rows($data, $key);
+    }
+
+    public static function sameValue(mixed $left, mixed $right): bool {
+        if ($left === $right) {
+            return true;
+        }
+        if (\is_int($left) && \is_float($right)) {
+            return (float)$left === $right;
+        }
+        if (\is_float($left) && \is_int($right)) {
+            return $left === (float)$right;
+        }
+
+        return false;
+    }
+}

@@ -1,0 +1,119 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+use Tyhp\Rhetoric\Migrations\SchemaExtractor;
+use Tyhp\Rhetoric\Migrations\SnapshotDocument;
+use Tyhp\Rhetoric\Migrations\SnapshotStore;
+
+final class Scaffolder {
+    public static function run(
+        \Illuminate\Database\Connection $connection,
+        ScaffoldOptions $options,
+        ?string $snapshotDirectory,
+    ): ScaffoldResult {
+        if ($options->eloquent) {
+            if (\PHP_VERSION_ID < 80400) {
+                throw new \LogicException('Typed queries over Eloquent models require PHP 8.4 or newer.');
+            }
+            if ($snapshotDirectory !== null && $snapshotDirectory !== '') {
+                throw new \InvalidArgumentException('Eloquent models do not write a snapshot.');
+            }
+        }
+        self::validate($options);
+        ReadSchema $schema = SchemaReader::read($connection, $options->schema, $options->tables, $options->exclude);
+        ScaffoldPlan $plan = ReverseMapper::map($schema, $options);
+        // Everything that can fail on the plan is built before the first file is written.
+        array<int, ScaffoldFile> $files = SourceWriter::files($plan, $options);
+        ?SnapshotDocument $document = null;
+        if ($snapshotDirectory !== null && $snapshotDirectory !== '') {
+            $document = SchemaExtractor::extract(ScaffoldMap::compile($plan));
+            self::checkWritable($snapshotDirectory, (new SnapshotStore($snapshotDirectory))->path($plan->contextClass));
+        }
+        array<int, WrittenFile> $written = [];
+        foreach ($files as $file) {
+            string $path = self::join($options->output, $file->relative);
+            if ($file->shell && \is_file($path) && !$options->force) {
+                $written[] = new WrittenFile($path, true);
+                continue;
+            }
+            self::ensure(\dirname($path));
+            mixed $saved = \file_put_contents($path, $file->contents);
+            if ($saved === false) {
+                throw new \RuntimeException('Could not write ' . $path . '.');
+            }
+            $written[] = new WrittenFile($path, false);
+        }
+        ?string $snapshotPath = null;
+        if ($document !== null && $snapshotDirectory !== null) {
+            SnapshotStore $store = new SnapshotStore($snapshotDirectory);
+            $store->save($document);
+            $snapshotPath = $store->path($plan->contextClass);
+        }
+
+        return new ScaffoldResult($plan, $written, $snapshotPath);
+    }
+
+    /**
+     * Names are checked before anything is written, so a bad name leaves no partial output.
+     */
+    private static function validate(ScaffoldOptions $options): void {
+        string $context = \ltrim($options->contextClass, '\\');
+        if (!self::names($context) || Naming::reservedClass(Naming::basename($context))) {
+            throw new \InvalidArgumentException($options->contextClass . ' is not a valid context class name.');
+        }
+        if ($options->namespace !== '' && !self::names($options->namespace)) {
+            throw new \InvalidArgumentException($options->namespace . ' is not a valid namespace.');
+        }
+    }
+
+    private static function names(string $qualified): bool {
+        foreach (\explode('\\', $qualified) as $part) {
+            if (!\is_string($part) || !Naming::ident($part)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function join(string $directory, string $relative): string {
+        return \rtrim($directory, '/\\') . '/' . $relative;
+    }
+
+    /**
+     * The snapshot is saved after the files, so a snapshot that cannot be saved is rejected before any file is written.
+     * A missing directory is allowed when it can be created, as SnapshotStore::save creates it.
+     */
+    private static function checkWritable(string $directory, string $file): void {
+        string $existing = $directory;
+        while (!\is_dir($existing)) {
+            if (\file_exists($existing) || \is_link($existing)) {
+                throw new \RuntimeException('Could not create ' . $directory . ': ' . $existing . ' is not a directory.');
+            }
+            string $parent = \dirname($existing);
+            if ($parent === $existing) {
+                break;
+            }
+            $existing = $parent;
+        }
+        if (!\is_dir($existing) || !\is_writable($existing)) {
+            throw new \RuntimeException('Could not write to ' . $directory . '.');
+        }
+        if (\is_dir($file)) {
+            throw new \RuntimeException('Could not write ' . $file . ': it is a directory.');
+        }
+        if (\is_file($file) && !\is_writable($file)) {
+            throw new \RuntimeException('Could not write ' . $file . '.');
+        }
+    }
+
+    private static function ensure(string $directory): void {
+        if ($directory === '' || \is_dir($directory)) {
+            return;
+        }
+        if (!\mkdir($directory, 0777, true) && !\is_dir($directory)) {
+            throw new \RuntimeException('Could not create ' . $directory . '.');
+        }
+    }
+}

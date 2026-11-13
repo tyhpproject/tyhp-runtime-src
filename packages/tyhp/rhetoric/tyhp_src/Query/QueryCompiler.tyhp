@@ -1,0 +1,941 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Query;
+
+use Tyhp\Expression\ArrayExpression;
+use Tyhp\Expression\ConstantExpression;
+use Tyhp\Expression\ExpressionNode;
+use Tyhp\Expression\NewExpression;
+use Tyhp\Rhetoric\Context;
+use Tyhp\Rhetoric\Mapping\ModelMap;
+
+final class QueryCompiler {
+    private ?Context $active = null;
+
+    public function compile(Context $context, __ClassName $sourceClass, QueryState $state, string $terminal): QueryPlan {
+        string $key = $this->key($context, $sourceClass, $state, $terminal);
+        ?QueryPlan $cached = TranslationCache::get($key);
+        if ($cached !== null) {
+            TranslationCache::hit();
+
+            return $cached;
+        }
+
+        QueryPlan $plan = $this->translate($context, $sourceClass, $state, $terminal);
+        TranslationCache::put($key, $plan);
+
+        return $plan;
+    }
+
+    private function translate(Context $context, __ClassName $sourceClass, QueryState $state, string $terminal): QueryPlan {
+        $this->active = $context;
+        if (\count($state->sets) > 0) {
+            return $this->translateSets($context, $sourceClass, $state, $terminal);
+        }
+        \Illuminate\Database\Connection $connection = $context->connection();
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $connection->getQueryGrammar();
+        string $driver = $connection->getDriverName();
+        ModelMap $model = $context->mapping()->model($sourceClass);
+        JoinSet $joins = new JoinSet($model, $context->mapping(), $grammar);
+        foreach ($state->wheres as $where) {
+            $joins->discover($where->body);
+        }
+        foreach ($state->orders as $order) {
+            if ($order->expression !== null) {
+                $joins->discover($order->expression->body);
+            }
+        }
+        if ($state->projection !== null) {
+            $joins->discover($state->projection->body);
+        }
+        if ($state->every !== null) {
+            $joins->discover($state->every->body);
+        }
+        if ($state->aggregate !== null) {
+            $joins->discover($state->aggregate->body);
+        }
+        foreach ($state->groups as $group) {
+            $joins->discover($group->body);
+        }
+        foreach ($state->havings as $having) {
+            $joins->discover($having->body);
+        }
+        if (\count($state->joins) > 0) {
+            $joins->forceQualify();
+            ?JoinSpec $explicit = $state->joins[0] ?? null;
+            if ($explicit !== null && $context->mapping()->hasModel($explicit->sourceClass)) {
+                ModelMap $other = $context->mapping()->model($explicit->sourceClass);
+                $joins->bindParameter(1, $other, 'rhetoric_j0', true);
+                $joins->discover($explicit->outerKey->body);
+                $joins->discover($explicit->result->body);
+            }
+        }
+        $joins->finish();
+        ?Grouping $grouping = \count($state->groups) === 0 ? null : new Grouping($state->groups);
+        bool $rows = $terminal === 'select' || $terminal === 'first' || $terminal === 'sole';
+        ?int $take = $state->take;
+        // A negative count sets no limit, the way Laravel's `limit()` treats it.
+        if ($take !== null && $take < 0) {
+            $take = null;
+        }
+        // `first` and `sole` read at most one and two rows, and never more than `take` allows.
+        if ($terminal === 'first' && ($take === null || $take > 1)) {
+            $take = 1;
+        }
+        if ($terminal === 'sole' && ($take === null || $take > 2)) {
+            $take = 2;
+        }
+
+        // A query that is about to join its eager loads into one statement repeats each parent
+        // row, so its own columns have to say which table they belong to.
+        if ($rows && $state->singleQuery && \count($state->includes) > 0 && $state->projection === null && $take === null && $state->skip === null) {
+            $joins->forceQualify();
+        }
+
+        bool $aggregate = $terminal === 'count' || $terminal === 'sum' || $terminal === 'min' || $terminal === 'max' || $terminal === 'avg';
+        bool $exists = $terminal === 'exists' || $terminal === 'notExists' || $terminal === 'every';
+        bool $groupExists = $grouping !== null && ($terminal === 'exists' || $terminal === 'notExists');
+        // The rows of a grouped query are its groups, so counting them counts groups. The groups
+        // stay in an inner query that the count reads from.
+        bool $groupedCount = $grouping !== null && $terminal === 'count';
+        // skip/take change which rows an aggregate or an existence check sees, so they stay in an
+        // inner query that the aggregate or the `every` predicate reads from.
+        bool $paged = !$rows && ($state->skip !== null || $take !== null);
+        bool $wrapAggregate = $aggregate && ($state->distinct || $paged || $groupedCount);
+        bool $wrapEvery = $terminal === 'every' && $paged;
+        bool $shaped = $rows || $paged;
+
+        array<int, BindingRecipe> $fromRecipes = [];
+        foreach ($state->fromBindings as $index => $binding) {
+            (void)$binding;
+            $fromRecipes[] = new BindingRecipe('from', 0, 'from', $index, '');
+        }
+
+        \Illuminate\Database\Query\Builder $builder = $state->fromSql !== null
+            ? $connection->query()->fromRaw($state->fromSql, $this->scalars($state->fromBindings))
+            : $connection->table($model->table);
+
+        string $rowKind = 'model';
+        array<int, string> $aliases = [];
+        array<int, string|int> $labels = [];
+        array<int, BindingRecipe> $selectRecipes = [];
+        array<int, mixed> $selectBindings = [];
+        string $aggregateSql = '';
+        if ($aggregate) {
+            if ($terminal === 'count') {
+                $aggregateSql = 'count(*)';
+            } else {
+                ?\Tyhp\Expression $selector = $state->aggregate;
+                if ($selector === null) {
+                    throw new \LogicException('Aggregate column is missing.');
+                }
+                Translator $column = $this->translator($model, $grammar, $driver, $selector, 'aggregate', 0, $joins);
+                SqlPiece $piece = $column->translate($selector->body);
+                $aggregateSql = $terminal . '(' . $piece->sql . ')';
+                $selectBindings = $piece->bindings;
+                $selectRecipes = $column->recipes();
+            }
+            if (!$wrapAggregate) {
+                (void)$builder->selectRaw($aggregateSql . ' as aggregate', $selectBindings);
+            }
+        }
+        if ($groupedCount || $groupExists) {
+            // One constant column per group; `select *` is not valid next to GROUP BY on every grammar.
+            (void)$builder->selectRaw('1 as ' . $grammar->wrap('rhetoric_group'));
+        }
+        if ($state->distinct && ($rows || $wrapAggregate || $paged) && !$groupedCount) {
+            (void)$builder->distinct();
+        }
+        if ($rows && $state->projection !== null) {
+            Translator $projection = $this->translator($model, $grammar, $driver, $state->projection, 'projection', 0, $joins, $grouping);
+            try {
+                if ($state->projection->body instanceof ArrayExpression) {
+                    array<int, string> $parts = [];
+                    array<int, mixed> $bindings = [];
+                    int $index = 0;
+                    foreach ($state->projection->body->items as $item) {
+                        if ($item->value instanceof ArrayExpression) {
+                            throw new QueryTranslationException('array', ExpressionText::lambda($state->projection), 'Nested arrays are evaluated with the query results.');
+                        }
+                        SqlPiece $listed = $projection->translate($item->value);
+                        string $alias = 'c' . (string)$index;
+                        $aliases[] = $alias;
+                        $labels[] = $this->label($item->key, $index);
+                        $parts[] = $listed->sql . ' as ' . $grammar->wrap($alias);
+                        $bindings = $this->append($bindings, $listed->bindings);
+                        $index++;
+                    }
+                    (void)$builder->selectRaw(\implode(', ', $parts), $bindings);
+                    $selectRecipes = $this->appendRecipes($selectRecipes, $projection->recipes());
+                    $rowKind = 'array';
+                } elseif ($state->projection->body instanceof NewExpression) {
+                    array<int, SqlPiece> $columns = $projection->projectionColumns($state->projection->body);
+                    array<int, string> $parts = [];
+                    array<int, mixed> $bindings = [];
+                    int $index = 0;
+                    foreach ($columns as $column) {
+                        string $alias = 'c' . $index;
+                        $aliases[] = $alias;
+                        $parts[] = $column->sql . ' as ' . $grammar->wrap($alias);
+                        $bindings = $this->append($bindings, $column->bindings);
+                        $index++;
+                    }
+                    (void)$builder->selectRaw(\implode(', ', $parts), $bindings);
+                    $selectRecipes = $this->appendRecipes($selectRecipes, $projection->recipes());
+                    $rowKind = 'ctor';
+                } else {
+                    SqlPiece $piece = $projection->translate($state->projection->body);
+                    string $alias = $piece->column !== null ? $piece->column : 'scalar';
+                    $aliases[] = $alias;
+                    string $select = $piece->column !== null
+                        ? $piece->sql
+                        : $piece->sql . ' as ' . $grammar->wrap('scalar');
+                    (void)$builder->selectRaw($select, $piece->bindings);
+                    $selectRecipes = $this->appendRecipes($selectRecipes, $projection->recipes());
+                    $rowKind = 'scalar';
+                }
+            } catch (QueryTranslationException $error) {
+                (void)$error;
+                $rowKind = 'client';
+                $aliases = [];
+                $labels = [];
+            }
+        }
+
+        array<int, BindingRecipe> $groupRecipes = [];
+        array<int, mixed> $groupBindings = [];
+        if ($grouping !== null && ($rows || $aggregate || $groupExists)) {
+            array<int, string> $parts = [];
+            foreach ($state->groups as $index => $group) {
+                Translator $groupTranslator = $this->translator($model, $grammar, $driver, $group, 'group', $index, $joins);
+                foreach ($this->groupNodes($group) as $node) {
+                    SqlPiece $piece = $groupTranslator->translate($node);
+                    $parts[] = $piece->sql;
+                    $groupBindings = $this->append($groupBindings, $piece->bindings);
+                }
+                $groupRecipes = $this->appendRecipes($groupRecipes, $groupTranslator->recipes());
+            }
+            if (\count($parts) > 0) {
+                (void)$builder->groupByRaw(\implode(', ', $parts), $groupBindings);
+            }
+        }
+        array<int, BindingRecipe> $havingRecipes = [];
+        foreach ($state->havings as $index => $having) {
+            Translator $havingTranslator = $this->translator($model, $grammar, $driver, $having, 'having', $index, $joins, $grouping);
+            SqlPiece $piece = $havingTranslator->translate($having->body);
+            (void)$builder->havingRaw($piece->sql, $piece->bindings);
+            $havingRecipes = $this->appendRecipes($havingRecipes, $havingTranslator->recipes());
+        }
+
+        array<int, BindingRecipe> $whereRecipes = [];
+        int $whereIndex = 0;
+        foreach ($state->wheres as $where) {
+            $this->sourceWhere($model, $where);
+            Translator $whereTranslator = $this->translator($model, $grammar, $driver, $where, 'where', $whereIndex, $joins);
+            SqlPiece $piece = $whereTranslator->translate($where->body);
+            (void)$builder->whereRaw($piece->sql, $piece->bindings);
+            $whereRecipes = $this->appendRecipes($whereRecipes, $whereTranslator->recipes());
+            $whereIndex++;
+        }
+        SqlPiece $rowFilter = $this->rowFilter($model, $grammar, $joins->qualifies() ? $model->table : null, false, $joins->qualifies(), $state);
+        if ($rowFilter->sql !== '') {
+            (void)$builder->whereRaw($rowFilter->sql, $rowFilter->bindings);
+            $whereRecipes = $this->appendRecipes($whereRecipes, $this->fixedRecipes($rowFilter));
+        }
+        if ($state->keysetColumn !== null && \count($state->keysetBindings) > 0) {
+            mixed $bound = QueryPlan::scalar($state->keysetBindings[0]);
+            (void)$builder->where($state->keysetColumn, '>', $bound);
+            $whereRecipes[] = new BindingRecipe('keyset', 0, 'slot', 0, '');
+        }
+        string $everySql = '';
+        array<int, mixed> $everyBindings = [];
+        array<int, BindingRecipe> $everyRecipes = [];
+        if ($state->every !== null) {
+            Translator $every = $this->translator($model, $grammar, $driver, $state->every, 'every', 0, $joins);
+            SqlPiece $piece = $every->translate($state->every->body);
+            $everySql = $every->negate($piece);
+            if ($wrapEvery) {
+                $everyBindings = $piece->bindings;
+                $everyRecipes = $every->recipes();
+            } else {
+                (void)$builder->whereRaw($everySql, $piece->bindings);
+                $whereRecipes = $this->appendRecipes($whereRecipes, $every->recipes());
+            }
+        }
+
+        array<int, BindingRecipe> $orderRecipes = [];
+        if ($shaped) {
+            if ($state->keysetColumn !== null) {
+                (void)$builder->orderBy($state->keysetColumn, 'asc');
+            }
+            array<int, string> $cursorSql = [];
+            array<int, string> $cursorDirections = [];
+            bool $cursor = $state->cursor !== null && $state->cursor->active;
+            foreach ($state->orders as $index => $order) {
+                if ($order->column !== null) {
+                    (void)$builder->orderBy($order->column, $order->direction);
+                    if ($cursor) {
+                        $cursorSql[] = $grammar->wrap($order->column);
+                        $cursorDirections[] = $order->direction;
+                    }
+                    continue;
+                }
+                if ($order->defaultColumn || $order->expression === null) {
+                    string $name = $this->defaultColumn($model);
+                    (void)$builder->orderBy($name, $order->direction);
+                    if ($cursor) {
+                        $cursorSql[] = $grammar->wrap($name);
+                        $cursorDirections[] = $order->direction;
+                    }
+                    continue;
+                }
+                Translator $orderTranslator = $this->translator($model, $grammar, $driver, $order->expression, 'order', $index, $joins, $grouping);
+                SqlPiece $piece = $orderTranslator->translate($order->expression->body);
+                if ($piece->column !== null) {
+                    (void)$builder->orderBy($piece->column, $order->direction);
+                    if ($cursor) {
+                        $cursorSql[] = $grammar->wrap($piece->column);
+                        $cursorDirections[] = $order->direction;
+                    }
+                } else {
+                    if ($cursor && \count($piece->bindings) > 0) {
+                        throw new \LogicException('cursorPaginate orders by a mapped column.');
+                    }
+                    (void)$builder->orderByRaw($piece->sql . ' ' . $order->direction, $piece->bindings);
+                    if ($cursor) {
+                        $cursorSql[] = $piece->sql;
+                        $cursorDirections[] = $order->direction;
+                    }
+                }
+                $orderRecipes = $this->appendRecipes($orderRecipes, $orderTranslator->recipes());
+            }
+            if ($cursor && $state->cursor !== null) {
+                $this->appendCursor($builder, $cursorSql, $cursorDirections, $state->cursor->values, $whereRecipes);
+            }
+            // OFFSET has to follow a LIMIT on SQLite and MySQL.
+            if ($take === null && $state->skip !== null && ($driver === 'sqlite' || $driver === 'mysql' || $driver === 'mariadb')) {
+                $take = \PHP_INT_MAX;
+            }
+            if ($take !== null) {
+                (void)$builder->take($take);
+            }
+            if ($state->skip !== null) {
+                (void)$builder->skip($state->skip);
+            }
+        }
+        if ($rows) {
+            if ($state->lock === 'update') {
+                (void)$builder->lockForUpdate();
+            }
+            if ($state->lock === 'share') {
+                (void)$builder->sharedLock();
+            }
+        }
+        array<int, BindingRecipe> $joinRecipes = $this->explicitJoins($builder, $context, $model, $grammar, $driver, $state, $joins);
+        if ($joins->joined() && ($rowKind === 'model' || $rowKind === 'client') && !$aggregate && !$state->singleQuery) {
+            (void)$builder->selectRaw($joins->rootSelect());
+        }
+        if ($rows && $rowKind === 'model' && !$aggregate && !$joins->joined() && !$state->singleQuery && $state->fromSql === null && \count($state->joins) === 0) {
+            // Deferred columns stay out of the statement. A ghost loads them the first time it is touched.
+            ?array<int, string> $loaded = Hydrator::selectedColumns($context, $model);
+            if ($loaded !== null) {
+                (void)$builder->select($loaded);
+            }
+        }
+        $joins->apply($builder);
+        array<int, EagerSpan> $eager = [];
+        // With paging or `first()`, the joined rows would be cut mid-parent and drop children, so
+        // the eager loads run as separate statements instead.
+        if ($state->singleQuery && \count($state->includes) > 0 && $rowKind === 'model' && !$aggregate && $rows && $take === null && $state->skip === null) {
+            SingleQueryParts $single = SingleQuery::attach($builder, $context, $model, $grammar, $driver, $state->includes);
+            (void)$builder->selectRaw($single->select);
+            $eager = $single->spans;
+            $joinRecipes = $this->appendRecipes($joinRecipes, $single->recipes);
+        }
+
+        string $sql = $builder->toSql();
+        array<int, BindingRecipe> $recipes = [];
+        array<int, mixed> $actual = [];
+        if ($wrapAggregate) {
+            $sql = 'select ' . $aggregateSql . ' as aggregate from (' . $sql . ') as ' . $grammar->wrap('aggregate_table');
+            $recipes = $this->ordered($selectRecipes, $fromRecipes, $joinRecipes, $whereRecipes, $groupRecipes, $havingRecipes, $orderRecipes);
+            $actual = $this->append($selectBindings, $builder->getBindings());
+        } elseif ($wrapEvery) {
+            $sql = 'select * from (' . $sql . ') as ' . $grammar->wrap('every_table') . ' where ' . $everySql;
+            $recipes = $this->appendRecipes($this->ordered([], $fromRecipes, $joinRecipes, $whereRecipes, $groupRecipes, $havingRecipes, $orderRecipes), $everyRecipes);
+            $actual = $this->append($builder->getBindings(), $everyBindings);
+        } else {
+            $recipes = $this->ordered($selectRecipes, $fromRecipes, $joinRecipes, $whereRecipes, $groupRecipes, $havingRecipes, $orderRecipes);
+            $actual = $builder->getBindings();
+        }
+        $this->checkBindings($recipes, $state, $actual, $context);
+        if ($exists) {
+            string $prefix = $terminal === 'exists' ? 'select exists(' : 'select not exists(';
+            $sql = $prefix . $sql . ') as ' . $grammar->wrap('exists');
+        }
+        $sql = $this->tag($sql, $state->tags);
+
+        return new QueryPlan($sql, $recipes, $terminal, $rowKind, $aliases, $labels, [], $eager);
+    }
+
+    /**
+     * A query with set operands. The left side's filters, grouping and projection are one derived
+     * table, each operand is another, and they are combined left to right. Ordering and paging
+     * apply to the combined rows, and count, existence and aggregates read from them.
+     */
+    private function translateSets(Context $context, __ClassName $sourceClass, QueryState $state, string $terminal): QueryPlan {
+        if ($terminal === 'every') {
+            throw new \LogicException('every() does not apply to a set operation.');
+        }
+        \Illuminate\Database\Connection $connection = $context->connection();
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $connection->getQueryGrammar();
+        string $driver = $connection->getDriverName();
+        ModelMap $model = $context->mapping()->model($sourceClass);
+        QueryPlan $core = $this->compile($context, $sourceClass, $state->core(), 'select');
+        array<int, QueryPlan> $operands = [];
+        string $compound = 'select * from (' . $core->sql . ') as ' . $grammar->wrap('rhetoric_set0');
+        foreach ($state->sets as $set) {
+            QueryPlan $operand = $this->compile($context, $set->sourceClass, $set->state, 'select');
+            $operands[] = $operand;
+            int $position = \count($operands);
+            if ($position > 1) {
+                // INTERSECT binds tighter than UNION and EXCEPT on MySQL and PostgreSQL, so what has
+                // been combined so far is closed off before the next operand joins it.
+                $compound = 'select * from (' . $compound . ') as ' . $grammar->wrap('rhetoric_acc' . (string)$position);
+            }
+            $compound .= ' ' . $this->setKeyword($set->kind) . ' select * from (' . $operand->sql . ') as ' . $grammar->wrap('rhetoric_set' . (string)$position);
+        }
+
+        bool $rows = $terminal === 'select' || $terminal === 'first' || $terminal === 'sole';
+        ?int $take = $state->take;
+        if ($take !== null && $take < 0) {
+            $take = null;
+        }
+        if ($terminal === 'first' && ($take === null || $take > 1)) {
+            $take = 1;
+        }
+        if ($terminal === 'sole' && ($take === null || $take > 2)) {
+            $take = 2;
+        }
+        bool $paged = $state->skip !== null || $take !== null;
+        \Illuminate\Database\Query\Builder $outer = $connection->query()->fromRaw('(' . $compound . ') as ' . $grammar->wrap('rhetoric_sets'));
+        if ($rows || $paged) {
+            foreach ($state->orders as $index => $order) {
+                if ($order->defaultColumn || $order->expression === null) {
+                    (void)$outer->orderBy($this->defaultColumn($model), $order->direction);
+                    continue;
+                }
+                JoinSet $joins = new JoinSet($model, $context->mapping(), $grammar);
+                $joins->discover($order->expression->body);
+                $joins->finish();
+                Translator $orderTranslator = $this->translator($model, $grammar, $driver, $order->expression, 'order', $index, $joins);
+                SqlPiece $piece = $orderTranslator->translate($order->expression->body);
+                if ($piece->column === null || $joins->joined()) {
+                    throw new \LogicException('A set operation can be ordered by a mapped column of the model only.');
+                }
+                (void)$outer->orderBy($piece->column, $order->direction);
+            }
+            // OFFSET has to follow a LIMIT on SQLite and MySQL.
+            if ($take === null && $state->skip !== null && ($driver === 'sqlite' || $driver === 'mysql' || $driver === 'mariadb')) {
+                $take = \PHP_INT_MAX;
+            }
+            if ($take !== null) {
+                (void)$outer->take($take);
+            }
+            if ($state->skip !== null) {
+                (void)$outer->skip($state->skip);
+            }
+        }
+        string $listing = $outer->toSql();
+        string $derived = ' as ' . $grammar->wrap('rhetoric_rows');
+        array<int, BindingRecipe> $recipes = $core->recipes;
+        string $sql = $listing;
+        if ($terminal === 'count') {
+            $sql = 'select count(*) as aggregate from (' . $listing . ')' . $derived;
+        } elseif ($terminal === 'exists' || $terminal === 'notExists') {
+            string $prefix = $terminal === 'exists' ? 'select exists(' : 'select not exists(';
+            $sql = $prefix . $listing . ') as ' . $grammar->wrap('exists');
+        } elseif (!$rows) {
+            ?\Tyhp\Expression $selector = $state->aggregate;
+            if ($selector === null) {
+                throw new \LogicException('Aggregate column is missing.');
+            }
+            JoinSet $columns = new JoinSet($model, $context->mapping(), $grammar);
+            $columns->discover($selector->body);
+            $columns->finish();
+            Translator $column = $this->translator($model, $grammar, $driver, $selector, 'aggregate', 0, $columns);
+            SqlPiece $value = $column->translate($selector->body);
+            if ($columns->joined()) {
+                throw new \LogicException('A set operation can be aggregated by a mapped column of the model only.');
+            }
+            $sql = 'select ' . $terminal . '(' . $value->sql . ') as aggregate from (' . $listing . ')' . $derived;
+            $recipes = $this->appendRecipes($column->recipes(), $recipes);
+        }
+        $sql = $this->tag($sql, $state->tags);
+
+        return new QueryPlan($sql, $recipes, $terminal, $core->rowKind, $core->aliases, $core->labels, $operands, []);
+    }
+
+    public function writeTarget(Context $context, __ClassName $sourceClass, QueryState $state): \Illuminate\Database\Query\Builder {
+        $this->active = $context;
+        if ($state->skip !== null || $state->take !== null || $state->distinct || \count($state->groups) > 0 || \count($state->havings) > 0 || \count($state->sets) > 0 || \count($state->joins) > 0) {
+            // These narrow or reshape the rows, and a write that ignored them would change more rows than the query selects.
+            throw new \LogicException('update(), delete(), increment() and decrement() act on the rows where() selects. Remove skip(), take(), distinct(), groupBy(), having(), join() and set operations from the query first.');
+        }
+        \Illuminate\Database\Connection $connection = $context->connection();
+        \Illuminate\Database\Query\Grammars\Grammar $grammar = $connection->getQueryGrammar();
+        ModelMap $model = $context->mapping()->model($sourceClass);
+        JoinSet $joins = new JoinSet($model, $context->mapping(), $grammar);
+        foreach ($state->wheres as $where) {
+            $joins->discover($where->body);
+        }
+        $joins->finish();
+        \Illuminate\Database\Query\Builder $builder = $state->fromSql !== null
+            ? $connection->query()->fromRaw($state->fromSql, $this->scalars($state->fromBindings))
+            : $connection->table($model->table);
+        foreach ($state->wheres as $where) {
+            $this->sourceWhere($model, $where);
+            Translator $whereTranslator = $this->translator($model, $grammar, $connection->getDriverName(), $where, 'where', 0, $joins);
+            SqlPiece $piece = $whereTranslator->translate($where->body);
+            (void)$builder->whereRaw($piece->sql, $piece->bindings);
+        }
+        SqlPiece $rowFilter = $this->rowFilter($model, $grammar, null, false, false, $state);
+        if ($rowFilter->sql !== '') {
+            (void)$builder->whereRaw($rowFilter->sql, $rowFilter->bindings);
+        }
+        $joins->apply($builder);
+
+        return $builder;
+    }
+
+    private function defaultColumn(ModelMap $model): string {
+        if ($model->hasColumn('createdAt')) {
+            return $model->column('createdAt')->name;
+        }
+        foreach ($model->columns as $column) {
+            if ($column->name === 'created_at') {
+                return 'created_at';
+            }
+        }
+        if ($model->key !== null && \count($model->key->columns) > 0) {
+            return $model->key->columns[0];
+        }
+
+        return 'id';
+    }
+
+    private function sourceWhere(ModelMap $model, \Tyhp\Expression $where): void {
+        if (\count($where->parameters) === 0) {
+            return;
+        }
+        string $paramType = \ltrim($where->parameters[0]->paramType, '\\');
+        string $source = \ltrim($model->class, '\\');
+        if ($paramType === '' || $paramType === 'mixed' || $paramType === $source || \is_subclass_of($source, $paramType)) {
+            return;
+        }
+        throw new QueryTranslationException(
+            'parameter',
+            ExpressionText::lambda($where),
+            'The lambda parameter is ' . $paramType . ', not the source model ' . $source . '.',
+        );
+    }
+
+    private function translator(
+        ModelMap $model,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        string $driver,
+        \Tyhp\Expression $expression,
+        string $source,
+        int $sourceIndex,
+        JoinSet $joins,
+        ?Grouping $grouping = null,
+    ): Translator {
+        return new Translator(
+            $model,
+            $grammar,
+            $driver,
+            \Tyhp\Expression\ExpressionShape::of($expression),
+            $expression,
+            $source,
+            $sourceIndex,
+            $joins,
+            $this->activeContext(),
+            $grouping,
+        );
+    }
+
+    private function activeContext(): Context {
+        if ($this->active === null) {
+            throw new \LogicException('Query translation has no context.');
+        }
+
+        return $this->active;
+    }
+
+    private function rowFilter(
+        ModelMap $model,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        ?string $qualifier,
+        bool $alias,
+        bool $qualify,
+        QueryState $state,
+    ): SqlPiece {
+        return RowFilter::sql($model, $grammar, $qualifier, $alias, $qualify, $state->ignoreGlobalScopes, $state->trash);
+    }
+
+    /**
+     * @return array<int, BindingRecipe>
+     */
+    private function fixedRecipes(SqlPiece $piece): array<int, BindingRecipe> {
+        array<int, BindingRecipe> $recipes = [];
+        foreach ($piece->bindings as $binding) {
+            if (!\is_string($binding)) {
+                throw new \LogicException('A fixed binding must be a string.');
+            }
+            $recipes[] = new BindingRecipe('where', 0, 'fixed', 0, $binding);
+        }
+
+        return $recipes;
+    }
+
+    /**
+     * @return array<int, BindingRecipe>
+     */
+    private function explicitJoins(
+        \Illuminate\Database\Query\Builder $builder,
+        Context $context,
+        ModelMap $model,
+        \Illuminate\Database\Query\Grammars\Grammar $grammar,
+        string $driver,
+        QueryState $state,
+        JoinSet $joins,
+    ): array<int, BindingRecipe> {
+        array<int, BindingRecipe> $recipes = [];
+        foreach ($state->joins as $index => $spec) {
+            if (!$context->mapping()->hasModel($spec->sourceClass)) {
+                continue;
+            }
+            ModelMap $other = $context->mapping()->model($spec->sourceClass);
+            string $alias = 'rhetoric_j' . (string)$index;
+            JoinSet $inner = new JoinSet($other, $context->mapping(), $grammar, $alias);
+            foreach ($spec->state->wheres as $where) {
+                $inner->discover($where->body);
+            }
+            $inner->finish();
+            Translator $outer = $this->translator($model, $grammar, $driver, $spec->outerKey, 'joinOuter', $index, $joins);
+            SqlPiece $outerPiece = $outer->translate($spec->outerKey->body);
+            Translator $innerKey = $this->translator($other, $grammar, $driver, $spec->innerKey, 'joinInner', $index, $inner);
+            SqlPiece $innerPiece = $innerKey->translate($spec->innerKey->body);
+            string $on = $outerPiece->sql . ' = ' . $innerPiece->sql;
+            array<int, mixed> $bindings = $this->append($outerPiece->bindings, $innerPiece->bindings);
+            $recipes = $this->appendRecipes($recipes, $outer->recipes());
+            $recipes = $this->appendRecipes($recipes, $innerKey->recipes());
+            foreach ($spec->state->wheres as $whereIndex => $where) {
+                string $source = 'joinFilter:' . (string)$index . ':' . (string)$whereIndex;
+                Translator $filter = $this->translator($other, $grammar, $driver, $where, $source, $whereIndex, $inner);
+                SqlPiece $piece = $filter->translate($where->body);
+                $on .= ' and (' . $piece->sql . ')';
+                $bindings = $this->append($bindings, $piece->bindings);
+                $recipes = $this->appendRecipes($recipes, $filter->recipes());
+            }
+            SqlPiece $rowFilter = $this->rowFilter($other, $grammar, $alias, true, true, $spec->state);
+            if ($rowFilter->sql !== '') {
+                $on .= ' and (' . $rowFilter->sql . ')';
+                $bindings = $this->append($bindings, $rowFilter->bindings);
+                $recipes = $this->appendRecipes($recipes, $this->fixedRecipes($rowFilter));
+            }
+            $table = new \Illuminate\Database\Query\Expression<string>(
+                $grammar->wrapTable($other->table) . ' as ' . $grammar->wrap($alias),
+            );
+            $condition = $on;
+            $bound = $bindings;
+            $join = function (\Illuminate\Database\Query\JoinClause $clause) use ($condition, $bound): void {
+                (void)$clause->whereRaw($condition, $bound);
+            };
+            if ($spec->left) {
+                (void)$builder->leftJoin($table, $join);
+            } else {
+                (void)$builder->join($table, $join);
+            }
+            $inner->apply($builder);
+        }
+
+        return $recipes;
+    }
+
+    /**
+     * @return array<int, ExpressionNode>
+     */
+    private function groupNodes(\Tyhp\Expression $group): array<int, ExpressionNode> {
+        if ($group->body instanceof ArrayExpression) {
+            array<int, ExpressionNode> $nodes = [];
+            foreach ($group->body->items as $item) {
+                $nodes[] = $item->value;
+            }
+
+            return $nodes;
+        }
+
+        return [$group->body];
+    }
+
+    private function label(?ExpressionNode $key, int $index): string|int {
+        if ($key instanceof ConstantExpression && \is_string($key->value)) {
+            return $key->value;
+        }
+        if ($key instanceof ConstantExpression && \is_int($key->value)) {
+            return $key->value;
+        }
+
+        return $index;
+    }
+
+    private function setKeyword(string $kind): string {
+        if ($kind === 'unionAll') {
+            return 'union all';
+        }
+        if ($kind === 'intersect') {
+            return 'intersect';
+        }
+        if ($kind === 'except') {
+            return 'except';
+        }
+
+        return 'union';
+    }
+
+    /**
+     * @param array<int, BindingRecipe> $select
+     * @param array<int, BindingRecipe> $from
+     * @param array<int, BindingRecipe> $join
+     * @param array<int, BindingRecipe> $where
+     * @param array<int, BindingRecipe> $group
+     * @param array<int, BindingRecipe> $having
+     * @param array<int, BindingRecipe> $order
+     * @return array<int, BindingRecipe>
+     */
+    private function ordered(
+        array<int, BindingRecipe> $select,
+        array<int, BindingRecipe> $from,
+        array<int, BindingRecipe> $join,
+        array<int, BindingRecipe> $where,
+        array<int, BindingRecipe> $group,
+        array<int, BindingRecipe> $having,
+        array<int, BindingRecipe> $order,
+    ): array<int, BindingRecipe> {
+        return $this->appendRecipes(
+            $this->appendRecipes(
+                $this->appendRecipes(
+                    $this->appendRecipes(
+                        $this->appendRecipes($this->appendRecipes($select, $from), $join),
+                        $where,
+                    ),
+                    $group,
+                ),
+                $having,
+            ),
+            $order,
+        );
+    }
+
+    /**
+     * Everything the SQL text depends on: the connection, the context's mapping, the operators,
+     * and each tree's shape. Values the shape leaves out are bound again on a hit, so only
+     * values that change the text (raw SQL, list length) are added.
+     */
+    private function key(Context $context, __ClassName $sourceClass, QueryState $state, string $terminal): string {
+        \Illuminate\Database\Connection $connection = $context->connection();
+        array<int, string> $parts = [
+            $connection->getDriverName(),
+            $connection->getTablePrefix(),
+            \get_class($context),
+            \ltrim($sourceClass, '\\'),
+            $terminal,
+            $state->skip === null ? '-' : (string)$state->skip,
+            $state->take === null ? '-' : (string)$state->take,
+            $state->distinct ? 'distinct' : '-',
+            $state->ignoreGlobalScopes ? 'unscoped' : 'scoped',
+            'trash:' . $state->trash,
+            $state->lock ?? '-',
+            \serialize($state->tags),
+            $state->fromSql === null ? '-' : 'from:' . $state->fromSql,
+            Hydrator::selectedColumns($context, $context->mapping()->model($sourceClass)) === null ? '-' : 'deferred',
+            $state->keysetColumn === null ? '-' : 'keyset:' . $state->keysetColumn . ':' . (\count($state->keysetBindings) > 0 ? 'after' : 'start'),
+            $state->cursor !== null && $state->cursor->active ? 'cursor' : '-',
+        ];
+        foreach ($state->orders as $order) {
+            string $token = ($order->defaultColumn ? 'order-default:' : 'order:') . $order->direction;
+            if ($order->column !== null) {
+                $token .= ':column:' . $order->column;
+            }
+            if ($order->expression !== null) {
+                $token .= ':' . $this->shapeToken($order->expression);
+            }
+            $parts[] = $token;
+        }
+        foreach ($state->wheres as $where) {
+            $parts[] = 'where:' . $this->shapeToken($where);
+        }
+        if ($state->projection !== null) {
+            $parts[] = 'projection:' . $this->shapeToken($state->projection);
+        }
+        if ($state->every !== null) {
+            $parts[] = 'every:' . $this->shapeToken($state->every);
+        }
+        if ($state->aggregate !== null) {
+            $parts[] = 'aggregate:' . $this->shapeToken($state->aggregate);
+        }
+        $parts[] = $state->singleQuery ? 'single' : '-';
+        foreach ($state->groups as $group) {
+            $parts[] = 'group:' . $this->shapeToken($group);
+        }
+        foreach ($state->havings as $having) {
+            $parts[] = 'having:' . $this->shapeToken($having);
+        }
+        foreach ($state->sets as $set) {
+            $parts[] = 'set:' . $set->kind . ':' . \ltrim($set->sourceClass, '\\') . ':' . $this->key($context, $set->sourceClass, $set->state, 'select');
+        }
+        foreach ($state->joins as $join) {
+            $parts[] = 'join:' . ($join->left ? 'left' : 'inner')
+                . ':' . $this->shapeToken($join->outerKey)
+                . ':' . $this->shapeToken($join->innerKey)
+                . ':' . $this->shapeToken($join->result)
+                . ':' . $this->key($context, $join->sourceClass, $join->state, 'select');
+        }
+        foreach ($state->includes as $include) {
+            string $token = 'include:' . \implode('.', $include->path);
+            if ($include->constrain !== null) {
+                $token .= ':' . $this->shapeToken($include->constrain);
+            }
+            $parts[] = $token;
+        }
+
+        return \hash('xxh128', \serialize($parts));
+    }
+
+    private function shapeToken(\Tyhp\Expression $expression): string {
+        \Tyhp\Expression\ExpressionShape $shape = \Tyhp\Expression\ExpressionShape::of($expression);
+        string $token = $shape->key;
+        foreach ($shape->parameters as $value) {
+            if (\is_array($value)) {
+                $token .= ':n' . \count($value);
+            }
+        }
+
+        return $token . ExpressionText::rawMarker($expression->body);
+    }
+
+    /**
+     * @param array<int, BindingRecipe> $recipes
+     * @param array<int, mixed> $actual
+     */
+    private function checkBindings(array<int, BindingRecipe> $recipes, QueryState $state, array<int, mixed> $actual, Context $context): void {
+        QueryPlan $probe = new QueryPlan('', $recipes, 'select', 'model', []);
+        array<int, mixed> $expected = $probe->bindings($state, $context);
+        if ($expected !== $actual) {
+            throw new \LogicException('Binding recipe does not match the query builder.');
+        }
+    }
+
+    /**
+     * @param array<int, string> $tags
+     */
+    private function tag(string $sql, array<int, string> $tags): string {
+        if (\count($tags) === 0) {
+            return $sql;
+        }
+        string $comment = \implode(' ', $tags);
+        // Removing a delimiter can join the characters around it into a new one, so repeat.
+        // PostgreSQL nests block comments, so an opener has to go as well as a closer.
+        while (\str_contains($comment, '*/') || \str_contains($comment, '/*')) {
+            $comment = \str_replace('*/', '', $comment);
+            $comment = \str_replace('/*', '', $comment);
+        }
+
+        return '/* ' . $comment . ' */ ' . $sql;
+    }
+
+    /**
+     * @param array<int, mixed> $bindings
+     * @return array<int, mixed>
+     */
+    private function scalars(array<int, mixed> $bindings): array<int, mixed> {
+        array<int, mixed> $values = [];
+        foreach ($bindings as $binding) {
+            $values[] = QueryPlan::scalar($binding);
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param array<int, mixed> $left
+     * @param array<int, mixed> $right
+     * @return array<int, mixed>
+     */
+    private function append(array<int, mixed> $left, array<int, mixed> $right): array<int, mixed> {
+        foreach ($right as $binding) {
+            $left[] = $binding;
+        }
+
+        return $left;
+    }
+
+    /**
+     * @param array<int, BindingRecipe> $left
+     * @param array<int, BindingRecipe> $right
+     * @return array<int, BindingRecipe>
+     */
+    private function appendRecipes(array<int, BindingRecipe> $left, array<int, BindingRecipe> $right): array<int, BindingRecipe> {
+        foreach ($right as $recipe) {
+            $left[] = $recipe;
+        }
+
+        return $left;
+    }
+
+    /**
+     * @param array<int, string> $columns
+     * @param array<int, string> $directions
+     * @param array<int, mixed> $values
+     * @param array<int, BindingRecipe> $whereRecipes
+     */
+    private function appendCursor(
+        \Illuminate\Database\Query\Builder $builder,
+        array<int, string> $columns,
+        array<int, string> $directions,
+        array<int, mixed> $values,
+        array<int, BindingRecipe> &$whereRecipes,
+    ): void {
+        if (\count($columns) !== \count($values) || \count($columns) !== \count($directions) || \count($columns) === 0) {
+            throw new \LogicException('Cursor does not match the order.');
+        }
+        array<int, int> $slots = [];
+        string $sql = $this->cursorSql($columns, $directions, 0, $slots);
+        array<int, mixed> $bindings = [];
+        foreach ($slots as $slot) {
+            $bindings[] = QueryPlan::scalar($values[$slot] ?? null);
+            $whereRecipes[] = new BindingRecipe('cursor', 0, 'slot', $slot, '');
+        }
+        (void)$builder->whereRaw($sql, $bindings);
+    }
+
+    /**
+     * @param array<int, string> $columns
+     * @param array<int, string> $directions
+     * @param array<int, int> $slots
+     */
+    private function cursorSql(array<int, string> $columns, array<int, string> $directions, int $index, array<int, int> &$slots): string {
+        string $column = $columns[$index] ?? '';
+        string $op = ($directions[$index] ?? 'asc') === 'asc' ? '>' : '<';
+        $slots[] = $index;
+        string $sql = $column . ' ' . $op . ' ?';
+        if ($index < \count($columns) - 1) {
+            $slots[] = $index;
+            string $rest = $this->cursorSql($columns, $directions, $index + 1, $slots);
+            $sql = '(' . $sql . ' or (' . $column . ' = ? and ' . $rest . '))';
+        }
+
+        return $sql;
+    }
+}

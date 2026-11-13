@@ -2,7 +2,9 @@
 
 // List packages whose publish tree differs from the GitHub tag that already
 // exists for their current version. Run through check-version-bumps.sh, which
-// sets CHECK_DIST_PACKAGES and CHECK_PHP_MAJORS from packages/build-common.sh.
+// sets CHECK_DIST_PACKAGES, CHECK_PHP_MAJORS, and CHECK_PACKAGE_PHP_MAJORS
+// from packages/build-common.sh. CHECK_PACKAGE_PHP_MAJORS is "pkg:803,804,805"
+// for a compiled package that does not publish every PHP major.
 //
 // Tag trees come from batched GitHub GraphQL requests. Local trees are hashed
 // the way git write-tree would hash them, so nothing is copied, built, cloned,
@@ -45,7 +47,7 @@ function check_usage(): string
         exists for their current version. Those need a version bump before
         publish-runtime-packages.sh will release the change.
 
-        Compiled packages (core, decimal, async, lambda, parallel, io) are compared
+        Compiled packages (core, decimal, async, lambda, parallel, io, rhetoric) are compared
         from packages/dist. Run packages/base-build-all.sh first when tyhp_src or the
         compiler changed since the last build.
 
@@ -153,6 +155,37 @@ function doc_text(array $doc, string $key): string
     return \trim(meta_text($doc[$key] ?? null));
 }
 
+/**
+ * PHP majors for one compiled package. CHECK_PACKAGE_PHP_MAJORS overrides the
+ * shared list for packages named there (rhetoric is 803,804,805).
+ *
+ * @param list<string> $default
+ * @return list<string>
+ */
+function majors_for_package(string $pkg, array $default): array
+{
+    $spec = (string) \getenv('CHECK_PACKAGE_PHP_MAJORS');
+    if ($spec === '') {
+        return $default;
+    }
+    foreach (\explode(';', $spec) as $item) {
+        $parts = \explode(':', $item, 2);
+        if (\count($parts) !== 2 || $parts[0] !== $pkg) {
+            continue;
+        }
+        $majors = [];
+        foreach (\explode(',', $parts[1]) as $major) {
+            if ($major !== '') {
+                $majors[] = $major;
+            }
+        }
+
+        return $majors === [] ? $default : $majors;
+    }
+
+    return $default;
+}
+
 /** @return list<Row> every tag publish would create or check, in publish order */
 function discover_rows(string $packagesDir, array $distPackages, array $phpMajors): array
 {
@@ -167,7 +200,7 @@ function discover_rows(string $packagesDir, array $distPackages, array $phpMajor
             }
             $xy = ($m[3] ?? '') === '' ? "{$m[1]}.{$m[2]}" : "{$m[2]}.{$m[3]}";
             $suffix = ($m[4] ?? '') !== '' ? "-{$m[4]}" : '';
-            foreach ($phpMajors as $major) {
+            foreach (majors_for_package($pkg, $phpMajors) as $major) {
                 $rows[] = new Row($pkg, "{$major}.{$xy}{$suffix}", 'compiled', $pkg, doc_text($doc, 'name'));
             }
         } elseif ($pkg === 'compiler') {

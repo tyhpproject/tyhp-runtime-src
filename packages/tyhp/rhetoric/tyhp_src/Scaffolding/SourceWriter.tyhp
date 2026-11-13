@@ -1,0 +1,915 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Scaffolding;
+
+use Tyhp\Rhetoric\Mapping\RelationKind;
+use Tyhp\Rhetoric\OnDelete;
+
+final class ScaffoldFile {
+    public function __construct(
+        public string $relative,
+        public string $contents,
+        public bool $shell,
+    ) {}
+}
+
+final class SourceWriter {
+    // Directory of published stubs (`vendor:publish --tag=rhetoric-stubs`) for the run in progress.
+    private static ?string $stubs = null;
+
+    /**
+     * @return array<int, ScaffoldFile>
+     */
+    public static function files(ScaffoldPlan $plan, ScaffoldOptions $options): array<int, ScaffoldFile> {
+        self::$stubs = $options->stubs;
+        if ($options->eloquent) {
+            return self::eloquentFiles($plan, $options);
+        }
+        array<int, ScaffoldFile> $files = [];
+        array<string, bool> $taken = [];
+        foreach ($plan->models as $model) {
+            $taken = self::claim($taken, $model->short . '.tyhp');
+            $files[] = new ScaffoldFile($model->short . '.tyhp', self::shell($plan, $model, $options), true);
+            $files[] = new ScaffoldFile(
+                'Generated/' . $model->short . 'Columns.tyhp',
+                self::columns($plan, $model, $options),
+                false,
+            );
+        }
+        $taken = self::claim($taken, $plan->contextShort . '.tyhp');
+        $files[] = new ScaffoldFile($plan->contextShort . '.tyhp', self::context($plan, $options), true);
+        $files[] = new ScaffoldFile(
+            'Generated/' . $plan->contextShort . 'Tables.tyhp',
+            self::tables($plan),
+            false,
+        );
+        $files[] = new ScaffoldFile(
+            'Generated/' . $plan->contextShort . 'Mappings.tyhp',
+            self::mappings($plan, $options),
+            false,
+        );
+
+        return $files;
+    }
+
+    /**
+     * @param array<string, bool> $taken
+     * @return array<string, bool>
+     */
+    private static function claim(array<string, bool> $taken, string $name): array<string, bool> {
+        if (isset($taken[$name])) {
+            throw new \InvalidArgumentException($name . ' would be written twice.');
+        }
+        $taken[$name] = true;
+
+        return $taken;
+    }
+
+    private static function shell(ScaffoldPlan $plan, ScaffoldModel $model, ScaffoldOptions $options): string {
+        string $trait = '\\' . self::generated($plan->namespace) . '\\' . $model->short . 'Columns';
+        string $attributes = '';
+        if ($options->attributes) {
+            if ($model->tableOverride) {
+                $attributes .= '#[\Tyhp\Rhetoric\Attributes\Table(' . self::literal($model->table) . ")]\n";
+            }
+            if ($model->comment !== null) {
+                $attributes .= '#[\Tyhp\Rhetoric\Attributes\Comment(' . self::literal($model->comment) . ")]\n";
+            }
+            if ($model->keyless) {
+                $attributes .= "#[\\Tyhp\\Rhetoric\\Attributes\\Keyless]\n";
+            }
+        }
+
+        return self::render('model.stub', [
+            'namespace' => self::namespaceToken($plan->namespace),
+            'uses' => '',
+            'attributes' => $attributes,
+            'class' => $model->short,
+            'trait' => $trait,
+            'body' => '',
+        ]);
+    }
+
+    private static function columns(ScaffoldPlan $plan, ScaffoldModel $model, ScaffoldOptions $options): string {
+        array<int, string> $blocks = [];
+        foreach ($model->columns as $column) {
+            $blocks[] = self::columnProperty($plan, $model, $column, $options->attributes);
+        }
+        foreach ($model->relations as $relation) {
+            $blocks[] = self::relationProperty($plan, $model, $relation, $options->attributes);
+        }
+        string $body = '';
+        foreach ($blocks as $block) {
+            if ($body !== '') {
+                $body .= "\n";
+            }
+            $body .= $block . "\n";
+        }
+
+        return self::render('trait.stub', [
+            'namespace' => self::namespaceToken(self::generated($plan->namespace)),
+            'uses' => '',
+            'class' => $model->short . 'Columns',
+            'body' => $body,
+        ]);
+    }
+
+    private static function columnProperty(ScaffoldPlan $plan, ScaffoldModel $model, ScaffoldColumn $column, bool $attributes): string {
+        string $lines = '';
+        if ($attributes) {
+            if (self::explicitKey($model) && $column->key) {
+                $lines .= "    #[\\Tyhp\\Rhetoric\\Attributes\\Key]\n";
+            }
+            if ($column->generated === true) {
+                $lines .= "    #[\\Tyhp\\Rhetoric\\Attributes\\Generated]\n";
+            } elseif ($column->generated === false) {
+                $lines .= "    #[\\Tyhp\\Rhetoric\\Attributes\\Generated(false)]\n";
+            }
+            ?string $columnAttribute = self::columnAttribute($column);
+            if ($columnAttribute !== null) {
+                $lines .= '    ' . $columnAttribute . "\n";
+            }
+            if ($column->maxLength !== null) {
+                $lines .= '    #[\Tyhp\Rhetoric\Attributes\MaxLength(' . (string)$column->maxLength . ")]\n";
+            }
+            if ($column->text) {
+                $lines .= "    #[\\Tyhp\\Rhetoric\\Attributes\\Text]\n";
+            }
+            if ($column->precision !== null) {
+                $lines .= '    #[\Tyhp\Rhetoric\Attributes\Precision(' . (string)$column->precision . ', ' . (string)($column->scale ?? 0) . ")]\n";
+            }
+            if ($column->hasDefault) {
+                $lines .= '    #[\Tyhp\Rhetoric\Attributes\DefaultValue(' . self::literal($column->default) . ")]\n";
+            }
+            if ($column->comment !== null) {
+                $lines .= '    #[\Tyhp\Rhetoric\Attributes\Comment(' . self::literal($column->comment) . ")]\n";
+            }
+            foreach ($model->indexes as $index) {
+                if (($index->properties[0] ?? '') !== $column->property) {
+                    continue;
+                }
+                $lines .= '    ' . self::indexAttribute($model, $index) . "\n";
+            }
+            foreach ($model->relations as $relation) {
+                if ($relation->kind !== RelationKind::BelongsTo || $relation->foreignKeyProperty !== $column->property) {
+                    continue;
+                }
+                if (!$relation->aligned || ($relation->onDelete === OnDelete::Restrict && $relation->referencedColumn === null)) {
+                    continue;
+                }
+                $lines .= '    ' . self::foreignKeyAttribute($relation) . "\n";
+            }
+        }
+        string $nullable = $column->nullable ? '?' : '';
+
+        return $lines . '    public ' . $nullable . self::typeName($column->type) . ' $' . $column->property . self::initializer($column) . ';';
+    }
+
+    private static function relationProperty(ScaffoldPlan $plan, ScaffoldModel $model, ScaffoldRelation $relation, bool $attributes): string {
+        (void)$plan;
+        string $lines = '';
+        // A relation the mappings class declares already names its inverse there.
+        if ($attributes && $relation->inverse !== '' && !self::relationFluent($model, $relation, true)) {
+            $lines .= '    #[\Tyhp\Rhetoric\Attributes\InverseOf<' . self::typeName($relation->relatedClass) . '>(nameof(' . self::typeName($relation->relatedClass) . '::$' . $relation->inverse . "))]\n";
+        }
+        string $type = self::typeName($relation->relatedClass);
+        if ($relation->navigationNullable) {
+            return $lines . '    public ?' . $type . ' $' . $relation->property . ' = null;';
+        }
+
+        return $lines . '    public array<' . $type . '> $' . $relation->property . ' = [];';
+    }
+
+    private static function context(ScaffoldPlan $plan, ScaffoldOptions $options): string {
+        string $namespace = Naming::namespaceOf($plan->contextClass);
+        string $trait = '\\' . self::generated($namespace) . '\\' . $plan->contextShort . 'Tables';
+        string $mappings = '\\' . self::generated($namespace) . '\\' . $plan->contextShort . 'Mappings';
+        string $body = '';
+        if ($options->connection !== null) {
+            $body .= '    protected ?string $connection = ' . self::literal($options->connection) . ";\n\n";
+        }
+        $body .= "    protected function map(\\Tyhp\\Rhetoric\\Mapping\\Mapper \$map): void {\n";
+        $body .= '        ' . $mappings . "::apply(\$map);\n";
+        $body .= "    }\n";
+
+        return self::render('context.stub', [
+            'namespace' => self::namespaceToken($namespace),
+            'uses' => '',
+            'attributes' => '',
+            'class' => $plan->contextShort,
+            'trait' => $trait,
+            'body' => $body,
+        ]);
+    }
+
+    private static function tables(ScaffoldPlan $plan): string {
+        string $namespace = Naming::namespaceOf($plan->contextClass);
+        array<string, bool> $used = [
+            'connection' => true,
+            'tracked' => true,
+            'loadedRelations' => true,
+            'tracker' => true,
+        ];
+        string $body = '';
+        foreach ($plan->models as $model) {
+            string $property = self::fresh(Naming::property($model->table), $used);
+            $used[$property] = true;
+            string $type = self::typeName($model->className);
+            if ($body !== '') {
+                $body .= "\n";
+            }
+            $body .= '    public \Tyhp\Rhetoric\Table<' . $type . '> $' . $property . " {\n";
+            $body .= '        get => $this->table<' . $type . ">();\n";
+            $body .= "    }\n";
+        }
+
+        return self::render('trait.stub', [
+            'namespace' => self::namespaceToken(self::generated($namespace)),
+            'uses' => '',
+            'class' => $plan->contextShort . 'Tables',
+            'body' => $body,
+        ]);
+    }
+
+    private static function mappings(ScaffoldPlan $plan, ScaffoldOptions $options): string {
+        string $namespace = Naming::namespaceOf($plan->contextClass);
+        string $body = '';
+        foreach ($plan->models as $model) {
+            $body .= self::modelMappings($plan, $model, $options->attributes);
+        }
+        if ($body === '') {
+            $body = "        (void)\$map;\n";
+        }
+
+        return self::render('mappings.stub', [
+            'namespace' => self::namespaceToken(self::generated($namespace)),
+            'uses' => '',
+            'class' => $plan->contextShort . 'Mappings',
+            'body' => $body,
+        ]);
+    }
+
+    private static function modelMappings(ScaffoldPlan $plan, ScaffoldModel $model, bool $attributes): string {
+        string $type = self::typeName($model->className);
+        string $open = '        $map->model<' . $type . ">()\n";
+        string $body = '';
+        if (!$attributes) {
+            if ($model->tableOverride) {
+                $body .= $open . '            ->table(' . self::literal($model->table) . ");\n";
+            }
+            if ($model->comment !== null) {
+                $body .= $open . '            ->comment(' . self::literal($model->comment) . ");\n";
+            }
+            if ($model->keyless) {
+                $body .= $open . "            ->keyless();\n";
+            } elseif (self::explicitKey($model)) {
+                $body .= $open . '            ->key(' . self::paths($model, $model->keyProperties) . ");\n";
+            }
+            foreach ($model->indexes as $index) {
+                string $chain = $open . '            ->hasIndex(' . self::paths($model, $index->properties) . ')';
+                if ($index->unique) {
+                    $chain .= "\n            ->unique()";
+                }
+                if ($index->name !== null) {
+                    $chain .= "\n            ->name(" . self::literal($index->name) . ')';
+                }
+                $body .= $chain . ";\n";
+            }
+            foreach ($model->columns as $column) {
+                ?string $columnCalls = self::columnChain($model, $column);
+                if (\is_string($columnCalls)) {
+                    $body .= $open . $columnCalls . ";\n";
+                }
+            }
+        }
+        foreach ($model->relations as $relation) {
+            if (!self::relationFluent($model, $relation, $attributes)) {
+                continue;
+            }
+            $body .= $open . self::relationChain($plan, $model, $relation) . ";\n";
+        }
+
+        return $body;
+    }
+
+    private static function relationFluent(ScaffoldModel $model, ScaffoldRelation $relation, bool $attributes): bool {
+        (void)$model;
+        if ($relation->kind === RelationKind::BelongsTo) {
+            if (!$relation->aligned) {
+                return true;
+            }
+            if ($attributes) {
+                return false;
+            }
+
+            return $relation->onDelete !== OnDelete::Restrict || $relation->referencedColumn !== null;
+        }
+        if ($relation->kind === RelationKind::HasMany || $relation->kind === RelationKind::HasOne) {
+            return $relation->conventionForeignKey !== $relation->foreignKeyProperty;
+        }
+
+        return $relation->pivotTable !== null || $relation->pivotForeignKey !== null || $relation->pivotRelatedKey !== null;
+    }
+
+    private static function relationChain(ScaffoldPlan $plan, ScaffoldModel $model, ScaffoldRelation $relation): string {
+        string $navigation = self::path($model, $relation->property, $relation->navigationNullable);
+        string $chain = '';
+        if ($relation->kind === RelationKind::BelongsTo) {
+            $chain = '            ->belongsTo(' . $navigation . ')';
+        } elseif ($relation->kind === RelationKind::HasOne) {
+            $chain = '            ->hasOne(' . $navigation . ')';
+        } elseif ($relation->kind === RelationKind::HasMany) {
+            $chain = '            ->hasMany(' . $navigation . ')';
+        } else {
+            $chain = '            ->belongsToMany(' . $navigation . ')';
+        }
+        if ($relation->inverse !== '') {
+            ?ScaffoldModel $related = $plan->model($relation->relatedClass);
+            bool $nullSafe = false;
+            if ($related !== null) {
+                ?ScaffoldRelation $back = $related->relation($relation->inverse);
+                $nullSafe = $back !== null && $back->navigationNullable;
+            }
+            if ($related !== null) {
+                $chain .= "\n            ->inverseOf(" . self::path($related, $relation->inverse, $nullSafe) . ')';
+            }
+        }
+        if ($relation->kind === RelationKind::BelongsToMany) {
+            if ($relation->pivotTable !== null) {
+                $chain .= "\n            ->pivotTable(" . self::literal($relation->pivotTable) . ')';
+            }
+            if ($relation->pivotForeignKey !== null || $relation->pivotRelatedKey !== null) {
+                ?ScaffoldModel $related = $plan->model($relation->relatedClass);
+                string $relatedKey = $related !== null ? self::keyColumn($related) : 'id';
+                string $foreign = $relation->pivotForeignKey ?? Naming::pivotForeignKey($model->className, self::keyColumn($model));
+                string $other = $relation->pivotRelatedKey ?? Naming::pivotForeignKey($relation->relatedClass, $relatedKey);
+                $chain .= "\n            ->pivotColumns(" . self::literal($foreign) . ', ' . self::literal($other) . ')';
+            }
+
+            return $chain;
+        }
+        if ($relation->foreignKeyProperty !== null && ($relation->kind !== RelationKind::BelongsTo || !$relation->aligned)) {
+            ?ScaffoldModel $owner = $relation->kind === RelationKind::BelongsTo ? $model : $plan->model($relation->relatedClass);
+            if ($owner !== null) {
+                $chain .= "\n            ->foreignKey(" . self::path($owner, $relation->foreignKeyProperty, false) . ')';
+            }
+        }
+        if ($relation->onDelete !== OnDelete::Restrict) {
+            $chain .= "\n            ->onDelete(\\Tyhp\\Rhetoric\\OnDelete::" . self::onDeleteName($relation->onDelete) . ')';
+        }
+        if ($relation->kind === RelationKind::BelongsTo && $relation->referencedColumn !== null) {
+            $chain .= "\n            ->referencedColumn(" . self::literal($relation->referencedColumn) . ')';
+        }
+
+        return $chain;
+    }
+
+    private static function columnChain(ScaffoldModel $model, ScaffoldColumn $column): ?string {
+        array<int, string> $calls = [];
+        if (Naming::columnName($column->property) !== $column->name) {
+            $calls[] = '->name(' . self::literal($column->name) . ')';
+        }
+        if ($column->blueprint !== null && $column->blueprint !== '') {
+            $calls[] = '->type(' . self::literal($column->blueprint) . ')';
+        }
+        if ($column->maxLength !== null) {
+            $calls[] = '->maxLength(' . (string)$column->maxLength . ')';
+        }
+        if ($column->text) {
+            $calls[] = '->text()';
+        }
+        if ($column->precision !== null) {
+            $calls[] = '->precision(' . (string)$column->precision . ', ' . (string)($column->scale ?? 0) . ')';
+        }
+        if ($column->generated === true) {
+            $calls[] = '->generated()';
+        } elseif ($column->generated === false) {
+            $calls[] = '->generated(false)';
+        }
+        if ($column->comment !== null) {
+            $calls[] = '->comment(' . self::literal($column->comment) . ')';
+        }
+        if ($column->hasDefault) {
+            $calls[] = '->default(' . self::literal($column->default) . ')';
+        }
+        if ($calls === []) {
+            return null;
+        }
+        string $chain = '            ->column(' . self::path($model, $column->property, false) . ')';
+        foreach ($calls as $call) {
+            $chain .= "\n            " . $call;
+        }
+
+        return $chain;
+    }
+
+    private static function columnAttribute(ScaffoldColumn $column): ?string {
+        bool $name = Naming::columnName($column->property) !== $column->name;
+        bool $type = $column->blueprint !== null && $column->blueprint !== '';
+        if (!$name && !$type) {
+            return null;
+        }
+        if ($name && $type) {
+            return '#[\Tyhp\Rhetoric\Attributes\Column(' . self::literal($column->name) . ', ' . self::literal($column->blueprint ?? '') . ')]';
+        }
+        if ($name) {
+            return '#[\Tyhp\Rhetoric\Attributes\Column(' . self::literal($column->name) . ')]';
+        }
+
+        return '#[\Tyhp\Rhetoric\Attributes\Column(type: ' . self::literal($column->blueprint ?? '') . ')]';
+    }
+
+    private static function indexAttribute(ScaffoldModel $model, ScaffoldIndex $index): string {
+        string $head = '#[\Tyhp\Rhetoric\Attributes\Index';
+        bool $single = \count($index->properties) === 1;
+        if (!$single) {
+            array<int, string> $names = [];
+            foreach ($index->properties as $property) {
+                $names[] = 'nameof(' . self::typeName($model->className) . '::$' . $property . ')';
+            }
+            $head .= '<' . self::typeName($model->className) . '>([' . \implode(', ', $names) . ']';
+        }
+        array<int, string> $args = [];
+        if ($index->unique) {
+            $args[] = 'unique: true';
+        }
+        if ($index->name !== null) {
+            $args[] = 'name: ' . self::literal($index->name);
+        }
+        if ($single) {
+            if ($args === []) {
+                return $head . ']';
+            }
+
+            return $head . '(' . \implode(', ', $args) . ')]';
+        }
+        if ($args === []) {
+            return $head . ')]';
+        }
+
+        return $head . ', ' . \implode(', ', $args) . ')]';
+    }
+
+    private static function foreignKeyAttribute(ScaffoldRelation $relation): string {
+        string $text = '#[\Tyhp\Rhetoric\Attributes\ForeignKey(' . self::typeName($relation->relatedClass) . '::class';
+        if ($relation->referencedColumn !== null) {
+            $text .= ', ' . self::literal($relation->referencedColumn);
+        }
+        if ($relation->onDelete !== OnDelete::Restrict) {
+            $text .= ', onDelete: \Tyhp\Rhetoric\OnDelete::' . self::onDeleteName($relation->onDelete);
+        }
+        $text .= ')]';
+
+        return $text;
+    }
+
+    /**
+     * @param array<int, string> $properties
+     */
+    private static function paths(ScaffoldModel $model, array<int, string> $properties): string {
+        array<int, string> $paths = [];
+        foreach ($properties as $property) {
+            $paths[] = self::path($model, $property, false);
+        }
+
+        return \implode(', ', $paths);
+    }
+
+    private static function path(ScaffoldModel $model, string $property, bool $nullSafe): string {
+        string $access = $nullSafe ? '?->' : '->';
+
+        return 'fn (' . self::typeName($model->className) . ' $' . self::parameter($model->short) . ') => $' . self::parameter($model->short) . $access . $property;
+    }
+
+    private static function initializer(ScaffoldColumn $column): string {
+        if ($column->hasDefault) {
+            return ' = ' . self::literal($column->default);
+        }
+        if ($column->nullable) {
+            return ' = null';
+        }
+        if ($column->type === 'bool') {
+            return ' = false';
+        }
+        if ($column->type === 'int') {
+            return ' = 0';
+        }
+        if ($column->type === 'string') {
+            return " = ''";
+        }
+        if ($column->type === 'float') {
+            return ' = 0.0';
+        }
+
+        return '';
+    }
+
+    private static function literal(mixed $value): string {
+        if ($value === null) {
+            return 'null';
+        }
+        if (\is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (\is_int($value)) {
+            return (string)$value;
+        }
+        if (\is_float($value)) {
+            mixed $encoded = \json_encode($value);
+            if (!\is_string($encoded)) {
+                return '0.0';
+            }
+            string $text = $encoded;
+            if (!\str_contains($text, '.') && !\str_contains($text, 'e') && !\str_contains($text, 'E')) {
+                return $text . '.0';
+            }
+
+            return $text;
+        }
+        if (\is_string($value)) {
+            return "'" . \str_replace(['\\', "'"], ['\\\\', "\\'"], $value) . "'";
+        }
+
+        return 'null';
+    }
+
+    private static function onDeleteName(OnDelete $onDelete): string {
+        if ($onDelete === OnDelete::Cascade) {
+            return 'Cascade';
+        }
+        if ($onDelete === OnDelete::SetNull) {
+            return 'SetNull';
+        }
+
+        return 'Restrict';
+    }
+
+    private static function explicitKey(ScaffoldModel $model): bool {
+        if ($model->keyless) {
+            return false;
+        }
+        array<int, string> $convention = [];
+        if ($model->column('id') !== null) {
+            $convention = ['id'];
+        } else {
+            string $named = Naming::modelKeyProperty($model->className);
+            if ($model->column($named) !== null) {
+                $convention = [$named];
+            }
+        }
+
+        return $model->keyProperties !== $convention;
+    }
+
+    private static function keyColumn(ScaffoldModel $model): string {
+        string $property = $model->keyProperties[0] ?? '';
+        ?ScaffoldColumn $column = $model->column($property);
+        if ($column !== null) {
+            return $column->name;
+        }
+
+        return 'id';
+    }
+
+    private static function typeName(string $type): string {
+        if ($type === 'int' || $type === 'string' || $type === 'bool' || $type === 'float') {
+            return $type;
+        }
+        if (\str_starts_with($type, '\\')) {
+            return $type;
+        }
+
+        return '\\' . $type;
+    }
+
+    private static function parameter(string $short): string {
+        string $name = \lcfirst($short);
+        if (!Naming::ident($name) || self::reserved($name)) {
+            return 'model';
+        }
+
+        return $name;
+    }
+
+    private static function reserved(string $name): bool {
+        return $name === 'list'
+            || $name === 'this'
+            || $name === 'match'
+            || $name === 'class'
+            || $name === 'parent'
+            || $name === 'self'
+            || $name === 'static'
+            || $name === 'array'
+            || $name === 'string'
+            || $name === 'int'
+            || $name === 'float'
+            || $name === 'bool'
+            || $name === 'null'
+            || $name === 'true'
+            || $name === 'false'
+            || $name === 'mixed'
+            || $name === 'void'
+            || $name === 'iterable'
+            || $name === 'object'
+            || $name === 'callable'
+            || $name === 'fn'
+            || $name === 'default'
+            || $name === 'namespace'
+            || $name === 'use';
+    }
+
+    private static function generated(string $namespace): string {
+        if ($namespace === '') {
+            return 'Generated';
+        }
+
+        return $namespace . '\\Generated';
+    }
+
+    private static function namespaceToken(string $namespace): string {
+        if ($namespace === '') {
+            return '';
+        }
+
+        return 'namespace ' . $namespace . ";\n\n";
+    }
+
+    /**
+     * @param array<string, bool> $used
+     */
+    private static function fresh(string $base, array<string, bool> $used): string {
+        string $name = $base;
+        int $suffix = 2;
+        while (isset($used[$name])) {
+            $name = $base . (string)$suffix;
+            $suffix++;
+        }
+
+        return $name;
+    }
+
+    /**
+     * @return array<int, ScaffoldFile>
+     */
+    private static function eloquentFiles(ScaffoldPlan $plan, ScaffoldOptions $options): array<int, ScaffoldFile> {
+        array<int, ScaffoldFile> $files = [];
+        array<string, bool> $taken = [];
+        foreach ($plan->models as $model) {
+            $taken = self::claim($taken, $model->short . '.tyhp');
+            $files[] = new ScaffoldFile($model->short . '.tyhp', self::eloquentShell($plan, $model), true);
+            $files[] = new ScaffoldFile(
+                'Generated/' . $model->short . 'Columns.tyhp',
+                self::eloquentColumns($plan, $model, $options),
+                false,
+            );
+        }
+
+        return $files;
+    }
+
+    private static function eloquentShell(ScaffoldPlan $plan, ScaffoldModel $model): string {
+        string $trait = '\\' . self::generated($plan->namespace) . '\\' . $model->short . 'Columns';
+        string $attributes = '';
+        if ($model->comment !== null && !\str_contains($model->comment, '*/')) {
+            $attributes = "/**\n * " . \str_replace("\n", "\n * ", $model->comment) . "\n */\n";
+        }
+
+        return self::render('model.stub', [
+            'namespace' => self::namespaceToken($plan->namespace),
+            'uses' => '',
+            'attributes' => $attributes,
+            'class' => $model->short . ' extends \\Illuminate\\Database\\Eloquent\\Model',
+            'trait' => $trait,
+            'body' => '',
+        ]);
+    }
+
+    private static function eloquentColumns(ScaffoldPlan $plan, ScaffoldModel $model, ScaffoldOptions $options): string {
+        string $body = '';
+        if (self::hasColumn($model, 'deleted_at')) {
+            $body .= "    use \\Illuminate\\Database\\Eloquent\\SoftDeletes;\n\n";
+        }
+        array<string, bool> $used = [];
+        foreach ($model->columns as $column) {
+            $used[$column->property] = true;
+        }
+        foreach ($model->columns as $column) {
+            string $property = $column->property;
+            // A hooked property cannot take the name of a property Eloquent's Model declares. The Column attribute still names the column.
+            if (\property_exists(\Illuminate\Database\Eloquent\Model::class, $property) || $property === 'forceDeleting') {
+                $property = self::fresh($property . 'Value', $used);
+                $used[$property] = true;
+            }
+            $body .= self::eloquentHook($column, $property) . "\n";
+        }
+        $body .= self::eloquentInitialize($model, $options);
+
+        return self::render('trait.stub', [
+            'namespace' => self::namespaceToken(self::generated($plan->namespace)),
+            'uses' => '',
+            'class' => $model->short . 'Columns',
+            'body' => $body,
+        ]);
+    }
+
+    private static function eloquentHook(ScaffoldColumn $column, string $property): string {
+        string $type = self::typeName($column->type);
+        string $shown = ($column->nullable ? '?' : '') . $type;
+        string $attribute = self::literal($column->name);
+        string $get = self::eloquentGet($column, $type, $attribute);
+
+        return '    #[\Tyhp\Rhetoric\Attributes\Column(' . $attribute . ")]\n"
+            . '    public ' . $shown . ' $' . $property . " {\n"
+            . "        get {\n"
+            . $get
+            . "        }\n"
+            . '        set(' . $shown . " \$value) {\n"
+            . '            (void)$this->setAttribute(' . $attribute . ", \$value);\n"
+            . "        }\n"
+            . '    }';
+    }
+
+    private static function eloquentGet(ScaffoldColumn $column, string $type, string $attribute): string {
+        string $lines = '            mixed $value = $this->getAttribute(' . $attribute . ");\n";
+        if ($column->nullable) {
+            $lines .= "            if (\$value === null) {\n";
+            $lines .= "                return null;\n";
+            $lines .= "            }\n";
+        }
+        if ($type === '\\DateTimeImmutable') {
+            $lines .= "            if (\$value is \\DateTimeImmutable) {\n";
+            $lines .= "                return \$value;\n";
+            $lines .= "            }\n";
+            $lines .= "            if (\$value is \\DateTimeInterface) {\n";
+            $lines .= "                return \\DateTimeImmutable::createFromInterface(\$value);\n";
+            $lines .= "            }\n";
+            $lines .= "            if (\\is_string(\$value)) {\n";
+            $lines .= "                return new \\DateTimeImmutable(\$value);\n";
+            $lines .= "            }\n";
+            $lines .= '            throw new \\TypeError(' . self::literal('Attribute ' . $column->name . ' is not a date.') . ");\n";
+
+            return $lines;
+        }
+        string $check = self::eloquentCheck($type);
+        string $label = self::eloquentLabel($column->type);
+        $lines .= '            if (!(' . $check . ")) {\n";
+        $lines .= '                throw new \\TypeError(' . self::literal('Attribute ' . $column->name . ' is not a ' . $label . '.') . ");\n";
+        $lines .= "            }\n";
+        $lines .= "\n";
+        $lines .= "            return \$value;\n";
+
+        return $lines;
+    }
+
+    private static function eloquentCheck(string $type): string {
+        if ($type === 'string') {
+            return '\\is_string($value)';
+        }
+        if ($type === 'int') {
+            return '\\is_int($value)';
+        }
+        if ($type === 'bool') {
+            return '\\is_bool($value)';
+        }
+        if ($type === 'float') {
+            return '\\is_float($value)';
+        }
+
+        return '$value is ' . $type;
+    }
+
+    private static function eloquentLabel(string $type): string {
+        if ($type === 'int' || $type === 'string' || $type === 'bool' || $type === 'float') {
+            return $type;
+        }
+
+        return Naming::basename($type);
+    }
+
+    private static function eloquentInitialize(ScaffoldModel $model, ScaffoldOptions $options): string {
+        string $body = '    public function initialize' . $model->short . "Columns(): void {\n";
+        $body .= '        (void)$this->setTable(' . self::literal($model->table) . ");\n";
+        if ($options->connection !== null) {
+            $body .= '        (void)$this->setConnection(' . self::literal($options->connection) . ");\n";
+        }
+        string $keyProperty = $model->keyProperties[0] ?? '';
+        ?ScaffoldColumn $key = $keyProperty === '' ? null : $model->column($keyProperty);
+        if ($key !== null) {
+            $body .= '        (void)$this->setKeyName(' . self::literal($key->name) . ");\n";
+            string $keyType = $key->type === 'string' ? 'string' : 'int';
+            $body .= '        (void)$this->setKeyType(' . self::literal($keyType) . ");\n";
+            $body .= '        (void)$this->setIncrementing(' . ($key->autoIncrement ? 'true' : 'false') . ");\n";
+        } else {
+            $body .= "        (void)\$this->setIncrementing(false);\n";
+        }
+        bool $timestamps = self::hasColumn($model, 'created_at') && self::hasColumn($model, 'updated_at');
+        $body .= '        $this->timestamps = ' . ($timestamps ? 'true' : 'false') . ";\n";
+        $body .= "        array<string> \$guarded = [];\n";
+        $body .= "        \$this->guarded = \$guarded;\n";
+        string $casts = self::eloquentCastList($model);
+        if ($casts !== '') {
+            $body .= "        (void)\$this->mergeCasts([\n" . $casts . "        ]);\n";
+        }
+        $body .= "    }\n";
+
+        return $body;
+    }
+
+    private static function eloquentCastList(ScaffoldModel $model): string {
+        string $lines = '';
+        foreach ($model->columns as $column) {
+            ?string $cast = self::eloquentCast($column->type);
+            if ($cast === null) {
+                continue;
+            }
+            $lines .= '            ' . self::literal($column->name) . ' => ' . self::literal($cast) . ",\n";
+        }
+
+        return $lines;
+    }
+
+    private static function eloquentCast(string $type): ?string {
+        if ($type === 'int') {
+            return 'integer';
+        }
+        if ($type === 'float') {
+            return 'real';
+        }
+        if ($type === 'bool') {
+            return 'boolean';
+        }
+        if ($type === 'DateTimeImmutable') {
+            return 'datetime';
+        }
+
+        return null;
+    }
+
+    private static function hasColumn(ScaffoldModel $model, string $name): bool {
+        foreach ($model->columns as $column) {
+            if ($column->name === $name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, string> $tokens
+     */
+    private static function render(string $name, array<string, string> $tokens): string {
+        string $stub = self::stub($name);
+        array<string, string> $pairs = [];
+        string $unfilled = $stub;
+        foreach ($tokens as $token => $value) {
+            // A stub that leaves out a token with content would write a file without it.
+            if ($value !== '' && !\str_contains($stub, '{{' . $token . '}}')) {
+                throw new \RuntimeException('Stub ' . $name . ' has no {{' . $token . '}} token.');
+            }
+            $pairs['{{' . $token . '}}'] = $value;
+            $unfilled = \str_replace('{{' . $token . '}}', '', $unfilled);
+        }
+        if (\str_contains($unfilled, '{{')) {
+            throw new \RuntimeException('Stub ' . $name . ' has an unfilled token.');
+        }
+
+        // One pass, so a comment or default that contains `{{` is written as it is.
+        return \strtr($stub, $pairs);
+    }
+
+    private static function stub(string $name): string {
+        if (self::$stubs !== null && self::$stubs !== '') {
+            string $published = \rtrim(self::$stubs, '/\\') . '/' . $name;
+            if (\is_file($published)) {
+                mixed $custom = \file_get_contents($published);
+                if (!\is_string($custom)) {
+                    throw new \RuntimeException('Could not read ' . $published . '.');
+                }
+
+                return $custom;
+            }
+        }
+        string $dir = __DIR__;
+        int $remaining = 8;
+        while ($remaining > 0) {
+            string $candidate = $dir . '/stubs/' . $name;
+            if (\is_file($candidate)) {
+                mixed $contents = \file_get_contents($candidate);
+                if (!\is_string($contents)) {
+                    throw new \RuntimeException('Could not read ' . $candidate . '.');
+                }
+
+                return $contents;
+            }
+            string $parent = \dirname($dir);
+            if ($parent === $dir) {
+                break;
+            }
+            $dir = $parent;
+            $remaining--;
+        }
+
+        throw new \RuntimeException('Missing stub ' . $name . '.');
+    }
+}

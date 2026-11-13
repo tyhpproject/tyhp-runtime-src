@@ -14,9 +14,18 @@ final class Deferred<T extends __Awaited<void|mixed> = void> {
      * waiting for external resolution through resolve() or reject().
      */
     public function __construct() {
-        $this->promise = new Promise<T>(function (): mixed {
-            return \Fiber::suspend();
-        });
+        $this->promise = new Promise<T>($this->executor(...));
+    }
+
+    private function executor(): T|Promise<T> {
+        mixed $resumed = \Fiber::suspend();
+        if ($resumed instanceof Promise<T>) {
+            return $resumed;
+        }
+        if ($resumed is T) {
+            return $resumed;
+        }
+        throw new \InvalidArgumentException('value incompatible with T of Deferred');
     }
 
     public function getPromise(): Promise<T> {

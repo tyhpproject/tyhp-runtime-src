@@ -1,0 +1,42 @@
+<?tyhp
+
+namespace Tyhp\Rhetoric\Laravel\Commands;
+
+use Tyhp\Rhetoric\Mapping\MappingArchive;
+use Tyhp\Rhetoric\Migrations\Auto\AutoMigrator;
+use Tyhp\Rhetoric\Migrations\Auto\AutoSettings;
+use Tyhp\Rhetoric\Migrations\Auto\MigrationManifest;
+
+class CacheCommand extends \Illuminate\Console\Command {
+    public function __construct() {
+        parent::__construct();
+        $this->setName('rhetoric:cache');
+        $this->setDescription('Write the migration manifest and the mapping cache.');
+    }
+
+    public function handle(): int {
+        try {
+            ?\Illuminate\Contracts\Container\Container $container = CommandContext::container($this);
+            if ($container === null) {
+                $this->error('The application container is not available.');
+
+                return 1;
+            }
+            AutoMigrator::attach($container);
+            AutoSettings $settings = AutoMigrator::currentSettings();
+            string $path = MigrationManifest::pathFor($settings, $container);
+            MigrationManifest::write($path, $settings->sets);
+            $this->info($path);
+            foreach (MappingArchive::capture($container) as $warning) {
+                $this->warn($warning);
+            }
+            $this->info(MappingArchive::pathFor($container));
+
+            return 0;
+        } catch (\Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return 1;
+        }
+    }
+}

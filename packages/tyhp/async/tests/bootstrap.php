@@ -6,7 +6,9 @@ declare(strict_types=1);
 // dist tree. Register the built async and core sources for the running PHP version
 // (falling back to the 8.2 build) instead of going through vendor/autoload.php.
 $packagesRoot = \dirname(__DIR__, 3);
-$phpMajor = (string) (\PHP_MAJOR_VERSION * 100 + \PHP_MINOR_VERSION);
+// TYHP_TEST_DIST_BUILD (for example 802) runs the suite against that build instead of the one
+// that matches the running PHP, so an older build can be exercised on a newer PHP.
+$phpMajor = (string) (\getenv('TYHP_TEST_DIST_BUILD') ?: (\PHP_MAJOR_VERSION * 100 + \PHP_MINOR_VERSION));
 $sourceRoots = [];
 
 foreach (['tyhp-async', 'tyhp-core'] as $dist) {
@@ -52,6 +54,11 @@ foreach ($sourceRoots as $sourceRoot) {
     $rootFunctions = \dirname($sourceRoot) . '/_functions.php';
     if (\is_file($rootFunctions)) {
         require_once $rootFunctions;
+    }
+
+    $namespacedFunctions = $sourceRoot . '/_functions.php';
+    if (\is_file($namespacedFunctions)) {
+        require_once $namespacedFunctions;
     }
 }
 

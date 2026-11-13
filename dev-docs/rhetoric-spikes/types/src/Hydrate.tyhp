@@ -1,0 +1,97 @@
+<?tyhp
+
+namespace Rhetoric\Spikes\Types;
+
+readonly class ReadonlyPost {
+    public function __construct(
+        public int $id,
+        public string $title,
+    ) {}
+}
+
+class ReadonlyProps {
+    public function __construct(
+        public readonly int $id,
+        public readonly string $title,
+    ) {}
+}
+
+final class HydrateProbe {
+    public static function main(): void {
+        echo "=== spike 9 hydration ===\n";
+        echo 'php=' . \PHP_VERSION . "\n";
+        self::probe(ReadonlyPost::class);
+        self::probe(ReadonlyProps::class);
+    }
+
+    private static function probe(string $class): void {
+        echo '-- ' . $class . "\n";
+        \ReflectionClass $reflection = new \ReflectionClass($class);
+        echo 'isReadOnly=' . ($reflection->isReadOnly() ? 'true' : 'false') . "\n";
+        ?\ReflectionMethod $ctor = $reflection->getConstructor();
+        if ($ctor !== null) {
+            foreach ($ctor->getParameters() as $parameter) {
+                ?\ReflectionType $type = $parameter->getType();
+                echo 'ctor param ' . $parameter->getName()
+                    . ' type=' . ($type !== null ? (string) $type : 'none')
+                    . ' promoted=' . ($parameter->isPromoted() ? 'true' : 'false')
+                    . "\n";
+            }
+        }
+
+        try {
+            object $made = $reflection->newInstanceArgs([4, 'from-ctor']);
+            echo 'newInstanceArgs ok class=' . $made::class . "\n";
+        } catch (\Throwable $e) {
+            echo 'newInstanceArgs failed ' . $e::class . ' ' . $e->getMessage() . "\n";
+        }
+
+        try {
+            object $blank = $reflection->newInstanceWithoutConstructor();
+            echo "newInstanceWithoutConstructor ok\n";
+            self::setOnce($reflection, $blank, 'id', 9);
+            self::setOnce($reflection, $blank, 'title', 'from-reflection');
+            mixed $id = $reflection->getProperty('id')->getValue($blank);
+            mixed $title = $reflection->getProperty('title')->getValue($blank);
+            echo 'hydrated id=' . (string) $id . ' title=' . (string) $title . "\n";
+            try {
+                $reflection->getProperty('id')->setValue($blank, 10);
+                echo "second setValue id unexpectedly ok\n";
+            } catch (\Throwable $e) {
+                echo 'second setValue id failed ' . $e::class . ' ' . $e->getMessage() . "\n";
+            }
+        } catch (\Throwable $e) {
+            echo 'without-constructor path failed ' . $e::class . ' ' . $e->getMessage() . "\n";
+        }
+    }
+
+    private static function setOnce(
+        \ReflectionClass $reflection,
+        object $blank,
+        string $name,
+        mixed $value,
+    ): void {
+        \ReflectionProperty $property = $reflection->getProperty($name);
+        echo 'property ' . $name
+            . ' isReadOnly=' . (self::flag($property, 'isReadOnly') ?? 'n/a')
+            . ' isVirtual=' . (self::flag($property, 'isVirtual') ?? 'n/a')
+            . ' isInitialized=' . ($property->isInitialized($blank) ? 'true' : 'false')
+            . "\n";
+        $property->setValue($blank, $value);
+        echo 'setValue ' . $name . " ok\n";
+    }
+
+    private static function flag(\ReflectionProperty $property, string $method): ?string {
+        if (!\method_exists($property, $method)) {
+            return null;
+        }
+        mixed $result = $property->{$method}();
+        if ($result === true) {
+            return 'true';
+        }
+        if ($result === false) {
+            return 'false';
+        }
+        return \get_debug_type($result);
+    }
+}
