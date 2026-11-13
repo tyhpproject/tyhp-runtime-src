@@ -45,7 +45,7 @@ final class NativeHttpClient implements HttpClient
         if ($destination !== null) {
             $opened = \fopen($destination, 'wb');
             if ($opened === false) {
-                unset($handle);
+                $handle = false;
                 throw new \RuntimeException("Failed to open $destination for writing.");
             }
             $file = $opened;
@@ -61,7 +61,7 @@ final class NativeHttpClient implements HttpClient
             \fclose($file);
             $file = null;
         }
-        unset($handle);
+        $handle = false;
         if ($result === false) {
             $this->deleteIfExists($destination);
             throw new \RuntimeException("Download failed for $url: $error");

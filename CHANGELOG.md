@@ -24,6 +24,7 @@ Notable changes to the Tyhp runtime packages (`tyhp/*` and `tyhpdef/*`) built fr
 - `tyhp/parallel`: struct construction now uses `new Name[...]`.
 - `tyhp/compiler`: struct construction now uses `new Name[...]`.
 - `tyhp/rhetoric`: struct construction now uses `new Name[...]`.
+- `tyhp/rhetoric`: the bundled fixture models declare navigation properties as nullable with a `null` default, and give `Money` value properties a constructor assignment, so they satisfy the typed-property initialization check.
 - `tyhp/io`: `Dns::resolveAsync` uses the tyhp extension when it is loaded and at least 0.1.0. The lookup runs on a thread and the event loop waits on its pipe. A missing or older extension keeps Offload. An unresolved host rejects the same way with or without the extension: `IoException` with `Could not resolve host {host}.`, or, when `Offload::usesWorkers()` is true, a `ParallelException` whose remote class is `IoException`. A cancelled token rejects with `OperationCancelledException`. The package suggests `ext-tyhp` (`pie install tyhp/ext-tyhp`) and does not require it.
 - `tyhp/core`: `Type::is`, `Type::parse`, and `Generic::bind` call the `tyhp` extension when it is loaded and at least 0.1.0. A missing or older extension is ignored. The package suggests `ext-tyhp` (`pie install tyhp/ext-tyhp`) and does not require it.
 - `tyhp/core`: `_gnrc` type arguments are `\Tyhp\TypeLike|string|null`, the same as `Generic::bind()`. `Type::arg()` normalizes a `Type`, a `BuiltIn` such as `Type::int`, a class-string, or `null`.
@@ -39,6 +40,10 @@ Notable changes to the Tyhp runtime packages (`tyhp/*` and `tyhpdef/*`) built fr
 - `tyhpdef/php`: `ReflectionClass<T>::newLazyGhost` and `resetAsLazyGhost` take `callable(T): void`. `newLazyProxy` and `resetAsLazyProxy` take `callable(T): T`.
 - `tyhp/async`: `DisposableScope` and `DisposableHelper::dispose` skip an uninitialized lazy object instead of calling `dispose()` or `disposeAsync()` on it. Every build (802 through 805) makes the same test: false below PHP 8.4, and on PHP 8.4 or newer `ReflectionClass::isUninitializedLazyObject`, so a build for an older PHP still skips ghosts when it runs on 8.4 or newer. The check does not initialize the object.
 - `tyhp/core`: `Type::struct($name, $fields)` with no third argument requires every field unless it is wrapped in `Type::optional(...)`. It required none before. Passing `$requiredKeys` (including an empty list) behaves as before.
+
+### Removed
+
+- `tyhp/core`: `\Tyhp\AllowUnset` is removed.
 
 ### Fixed
 
