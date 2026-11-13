@@ -19,6 +19,7 @@ Notable changes to the Tyhp runtime packages (`tyhp/*` and `tyhpdef/*`) built fr
 
 ### Changed
 
+- `tyhp/core`: `Type::defaultValue()` calls a class, enum, or generic class type's own public static `__tyhpDefault()` when that method's declaring class is exactly that type, and returns the result of the call. Each call invokes the method. Hand-written PHP may declare the method on that class. A nullable type, a type with no such method, and a type whose method is declared on an ancestor yield `null`.
 - `tyhp/lambda`: struct construction now uses `new Name[...]`.
 - `tyhp/io`: struct construction now uses `new Name[...]`.
 - `tyhp/parallel`: struct construction now uses `new Name[...]`.

@@ -1741,8 +1741,13 @@ class Type implements \Stringable, TypeLike
      *
      * A nullable type defaults to `null` rather than to its inner type's zero value, matching
      * `default(?int)`. Types with no meaningful zero (`void`, `never`, `mixed`, `resource`,
-     * unions, intersections) and object types without a declared default also yield `null`.
+     * unions, intersections) and object types that do not declare a default also yield `null`.
      * For `void`, that `null` is accepted by {@see is()} so `Type::is(null, Type::void())` is true.
+     *
+     * A class, enum, or generic class type calls its own public static `__tyhpDefault` when
+     * that method's declaring class is exactly this type, and returns the result. Each call
+     * invokes the method. Hand-written PHP may declare that method on the class. The hook
+     * calls it.
      */
     public function defaultValue(): mixed
     {
@@ -1764,8 +1769,47 @@ class Type implements \Stringable, TypeLike
                 default => null,
             },
             'struct' => [],
+            'class', 'generic' => self::declaredDefault($this->name),
             default => null,
         };
+    }
+
+    /// The result of `$className`'s own public static `__tyhpDefault`, or null.
+    ///
+    /// The method runs only when {@see \ReflectionMethod::getDeclaringClass()} is exactly
+    /// `$className`. `array` and `iterable` generics have no class default.
+    private static function declaredDefault(?string $className): mixed
+    {
+        if ($className === null || $className === '') {
+            return null;
+        }
+
+        string $bare = \strtolower(\ltrim($className, '\\'));
+        if ($bare === 'array' || $bare === 'iterable') {
+            return null;
+        }
+
+        if (!\class_exists($className) && !\interface_exists($className)) {
+            return null;
+        }
+
+        if (!\method_exists($className, '__tyhpDefault')) {
+            return null;
+        }
+
+        \ReflectionMethod $method = new \ReflectionMethod($className, '__tyhpDefault');
+        if (!$method->isPublic() || !$method->isStatic() || $method->isAbstract()) {
+            return null;
+        }
+
+        \ReflectionClass $target = new \ReflectionClass($className);
+        if ($method->getDeclaringClass()->getName() !== $target->getName()) {
+            return null;
+        }
+
+        // Hand-written PHP may declare public static __tyhpDefault on this class.
+        // The hook calls it. That is intentional.
+        return $method->invoke(null);
     }
 
     private static function isScalar(mixed $value, self $type): bool

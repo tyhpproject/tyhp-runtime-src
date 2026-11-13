@@ -1295,6 +1295,97 @@ class TypeTest extends TestCase
 
         self::assertSame(Type::int(), $current);
     }
+
+    public function testDefaultValueCallsClassDeclaredTyhpDefault(): void
+    {
+        $before = DefaultValueHookParent::$calls;
+        $first = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+        $second = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+
+        self::assertInstanceOf(DefaultValueHookParent::class, $first);
+        self::assertInstanceOf(DefaultValueHookParent::class, $second);
+        self::assertSame(DefaultValueHookParent::class, $first::class);
+        self::assertSame('parent', $first->source);
+        self::assertNotSame($first, $second);
+        self::assertSame($before + 2, DefaultValueHookParent::$calls);
+
+        $spelled = '\\' . DefaultValueHookParent::class;
+        $fromSpelling = Type::fromClassName($spelled)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $fromSpelling);
+        self::assertSame(DefaultValueHookParent::class, $fromSpelling::class);
+
+        $aliased = Type::fromClassName(DefaultValueHookParent::class)->name('NotAClass');
+        self::assertSame('NotAClass', $aliased->getName());
+        $fromAlias = $aliased->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $fromAlias);
+        self::assertSame(DefaultValueHookParent::class, $fromAlias::class);
+
+        $beforeGeneric = DefaultValueHookParent::$calls;
+        $fromGeneric = Type::generic(DefaultValueHookParent::class, Type::int())->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $fromGeneric);
+        self::assertSame(DefaultValueHookParent::class, $fromGeneric::class);
+        self::assertSame($beforeGeneric + 1, DefaultValueHookParent::$calls);
+
+        $beforeAbstract = DefaultValueHookAbstract::$calls;
+        $fromAbstract = Type::fromClassName(DefaultValueHookAbstract::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookAbstractMade::class, $fromAbstract);
+        self::assertSame($beforeAbstract + 1, DefaultValueHookAbstract::$calls);
+
+        $beforeNullable = DefaultValueHookParent::$calls;
+        self::assertNull(Type::nullable(Type::fromClassName(DefaultValueHookParent::class))->defaultValue());
+        self::assertSame($beforeNullable, DefaultValueHookParent::$calls);
+
+        $case = Type::fromClassName(DefaultValueHookColor::class)->defaultValue();
+        self::assertSame(DefaultValueHookColor::Red, $case);
+    }
+
+    public function testDefaultValueIgnoresInheritedTyhpDefault(): void
+    {
+        $before = DefaultValueHookParent::$calls;
+        self::assertNull(Type::fromClassName(DefaultValueHookChild::class)->defaultValue());
+        self::assertNull(Type::fromClassName(DefaultValueHookGrandchild::class)->defaultValue());
+        self::assertNull(Type::generic(DefaultValueHookChild::class)->defaultValue());
+        self::assertSame($before, DefaultValueHookParent::$calls);
+
+        $own = Type::fromClassName(DefaultValueHookChildOwn::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookChildOwn::class, $own);
+        self::assertSame(DefaultValueHookChildOwn::class, $own::class);
+        self::assertSame('child', $own->source);
+        self::assertSame($before, DefaultValueHookParent::$calls);
+
+        $beforeAbstract = DefaultValueHookAbstract::$calls;
+        self::assertNull(Type::fromClassName(DefaultValueHookAbstractMade::class)->defaultValue());
+        self::assertSame($beforeAbstract, DefaultValueHookAbstract::$calls);
+    }
+
+    public function testDefaultValueWithoutTyhpDefaultIsNull(): void
+    {
+        self::assertNull(Type::fromClassName(DefaultValueHookNone::class)->defaultValue());
+        self::assertNull(Type::fromClassName(\stdClass::class)->defaultValue());
+        self::assertNull(Type::fromClassName(DefaultValueHookPrivate::class)->defaultValue());
+        self::assertNull(Type::fromClassName(DefaultValueHookInterface::class)->defaultValue());
+        self::assertNull(Type::generic('array', Type::int())->defaultValue());
+        self::assertNull(Type::object()->defaultValue());
+    }
+
+    public function testDefaultValueDoesNotReuseTheInstance(): void
+    {
+        $first = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+        $second = Type::fromClassName(DefaultValueHookParent::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookParent::class, $first);
+        self::assertInstanceOf(DefaultValueHookParent::class, $second);
+        self::assertNotSame($first, $second);
+
+        $one = Type::fromClassName(DefaultValueHookSingleton::class)->defaultValue();
+        $two = Type::fromClassName(DefaultValueHookSingleton::class)->defaultValue();
+        self::assertInstanceOf(DefaultValueHookSingleton::class, $one);
+        self::assertSame($one, $two);
+
+        $red = Type::fromClassName(DefaultValueHookColor::class)->defaultValue();
+        $again = Type::fromClassName(DefaultValueHookColor::class)->defaultValue();
+        self::assertSame(DefaultValueHookColor::Red, $red);
+        self::assertSame($red, $again);
+    }
 }
 
 #[GenericRuntime(erased: false, factory: 'new_Story49Box__tyhpGeneric', layouts: [1])]
@@ -1380,5 +1471,93 @@ final class TypeWalkProbe implements \Iterator
     public function next(): void
     {
         $this->position++;
+    }
+}
+
+class DefaultValueHookParent
+{
+    public static int $calls = 0;
+
+    public string $source = '';
+
+    public static function __tyhpDefault(): static
+    {
+        self::$calls++;
+        $value = new self();
+        $value->source = 'parent';
+
+        return $value;
+    }
+}
+
+class DefaultValueHookChild extends DefaultValueHookParent
+{
+}
+
+class DefaultValueHookGrandchild extends DefaultValueHookChild
+{
+}
+
+class DefaultValueHookChildOwn extends DefaultValueHookParent
+{
+    public static function __tyhpDefault(): static
+    {
+        $value = new self();
+        $value->source = 'child';
+
+        return $value;
+    }
+}
+
+class DefaultValueHookNone
+{
+}
+
+class DefaultValueHookPrivate
+{
+    private static function __tyhpDefault(): static
+    {
+        return new self();
+    }
+}
+
+class DefaultValueHookSingleton
+{
+    private static ?self $instance = null;
+
+    public static function __tyhpDefault(): static
+    {
+        return self::$instance ??= new self();
+    }
+}
+
+interface DefaultValueHookInterface
+{
+    public static function __tyhpDefault(): static;
+}
+
+abstract class DefaultValueHookAbstract
+{
+    public static int $calls = 0;
+
+    public static function __tyhpDefault(): static
+    {
+        self::$calls++;
+
+        return new DefaultValueHookAbstractMade();
+    }
+}
+
+class DefaultValueHookAbstractMade extends DefaultValueHookAbstract
+{
+}
+
+enum DefaultValueHookColor
+{
+    case Red;
+
+    public static function __tyhpDefault(): static
+    {
+        return self::Red;
     }
 }
